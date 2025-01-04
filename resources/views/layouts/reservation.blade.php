@@ -60,42 +60,44 @@
                     const boxViewHeight = scrollableBox.clientHeight;
 
                     // محاسبه موقعیت وسط
-                    const scrollToMiddle = (boxHeight - boxViewHeight) / 2;
+                    const scrollToMiddle = (boxHeight - boxViewHeight) / 10;
 
                     // اسکرول به وسط و اضافه کردن افکت سایه
-                    await smoothScroll(scrollableBox, scrollToMiddle, 0);
-                    addFocusEffect(); // اضافه کردن افکت تمرکز
+                    await smoothScroll(scrollableBox, scrollToMiddle, 0, 2000); // مدت زمان طولانی‌تر
 
                     // برگشت به بالا
-                    await smoothScroll(scrollableBox, 0, 0);
-                    removeFocusEffect(); // حذف افکت تمرکز
+                    await smoothScroll(scrollableBox, 0, 0, 1000); // مدت زمان طولانی‌تر
                 };
 
                 // تابع اسکرول نرم
-                const smoothScroll = (element, top, left) => {
+                const smoothScroll = (element, top, left, duration) => {
                     return new Promise((resolve) => {
-                        element.scrollBy({
-                            top: top,
-                            left: left,
-                            behavior: 'smooth'
-                        });
-                        setTimeout(resolve, 1000); // صبر برای 1 ثانیه
-                    });
-                };
+                        const startTop = element.scrollTop;
+                        const startLeft = element.scrollLeft;
+                        const changeTop = top - startTop;
+                        const changeLeft = left - startLeft;
+                        const startTime = performance.now();
 
-                // اضافه کردن افکت تمرکز (سایه یا رنگ)
-                const addFocusEffect = () => {
-                    const plans = document.querySelectorAll('.plan');
-                    plans.forEach(plan => {
-                        plan.classList.add('highlight');
-                    });
-                };
+                        const animateScroll = (currentTime) => {
+                            const elapsedTime = currentTime - startTime;
+                            const progress = Math.min(elapsedTime / duration, 1);
 
-                // حذف افکت تمرکز
-                const removeFocusEffect = () => {
-                    const plans = document.querySelectorAll('.plan');
-                    plans.forEach(plan => {
-                        plan.classList.remove('highlight');
+                            // استفاده از تابع ease-in-out برای انیمیشن نرم‌تر
+                            const easeInOutQuad = (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) *
+                                t);
+
+                            const easedProgress = easeInOutQuad(progress);
+                            element.scrollTop = startTop + changeTop * easedProgress;
+                            element.scrollLeft = startLeft + changeLeft * easedProgress;
+
+                            if (progress < 1) {
+                                requestAnimationFrame(animateScroll);
+                            } else {
+                                resolve();
+                            }
+                        };
+
+                        requestAnimationFrame(animateScroll);
                     });
                 };
 

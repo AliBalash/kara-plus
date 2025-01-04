@@ -74,6 +74,10 @@
                     </div>
 
 
+
+
+
+
                     <div class="form-check plans col-12" id="month-plan">
                         @foreach ($cars as $car)
                             <label class="col-lg-12 plan car-box {{ $selectedCar === $car->id ? 'checked' : '' }}"
@@ -83,92 +87,120 @@
                                     class="form-check-input plan-type d-none" value="{{ $car->id }}" />
 
                                 <!-- Box layout -->
-                                <div class="car-box-container d-flex flex-column flex-md-row  shadow-sm p-3 rounded">
+                                <div class="car-box-container d-flex flex-column flex-md-row-reverse shadow-sm p-3 rounded row">
+                                    <!-- Car Image -->
+                                    <div class="car-image mb-3 mb-md-0 text-md-right col-12 col-md-6 col-lg-5">
+                                        <img src="{{ $car->carModel->images ? asset('assets/car-pics/' . $car->carModel->images->file_name) : asset('assets/car-pics/car test.webp') }}"
+                                             class="img-fluid rounded" alt="{{ $car->carModel->brand }} Thumbnail" />
+                                    </div>
+                                
                                     <!-- Car Information -->
-                                    <div class="car-info flex-grow-1 text-left">
-                                        <div class="overlay-content">
-                                            <!-- Display car name and details -->
-                                            <div class="text-overlay">
-                                                <!-- نام ماشین -->
-                                                <h4 class="car-name">
-                                                    {{ $car->carModel->brand }} {{ $car->carModel->model }}
-                                                </h4>
-
-                                                <!-- سال ساخت -->
-                                                <h5 class="car-year text-secondary">
-                                                    {{ $car->manufacturing_year }}
-                                                </h5>
-
-                                                <!-- قیمت روزانه -->
-                                                <div class="row">
-                                                    <!-- Pricing Table -->
-                                                    <div class="col-6">
-                                                        <table class="table" id="pricing-table">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <th scope="row">Daily</th>
-                                                                    <td>137 AED</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">2 to 7 Days</th>
-                                                                    <td>134 AED</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">7 to 20 Days</th>
-                                                                    <td>133 AED</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">More than 20 Days</th>
-                                                                    <td>130 AED</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th scope="row">Deposit</th>
-                                                                    <td>{{rand(100, 999)}} AED</td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
+                                    <div class="car-info flex-grow-1 text-md-left col-12 col-md-6 col-lg-7">
+                                        <div class="row g-3">
+                                            <!-- Pricing Table -->
+                                            <div class="col-12 col-sm-12 col-md-4 col-lg-6">
+                                                <table class="table table-sm mb-0 styled-table">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th scope="row">Daily</th>
+                                                            <td>137 AED</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">2 to 7 Days</th>
+                                                            <td>134 AED</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">7 to 20 Days</th>
+                                                            <td>133 AED</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">More than 20 Days</th>
+                                                            <td>130 AED</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">Deposit</th>
+                                                            <td>{{ rand(100, 999) }} AED</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                
+                                            <!-- New Column (Additional Info/Badges) -->
+                                            <div class="col-12 col-sm-12 col-md-4 col-lg-2">
+                                                <div class="d-flex flex-column badge-container">
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/gearbox.png') }}"
+                                                                 alt="Gearbox Icon" class="icon mr-2"> A
+                                                        </span>
                                                     </div>
-
-                                                    <!-- Badges -->
-                                                    <div class="col-6">
-
-                                                        
-                                                        <div class="mb-2">
-                                                            <span class="badge badge-neutral">
-                                                                <img src="{{ asset('assets/reserve/assets/images/gearbox.png') }}"
-                                                                    alt="Weekly Price Icon" class="icon mr-2">
-                                                                Automatic
-                                                            </span>
-                                                        </div>
-                                                        <div class="mb-2">
-                                                            <span class="badge badge-neutral">
-                                                                <img src="{{ asset('assets/reserve/assets/images/car-seat.png') }}"
-                                                                    alt="Deposit Icon" class="icon mr-2">
-                                                                5
-                                                            </span>
-                                                        </div>
-
-                                                        <div class="mb-2">
-                                                            <span class="badge badge-neutral">
-                                                                <img src="{{ asset('assets/reserve/assets/images/car-door.png') }}"
-                                                                    alt="Price Icon" class="icon mr-2">
-                                                                4
-                                                            </span>
-                                                        </div>
-
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/car-seat.png') }}"
+                                                                 alt="Seat Icon" class="icon mr-2"> 5
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/car-door.png') }}"
+                                                                 alt="Door Icon" class="icon mr-2"> 4
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/suitcases.png') }}"
+                                                                 alt="Suitcase Icon" class="icon mr-2"> {{ rand(1, 3) }}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/air.png') }}"
+                                                                 alt="AC Icon" class="icon mr-2"> A/C
+                                                        </span>
                                                     </div>
                                                 </div>
-
                                             </div>
-
+                                
+                                            <!-- Badges (Existing Column) -->
+                                            <div class="col-12 col-sm-12 col-md-4 col-lg-2">
+                                                <div class="d-flex flex-column badge-container">
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/gearbox.png') }}"
+                                                                 alt="Gearbox Icon" class="icon mr-2"> A
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/car-seat.png') }}"
+                                                                 alt="Seat Icon" class="icon mr-2"> 5
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/car-door.png') }}"
+                                                                 alt="Door Icon" class="icon mr-2"> 4
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/suitcases.png') }}"
+                                                                 alt="Suitcase Icon" class="icon mr-2"> {{ rand(1, 3) }}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge badge-neutral">
+                                                            <img src="{{ asset('assets/reserve/assets/images/air.png') }}"
+                                                                 alt="AC Icon" class="icon mr-2"> A/C
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <!-- Car Image -->
-                                    <div class="car-image">
-                                        <img src="{{ $car->carModel->images ? asset('assets/car-pics/' . $car->carModel->images->file_name) : asset('assets/car-pics/cartest.webp') }}"
-                                            class="img-fluid rounded" alt="{{ $car->carModel->brand }} Thumbnail" />
-                                    </div>
                                 </div>
+                                
+
                             </label>
                         @endforeach
                     </div>

@@ -70,7 +70,10 @@ body {
   .plan-step .plans .plan {
     flex: 1 0 0;
     width: 100%;
-    padding: 5rem !important;
+    /* padding: 5rem !important; */
+  }
+  .plan-step .plans .plan .car-image img {
+    width: 100%;
   }
 }
 .plan-step .plans .plan h6:nth-of-type(1) {
@@ -87,7 +90,7 @@ body {
   background-color: hsl(217, 100%, 97%);
   border: 1px solid hsl(243, 100%, 62%);
 }
-.plan-step .plans .plan.checked img {
+.plan-step .plans .plan.checked .car-image img {
   transform: scale(1.5); /* بزرگ کردن تصویر در هنگام Hover روی Label */
 }
 
@@ -327,14 +330,14 @@ label[for=darkmode] {
   border: 1px solid hsl(231, 11%, 63%);
 }
 .dark-mode .addons-step .addon.checkAddon {
-  background-color: #160aff;
+  background-color: #B0BEC5;
   border: 1px solid hsl(231, 11%, 63%);
 }
 .dark-mode .addons-step .addon p:first-child {
   color: hsl(217, 100%, 97%);
 }
 .dark-mode .plan-step .plans .plan.checked {
-  background-color: #160aff;
+  background-color: #B0BEC5;
 }
 .dark-mode .addons-step .addon div {
   color: hsl(217, 100%, 97%);
@@ -412,7 +415,7 @@ label[for=darkmode] {
   margin-bottom: 10px; /* فاصله از متن */
 }
 
-.text-overlay h5, .text-overlay h6 {
+.text-overlay h5, h6 {
   margin: 5px 0; /* فاصله بین متن‌ها */
 }
 
@@ -566,7 +569,7 @@ label[for=darkmode] {
 
 /* استایل اولیه تصویر */
 .car-image img {
-  width: 70%; /* عرض کامل کانتینر */
+  width: 100%; /* عرض کامل کانتینر */
   height: auto; /* تناسب ارتفاع */
   object-fit: cover; /* تطبیق تصویر با کانتینر */
   transition: transform 0.3s ease-in-out; /* انیمیشن نرم */
@@ -589,6 +592,57 @@ label[for=darkmode] {
   object-fit: contain;
   vertical-align: middle;
   margin-right: 10px;
+}
+
+
+/* Style for table */
+.styled-table {
+  border-spacing: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.styled-table th, .styled-table td {
+  text-align: left;
+}
+
+.styled-table th {
+  font-weight: bold;
+  align-content: center;
+}
+
+
+/* Style for badges */
+.badge-container span {
+  margin: 3px; /* Space between spans */
+  padding: 5px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.badge-container span img {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+.table.styled-table {
+  background-color: transparent !important; /* حذف رنگ پس‌زمینه */
+}
+
+.table.styled-table th,
+.table.styled-table td {
+  background-color: transparent !important; /* حذف رنگ پس‌زمینه سلول‌ها */
+}
+
+.table.styled-table tbody tr {
+  border-bottom: 1px solid #ccc !important; /* خط پایین برای ردیف‌ها */
+}
+
+.table.styled-table tbody tr:last-child {
+  border-bottom: none !important; /* حذف خط پایین آخرین ردیف */
 }
 
 
