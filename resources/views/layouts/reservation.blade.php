@@ -32,7 +32,7 @@
 
 <body>
     <!-- main container start -->
-    <div class="center-box d-flex justify-content-center align-items-center">
+    <div class="">
         {{ $slot }}
 
     </div>

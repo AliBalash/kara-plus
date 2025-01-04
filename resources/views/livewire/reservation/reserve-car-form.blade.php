@@ -7,7 +7,7 @@
                 <img src="{{ asset('assets/reserve/assets/images/dark.png') }}" alt="darkMode icon from flat icons" />
             </div>
         </label>
-        <div class="row gx-1 ">
+        <div class="gx-1">
             <!-- Start Sidebar -->
             <aside class="col-md-4 d-none">
                 <div class="sidebar p-5">
@@ -52,6 +52,134 @@
             </aside>
             <!-- End Sidebar -->
             <form class="col-md-12 p-1 needs-validation" id="checkoutForm" wire:submit.prevent="submitForm" novalidate>
+
+
+
+
+                <div class="step row plan-step d-none" wire:ignore.self>
+                    <header class="col-12">
+                        <h1>Select your plan</h1>
+                        {{-- <p class="lead">You have the option of monthly or yearly billing.</p> --}}
+                    </header>
+
+                    <!-- Select Box برای فیلتر برندها -->
+                    <div class="mb-1 col-12 col-md-6">
+                        <label for="brand" class="form-label">Filter by Brand</label>
+                        <select id="brand" class="form-select" wire:model.live="selectedBrand">
+                            <option value="">All Brands</option>
+                            @foreach ($brands as $brand)
+                                <option value="{{ $brand }}">{{ $brand }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+
+                    <div class="form-check plans col-12" id="month-plan">
+                        @foreach ($cars as $car)
+                            <label class="col-lg-12 plan car-box {{ $selectedCar === $car->id ? 'checked' : '' }}"
+                                wire:click="selectCar({{ $car->id }})">
+                                <!-- Radio input -->
+                                <input type="radio" name="plan" id="car-{{ $car->id }}"
+                                    class="form-check-input plan-type d-none" value="{{ $car->id }}" />
+
+                                <!-- Box layout -->
+                                <div class="car-box-container d-flex flex-column flex-md-row  shadow-sm p-3 rounded">
+                                    <!-- Car Information -->
+                                    <div class="car-info flex-grow-1 text-left">
+                                        <div class="overlay-content">
+                                            <!-- Display car name and details -->
+                                            <div class="text-overlay">
+                                                <!-- نام ماشین -->
+                                                <h4 class="car-name">
+                                                    {{ $car->carModel->brand }} {{ $car->carModel->model }}
+                                                </h4>
+
+                                                <!-- سال ساخت -->
+                                                <h5 class="car-year text-secondary">
+                                                    {{ $car->manufacturing_year }}
+                                                </h5>
+
+                                                <!-- قیمت روزانه -->
+                                                <div class="row">
+                                                    <!-- Pricing Table -->
+                                                    <div class="col-6">
+                                                        <table class="table" id="pricing-table">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <th scope="row">Daily</th>
+                                                                    <td>137 AED</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th scope="row">2 to 7 Days</th>
+                                                                    <td>134 AED</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th scope="row">7 to 20 Days</th>
+                                                                    <td>133 AED</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th scope="row">More than 20 Days</th>
+                                                                    <td>130 AED</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th scope="row">Deposit</th>
+                                                                    <td>{{rand(100, 999)}} AED</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+
+                                                    <!-- Badges -->
+                                                    <div class="col-6">
+
+                                                        
+                                                        <div class="mb-2">
+                                                            <span class="badge badge-neutral">
+                                                                <img src="{{ asset('assets/reserve/assets/images/gearbox.png') }}"
+                                                                    alt="Weekly Price Icon" class="icon mr-2">
+                                                                Automatic
+                                                            </span>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <span class="badge badge-neutral">
+                                                                <img src="{{ asset('assets/reserve/assets/images/car-seat.png') }}"
+                                                                    alt="Deposit Icon" class="icon mr-2">
+                                                                5
+                                                            </span>
+                                                        </div>
+
+                                                        <div class="mb-2">
+                                                            <span class="badge badge-neutral">
+                                                                <img src="{{ asset('assets/reserve/assets/images/car-door.png') }}"
+                                                                    alt="Price Icon" class="icon mr-2">
+                                                                4
+                                                            </span>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                    <!-- Car Image -->
+                                    <div class="car-image">
+                                        <img src="{{ $car->carModel->images ? asset('assets/car-pics/' . $car->carModel->images->file_name) : asset('assets/car-pics/cartest.webp') }}"
+                                            class="img-fluid rounded" alt="{{ $car->carModel->brand }} Thumbnail" />
+                                    </div>
+                                </div>
+                            </label>
+                        @endforeach
+                    </div>
+
+
+                    <div class="bad-feedback-plan bad-feedback d-none">Please choose a car.</div>
+
+
+                </div>
+
+
 
 
                 <!-- Start profile step -->
@@ -117,138 +245,6 @@
 
                 </div>
                 <!-- End profile-step -->
-
-                <div class="step row plan-step d-none" wire:ignore.self>
-                    <header class="col-12">
-                        <h1>Select your plan</h1>
-                        {{-- <p class="lead">You have the option of monthly or yearly billing.</p> --}}
-                    </header>
-
-                    <!-- Select Box برای فیلتر برندها -->
-                    <div class="mb-1 col-12 col-md-6">
-                        <label for="brand" class="form-label">Filter by Brand</label>
-                        <select id="brand" class="form-select" wire:model.live="selectedBrand">
-                            <option value="">All Brands</option>
-                            @foreach ($brands as $brand)
-                                <option value="{{ $brand }}">{{ $brand }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-
-                    <div class="form-check plans row" id="month-plan">
-                        @foreach ($cars as $car)
-                            <label class="col-lg-12 plan car-box {{ $selectedCar === $car->id ? 'checked' : '' }}"
-                                wire:click="selectCar({{ $car->id }})">
-                                <!-- Radio input -->
-                                <input type="radio" name="plan" id="car-{{ $car->id }}"
-                                    class="form-check-input plan-type d-none" value="{{ $car->id }}" />
-                    
-                                <!-- Box layout -->
-                                <div class="car-box-container d-flex flex-column flex-md-row align-items-center shadow-sm p-3 rounded">
-                                    <!-- Car Information -->
-                                    <div class="car-info flex-grow-1 text-left">
-                                        <div class="overlay-content">
-                                            <!-- Display car name and details -->
-                                            <div class="text-overlay">
-                                                <h5>
-                                                    <i class="fa fa-car text-primary mr-2"></i>
-                                                    {{ $car->carModel->brand }} {{ $car->carModel->model }}
-                                                </h5>
-                                                <h6>
-                                                    <i class="fa fa-calendar-alt text-secondary mr-2"></i>
-                                                    Year: {{ $car->manufacturing_year }}
-                                                </h6>
-                                                <h6 class="mt-2 text-success">
-                                                    <i class="fa fa-tag mr-2"></i>
-                                                    5500 AED/day
-                                                </h6>
-                                                <h6 class="mt-2 text-info">
-                                                    <i class="fa fa-calendar-week mr-2"></i>
-                                                    35000 AED/week
-                                                </h6>
-                                                <h6 class="mt-2 text-danger">
-                                                    <i class="fa fa-exclamation-triangle mr-2"></i>
-                                                    Deposit: 500 AED
-                                                </h6>
-                                            </div>
-                                        </div>
-                                        <!-- Features with icons -->
-                                        <div class="features mt-3 d-flex flex-wrap align-items-center">
-                                            <!-- Automatic/Manual -->
-                                            <div class="feature-item d-flex align-items-center mr-3">
-                                                <span class="badge badge-primary">Primary</span>
-                                                {{ $car->transmission === 'automatic' ? 'Automatic' : 'Manual' }}
-                                            </div>
-                                            <!-- Capacity -->
-                                            <div class="feature-item d-flex align-items-center mr-3">
-                                                <i class="fa fa-users text-secondary mr-2"></i>
-                                                Capacity: {{ $car->capacity ?? 5 }}
-                                            </div>
-                                            <!-- Fuel Type -->
-                                            <div class="feature-item d-flex align-items-center mr-3">
-                                                <i class="fa fa-gas-pump text-success mr-2"></i>
-                                                Fuel: {{ $car->fuel_type ?? 'Gasoline' }}
-                                            </div>
-                                            <!-- Number of Doors -->
-                                            <div class="feature-item d-flex align-items-center">
-                                                <i class="fa fa-door-closed text-warning mr-2"></i>
-                                                Doors: {{ $car->doors ?? 4 }}
-                                            </div>
-                                        </div>
-                                            
-                                    </div>
-                                    <!-- Car Image -->
-                                    <div class="car-image ml-md-3">
-                                        <img src="{{ $car->carModel->images ? asset('assets/car-pics/' . $car->carModel->images->file_name) : asset('assets/car-pics/cartest.webp') }}"
-                                            class="img-fluid rounded" alt="{{ $car->carModel->brand }} Thumbnail" />
-                                    </div>
-                                </div>
-                            </label>
-                        @endforeach
-                    </div>
-                    
-                    
-                    
-
-
-
-
-
-                    <!-- Display Cars -->
-                    {{-- <div class="form-check plans row" id="month-plan">
-                        @foreach ($cars as $car)
-                            <div class="col-12">
-                                <label
-                                    class="plan shadow-sm p-3 m-1 rounded d-flex d-md-block position-relative col-12 col-sm-6 col-md-6 col-lg-4 {{ $selectedCar === $car->id ? 'checked' : '' }}"
-                                    wire:click="selectCar({{ $car->id }})">
-                                    <input type="radio" name="plan" id="car-{{ $car->id }}"
-                                        class="form-check-input plan-type d-none" value="{{ $car->id }}" />
-
-                                    <!-- Display car image -->
-                                    <img src="{{ $car->carModel->images ? asset('assets/car-pics/' . $car->carModel->images->file_name) : asset('assets/car-pics/cartest.webp') }}"
-                                        class="thumbnail-img rounded " alt="{{ $car->carModel->brand }} Thumbnail" />
-
-                                    <div class="overlay-content">
-                                        <!-- Display car name and details -->
-                                        <div class="text-overlay">
-                                            <h5>{{ $car->carModel->brand }} {{ $car->carModel->model }}</h5>
-                                            <h6>{{ $car->manufacturing_year }}</h6>
-                                            <h6 class="mt-2">5500 AED/day</h6>
-                                        </div>
-                                    </div>
-                                </label>
-                            </div>
-                        @endforeach
-                    </div> --}}
-
-
-                    
-
-                    <div class="bad-feedback-plan bad-feedback d-none">Please choose a car.</div>
-
-
-                </div>
 
 
 
@@ -352,7 +348,7 @@
                     </div>
                 </div>
                 <!-- End summary-step -->
-                <div class="next-step mt-1 d-flex align-items-center">
+                <div class="next-step mt-5 d-flex align-items-center">
                     <button type="button" id="back" class="fw-bold btn">Go Back</button>
 
                     <button type="button" id="next" class="btn btn-primary ms-auto">Next Step</button>

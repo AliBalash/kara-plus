@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\reserve\ReservationController;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Pages\Panel\Admin\Dashboard;
 use App\Livewire\Pages\Panel\Auth\Login;
@@ -14,13 +13,11 @@ Route::get('/admin/dashboard', Dashboard::class)->name('admin.dashboard');
 Route::get('/auth/login', Login::class)->name('auth.login');
 
 
-use App\Livewire\Counter;
 use App\Livewire\Reservation\ReserveCarForm;
 
 
-Route::get('/reservations/', [ReservationController::class, 'show'])->name('reservations.show');
 
-Route::get('/reservations2', ReserveCarForm::class);
+Route::get('/reservations', ReserveCarForm::class);
 
 
 use App\Imports\CarImport;

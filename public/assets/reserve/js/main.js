@@ -20,6 +20,8 @@ const yplanCards = document.querySelectorAll("#year-plan .plan");
 const monthlyPlanBtns = document.querySelectorAll("#month-plan .plan-type");
 const yearlyPlanBtns = document.querySelectorAll("#year-plan .plan-type");
 const darkModeBtn = document.querySelector("#darkmode");
+const pricingTables = document.getElementsByClassName("table");
+console.log()
 const themeMode = document.querySelector(".theme-mode");
 
 //checker
@@ -37,13 +39,26 @@ function toggleDarkMode() {
   darkModeBtn.checked ? darkMode() : lightMode();
 }
 function darkMode() {
-  themeMode.classList.add("dark-on")
+  themeMode.classList.add("dark-on");
   document.body.classList.add("dark-mode");
+
+  // Add dark mode class to all tables
+  Array.from(pricingTables).forEach((table) => {
+      table.classList.add("table-dark");
+  });
+
   window.localStorage.setItem("theme", "dark");
 }
+
 function lightMode() {
-  themeMode.classList.remove("dark-on")
+  themeMode.classList.remove("dark-on");
   document.body.classList.remove("dark-mode");
+
+  // Remove dark mode class from all tables
+  Array.from(pricingTables).forEach((table) => {
+      table.classList.remove("table-dark");
+  });
+
   window.localStorage.setItem("theme", "light");
 }
 
