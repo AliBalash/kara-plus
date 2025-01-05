@@ -314,6 +314,15 @@ label[for=darkmode] {
 .dark-mode input[class=form-control]::placeholder {
   color: hsl(231, 100%, 99%);
 }
+
+.dark-mode select[class=form-select] {
+  background-color: #2f353a ;
+  color: hsl(231, 100%, 99%) ;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='hsl(231, 100%, 99%)' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+}
+.dark-mode select[class=form-select]::placeholder {
+  color: hsl(231, 100%, 99%) ;
+}
 .dark-mode .plan-step .month-year {
   background-color: hsl(243, 100%, 62%);
 }
@@ -569,7 +578,7 @@ label[for=darkmode] {
 
 /* استایل اولیه تصویر */
 .car-image img {
-  width: 100%; /* عرض کامل کانتینر */
+  width: 80%; /* عرض کامل کانتینر */
   height: auto; /* تناسب ارتفاع */
   object-fit: cover; /* تطبیق تصویر با کانتینر */
   transition: transform 0.3s ease-in-out; /* انیمیشن نرم */
@@ -634,15 +643,17 @@ label[for=darkmode] {
 
 .table.styled-table th,
 .table.styled-table td {
+  /* color:#dadada !important; */
   background-color: transparent !important; /* حذف رنگ پس‌زمینه سلول‌ها */
 }
 
 .table.styled-table tbody tr {
-  border-bottom: 1px solid #ccc !important; /* خط پایین برای ردیف‌ها */
+  border-bottom: 1px solid #ccc ; 
 }
 
 .table.styled-table tbody tr:last-child {
-  border-bottom: none !important; /* حذف خط پایین آخرین ردیف */
+  /* border-bottom: none !important; حذف خط پایین آخرین ردیف */
+  border-bottom-color:  transparent !important;
 }
 
 

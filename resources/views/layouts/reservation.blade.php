@@ -50,69 +50,6 @@
     <!-- Bootstrap js -->
     <script src="{{ asset('assets/reserve/js/bootstrap.min.js') }}"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const scrollableBox = document.querySelector('#month-plan');
-
-            if (scrollableBox) {
-                const scrollSequence = async () => {
-                    const boxHeight = scrollableBox.scrollHeight;
-                    const boxViewHeight = scrollableBox.clientHeight;
-
-                    // محاسبه موقعیت وسط
-                    const scrollToMiddle = (boxHeight - boxViewHeight) / 10;
-
-                    // اسکرول به وسط و اضافه کردن افکت سایه
-                    await smoothScroll(scrollableBox, scrollToMiddle, 0, 2000); // مدت زمان طولانی‌تر
-
-                    // برگشت به بالا
-                    await smoothScroll(scrollableBox, 0, 0, 1000); // مدت زمان طولانی‌تر
-                };
-
-                // تابع اسکرول نرم
-                const smoothScroll = (element, top, left, duration) => {
-                    return new Promise((resolve) => {
-                        const startTop = element.scrollTop;
-                        const startLeft = element.scrollLeft;
-                        const changeTop = top - startTop;
-                        const changeLeft = left - startLeft;
-                        const startTime = performance.now();
-
-                        const animateScroll = (currentTime) => {
-                            const elapsedTime = currentTime - startTime;
-                            const progress = Math.min(elapsedTime / duration, 1);
-
-                            // استفاده از تابع ease-in-out برای انیمیشن نرم‌تر
-                            const easeInOutQuad = (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) *
-                                t);
-
-                            const easedProgress = easeInOutQuad(progress);
-                            element.scrollTop = startTop + changeTop * easedProgress;
-                            element.scrollLeft = startLeft + changeLeft * easedProgress;
-
-                            if (progress < 1) {
-                                requestAnimationFrame(animateScroll);
-                            } else {
-                                resolve();
-                            }
-                        };
-
-                        requestAnimationFrame(animateScroll);
-                    });
-                };
-
-                // شروع تسلسل اسکرول
-                scrollSequence().then(() => {
-                    scrollableBox.scrollTo({
-                        top: 0,
-                        left: 0,
-                        behavior: 'smooth'
-                    });
-                });
-            }
-        });
-    </script>
-
     @stack('scripts')
 
 </body>

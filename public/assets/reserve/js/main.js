@@ -21,7 +21,6 @@ const monthlyPlanBtns = document.querySelectorAll("#month-plan .plan-type");
 const yearlyPlanBtns = document.querySelectorAll("#year-plan .plan-type");
 const darkModeBtn = document.querySelector("#darkmode");
 const pricingTables = document.getElementsByClassName("table");
-console.log()
 const themeMode = document.querySelector(".theme-mode");
 
 //checker
