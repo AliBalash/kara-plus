@@ -20,6 +20,8 @@ class ReserveCarForm extends Component
     public $phone;
     public $messenger_phone;
     public $selectedCar = null; // ID of the selected car
+    public $pickup_location;
+    public $return_location;
 
     public function mount()
     {
@@ -27,9 +29,9 @@ class ReserveCarForm extends Component
         $this->cars = Car::all();
     }
 
-    public function selectCar($carId)
+    public function selectCar(Car $car)
     {
-        $this->selectedCar = $carId;
+        $this->selectedCar = $car;
     }
 
     public function updatedSelectedBrand($value)
@@ -50,8 +52,5 @@ class ReserveCarForm extends Component
         $brands = CarModel::distinct()->pluck('brand');
         return view('livewire.reservation.reserve-car-form', compact('brands'))->layout('layouts.reservation');
     }
-    public function submitForm()
-    {
-        dd('here');
-    }
+   
 }

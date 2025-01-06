@@ -37,13 +37,13 @@ body {
 
 .step header h1 {
   font-family: "ub-bd", sans-serif;
-  color: hsl(213, 96%, 18%);
+  color: #800020;
 }
 .step header p {
   color: hsl(231, 11%, 63%);
 }
 .step .next-step button {
-  background-color: hsl(213, 96%, 18%);
+  background-color: #800020;
 }
 
 .bad-feedback {
@@ -52,7 +52,7 @@ body {
   color: hsl(354, 84%, 57%);
 }
 
-.plan-step .plans .plan {
+.car-step .cars .car {
   flex: 1 0 150px;
   border: 1px solid hsl(229, 24%, 87%);
   transition: border-color 0.3s;
@@ -62,74 +62,48 @@ body {
   -o-transition: border-color 0.3s;
   border-radius: 5px;
 }
-.plan-step .plans .plan h5 {
+.car-step .cars .car h5 {
   color: hsl(0, 0%, 95%);
   font-weight: bold;
 }
 @media (max-width: 767px) {
-  .plan-step .plans .plan {
+  .car-step .cars .car {
     flex: 1 0 0;
     width: 100%;
     /* padding: 5rem !important; */
   }
-  .plan-step .plans .plan .car-image img {
+  .car-step .cars .car .car-image img {
     width: 100%;
   }
 }
-.plan-step .plans .plan h6:nth-of-type(1) {
+.car-step .cars .car h6:nth-of-type(1) {
   color: hsl(231, 11%, 63%);
 }
-.plan-step .plans .plan h6:nth-of-type(2) {
-  color: hsl(243, 100%, 62%);
+.car-step .cars .car h6:nth-of-type(2) {
+  color: #D72638;
 }
-.plan-step .plans .plan:hover {
-  border-color: hsl(213, 96%, 18%);
-  background-color: hsl(213, 96%, 18%);
+.car-step .cars .car:hover {
+  background-color: #9B1B2F; /* رنگ روشن‌تر برای hover */
+  border: 2px solid #FF4D6E; /* مرز برجسته‌تر در حالت hover */
+  cursor: pointer; /* تغییر نشانگر موس */
+  transition: background-color 0.3s ease, border 0.3s ease;
 }
-.plan-step .plans .plan.checked {
-  background-color: hsl(217, 100%, 97%);
-  border: 1px solid hsl(243, 100%, 62%);
+.car-step .cars .car.checked {
+  background-color: #800020; /* زرشکی */
+  color: #FFFFFF; /* سفید برای متن */
+  border: 2px solid #D72638; /* قرمز روشن برای برجسته‌سازی */
+  transition: background-color 0.3s ease, border 0.3s ease;
 }
-.plan-step .plans .plan.checked .car-image img {
+.car-step .cars .car.checked .car-image img {
   transform: scale(1.5); /* بزرگ کردن تصویر در هنگام Hover روی Label */
 }
 
-.plan-step .month-year {
+.car-step .month-year {
   background-color: hsl(217, 100%, 97%);
 }
 
-aside {
-  position: relative;
-  height: 568px;
-}
-aside .icon {
-  height: 2rem;
-  width: 2rem;
-  color: hsl(0, 0%, 100%);
-  background-color: transparent;
-}
-aside .icon.checked {
-  color: hsl(213, 96%, 18%);
-  background-color: hsl(217, 100%, 97%);
-}
-aside .text span:first-child {
-  color: hsl(228, 100%, 84%);
-}
 
-aside::before {
-  content: "";
-  background: url("../assets/images/bg-sidebar-desktop.svg") no-repeat;
-  background-size: contain;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-}
 
-aside .sidebar {
-  position: relative;
-}
 
 .addons-step .addon {
   border: 1px solid hsl(229, 24%, 87%);
@@ -141,7 +115,7 @@ aside .sidebar {
 }
 .addons-step .addon.checkAddon {
   background-color: hsl(217, 100%, 97%);
-  border: 1px solid hsl(243, 100%, 62%);
+  border: 1px solid #D72638;
   transition: border-color 0.3s;
   -webkit-transition: border-color 0.3s;
   -moz-transition: border-color 0.3s;
@@ -154,7 +128,7 @@ aside .sidebar {
 }
 .addons-step .addon p:first-child {
   font-family: "ub-md", sans-serif;
-  color: hsl(213, 96%, 18%);
+  color: #800020;
   font-weight: bold;
 }
 .addons-step .addon p:nth-child(2) {
@@ -165,7 +139,7 @@ aside .sidebar {
   height: 1.5rem;
 }
 .addons-step .addon div {
-  color: hsl(243, 100%, 62%);
+  color: #D72638;
 }
 
 @media (max-width: 767px) {
@@ -175,22 +149,13 @@ aside .sidebar {
   .wrapper {
     background-color: transparent;
   }
-  aside {
-    height: 200px;
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
+  
   .sidebar {
     display: flex;
     justify-content: center;
     align-items: center;
   }
-  aside::before {
-    background: url("../assets/images/bg-sidebar-mobile.svg") no-repeat;
-    background-size: cover;
-    z-index: -1;
-  }
+  
   .step {
     background-color: hsl(0, 0%, 100%);
     border-radius: 1rem;
@@ -213,58 +178,12 @@ aside .sidebar {
     z-index: 3;
   }
 }
-.summary-step .summary {
-  background-color: hsl(217, 100%, 97%);
-  border-radius: 10px;
-  -webkit-border-radius: 10px;
-  -moz-border-radius: 10px;
-  -ms-border-radius: 10px;
-  -o-border-radius: 10px;
-}
-.summary-step .plan-price {
-  color: hsl(213, 96%, 18%);
-  font-weight: bold;
-}
-.summary-step .plan-name {
-  color: hsl(213, 96%, 18%);
-}
-.summary-step .addon-name {
-  color: hsl(231, 11%, 63%);
-}
-.summary-step .addon-price {
-  color: hsl(213, 96%, 18%);
-}
-.summary-step hr {
-  width: 80%;
-  margin: auto;
-}
-.summary-step .total .total-price {
-  font-weight: bold;
-  font-size: 1.3rem;
-  color: hsl(243, 100%, 62%);
-}
-.summary-step .total .total-dur {
-  color: hsl(231, 11%, 63%);
-}
 
-label[for=darkmode] {
-  position: absolute;
-  top: 2.6%;
-  right: 20%;
-  z-index: 1;
-}
 
 @media (min-width: 767px) {
   .wrapper {
     position: relative;
   }
-  label[for=darkmode] {
-    top: -35px;
-    right: -10px;
-  }
-}
-#darkmode {
-  opacity: 0;
 }
 
 .theme-mode {
@@ -272,114 +191,23 @@ label[for=darkmode] {
   width: 35px;
   border-radius: 50%;
   transition: transform 1s;
-  border: 2px solid hsl(213, 96%, 18%);
+  border: 2px solid #800020;
   transform: rotate(180deg);
   filter: grayscale(50%);
 }
-.theme-mode.dark-on {
-  border: 2px solid hsl(217, 100%, 97%R);
-  background-color: hsl(231, 100%, 99%);
-  transform: rotate(360deg);
-}
-
-.dark-mode {
-  color: hsl(232, 17%, 83%);
-  background-color: #343A40;
-}
-.dark-mode .wrapper {
-  color: hsl(232, 17%, 83%);
-  background-color: #2b3035;
-  margin: 3% 3% 10px 3%;
-}
-@media (max-width: 767px) {
-  .dark-mode .wrapper {
-    background-color: transparent;
-  }
-}
-.dark-mode aside::before {
-  filter: grayscale(60%);
-}
-.dark-mode .step header h1 {
-  color: hsl(231, 100%, 99%);
-}
-@media (max-width: 767px) {
-  .dark-mode .step {
-    background-color: #292d32;
-  }
-}
-.dark-mode input[class=form-control] {
-  background-color: #2f353a;
-  color: hsl(231, 100%, 99%);
-}
-.dark-mode input[class=form-control]::placeholder {
-  color: hsl(231, 100%, 99%);
-}
-
-.dark-mode select[class=form-select] {
-  background-color: #2f353a ;
-  color: hsl(231, 100%, 99%) ;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='hsl(231, 100%, 99%)' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
-}
-.dark-mode select[class=form-select]::placeholder {
-  color: hsl(231, 100%, 99%) ;
-}
-.dark-mode .plan-step .month-year {
-  background-color: hsl(243, 100%, 62%);
-}
-.dark-mode .plan-step .plans .plan:hover {
-  border-color: hsl(243, 100%, 62%);
-}
-.dark-mode .plan-step .plans .plan h5 {
-  color: hsl(217, 100%, 97%);
-}
-.dark-mode .plan-step .plans .plan h6:nth-of-type(2) {
-  color: hsl(231, 100%, 99%);
-}
-.dark-mode .plan-step .plans .plan {
-  border: 1px solid hsl(231, 11%, 63%);
-}
-.dark-mode .addons-step .addon.checkAddon {
-  background-color: #B0BEC5;
-  border: 1px solid hsl(231, 11%, 63%);
-}
-.dark-mode .addons-step .addon p:first-child {
-  color: hsl(217, 100%, 97%);
-}
-.dark-mode .plan-step .plans .plan.checked {
-  background-color: #B0BEC5;
-}
-.dark-mode .addons-step .addon div {
-  color: hsl(217, 100%, 97%);
-}
-.dark-mode .next-step {
-  background-color: #292d32;
-}
-.dark-mode .next-step #back {
-  color: hsl(243, 100%, 62%);
-}
-.dark-mode .summary-step .summary {
-  background-color: #292d32;
-}
-.dark-mode .summary-step .summary .plan-name {
-  color: hsl(231, 100%, 99%);
-}
-.dark-mode .summary-step .summary .plan-price,
-.dark-mode .summary-step .summary .addon-price {
-  color: hsl(243, 100%, 62%);
-}/*# sourceMappingURL=main.css.map */
 
 @media (max-width: 600px) {
   
   /* .step-1 {
     margin-bottom: 350px;
   } */
-  #month-plan{
+  #month-car{
     max-height: fit-content !important;
     overflow: hidden !important;
   }
 }
 
-#month-plan{
+#month-car{
     max-width: 100%;
     max-height: 65vh;
     overflow: auto;
@@ -389,7 +217,7 @@ label[for=darkmode] {
 
 
 
-.plan {
+.car {
   /* height: 300px; تنظیم ارتفاع */
   /* overflow: hidden; */
   margin: 5px 0px ;
@@ -453,6 +281,9 @@ label[for=darkmode] {
 .step{
   top: 5px;
 }
+.thanks-step{
+  justify-self: center;
+}
 
 /* ریسپانسیو */
 @media (max-width: 768px) {
@@ -497,14 +328,9 @@ label[for=darkmode] {
 .car-name {
   font-size: 1.5rem; /* اندازه بزرگ برای نام ماشین */
   font-weight: bold;
-  color: #555555;
+  color: #B0B0B0;
 }
 
-.dark-mode .car-name {
-  font-size: 1.5rem; /* اندازه بزرگ برای نام ماشین */
-  font-weight: bold;
-  color: #dadada;
-}
 
 .car-year {
   font-size: 1.2rem; /* اندازه متوسط برای سال ساخت */
@@ -529,17 +355,6 @@ label[for=darkmode] {
 
 .badge.badge-default {
   background-color: #B0BEC5
-}
-@media (prefers-color-scheme: dark) {
-  .badge.badge-neutral:hover,
-  .badge.badge-neutral:focus {
-    background-color: #616161; /* تغییر رنگ در Dark Mode */
-  }
-}@media (prefers-color-scheme: dark) {
-  .badge.badge-default:hover,
-  .badge.badge-default:focus {
-    background-color: #616161; /* تغییر رنگ در Dark Mode */
-  }
 }
 
 .badge.badge-primary {
@@ -585,7 +400,7 @@ label[for=darkmode] {
 }
 
 /* هاور برای بزرگ‌تر کردن تصویر */
-.plan:hover .car-image img {
+.car:hover .car-image img {
   transform: scale(1.2); /* بزرگ کردن تصویر به اندازه 120% */
   transform-origin: center; /* تغییر نقطه‌ی بزرگ‌نمایی به مرکز تصویر */
 }
@@ -643,7 +458,7 @@ label[for=darkmode] {
 
 .table.styled-table th,
 .table.styled-table td {
-  /* color:#dadada !important; */
+  color: rgba(108, 117, 125) !important;
   background-color: transparent !important; /* حذف رنگ پس‌زمینه سلول‌ها */
 }
 
@@ -655,5 +470,36 @@ label[for=darkmode] {
   /* border-bottom: none !important; حذف خط پایین آخرین ردیف */
   border-bottom-color:  transparent !important;
 }
+
+
+.btn-red {
+  background-color: #800020;
+  color: #fff;
+  border: 1px solid #800020;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.btn-red:hover {
+  background-color: #a00030;
+  border-color: #a00030;
+  color: #fff;
+}
+
+.btn-red:focus, .btn-red:active {
+  background-color: #660015;
+  border-color: #660015;
+  box-shadow: 0 0 0 0.25rem rgba(128, 0, 32, 0.5);
+}
+
+.btn-red:disabled {
+  background-color: #800020;
+  border-color: #800020;
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.step-3 .card .card-img-top{
+  width: 30%;
+}
+
 
 

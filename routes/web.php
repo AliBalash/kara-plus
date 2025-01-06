@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CarReservationController;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Pages\Panel\Admin\Dashboard;
 use App\Livewire\Pages\Panel\Auth\Login;
@@ -31,3 +32,7 @@ Route::get('/import-cars', function () {
     // Return success message
     return 'Data has been imported successfully from the given file.';
 });
+
+
+Route::post('/reserve-car', [CarReservationController::class, 'reserveCar'])->name('reserve.car');
+
