@@ -3,21 +3,10 @@
     <div class="wrapper p-4">
 
         <div class="gx-1">
-            <!-- Start Sidebar -->
-            <!-- <form method="post" action="{{ route('reserve.car') }}">
-                @csrf
-                <label for="testInput">Enter text:</label>
-                <input type="text" id="testInput" name="testInput" required>
-                <button type="submit">Submit</button>
-            </form> -->
-
-
             <!-- End Sidebar -->
             <form class="col-md-12 p-1 needs-validation" id="checkoutForm" action="{{ route('reserve.car') }}"
                 method="post" novalidate>
                 @csrf
-
-
 
                 <!-- Start profile step -->
                 <div class="step step-1 row profile-step d-none">
@@ -35,23 +24,23 @@
 
                     <div class="mb-3 col-12 col-md-6">
                         <label for="last_name" class="form-label">Last Name</label>
-                        <input type="text" id="last_name" class="form-control" name="last_name" wire:model="last_name"
-                            placeholder="Last Name" />
+                        <input type="text" id="last_name" class="form-control" name="last_name"
+                            wire:model="last_name" placeholder="Last Name" />
                         <div class="invalid-feedback">Last Name is required!</div>
                     </div>
 
 
                     <div class="mb-3 col-12 col-md-6">
                         <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" required id="email" name="email" wire:model="email"
-                            placeholder="name@example.com" />
+                        <input type="email" class="form-control" required id="email" name="email"
+                            wire:model="email" placeholder="name@example.com" />
                         <div class="invalid-feedback">Valid Email is required!</div>
                     </div>
 
                     <div class="mb-3 col-12 col-md-6">
                         <label for="phone" class="form-label">Phone Number</label>
-                        <input type="tel" class="form-control" required id="phone" name="phone" wire:model="phone"
-                            placeholder="eg 09123456789" />
+                        <input type="tel" class="form-control" required id="phone" name="phone"
+                            wire:model="phone" placeholder="eg 09123456789" />
                         <div class="invalid-feedback">Phone is required!</div>
                     </div>
 
@@ -101,22 +90,25 @@
                     <div class="mb-3 col-12 col-md-6">
                         <label for="pickup_date" class="form-label">Pickup Date</label>
                         <input type="date" id="pickup_date" class="form-control" name="pickup_date"
-                            wire:model="pickup_date" placeholder="Pickup Date" />
+                            wire:model="pickup_date" placeholder="Pickup Date"
+                            min="{{ \Carbon\Carbon::today()->toDateString() }}" />
                         <div class="invalid-feedback">Pickup Date is required!</div>
                     </div>
 
                     <div class="mb-3 col-12 col-md-6">
                         <label for="return_date" class="form-label">Return Date</label>
                         <input type="date" id="return_date" class="form-control" name="return_date"
-                            wire:model="return_date" placeholder="Return Date" />
+                            wire:model="return_date" placeholder="Return Date"
+                            min="{{ \Carbon\Carbon::today()->toDateString() }}" />
                         <div class="invalid-feedback">Return Date is required!</div>
                     </div>
 
 
+
                     <div class="mb-3 col-12 col-md-6">
                         <label for="messenger_phone" class="form-label">Telegram/WhatsApp Number</label>
-                        <input type="tel" class="form-control" required id="messenger_phone" name="messenger_phone"
-                            wire:model="messenger_phone" placeholder="eg 09123456789" />
+                        <input type="tel" class="form-control" required id="messenger_phone"
+                            name="messenger_phone" wire:model="messenger_phone" placeholder="eg 09123456789" />
                         <div class="invalid-feedback">Messenger number is required!</div>
                     </div>
 
@@ -150,7 +142,7 @@
                                 <!-- Radio input -->
                                 <input type="radio" name="carId" id="car-{{ $car->id }}"
                                     class="form-check-input car-type d-none" value="{{ $car->id }}" />
-
+                                <input type="hidden" name="carId" value="{{$selectedCar?->id}}">
                                 <!-- Box layout -->
                                 <div
                                     class="car-box-container d-flex flex-column flex-md-row-reverse shadow-sm p-3 rounded row">
@@ -358,7 +350,8 @@
                             <li class="list-group-item"><strong>Total Deposit:</strong> 150,000,000 تومان (based on
                                 provided documents)</li>
                             <li class="list-group-item"><strong>Reservation Fee:</strong> 5,150,000 تومان</li>
-                            <li class="list-group-item"><strong>Total Payment:</strong> 180,355,510 تومان</li>
+                            <li class="list-group-item"><strong>Total Payment:</strong> {{ rand(100000, 999999) }} تومان</li>
+                            <input type="hidden" name="total_price" value="{{ rand(100000, 999999) }}">
                         </ul>
                     </div>
 
@@ -388,14 +381,14 @@
                             <input type="checkbox" class="form-check-input" id="confirm_deposit" />
                             <label class="form-check-label" for="confirm_deposit">I confirm the deposit and payment
                                 details.</label>
-                                <div class="invalid-feedback">Confirmation of the deposit is required!</div>
+                            <div class="invalid-feedback">Confirmation of the deposit is required!</div>
 
                         </div>
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="accept_terms" />
                             <label class="form-check-label" for="accept_terms">I accept the terms and
                                 conditions.</label>
-                                <div class="invalid-feedback">Acceptance of terms and conditions is required!</div>
+                            <div class="invalid-feedback">Acceptance of terms and conditions is required!</div>
                         </div>
 
                     </div>

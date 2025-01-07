@@ -143,7 +143,6 @@ function addCar(btnValue) {
 
 // Disabling form submissions if there are invalid fields
 function formChecker() {
-  console.log(currentStep)
 
   let valid = true;
   if (currentStep == 0) {
@@ -161,57 +160,57 @@ function formChecker() {
     if (!isReturnDateAfterPickupDate(pickupDate, returnDate)) {
 
 
-      valid = true;
+      valid = false;
     }
     // Validate Pickup Date
     if (!isValidDate(pickupDate)) {
 
-      valid = true;
+      valid = false;
     }
 
     if (!isValidDate(returnDate)) {
 
-      valid = true;
+      valid = false;
     }
 
     // Validate First Name
     if (!isValidName(firstName)) {
 
-      valid = true;
+      valid = false;
     }
 
     // Validate Last Name
     if (!isValidName(lastName)) {
 
-      valid = true;
+      valid = false;
     }
 
     // Validate Email
     if (!isValidEmail(email)) {
 
-      valid = true;
+      valid = false;
     }
 
     // Validate Phone
     if (!isValidPhone(phone)) {
 
-      valid = true;
+      valid = false;
     }
     // Validate Pickup Location
     if (!isValidPickupLocation(pickupLocation)) {
 
-      valid = true;
+      valid = false;
     }
 
     // Validate Return Location
     if (!isValidReturnLocation(returnLocation)) {
 
-      valid = true;
+      valid = false;
     }
 
     if (!isValidMessengerPhone(messengerPhone)) {
 
-      valid = true;
+      valid = false;
     }
 
     return valid;
@@ -220,7 +219,7 @@ function formChecker() {
   if (currentStep == 1) {
 
     if (!validateCars()) {
-      valid = true;
+      valid = false;
     }
     return valid;
   }
