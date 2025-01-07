@@ -40,29 +40,25 @@ chooseCar();
 
 //form steps
 function updateStep() {
-
-
+  // مخفی کردن تمام مراحل
   allSteps.forEach((step) => {
     step.classList.add("d-none");
   });
 
-  
+  // نمایش مرحله فعلی
   allSteps[currentStep].classList.remove("d-none");
 
+  // مدیریت دکمه برگشت
   if (currentStep == 0) {
     backBtn.classList.add("d-none");
   } else {
     backBtn.classList.remove("d-none");
   }
-  if (currentStep == allSteps.length -1) {
-    nextBtn.innerHTML = "Confirmxxxx";
-    // totalCalc();
+
+  // تغییر متن و رفتار دکمه Next در مراحل مختلف
+  if (currentStep == allSteps.length - 1) {
+    nextBtn.innerHTML = "Confirm and Submit";
     nextBtn.classList.add("done");
-
-  } else if (currentStep == 2) { // اضافه کردن شرط برای currentStep برابر با 2
-    nextBtn.innerHTML = "Confirm and Next";
-    nextBtn.classList.remove("done");
-
   } else {
     nextBtn.innerHTML = "Next";
     nextBtn.classList.remove("done");
@@ -74,27 +70,24 @@ nextBtn.addEventListener("click", nextStep);
 backBtn.addEventListener("click", backStep);
 
 function nextStep(e) {
-
-  if (currentStep == 0 || currentStep == 1 || currentStep == 2) {
+  if (currentStep == 0 || currentStep == 1 || currentStep == 2|| currentStep == 3) {
     if (!formChecker()) {
       return 0;
     }
   }
-  console.log(nextBtn.classList.contains("done"))
-  if (nextBtn.classList.contains("done")) {
-    nextBtn.type = "submit"
-    checkoutForm.addEventListener('submit', (e) => {
 
-      e.preventDefault()
-    })
+  if (nextBtn.classList.contains("done")) {
+    // تغییر نوع دکمه به submit
+    nextBtn.type = "submit";
+
+    // ارسال فرم و نمایش پیام تشکر
+    checkoutForm.submit();
     checkoutForm.classList.add("d-none");
     thankStep.classList.remove("d-none");
-  }
-  else {
-    currentStep++;
+  } else {
+    currentStep++; // حرکت به مرحله بعد
     updateStep();
   }
-
 }
 
 function backStep() {
@@ -150,6 +143,8 @@ function addCar(btnValue) {
 
 // Disabling form submissions if there are invalid fields
 function formChecker() {
+  console.log(currentStep)
+
   let valid = true;
   if (currentStep == 0) {
     let email = checkoutForm.email;
@@ -233,6 +228,29 @@ function formChecker() {
   if (currentStep == 2) {
     return valid;
   }
+
+  if (currentStep == 3) {
+    // اعتبارسنجی چک‌باکس‌ها در مرحله آخر
+    let confirmDeposit = checkoutForm.confirm_deposit;
+    let acceptTerms = checkoutForm.accept_terms;
+    if (!confirmDeposit.checked) {
+      confirmDeposit.classList.add("is-invalid");
+      valid = false;
+    } else {
+      confirmDeposit.classList.remove("is-invalid");
+      confirmDeposit.classList.add("is-valid");
+    }
+
+    if (!acceptTerms.checked) {
+      acceptTerms.classList.add("is-invalid");
+      valid = false;
+    } else {
+      acceptTerms.classList.remove("is-invalid");
+      acceptTerms.classList.add("is-valid");
+    }
+    return valid;
+  }
+
 }
 
 function isValidName(nameField) {
