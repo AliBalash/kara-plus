@@ -62,7 +62,11 @@
                      <h4 class="mb-2">Welcome to Sneat! 👋</h4>
                      <p class="mb-4">Please sign-in to your account and start the adventure</p>
 
-
+                     @if (session()->has('error'))
+                         <div class="alert alert-danger">
+                             {{ session('error') }}
+                         </div>
+                     @endif
                      <!-- Form -->
                      <form wire:submit.prevent="login">
                          <div class="mb-3">

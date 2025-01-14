@@ -11,12 +11,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+
+        $middleware->alias([
+            'auth.check' => \App\Http\Middleware\EnsureAuthenticated::class,
+            'auth.guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+
+        ]);
+
         // $middleware->validateCsrfTokens(except: [
 		// 	'*',
 		// 	'/*',
 		// 	'stripe/*',
 		// 	'http://127.0.0.1:8000/reserve-car',
 		// ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

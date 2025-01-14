@@ -43,18 +43,6 @@ class UserSeeder extends Seeder
             'address' => 'New York, USA',
         ]);
 
-        // افزودن کاربر سوم
-        User::create([
-            'first_name' => 'Jane',
-            'last_name' => 'Doe',
-            'email' => 'jane@example.com',
-            'phone' => '09223334455',
-            'avatar' => 'path/to/avatar3.jpg',
-            'password' => Hash::make('password123'),
-            'status' => 'active',
-            'last_login' => now()->subDays(1),
-            'national_code' => '1122334455',
-            'address' => 'London, UK',
-        ]);
+        
     }
 }

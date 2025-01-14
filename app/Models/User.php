@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 
 class User extends Authenticatable
 {
@@ -20,10 +21,17 @@ class User extends Authenticatable
         'avatar',
         'password',
         'status',
+        'last_login',
         'national_code',
         'address',
     ];
 
+    protected $dates = ['last_login']; // برای مدیریت تاریخ
+    public function updateLastLogin()
+    {
+        $this->last_login = now();
+        $this->save();
+    }
     /**
      * ویژگی‌های مخفی برای آرایه‌ها.
      *
@@ -69,10 +77,10 @@ class User extends Authenticatable
      *
      * @param string $password
      */
-    public function setPasswordAttribute(string $password): void
-    {
-        $this->attributes['password'] = bcrypt($password);
-    }
+    // public function setPasswordAttribute($value)
+    // {
+    //     $this->attributes['password'] = Hash::needsRehash($value) ? bcrypt($value) : $value;
+    // }
 
     /**
      * رابطه با مدل Contract (قراردادها).
