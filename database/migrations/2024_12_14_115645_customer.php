@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('nationality')->nullable(); // ملیت
             $table->string('license_number')->unique()->nullable(); // شماره گواهینامه رانندگی
             $table->enum('status', ['active', 'inactive'])->default('active'); // وضعیت مشتری
-            $table->date('registration_date'); // تاریخ ثبت مشتری
+            $table->date('registration_date')->nullable(); // تاریخ ثبت مشتری
             $table->timestamps(); // زمان‌های ایجاد و ویرایش
         });
     }

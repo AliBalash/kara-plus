@@ -4,15 +4,47 @@ use App\Http\Controllers\CarReservationController;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Pages\Panel\Expert\Dashboard;
 use App\Livewire\Pages\Panel\Auth\Login;
+use App\Livewire\Pages\Panel\Expert\Brand\BrandDetail;
+use App\Livewire\Pages\Panel\Expert\Brand\BrandForm;
+use App\Livewire\Pages\Panel\Expert\Brand\BrandList;
+use App\Livewire\Pages\Panel\Expert\Car\CarDetail;
+use App\Livewire\Pages\Panel\Expert\Car\CarForm;
+use App\Livewire\Pages\Panel\Expert\Car\CarList;
+use App\Livewire\Pages\Panel\Expert\Customer\CustomerDetail;
+use App\Livewire\Pages\Panel\Expert\Customer\CustomerHistory;
+use App\Livewire\Pages\Panel\Expert\Customer\CustomerList;
+use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesForm;
+use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
-use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestEdit;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestForm;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestList;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestMe;
 
 Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
-    Route::get('/expert/rental-requests', RentalRequestList::class)->name('rental-requests.list');
+    Route::get('/expert/rental-requests/list', RentalRequestList::class)->name('rental-requests.list');
+    Route::get('/expert/rental-requests/form/{contractId?}', RentalRequestForm::class)->name('rental-requests.form');
+    Route::get('/expert/rental-requests/me', RentalRequestMe::class)->name('rental-requests.me');
     Route::get('/expert/rental-requests/detail/{contractId}', RentalRequestDetail::class)->name('rental-requests.details');
-    Route::get('/expert/rental-requests/edit/{contractId}', RentalRequestEdit::class)->name('rental-requests.edit');
+    
+    Route::get('/expert/car/list/', CarList::class)->name('car.list');
+    Route::get('/expert/car/detail/{carId}', CarDetail::class)->name('car.detail');
+    Route::get('/expert/car/form/{carId?}', CarForm::class)->name('car.form');
+
+
+    Route::get('/expert/brand/list', BrandList::class)->name('brand.list');
+    Route::get('/expert/brand/detail/{brandId}', BrandDetail::class)->name('brand.detail');
+    Route::get('/expert/brand/form/{brandId?}', BrandForm::class)->name('brand.form');
+
+
+    Route::get('/expert/customer/list', CustomerList::class)->name('customer.list');
+    Route::get('/expert/customer/detail/{customerId}', CustomerDetail::class)->name('customer.detail');
+    Route::get('/expert/customer/history/{customerId}', CustomerHistory::class)->name('customer.history');
+
+
+    Route::get('/expert/insurance/list', InsurancesList::class)->name('insurance.list');
+    Route::get('/expert/insurance/form/{insuranceId?}', InsurancesForm::class)->name('insurance.form');
+
 });
 
 

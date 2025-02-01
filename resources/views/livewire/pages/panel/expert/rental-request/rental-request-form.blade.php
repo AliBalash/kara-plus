@@ -1,11 +1,39 @@
 <div>
+    <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Rental Request /</span> Information</h4>
+
     @if (session()->has('message'))
         <div class="alert alert-success">
             {{ session('message') }}
         </div>
     @endif
 
+    @if (session()->has('info'))
+        <div class="alert alert-info">
+            {{ session('info') }}
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <ul class="nav nav-pills flex-column flex-md-row mb-3">
+        <li class="nav-item">
+            <a class="nav-link active" href="javascript:void(0);">
+                <i class="bx bxs-info-square me-1"></i> Rental Information
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href=""><i class="bx bx-file me-1"></i>Customer Document</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#"><i class="bx bx-money me-1"></i>Payment</a>
+        </li>
+    </ul>
     <form wire:submit.prevent="submit">
+
         <div class="row">
             <!-- Contract Information -->
             <div class="col-md-6">
@@ -17,8 +45,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-start-date">Start Date</span>
                                 <input type="date" class="form-control @error('start_date') is-invalid @enderror"
-                                    placeholder="Start Date" name="start_date" wire:model="start_date"
-                                    value="{{ old('start_date', $contract->start_date->format('Y-m-d')) }}">
+                                    placeholder="Start Date" name="start_date" wire:model="start_date">
                                 @error('start_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -28,8 +55,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-end-date">End Date</span>
                                 <input type="date" class="form-control @error('end_date') is-invalid @enderror"
-                                    placeholder="End Date" name="end_date" wire:model="end_date"
-                                    value="{{ old('end_date', $contract->end_date->format('Y-m-d')) }}">
+                                    placeholder="End Date" name="end_date" wire:model="end_date">
                                 @error('end_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -39,30 +65,24 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-total-price">$</span>
                                 <input type="number" class="form-control @error('total_price') is-invalid @enderror"
-                                    placeholder="Total Price" name="total_price" wire:model="total_price"
-                                    value="{{ old('total_price', $contract->total_price) }}">
+                                    placeholder="Total Price" name="total_price" wire:model="total_price">
                                 @error('total_price')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-
                             <!-- Status -->
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-status">Status</span>
                                 <select class="form-control @error('status') is-invalid @enderror" name="status"
                                     wire:model="status">
-                                    <option value="pending"
-                                        {{ old('status', $contract->status) == 'pending' ? 'selected' : '' }}>Pending
+                                    <option value="">Select Status</option>
+                                    <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending
                                     </option>
-                                    <option value="completed"
-                                        {{ old('status', $contract->status) == 'completed' ? 'selected' : '' }}>
-                                        Completed</option>
-                                    <option value="cancelled"
-                                        {{ old('status', $contract->status) == 'cancelled' ? 'selected' : '' }}>
-                                        Cancelled</option>
-                                    <option value="active"
-                                        {{ old('status', $contract->status) == 'active' ? 'selected' : '' }}>Active
+                                    <option value="completed" {{ $status == 'completed' ? 'selected' : '' }}>Completed
                                     </option>
+                                    <option value="cancelled" {{ $status == 'cancelled' ? 'selected' : '' }}>Cancelled
+                                    </option>
+                                    <option value="active" {{ $status == 'active' ? 'selected' : '' }}>Active</option>
                                 </select>
                                 @error('status')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -70,10 +90,11 @@
                             </div>
 
 
+
                             <!-- Notes -->
                             <div class="input-group">
-                                <span class="input-group-text" id="basic-addon-notes">Notes</span>
-                                <textarea class="form-control " wire:model="note" placeholder="Contract Notes" name="notes">{{ $contract->notes }}</textarea>
+                                <span class="input-group-text" id="basic-addon-notes">Note</span>
+                                <textarea class="form-control " wire:model="note" placeholder="Contract Notes" name="notes">{{ $contract?->notes }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -85,7 +106,6 @@
                         <h5 class="card-header">Car Information</h5>
                         <div class="card-body demo-vertical-spacing demo-only-element">
 
-                            <!-- Car Brand Selection -->
                             <!-- Car Brand Selection -->
                             <div class="input-group">
                                 <span class="input-group-text" id="car-brand-addon">Car Brand</span>
@@ -112,14 +132,17 @@
                                     id="car_model_id" name="car_model_id" wire:model.live="selectedCarId"
                                     aria-describedby="car-model-id-addon">
                                     <option value="">Select Model</option>
-                                    @foreach ($cars as $car)
-                                        <option value="{{ $car->id }}"
-                                            @if ($car->id == $selectedCarId) selected @endif>
-                                            {{ $car->carModel->fullname() }} -
-                                            {{ $car->manufacturing_year }} -
-                                            {{ $car->color ?? 'No Color' }}
-                                        </option>
-                                    @endforeach
+                                    @if ($selectedBrand)
+                                        @foreach ($cars as $car)
+                                            <option value="{{ $car->id }}"
+                                                @if ($car->id == $selectedCarId) selected @endif>
+                                                {{ $car->carModel->fullname() }} -
+                                                {{ $car->manufacturing_year }} -
+                                                {{ $car->color ?? 'No Color' }}
+                                            </option>
+                                        @endforeach
+                                    @endif
+
                                 </select>
                                 @error('selectedCarId')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -137,7 +160,7 @@
                                     <input type="text"
                                         class="form-control @error('plate_number') is-invalid @enderror"
                                         value="{{ $selectedCar->plate_number }}" disabled />
-                                    
+
                                 </div>
 
                                 <div class="input-group">

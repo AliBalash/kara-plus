@@ -106,4 +106,6 @@ class Contract extends Model
         $days = $this->start_date->diffInDays($this->end_date ?? now());
         return $days * $this->car->price_per_day;
     }
+
+    
 }

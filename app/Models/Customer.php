@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
 
 class Customer extends Model
 {
@@ -109,5 +111,45 @@ class Customer extends Model
     public function cars()
     {
         return $this->hasManyThrough(Car::class, Contract::class, 'customer_id', 'id', 'id', 'car_id');
+    }
+
+
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // رویداد ایجاد مشتری
+        static::creating(function ($customer) {
+            if (empty($customer->registration_date)) {
+                $customer->registration_date = now();
+            }
+        });
+
+        // رویداد پس از ایجاد مشتری
+        // static::creating(function ($customer) {
+        //     if (empty($customer->gender)) { // اگر جنسیت تنظیم نشده باشد
+        //         try {
+        //             // ایجاد نمونه Guzzle Client
+        //             $client = new Client();
+        //             // فراخوانی API
+        //             $response = $client->get("https://api.genderize.io", [
+        //                 'query' => [
+        //                     'name' => $customer->first_name, // ارسال نام برای تشخیص جنسیت
+        //                 ]
+        //             ]);
+        //             // استخراج داده از پاسخ API
+        //             $data = json_decode($response->getBody()->getContents(), true);
+        //             // تنظیم جنسیت در مدل
+        //             if (isset($data['gender'])) {
+        //                 $customer->gender = $data['gender'];
+        //                 $customer->save(); // ذخیره مدل به‌روزرسانی شده
+        //             }
+        //         } catch (\Exception $e) {
+        //             // مدیریت خطاها (مثلاً لاگ کردن خطا)
+        //             Log::error('Error in gender detection: ' . $e->getMessage());
+        //         }
+        //     }
+        // });
     }
 }

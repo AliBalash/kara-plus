@@ -15,8 +15,10 @@ class RentalRequestList extends Component
 
     public function mount()
     {
-        // فقط داده‌های ضروری را بارگذاری کنید.
-        $this->contracts = Contract::with(['customer', 'car', 'user'])->get();
+        // Load the contracts in descending order (latest first)
+        $this->contracts = Contract::with(['customer', 'car', 'user'])
+            ->latest() // Order by created_at DESC
+            ->get();
     }
 
     public function assignToMe($contractId)
@@ -41,15 +43,16 @@ class RentalRequestList extends Component
     // متد برای فیلتر کردن داده‌ها بر اساس جستجو
     public function updatedSearch()
     {
-        dd($this->search);
         $this->contracts = Contract::query()
             ->whereHas('customer', function ($query) {
                 $query->where('first_name', 'like', '%' . $this->search . '%')
                     ->orWhere('last_name', 'like', '%' . $this->search . '%');
             })
             ->orWhere('id', 'like', '%' . $this->search . '%')
+            ->latest() // Order by created_at DESC
             ->get();
     }
+
 
 
     public function render()
