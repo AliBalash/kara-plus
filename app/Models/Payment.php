@@ -16,6 +16,7 @@ class Payment extends Model
      */
     protected $fillable = [
         'contract_id',
+        'customer_id',
         'amount',
         'payment_type',
         'payment_date',
@@ -49,6 +50,12 @@ class Payment extends Model
     public function getPaymentTypeLabelAttribute()
     {
         return ucfirst($this->payment_type);
+    }
+
+    // Relationship with Customer model
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     /**

@@ -85,6 +85,12 @@
                     </a>
                 </li>
 
+                <li class="menu-item {{ Request::routeIs('rental-requests.reserved') ? 'active' : '' }}">
+                    <a href="{{ route('rental-requests.reserved') }}" class="menu-link">
+                        <div data-i18n="Without menu">Reserved</div>
+                    </a>
+                </li>
+
                 <li class="menu-item {{ Request::routeIs('rental-requests.me') ? 'active' : '' }}">
                     <a href="{{ route('rental-requests.me') }}" class="menu-link">
                         <div data-i18n="Without menu">Me</div>

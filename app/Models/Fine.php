@@ -5,22 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Fine extends Model
-{
-    use HasFactory;
+    class Fine extends Model
+    {
+        use HasFactory;
 
-    /**
-     * ویژگی‌های قابل پر کردن (mass assignable).
-     *
-     * @var array
-     */
-    protected $fillable = [
-        'contract_id',
-        'amount',
-        'description',
-        'fine_date',
-        'is_paid',
-    ];
+        /**
+         * ویژگی‌های قابل پر کردن (mass assignable).
+         *
+         * @var array
+         */
+        protected $fillable = [
+            'contract_id',
+            'amount',
+            'description',
+            'fine_date',
+            'is_paid',
+        ];
 
     /**
      * تبدیل‌های مربوط به نوع داده‌ها.

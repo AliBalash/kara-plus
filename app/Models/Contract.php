@@ -21,7 +21,7 @@ class Contract extends Model
         'start_date',
         'end_date',
         'total_price',
-        'status',
+        'current_status',
         'notes',
     ];
 
@@ -107,5 +107,67 @@ class Contract extends Model
         return $days * $this->car->price_per_day;
     }
 
-    
+    // Relationship with CustomerDocument model
+    public function customerDocument()
+    {
+        return $this->hasOne(CustomerDocument::class);
+    }
+
+    // Relationship with Payment model
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    // ارتباط با تاریخچه وضعیت‌ها
+    public function statuses()
+    {
+        return $this->hasMany(ContractStatus::class);
+    }
+
+
+    // تغییر وضعیت درخواست
+    public function changeStatus($newStatus, $userId, $notes = null)
+    {
+        $this->statuses()->create([
+            'status' => $newStatus,
+            'user_id' => $userId,
+            'notes' => $notes,
+        ]);
+
+        $this->update(['current_status' => $newStatus]);
+
+        // اگر وضعیت به pending تغییر کرد
+        if ($newStatus === 'pending') {
+            $this->initializeContract();
+        }
+
+        // اگر وضعیت به complete تغییر کرد
+        if ($newStatus === 'complete') {
+            $this->finalizeContract();
+        }
+    }
+
+    // متد جدید برای ثبت تاریخ شروع قرارداد
+    public function initializeContract()
+    {
+        if (!$this->start_date) {
+            $this->update([
+                'start_date' => now(),  // ثبت تاریخ شروع قرارداد
+            ]);
+        }
+    }
+
+    // متد برای نهایی‌سازی درخواست
+    public function finalizeContract()
+    {
+        $this->update([
+            'end_date' => now(),  // ثبت تاریخ پایان قرارداد
+        ]);
+    }
+
+    public function pickupDocument()
+    {
+        return $this->hasOne(PickupDocument::class);
+    }
 }

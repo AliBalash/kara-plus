@@ -1,5 +1,5 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Contracts Me</h4>
+    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Reserved</h4>
 
     <div class="row" style="padding: 0.5rem 1.5rem">
         <div class="">
@@ -42,16 +42,16 @@
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
-                @foreach ($contracts as $contract)
+                @foreach ($reservedContracts as $reservedContract)
                     <tr>
-                        <td>{{ $contract->id }}</td> <!-- نمایش ID قرارداد -->
-                        <td>{{ $contract->customer->fullName() }}</td>
-                        <td>{{ $contract->car->fullName() }}</td>
-                        <td>{{ \Carbon\Carbon::parse($contract->start_date)->format('d M Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($contract->end_date)->format('d M Y') }}</td>
+                        <td>{{ $reservedContract->id }}</td> <!-- نمایش ID قرارداد -->
+                        <td>{{ $reservedContract->customer->fullName() }}</td>
+                        <td>{{ $reservedContract->car->fullName() }}</td>
+                        <td>{{ \Carbon\Carbon::parse($reservedContract->start_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($reservedContract->end_date)->format('d M Y') }}</td>
                         <td>
-                            @if ($contract->user)
-                                <span class="badge bg-primary">{{ $contract->user->fullName() }}</span>
+                            @if ($reservedContract->user)
+                                <span class="badge bg-primary">{{ $reservedContract->user->fullName() }}</span>
                             @else
                                 <span class="badge bg-secondary">No User</span>
                             @endif
@@ -59,15 +59,24 @@
                         <td>
                             <span
                                 class="badge 
-                                @switch($contract->status)
-                                    @case('active') bg-label-primary @break
-                                    @case('completed') bg-label-success @break
-                                    @case('cancelled') bg-label-danger @break
+        
+                                @switch($reservedContract->current_status)
                                     @case('pending') bg-label-warning @break
+                                    @case('assigned') bg-label-info @break
+                                    @case('under_review') bg-label-secondary @break
+                                    @case('reserved') bg-label-primary @break
+                                    @case('delivery_in_progress') bg-label-dark @break
+                                    @case('agreement_inspection') bg-label-light @break
+                                    @case('awaiting_return') bg-label-warning @break
+                                    @case('returned') bg-label-success @break
+                                    @case('complete') bg-label-success @break
+                                    @case('cancelled') bg-label-danger @break
+                                    @case('rejected') bg-label-danger @break
                                     @default bg-label-secondary
                                 @endswitch">
-                                {{ ucfirst($contract->status) }}
+                                {{ ucfirst(str_replace('_', ' ', $reservedContract->current_status)) }}
                             </span>
+
                         </td>
                         <td>
                             <div class="dropdown">
@@ -76,34 +85,48 @@
                                     <i class="bx bx-dots-vertical-rounded"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    @if (is_null($contract->user_id))
+
+
+                                    <!-- گزینه Pickup Document -->
+                                    <a class="dropdown-item"
+                                        href="{{ route('rental-requests.pickup-document', $reservedContract->id) }}">
+                                        <i class="bx bx-file me-1"></i> Pickup Document
+                                    </a>
+
+                                    
+                                    @if (is_null($reservedContract->user_id))
                                         <!-- گزینه Assign to Me -->
-                                        <a wire:click.prevent="assignToMe({{ $contract->id }})" class="dropdown-item"
-                                            href="javascript:void(0);">
+                                        <a wire:click.prevent="assignToMe({{ $reservedContract->id }})"
+                                            class="dropdown-item" href="javascript:void(0);">
                                             <i class="bx bx-user-check me-1"></i> Assign to Me
                                         </a>
                                     @endif
-                                    @if ($contract->user_id === auth()->id())
+                                    @if ($reservedContract->user_id === auth()->id())
                                         <!-- گزینه Details -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $contract->id) }}">
+                                            href="{{ route('rental-requests.details', $reservedContract->id) }}">
                                             <i class="bx bx-info-circle me-1"></i> Details
                                         </a>
 
                                         <!-- گزینه Edit -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.form', $contract->id) }}">
+                                            href="{{ route('rental-requests.form', $reservedContract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </a>
-                                    @endif
 
-                                    <!-- گزینه Delete -->
-                                    @if ($contract->user_id === auth()->id())
+
+
+
+                                        <!-- گزینه Delete -->
                                         <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="deleteContract({{ $contract->id }})">
+                                            wire:click.prevent="deleteContract({{ $reservedContract->id }})">
                                             <i class="bx bx-trash me-1"></i> Delete
                                         </a>
                                     @endif
+
+
+
+
                                 </div>
                             </div>
 

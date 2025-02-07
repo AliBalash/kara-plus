@@ -21,17 +21,39 @@
 
     <ul class="nav nav-pills flex-column flex-md-row mb-3">
         <li class="nav-item">
-            <a class="nav-link active" href="javascript:void(0);">
+            <!-- اگر contract موجود نیست، فقط از مسیر پیش‌فرض استفاده می‌کنیم -->
+            <a class="nav-link active"
+                href="{{ isset($contract->id) ? route('rental-requests.form', $contract->id) : '#' }}">
                 <i class="bx bxs-info-square me-1"></i> Rental Information
             </a>
         </li>
-        <li class="nav-item">
-            <a class="nav-link" href=""><i class="bx bx-file me-1"></i>Customer Document</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" href="#"><i class="bx bx-money me-1"></i>Payment</a>
-        </li>
+
+        @if (isset($contract->customer))
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('customer.documents', [$contract->id, $contract->customer->id]) }}">
+                    <i class="bx bx-file me-1"></i> Customer Document
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link"
+                    href="{{ route('rental-requests.payment', [$contract->id, $contract->customer->id]) }}">
+                    <i class="bx bx-money me-1"></i> Payment
+                </a>
+            </li>
+
+            <!-- افزودن لینک تاریخچه درخواست -->
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('rental-requests.history', $contract->id) }}">
+                    <i class="bx bx-history me-1"></i> History
+                </a>
+            </li>
+        @endif
+
+
     </ul>
+
+
     <form wire:submit.prevent="submit">
 
         <div class="row">
@@ -45,7 +67,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-start-date">Start Date</span>
                                 <input type="date" class="form-control @error('start_date') is-invalid @enderror"
-                                    placeholder="Start Date" name="start_date" wire:model="start_date">
+                                    placeholder="Start Date" name="start_date" wire:model="start_date" disabled>
                                 @error('start_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -55,7 +77,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-end-date">End Date</span>
                                 <input type="date" class="form-control @error('end_date') is-invalid @enderror"
-                                    placeholder="End Date" name="end_date" wire:model="end_date">
+                                    placeholder="End Date" name="end_date" wire:model="end_date" disabled>
                                 @error('end_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -65,7 +87,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-total-price">$</span>
                                 <input type="number" class="form-control @error('total_price') is-invalid @enderror"
-                                    placeholder="Total Price" name="total_price" wire:model="total_price">
+                                    placeholder="Total Price" name="total_price" wire:model="total_price" disabled>
                                 @error('total_price')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -74,16 +96,34 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-status">Status</span>
                                 <select class="form-control @error('status') is-invalid @enderror" name="status"
-                                    wire:model="status">
+                                    wire:model="status" disabled>
                                     <option value="">Select Status</option>
                                     <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending
                                     </option>
-                                    <option value="completed" {{ $status == 'completed' ? 'selected' : '' }}>Completed
+                                    <option value="assigned" {{ $status == 'assigned' ? 'selected' : '' }}>Assigned
+                                    </option>
+                                    <option value="under_review" {{ $status == 'under_review' ? 'selected' : '' }}>
+                                        Under Review</option>
+                                    <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Reserved
+                                    </option>
+                                    <option value="delivery_in_progress"
+                                        {{ $status == 'delivery_in_progress' ? 'selected' : '' }}>Delivery In Progress
+                                    </option>
+                                    <option value="agreement_inspection"
+                                        {{ $status == 'agreement_inspection' ? 'selected' : '' }}>Agreement Inspection
+                                    </option>
+                                    <option value="awaiting_return"
+                                        {{ $status == 'awaiting_return' ? 'selected' : '' }}>Awaiting Return</option>
+                                    <option value="returned" {{ $status == 'returned' ? 'selected' : '' }}>Returned
                                     </option>
                                     <option value="cancelled" {{ $status == 'cancelled' ? 'selected' : '' }}>Cancelled
                                     </option>
-                                    <option value="active" {{ $status == 'active' ? 'selected' : '' }}>Active</option>
+                                    <option value="rejected" {{ $status == 'rejected' ? 'selected' : '' }}>Rejected
+                                    </option>
+                                    <option value="complete" {{ $status == 'complete' ? 'selected' : '' }}>Complete
+                                    </option>
                                 </select>
+
                                 @error('status')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

@@ -198,8 +198,6 @@ class RentalRequestForm extends Component
 
         try {
 
-
-
             // Update or create the customer
             $customerData = [
                 'first_name' => $this->first_name,
@@ -241,6 +239,10 @@ class RentalRequestForm extends Component
             } else {
                 // Create a new contract
                 $this->contract = Contract::create($contractData);
+
+                // ثبت وضعیت اولیه به عنوان pending
+                $this->contract->changeStatus('pending', auth()->id());
+
                 session()->flash('message', 'Contract saved successfully!');
             }
 

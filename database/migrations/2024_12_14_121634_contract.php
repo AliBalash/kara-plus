@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-            
+
         Schema::create('contracts', function (Blueprint $table) {
             $table->id(); // شناسه قرارداد
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade'); // ارجاع به جدول کاربران (کارشناس)
@@ -20,14 +20,25 @@ return new class extends Migration
             $table->date('start_date'); // تاریخ شروع اجاره
             $table->date('end_date')->nullable(); // تاریخ پایان اجاره
             $table->decimal('total_price', 10, 2); // مبلغ کل اجاره
-            $table->enum('status', ['active', 'completed', 'cancelled', 'pending'])->default('active'); // وضعیت قرارداد
+            $table->enum('current_status', [
+                'pending',
+                'assigned',
+                'under_review',
+                'reserved',
+                'delivery_in_progress',
+                'agreement_inspection',
+                'awaiting_return',
+                'returned',
+                'complete',
+                'cancelled',
+                'rejected'
+            ])->default('pending'); // وضعیت قرارداد
             $table->text('notes')->nullable(); // یادداشت‌ها
             $table->timestamps();
-        
+
             $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
             $table->foreign('car_id')->references('id')->on('cars')->onDelete('cascade');
         });
-        
     }
 
     /**

@@ -26,9 +26,13 @@ class RentalRequestList extends Component
         $contract = Contract::findOrFail($contractId);
 
         if (is_null($contract->user_id)) {
+            // اختصاص کاربر به قرارداد
             $contract->update([
                 'user_id' => auth()->id(),
             ]);
+
+            // تغییر وضعیت به 'assigned'
+            $contract->changeStatus('assigned', auth()->id());
 
             session()->flash('success', 'Contract assigned to you successfully.');
 
@@ -38,6 +42,23 @@ class RentalRequestList extends Component
             session()->flash('error', 'This contract is already assigned.');
         }
     }
+
+    public function changeStatusToReserve($contractId)
+    {
+        $contract = Contract::findOrFail($contractId);
+
+        if ($contract->user_id === auth()->id()) {
+            // تغییر وضعیت به 'assigned'
+            $contract->changeStatus('reserved', auth()->id());
+
+            // ارسال دستور برای به‌روزرسانی داده‌ها
+            $this->dispatch('refreshContracts');
+            session()->flash('message', 'Status changed to Reserved successfully.');
+        } else {
+            session()->flash('error', 'You are not authorized to perform this action.');
+        }
+    }
+
 
     public $search = '';  // متغیر جستجو
     // متد برای فیلتر کردن داده‌ها بر اساس جستجو

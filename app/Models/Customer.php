@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Log;
 
 class Customer extends Model
 {
@@ -113,6 +111,18 @@ class Customer extends Model
         return $this->hasManyThrough(Car::class, Contract::class, 'customer_id', 'id', 'id', 'car_id');
     }
 
+    // Relationship with CustomerDocument model
+    public function customerDocuments()
+    {
+        return $this->hasMany(CustomerDocument::class);
+    }
+
+
+    // Relationship with Payment model
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
 
 
     protected static function boot()
