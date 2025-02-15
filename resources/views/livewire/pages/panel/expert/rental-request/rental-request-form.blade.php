@@ -63,25 +63,100 @@
                     <div class="card mb-4">
                         <h5 class="card-header">Contract Information</h5>
                         <div class="card-body demo-vertical-spacing demo-only-element">
-                            <!-- Start Date -->
+
                             <div class="input-group">
-                                <span class="input-group-text" id="basic-addon-start-date">Start Date</span>
-                                <input type="date" class="form-control @error('start_date') is-invalid @enderror"
-                                    placeholder="Start Date" name="start_date" wire:model="start_date" disabled>
-                                @error('start_date')
+                                <span class="input-group-text" id="basic-addon-pickup-location">Pickup Location</span>
+                                <select class="form-control @error('pickup_location') is-invalid @enderror"
+                                    name="pickup_location" wire:model="pickup_location">
+                                    <option value="">Select Location</option>
+                                    <option value="امارات/دبی/میدان ساعت/شعبه مرکزی">امارات/دبی/میدان ساعت/شعبه مرکزی
+                                    </option>
+                                    <option value="امارات/دبی/فرودگاه دبی/ترمینال 1">امارات/دبی/فرودگاه دبی/ترمینال 1
+                                    </option>
+                                    <option value="امارات/دبی/فرودگاه دبی/ترمینال 2">امارات/دبی/فرودگاه دبی/ترمینال 2
+                                    </option>
+                                    <option value="امارات/دبی/فرودگاه دبی/ترمینال 3">امارات/دبی/فرودگاه دبی/ترمینال 3
+                                    </option>
+                                    <option value="امارات/دبی/مرکز شهر">امارات/دبی/مرکز شهر</option>
+                                    <option value="امارات/دبی/جمیرا ۱.۲.۳">امارات/دبی/جمیرا ۱.۲.۳</option>
+                                    <option value="امارات/دبی/پالم">امارات/دبی/پالم</option>
+                                    <option value="امارات/دبی/Damac Hills">امارات/دبی/Damac Hills</option>
+                                    <option value="امارات/دبی/JVC">امارات/دبی/JVC</option>
+                                    <option value="امارات/دبی/JLT">امارات/دبی/JLT</option>
+                                    <option value="امارات/دبی/مارینا">امارات/دبی/مارینا</option>
+                                    <option value="امارات/دبی/JBR">امارات/دبی/JBR</option>
+                                    <option value="امارات/امارت دبی/جبل علی – ابن بطوطه – حتا و…">امارات/امارت دبی/جبل
+                                        علی – ابن بطوطه – حتا و…</option>
+                                    <option value="امارات / فرودگاه شارجه">امارات / فرودگاه شارجه</option>
+                                    <option value="امارات / فرودگاه ابوظبی">امارات / فرودگاه ابوظبی</option>
+                                </select>
+                                @error('pickup_location')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
 
-                            <!-- End Date -->
+
                             <div class="input-group">
-                                <span class="input-group-text" id="basic-addon-end-date">End Date</span>
-                                <input type="date" class="form-control @error('end_date') is-invalid @enderror"
-                                    placeholder="End Date" name="end_date" wire:model="end_date" disabled>
-                                @error('end_date')
+                                <span class="input-group-text" id="basic-addon-pickup-location">Return Location</span>
+                                <select class="form-control @error('return_location') is-invalid @enderror"
+                                    name="return_location" wire:model="return_location">
+                                    <option value="">Select Location</option>
+                                    <option value="امارات/دبی/میدان ساعت/شعبه مرکزی">امارات/دبی/میدان ساعت/شعبه مرکزی
+                                    </option>
+                                    <option value="امارات/دبی/فرودگاه دبی/ترمینال 1">امارات/دبی/فرودگاه دبی/ترمینال 1
+                                    </option>
+                                    <option value="امارات/دبی/فرودگاه دبی/ترمینال 2">امارات/دبی/فرودگاه دبی/ترمینال 2
+                                    </option>
+                                    <option value="امارات/دبی/فرودگاه دبی/ترمینال 3">امارات/دبی/فرودگاه دبی/ترمینال 3
+                                    </option>
+                                    <option value="امارات/دبی/مرکز شهر">امارات/دبی/مرکز شهر</option>
+                                    <option value="امارات/دبی/جمیرا ۱.۲.۳">امارات/دبی/جمیرا ۱.۲.۳</option>
+                                    <option value="امارات/دبی/پالم">امارات/دبی/پالم</option>
+                                    <option value="امارات/دبی/Damac Hills">امارات/دبی/Damac Hills</option>
+                                    <option value="امارات/دبی/JVC">امارات/دبی/JVC</option>
+                                    <option value="امارات/دبی/JLT">امارات/دبی/JLT</option>
+                                    <option value="امارات/دبی/مارینا">امارات/دبی/مارینا</option>
+                                    <option value="امارات/دبی/JBR">امارات/دبی/JBR</option>
+                                    <option value="امارات/امارت دبی/جبل علی – ابن بطوطه – حتا و…">امارات/امارت دبی/جبل
+                                        علی – ابن بطوطه – حتا و…</option>
+                                    <option value="امارات / فرودگاه شارجه">امارات / فرودگاه شارجه</option>
+                                    <option value="امارات / فرودگاه ابوظبی">امارات / فرودگاه ابوظبی</option>
+                                </select>
+                                @error('return_location')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+
+                            <!-- Pickup Date & Time -->
+                            <div class="input-group">
+                                <span class="input-group-text" id="basic-addon-pickup-datetime">Pickup Date &
+                                    Time</span>
+                                <input type="datetime-local"
+                                    class="form-control @error('pickup_date') is-invalid @enderror"
+                                    min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}" name="pickup_date"
+                                    wire:model="pickup_date">
+                                @error('pickup_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+
+
+
+
+                            <!-- Return Date & Time -->
+                            <div class="input-group">
+                                <span class="input-group-text">Return Date &
+                                    Time</span>
+                                <input type="datetime-local"
+                                    class="form-control @error('return_date') is-invalid @enderror"
+                                    min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}" name="return_date"
+                                    wire:model.live="return_date">
+                                @error('return_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
 
                             <!-- Total Price -->
                             <div class="input-group">
@@ -92,44 +167,15 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <!-- Status -->
-                            <div class="input-group">
-                                <span class="input-group-text" id="basic-addon-status">Status</span>
-                                <select class="form-control @error('status') is-invalid @enderror" name="status"
-                                    wire:model="status" disabled>
-                                    <option value="">Select Status</option>
-                                    <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending
-                                    </option>
-                                    <option value="assigned" {{ $status == 'assigned' ? 'selected' : '' }}>Assigned
-                                    </option>
-                                    <option value="under_review" {{ $status == 'under_review' ? 'selected' : '' }}>
-                                        Under Review</option>
-                                    <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Reserved
-                                    </option>
-                                    <option value="delivery_in_progress"
-                                        {{ $status == 'delivery_in_progress' ? 'selected' : '' }}>Delivery In Progress
-                                    </option>
-                                    <option value="agreement_inspection"
-                                        {{ $status == 'agreement_inspection' ? 'selected' : '' }}>Agreement Inspection
-                                    </option>
-                                    <option value="awaiting_return"
-                                        {{ $status == 'awaiting_return' ? 'selected' : '' }}>Awaiting Return</option>
-                                    <option value="returned" {{ $status == 'returned' ? 'selected' : '' }}>Returned
-                                    </option>
-                                    <option value="cancelled" {{ $status == 'cancelled' ? 'selected' : '' }}>Cancelled
-                                    </option>
-                                    <option value="rejected" {{ $status == 'rejected' ? 'selected' : '' }}>Rejected
-                                    </option>
-                                    <option value="complete" {{ $status == 'complete' ? 'selected' : '' }}>Complete
-                                    </option>
-                                </select>
 
-                                @error('status')
+                            <div class="input-group">
+                                <span class="input-group-text">Agent Sale</span>
+                                <input type="text" class="form-control @error('agent_sale') is-invalid @enderror"
+                                    placeholder="Agent Sale" name="agent_sale" wire:model="agent_sale">
+                                @error('agent_sale')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-
-
 
                             <!-- Notes -->
                             <div class="input-group">
@@ -287,6 +333,16 @@
                             @enderror
                         </div>
 
+                        <!-- Messenger Phone -->
+                        <div class="input-group">
+                            <span class="input-group-text" id="basic-addon-messenger-phone">Messenger Phone</span>
+                            <input type="tel" class="form-control @error('messenger_phone') is-invalid @enderror"
+                                placeholder="Messenger Phone" name="messenger_phone" wire:model="messenger_phone">
+                            @error('messenger_phone')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         <!-- Address -->
                         <div class="input-group">
                             <span class="input-group-text" id="basic-addon-address">Address</span>
@@ -321,9 +377,13 @@
                         <div class="input-group">
                             <span class="input-group-text" id="basic-addon-passport-expiry-date">Passport Expiry
                                 Date</span>
-                            <input type="date"
+                                <input type="date"
                                 class="form-control @error('passport_expiry_date') is-invalid @enderror"
-                                name="passport_expiry_date" wire:model="passport_expiry_date">
+                                min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}"
+                                name="passport_expiry_date"
+                                wire:model="passport_expiry_date"
+                                onfocus="this.value=''" />
+                        
                             @error('passport_expiry_date')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

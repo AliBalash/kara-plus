@@ -1,5 +1,5 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Reserved</h4>
+    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Agreement</h4>
 
     <div class="row" style="padding: 0.5rem 1.5rem">
         <div class="">
@@ -35,29 +35,31 @@
                     <th>Customer</th>
                     <th>Car</th>
                     <th>Pickup Date</th>
-                    <th>End Date</th>
+                    <th>Return Date</th>
                     <th>Expert</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
-                @foreach ($reservedContracts as $reservedContract)
+                @foreach ($agreementContracts as $agreementContract)
                     <tr>
-                        <td>{{ $reservedContract->id }}</td> <!-- نمایش ID قرارداد -->
-                        <td>{{ $reservedContract->customer->fullName() }}</td>
-                        <td>{{ $reservedContract->car->fullName() }}</td>
-                        <td>{{ \Carbon\Carbon::parse($reservedContract->pickup_date)->format('d M Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($reservedContract->return_date)->format('d M Y') }}</td>
+                        <td>{{ $agreementContract->id }}</td> <!-- نمایش ID قرارداد -->
+                        <td>{{ $agreementContract->customer->fullName() }}</td>
+                        <td>{{ $agreementContract->car->fullName() }}</td>
+                        <td>{{ \Carbon\Carbon::parse($agreementContract->pickup_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($agreementContract->return_date)->format('d M Y') }}</td>
                         <td>
-                            @if ($reservedContract->user)
-                                <span class="badge bg-primary">{{ $reservedContract->user->fullName() }}</span>
+                            @if ($agreementContract->user)
+                                <span class="badge bg-primary">{{ $agreementContract->user->fullName() }}</span>
                             @else
                                 <span class="badge bg-secondary">No User</span>
                             @endif
                         </td>
                         <td>
-                            <x-status-badge :status="$reservedContract->current_status" />
+
+                            <x-status-badge :status="$agreementContract->current_status" />
+
                         </td>
                         <td>
                             <div class="dropdown">
@@ -70,28 +72,28 @@
 
                                     <!-- گزینه Pickup Document -->
                                     <a class="dropdown-item"
-                                        href="{{ route('rental-requests.pickup-document', $reservedContract->id) }}">
-                                        <i class="bx bx-file me-1"></i> Pickup Document
+                                        href="{{ route('rental-requests.agreement-inspection', $agreementContract->id) }}">
+                                        <i class="bx bx-file me-1"></i> Agreement Inspection
                                     </a>
 
                                     
-                                    @if (is_null($reservedContract->user_id))
+                                    @if (is_null($agreementContract->user_id))
                                         <!-- گزینه Assign to Me -->
-                                        <a wire:click.prevent="assignToMe({{ $reservedContract->id }})"
+                                        <a wire:click.prevent="assignToMe({{ $agreementContract->id }})"
                                             class="dropdown-item" href="javascript:void(0);">
                                             <i class="bx bx-user-check me-1"></i> Assign to Me
                                         </a>
                                     @endif
-                                    @if ($reservedContract->user_id === auth()->id())
+                                    @if ($agreementContract->user_id === auth()->id())
                                         <!-- گزینه Details -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $reservedContract->id) }}">
+                                            href="{{ route('rental-requests.details', $agreementContract->id) }}">
                                             <i class="bx bx-info-circle me-1"></i> Details
                                         </a>
 
                                         <!-- گزینه Edit -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.form', $reservedContract->id) }}">
+                                            href="{{ route('rental-requests.form', $agreementContract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </a>
 
@@ -100,7 +102,7 @@
 
                                         <!-- گزینه Delete -->
                                         <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="deleteContract({{ $reservedContract->id }})">
+                                            wire:click.prevent="deleteContract({{ $agreementContract->id }})">
                                             <i class="bx bx-trash me-1"></i> Delete
                                         </a>
                                     @endif

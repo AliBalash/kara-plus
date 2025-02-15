@@ -49,18 +49,23 @@
                         <select id="pickup_location" class="form-select" name="pickup_location"
                             wire:model="pickup_location">
                             <option value="">Location</option>
+                            <option value="امارات/دبی/میدان ساعت/شعبه مرکزی">امارات/دبی/میدان ساعت/شعبه مرکزی</option>
+                            <option value="امارات/دبی/فرودگاه دبی/ترمینال 1">امارات/دبی/فرودگاه دبی/ترمینال 1</option>
+                            <option value="امارات/دبی/فرودگاه دبی/ترمینال 2">امارات/دبی/فرودگاه دبی/ترمینال 2</option>
+                            <option value="امارات/دبی/فرودگاه دبی/ترمینال 3">امارات/دبی/فرودگاه دبی/ترمینال 3</option>
                             <option value="امارات/دبی/مرکز شهر">امارات/دبی/مرکز شهر</option>
+                            <option value="امارات/دبی/جمیرا ۱.۲.۳">امارات/دبی/جمیرا ۱.۲.۳</option>
                             <option value="امارات/دبی/پالم">امارات/دبی/پالم</option>
+                            <option value="امارات/دبی/Damac Hills">امارات/دبی/Damac Hills</option>
                             <option value="امارات/دبی/JVC">امارات/دبی/JVC</option>
                             <option value="امارات/دبی/JLT">امارات/دبی/JLT</option>
-                            <option value="امارات/دبی/مرکز شهر">امارات/دبی/مرکز شهر</option>
-                            <option value="امارات/دبی/پالم">امارات/دبی/پالم</option>
-                            <option value="امارات/دبی/JVC">امارات/دبی/JVC</option>
-                            <option value="امارات/دبی/JLT">امارات/دبی/JLT</option>
-                            <option value="امارات/دبی/مرکز شهر">امارات/دبی/مرکز شهر</option>
-                            <option value="امارات/دبی/پالم">امارات/دبی/پالم</option>
-                            <option value="امارات/دبی/JVC">امارات/دبی/JVC</option>
-                            <option value="امارات/دبی/JLT">امارات/دبی/JLT</option>
+                            <option value="امارات/دبی/مارینا">امارات/دبی/مارینا</option>
+                            <option value="امارات/دبی/JBR">امارات/دبی/JBR</option>
+                            <option value="امارات/امارت دبی/جبل علی – ابن بطوطه – حتا و…">امارات/امارت دبی/جبل علی – ابن
+                                بطوطه – حتا و…</option>
+                            <option value="امارات / فرودگاه شارجه">امارات / فرودگاه شارجه</option>
+                            <option value="امارات / فرودگاه ابوظبی">امارات / فرودگاه ابوظبی</option>
+
                         </select>
                         <div class="invalid-feedback">Please select a valid Pickup Location.</div>
                     </div>
@@ -70,36 +75,39 @@
                         <select id="return_location" class="form-select" name="return_location"
                             wire:model="return_location">
                             <option value="">Location</option>
+                            <option value="امارات/دبی/میدان ساعت/شعبه مرکزی">امارات/دبی/میدان ساعت/شعبه مرکزی</option>
+                            <option value="امارات/دبی/فرودگاه دبی/ترمینال 1">امارات/دبی/فرودگاه دبی/ترمینال 1</option>
+                            <option value="امارات/دبی/فرودگاه دبی/ترمینال 2">امارات/دبی/فرودگاه دبی/ترمینال 2</option>
+                            <option value="امارات/دبی/فرودگاه دبی/ترمینال 3">امارات/دبی/فرودگاه دبی/ترمینال 3</option>
                             <option value="امارات/دبی/مرکز شهر">امارات/دبی/مرکز شهر</option>
+                            <option value="امارات/دبی/جمیرا ۱.۲.۳">امارات/دبی/جمیرا ۱.۲.۳</option>
                             <option value="امارات/دبی/پالم">امارات/دبی/پالم</option>
+                            <option value="امارات/دبی/Damac Hills">امارات/دبی/Damac Hills</option>
                             <option value="امارات/دبی/JVC">امارات/دبی/JVC</option>
                             <option value="امارات/دبی/JLT">امارات/دبی/JLT</option>
-                            <option value="امارات/دبی/مرکز شهر">امارات/دبی/مرکز شهر</option>
-                            <option value="امارات/دبی/پالم">امارات/دبی/پالم</option>
-                            <option value="امارات/دبی/JVC">امارات/دبی/JVC</option>
-                            <option value="امارات/دبی/JLT">امارات/دبی/JLT</option>
-                            <option value="امارات/دبی/مرکز شهر">امارات/دبی/مرکز شهر</option>
-                            <option value="امارات/دبی/پالم">امارات/دبی/پالم</option>
-                            <option value="امارات/دبی/JVC">امارات/دبی/JVC</option>
-                            <option value="امارات/دبی/JLT">امارات/دبی/JLT</option>
+                            <option value="امارات/دبی/مارینا">امارات/دبی/مارینا</option>
+                            <option value="امارات/دبی/JBR">امارات/دبی/JBR</option>
+                            <option value="امارات/امارت دبی/جبل علی – ابن بطوطه – حتا و…">امارات/امارت دبی/جبل علی – ابن
+                                بطوطه – حتا و…</option>
+                            <option value="امارات / فرودگاه شارجه">امارات / فرودگاه شارجه</option>
+                            <option value="امارات / فرودگاه ابوظبی">امارات / فرودگاه ابوظبی</option>
                         </select>
                         <div class="invalid-feedback">Please select a valid Return Location.</div>
-
                     </div>
 
                     <div class="mb-3 col-12 col-md-6">
-                        <label for="pickup_date" class="form-label">Pickup Date</label>
-                        <input type="date" id="pickup_date" class="form-control" name="pickup_date"
-                            wire:model="pickup_date" placeholder="Pickup Date"
-                            min="{{ \Carbon\Carbon::today()->toDateString() }}" />
+                        <label for="pickup_date" class="form-label">Pickup Date & Time</label>
+                        <input type="datetime-local" id="pickup_date" class="form-control" name="pickup_date"
+                            wire:model="pickup_date" placeholder="Pickup Date & Time"
+                            min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}" />
                         <div class="invalid-feedback">Pickup Date is required!</div>
                     </div>
-
+                    
                     <div class="mb-3 col-12 col-md-6">
-                        <label for="return_date" class="form-label">Return Date</label>
-                        <input type="date" id="return_date" class="form-control" name="return_date"
-                            wire:model="return_date" placeholder="Return Date"
-                            min="{{ \Carbon\Carbon::today()->toDateString() }}" />
+                        <label for="return_date" class="form-label">Return Date & Time</label>
+                        <input type="datetime-local" id="return_date" class="form-control" name="return_date"
+                            wire:model="return_date" placeholder="Return Date & Time"
+                            min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}" />
                         <div class="invalid-feedback">Return Date is required!</div>
                     </div>
 
@@ -142,7 +150,7 @@
                                 <!-- Radio input -->
                                 <input type="radio" name="carId" id="car-{{ $car->id }}"
                                     class="form-check-input car-type d-none" value="{{ $car->id }}" />
-                                <input type="hidden" name="carId" value="{{$selectedCar?->id}}">
+                                <input type="hidden" name="carId" value="{{ $selectedCar?->id }}">
                                 <!-- Box layout -->
                                 <div
                                     class="car-box-container d-flex flex-column flex-md-row-reverse shadow-sm p-3 rounded row">
@@ -350,7 +358,8 @@
                             <li class="list-group-item"><strong>Total Deposit:</strong> 150,000,000 تومان (based on
                                 provided documents)</li>
                             <li class="list-group-item"><strong>Reservation Fee:</strong> 5,150,000 تومان</li>
-                            <li class="list-group-item"><strong>Total Payment:</strong> {{ rand(100000, 999999) }} تومان</li>
+                            <li class="list-group-item"><strong>Total Payment:</strong> {{ rand(100000, 999999) }}
+                                تومان</li>
                             <input type="hidden" name="total_price" value="{{ rand(100000, 999999) }}">
                         </ul>
                     </div>

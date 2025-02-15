@@ -18,14 +18,17 @@ class RentalRequestForm extends Component
     public $carModels;
     public $selectedBrand; // Store the selected brand ID
     public $selectedCarId; // Store the selected car model ID
+    public $selectedCar; // Store the selected car 
 
-    public $start_date;
-    public $end_date;
     public $total_price;
-    public $status;
+    public $agent_sale;
+    public $pickup_location;
+    public $return_location;
+    public $return_date;
+    public $pickup_date;
     public $note;
 
-    public $first_name, $last_name, $email, $phone;
+    public $first_name, $last_name, $email, $phone, $messenger_phone;
     public $address;
     public $national_code;
     public $passport_number;
@@ -42,15 +45,18 @@ class RentalRequestForm extends Component
         if ($contractId) {
 
             $this->contract = Contract::findOrFail($contractId);
-            $this->start_date = $this->contract->start_date->format('Y-m-d');
-            $this->end_date = $this->contract->end_date->format('Y-m-d');
             $this->total_price = $this->contract->total_price;
-            $this->status = $this->contract->status;
+            $this->agent_sale = $this->contract->agent_sale;
+            $this->pickup_location = $this->contract->pickup_location;
+            $this->return_location = $this->contract->return_location;
+            $this->pickup_date = \Carbon\Carbon::parse($this->contract->pickup_date)->format('Y-m-d\TH:i');
+            $this->return_date = \Carbon\Carbon::parse($this->contract->return_date)->format('Y-m-d\TH:i');
             $this->note = $this->contract->note;
             $this->first_name = $this->contract->customer->first_name;
             $this->last_name = $this->contract->customer->last_name;
             $this->email = $this->contract->customer->email;
             $this->phone = $this->contract->customer->phone;
+            $this->messenger_phone = $this->contract->customer->messenger_phone;
             $this->address = $this->contract->customer->address;
             $this->national_code = $this->contract->customer->national_code;
             $this->passport_number = $this->contract->customer->passport_number;
@@ -78,10 +84,11 @@ class RentalRequestForm extends Component
         $customerId = $this->contract ? $this->contract->customer->id : null;
 
         return [
-            'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after:start_date',
-            'total_price' => 'required|numeric|min:0',
-            'status' => 'required|in:active,completed,cancelled,pending',
+            'total_price' => 'numeric|min:0',
+            'pickup_location' => 'required|',
+            'return_location' => 'required|',
+            'pickup_date' => 'required|',
+            'return_date' => 'required|',
             'selectedBrand' => 'required|exists:car_models,id',
             'selectedCarId' => 'required|exists:cars,id',
             'first_name' => 'required|string|max:255',
@@ -93,10 +100,11 @@ class RentalRequestForm extends Component
                 Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
             ],
             'phone' => 'required|regex:/^[0-9]{10,15}$/',
+            'messenger_phone' => 'required|regex:/^[0-9]{10,15}$/',
             'address' => 'required|string|max:255',
             'national_code' => [
                 'required',
-                'regex:/^[0-9]{10}$/',
+                // 'regex:/^[0-9]{10}$/',
                 Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
             ],
             'passport_number' => [
@@ -113,15 +121,13 @@ class RentalRequestForm extends Component
 
 
     protected $messages = [
-        'start_date.required' => 'Start date is required.',
-        'start_date.after_or_equal' => 'Start date cannot be in the past.',
-        'end_date.required' => 'End date is required.',
-        'end_date.after' => 'End date must be later than start date.',
         'total_price.required' => 'The total price field is required.',
         'total_price.numeric' => 'The total price must be a valid number.',
         'total_price.min' => 'The total price cannot be negative.',
-        'status.required' => 'The status field is required.',
-        'status.in' => 'The selected status is invalid.',
+        'pickup_location.required' => 'The pickup location field is required.',
+        'return_location.required' => 'The return location field is required.',
+        'pickup_date.required' => 'The return pickup date is required.',
+        'return_date.required' => 'The return date field is required.',
         'selectedBrand.required' => 'The car brand field is required.',
         'selectedBrand.exists' => 'The selected car brand is invalid.',
         'selectedCarId.required' => 'The car model field is required.',
@@ -140,7 +146,9 @@ class RentalRequestForm extends Component
         'email.unique' => 'This email is already registered in the system.',
 
         'phone.required' => 'Phone number is required.',
+        'messenger_phone.required' => 'messenger phone number is required.',
         'phone.regex' => 'Please provide a valid phone number.',
+        'messenger_phone.regex' => 'Please provide a valid messenger phone number.',
         'address.required' => 'Address is required.',
         'address.string' => 'Address must be a string.',
         'address.max' => 'Address cannot be longer than 255 characters.',
@@ -169,9 +177,41 @@ class RentalRequestForm extends Component
 
     ];
 
+
+
+    // Calculate the total price dynamically based on user inputs
+    public function updated($propertyName)
+    {
+        if ($propertyName === 'pickup_date' || $propertyName === 'return_date' || $propertyName === 'selectedCarId') {
+            $this->calculateTotalPrice();
+        }
+    }
+
+    public function calculateTotalPrice()
+    {
+        if ($this->pickup_date && $this->return_date && $this->selectedCarId) {
+            $pickupDate = \Carbon\Carbon::parse($this->pickup_date);
+            $returnDate = \Carbon\Carbon::parse($this->return_date);
+
+            // Calculate the difference in days between pickup and return date
+            $days = $pickupDate->diffInDays($returnDate);
+
+            // Get the selected car's price per day
+            $car = Car::find($this->selectedCarId);
+            $pricePerDay = $car->price_per_day;
+
+            // Calculate total price
+            $totalPrice = $days * $pricePerDay;
+
+            // Update the total price
+            $this->total_price = $totalPrice;
+        }
+    }
+
     // Method to filter cars by the selected brand
     public function updatedSelectedBrand($value)
     {
+
         $this->filterCarsByBrand($value);
         $this->selectedCarId = '';
     }
@@ -197,7 +237,6 @@ class RentalRequestForm extends Component
         DB::beginTransaction();
 
         try {
-
             // Update or create the customer
             $customerData = [
                 'first_name' => $this->first_name,
@@ -205,6 +244,7 @@ class RentalRequestForm extends Component
                 'national_code' => $this->national_code,
                 'email' => $this->email,
                 'phone' => $this->phone,
+                'messenger_phone' => $this->messenger_phone,
                 'address' => $this->address,
                 'passport_number' => $this->passport_number,
                 'passport_expiry_date' => $this->passport_expiry_date,
@@ -219,18 +259,20 @@ class RentalRequestForm extends Component
                 ],
                 $customerData
             );
-
             // Update or create the contract
             $contractData = [
                 'user_id' => null,
                 'customer_id' => $customer->id,
                 'car_id' => $this->selectedCarId,
-                'start_date' => $this->start_date,
-                'end_date' => $this->end_date,
                 'total_price' => $this->total_price,
-                'status' => $this->status,
+                'agent_sale' => $this->agent_sale,
+                'pickup_location' => $this->pickup_location,
+                'return_location' => $this->return_location,
+                'pickup_date' => $this->pickup_date,
+                'return_date' => $this->return_date,
                 'notes' => $this->notes ?? null,
             ];
+
 
             if ($this->contract) {
                 // Update existing contract

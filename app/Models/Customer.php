@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class Customer extends Model
 {
@@ -21,6 +23,7 @@ class Customer extends Model
         'gender',
         'email',
         'phone',
+        'messenger_phone',
         'address',
         'passport_number',
         'passport_expiry_date',
@@ -129,37 +132,30 @@ class Customer extends Model
     {
         parent::boot();
 
-        // رویداد ایجاد مشتری
-        static::creating(function ($customer) {
-            if (empty($customer->registration_date)) {
-                $customer->registration_date = now();
+        // Event triggered after the customer is created and saved
+        static::saved(function ($customer) {
+            if (empty($customer->gender)) { // If gender is not set
+                try {
+                    // Create a Guzzle Client instance
+                    $client = new Client();
+                    // Call the Genderize API
+                    $response = $client->get("https://api.genderize.io", [
+                        'query' => [
+                            'name' => $customer->first_name, // Send first name to detect gender
+                        ]
+                    ]);
+                    // Extract data from API response
+                    $data = json_decode($response->getBody()->getContents(), true);
+                    // Set the gender in the model if it's detected
+                    if (isset($data['gender'])) {
+                        $customer->gender = $data['gender'];
+                        $customer->save(); // Save the updated model
+                    }
+                } catch (\Exception $e) {
+                    // Handle errors (e.g., log the error)
+                    Log::error('Error in gender detection: ' . $e->getMessage());
+                }
             }
         });
-
-        // رویداد پس از ایجاد مشتری
-        // static::creating(function ($customer) {
-        //     if (empty($customer->gender)) { // اگر جنسیت تنظیم نشده باشد
-        //         try {
-        //             // ایجاد نمونه Guzzle Client
-        //             $client = new Client();
-        //             // فراخوانی API
-        //             $response = $client->get("https://api.genderize.io", [
-        //                 'query' => [
-        //                     'name' => $customer->first_name, // ارسال نام برای تشخیص جنسیت
-        //                 ]
-        //             ]);
-        //             // استخراج داده از پاسخ API
-        //             $data = json_decode($response->getBody()->getContents(), true);
-        //             // تنظیم جنسیت در مدل
-        //             if (isset($data['gender'])) {
-        //                 $customer->gender = $data['gender'];
-        //                 $customer->save(); // ذخیره مدل به‌روزرسانی شده
-        //             }
-        //         } catch (\Exception $e) {
-        //             // مدیریت خطاها (مثلاً لاگ کردن خطا)
-        //             Log::error('Error in gender detection: ' . $e->getMessage());
-        //         }
-        //     }
-        // });
     }
 }

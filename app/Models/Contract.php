@@ -18,8 +18,11 @@ class Contract extends Model
         'user_id',
         'customer_id',
         'car_id',
-        'start_date',
-        'end_date',
+        'agent_sale',
+        'pickup_date',
+        'pickup_location',
+        'return_location',
+        'return_date',
         'total_price',
         'current_status',
         'notes',
@@ -31,8 +34,8 @@ class Contract extends Model
      * @var array
      */
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'pickup_date' => 'datetime',
+        'return_date' => 'datetime',
         'total_price' => 'decimal:2',
     ];
 
@@ -43,7 +46,7 @@ class Contract extends Model
      */
     public function statusLabel(): string
     {
-        return ucfirst($this->status); // نمایش وضعیت قرارداد با حرف اول بزرگ
+        return ucfirst($this->current_status); // نمایش وضعیت قرارداد با حرف اول بزرگ
     }
 
     /**
@@ -53,7 +56,7 @@ class Contract extends Model
      */
     public function isActive(): bool
     {
-        return $this->status === 'active';
+        return $this->current_status === 'assigned' || $this->current_status === 'under_review' || $this->current_status === 'delivery_in_progress';
     }
 
     /**
@@ -63,7 +66,7 @@ class Contract extends Model
      */
     public function isCompleted(): bool
     {
-        return $this->status === 'completed';
+        return $this->current_status === 'complete';
     }
 
     /**
@@ -103,7 +106,7 @@ class Contract extends Model
      */
     public function calculateTotalPrice(): decimal
     {
-        $days = $this->start_date->diffInDays($this->end_date ?? now());
+        $days = $this->pickup_date->diffInDays($this->return_date ?? now());
         return $days * $this->car->price_per_day;
     }
 
@@ -124,7 +127,6 @@ class Contract extends Model
     {
         return $this->hasMany(ContractStatus::class);
     }
-
 
     // تغییر وضعیت درخواست
     public function changeStatus($newStatus, $userId, $notes = null)
@@ -151,9 +153,9 @@ class Contract extends Model
     // متد جدید برای ثبت تاریخ شروع قرارداد
     public function initializeContract()
     {
-        if (!$this->start_date) {
+        if (!$this->pickup_date) {
             $this->update([
-                'start_date' => now(),  // ثبت تاریخ شروع قرارداد
+                'pickup_date' => now(),  // ثبت تاریخ شروع قرارداد
             ]);
         }
     }
@@ -162,7 +164,7 @@ class Contract extends Model
     public function finalizeContract()
     {
         $this->update([
-            'end_date' => now(),  // ثبت تاریخ پایان قرارداد
+            'return_date' => now(),  // ثبت تاریخ پایان قرارداد
         ]);
     }
 

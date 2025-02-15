@@ -34,7 +34,7 @@
                     <th>#</th> <!-- افزودن ستون ID قرارداد -->
                     <th>Customer</th>
                     <th>Car</th>
-                    <th>Start Date</th>
+                    <th>Pickup Date</th>
                     <th>End Date</th>
                     <th>Expert</th>
                     <th>Status</th>
@@ -47,8 +47,8 @@
                         <td>{{ $contract->id }}</td> <!-- نمایش ID قرارداد -->
                         <td>{{ $contract->customer->fullName() }}</td>
                         <td>{{ $contract->car->fullName() }}</td>
-                        <td>{{ \Carbon\Carbon::parse($contract->start_date)->format('d M Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($contract->end_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}</td>
                         <td>
                             @if ($contract->user)
                                 <span class="badge bg-primary">{{ $contract->user->fullName() }}</span>
@@ -57,25 +57,7 @@
                             @endif
                         </td>
                         <td>
-                            <span
-                                class="badge 
-        
-                                @switch($contract->current_status)
-                                    @case('pending') bg-label-warning @break
-                                    @case('assigned') bg-label-info @break
-                                    @case('under_review') bg-label-secondary @break
-                                    @case('reserved') bg-label-primary @break
-                                    @case('delivery_in_progress') bg-label-dark @break
-                                    @case('agreement_inspection') bg-label-light @break
-                                    @case('awaiting_return') bg-label-warning @break
-                                    @case('returned') bg-label-success @break
-                                    @case('complete') bg-label-success @break
-                                    @case('cancelled') bg-label-danger @break
-                                    @case('rejected') bg-label-danger @break
-                                    @default bg-label-secondary
-                                @endswitch">
-                                {{ ucfirst(str_replace('_', ' ', $contract->current_status)) }}
-                            </span>
+                            <x-status-badge :status="$contract->current_status" />
 
                         </td>
                         <td>

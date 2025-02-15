@@ -16,6 +16,8 @@ use App\Livewire\Pages\Panel\Expert\Customer\CustomerHistory;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerList;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesForm;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreement;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestForm;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestHistory;
@@ -36,9 +38,12 @@ Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/rental-requests/me', RentalRequestMe::class)->name('rental-requests.me');
     Route::get('/expert/rental-requests/detail/{contractId}', RentalRequestDetail::class)->name('rental-requests.details');
     Route::get('/expert/rental-requests/history/{contractId}', RentalRequestHistory::class)->name('rental-requests.history');
-    Route::get('/expert/rental-requests/reserved', RentalRequestReserved::class)->name('rental-requests.reserved');
     Route::get('/expert/rental-requests/payment/{contractId}/{customerId}', RentalRequestPayment::class)->name('rental-requests.payment');
+    Route::get('/expert/rental-requests/reserved', RentalRequestReserved::class)->name('rental-requests.reserved');
     Route::get('/expert/rental-requests/pickup-document/{contractId}', RentalRequestPickupDocument::class)->name('rental-requests.pickup-document');
+
+    Route::get('/expert/rental-requests/agreement', RentalRequestAgreement::class)->name('rental-requests.agreement');
+    Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
 
 
     Route::get('/expert/car/list/', CarList::class)->name('car.list');
@@ -77,17 +82,17 @@ Route::get('/auth/login', Login::class)->name('auth.login')->middleware('auth.gu
 
 
 
-// use App\Imports\CarImport;
-// use Maatwebsite\Excel\Facades\Excel;
-// Route::get('/import-cars', function () {
-//     // Masir file Excel ro moshakhas mikonid
-//     $filePath = storage_path('app/private/Cars.xlsx');
-//     // Import file Excel
-//     Excel::import(new CarImport, $filePath);
+use App\Imports\CarImport;
+use Maatwebsite\Excel\Facades\Excel;
+Route::get('/import-cars', function () {
+    // Masir file Excel ro moshakhas mikonid
+    $filePath = storage_path('app/private/Cars.xlsx');
+    // Import file Excel
+    Excel::import(new CarImport, $filePath);
 
-//     // Return success message
-//     return 'Data has been imported successfully from the given file.';
-// });
+    // Return success message
+    return 'Data has been imported successfully from the given file.';
+});
 
 
 use App\Livewire\Reservation\ReserveCarForm;

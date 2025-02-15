@@ -15,16 +15,16 @@
                     <div class="card mb-4">
                         <h5 class="card-header">Contract Information</h5>
                         <div class="card-body demo-vertical-spacing demo-only-element">
-                            <!-- Start Date -->
+                            <!-- Pickup Date -->
                             <div class="input-group">
-                                <span class="input-group-text">Start Date</span>
-                                <span class="form-control">{{ $contract->start_date }}</span>
+                                <span class="input-group-text">Pickup Date</span>
+                                <span class="form-control">{{ $contract->pickup_date }}</span>
                             </div>
 
-                            <!-- End Date -->
+                            <!-- Return Date -->
                             <div class="input-group">
-                                <span class="input-group-text">End Date</span>
-                                <span class="form-control">{{ $contract->end_date }}</span>
+                                <span class="input-group-text">Return Date</span>
+                                <span class="form-control">{{ $contract->return_date }}</span>
                             </div>
 
                             <!-- Total Price -->

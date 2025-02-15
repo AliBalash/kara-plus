@@ -17,18 +17,14 @@ class UserSeeder extends Seeder
     public function run()
     {
         // افزودن کاربر اول
-        // User::create([
-        //     'first_name' => 'Ali',
-        //     'last_name' => 'Balash',
-        //     'email' => 'ali@example.com',
-        //     'phone' => '09123456789',
-        //     'avatar' => 'path/to/avatar1.jpg',
-        //     'password' => Hash::make('password123'),
-        //     'status' => 'active',
-        //     'last_login' => now(),
-        //     'national_code' => '1234567890',
-        //     'address' => 'Tehran, Iran',
-        // ]);
+        User::create([
+            'first_name' => 'Ali',
+            'last_name' => 'Balash',
+            'email' => 'ali@example.com',
+            'phone' => '09109283992',
+            'password' => Hash::make('password123'),
+            'status' => 'active',
+        ]);
 
         $users = [
             [

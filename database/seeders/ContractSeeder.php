@@ -21,11 +21,12 @@ class ContractSeeder extends Seeder
             'user_id' => User::first()->id, // ارجاع به اولین کاربر
             'customer_id' => Customer::first()->id, // ارجاع به اولین مشتری
             'car_id' => Car::first()->id, // ارجاع به اولین خودرو
-            'start_date' => now(),
-            'end_date' => now()->addDays(7),
-            'total_price' => 700.00,
-            'status' => 'active',
-            'notes' => 'First contract',
+            'pickup_date' => now(), // تاریخ شروع قرارداد
+            'return_date' => now()->addDays(7), // تاریخ پایان قرارداد
+            'total_price' => 700.00, // قیمت کل
+            'status' => 'active', // وضعیت قرارداد
+            'notes' => 'First contract', // یادداشت‌ها
         ]);
+        
     }
 }

@@ -57,7 +57,7 @@
                                         <th>#</th> <!-- افزودن ستون ID قرارداد -->
                                         <th>Customer</th>
                                         <th>Car</th>
-                                        <th>Start Date</th>
+                                        <th>Pickup Date</th>
                                         <th>End Date</th>
                                         <th>Expert</th>
                                         <th>Status</th>
@@ -71,7 +71,7 @@
                                             <td>{{ $status->contract->customer->fullName() }}</td>
                                             <td>{{ $status->contract->car->fullName() }}</td>
                                             <td>{{ \Carbon\Carbon::parse($status->created_at)->format('d M Y') }}</td>
-                                            <td>{{ $status->contract->end_date ? \Carbon\Carbon::parse($status->contract->end_date)->format('d M Y') : 'N/A' }}
+                                            <td>{{ $status->contract->return_date ? \Carbon\Carbon::parse($status->contract->return_date)->format('d M Y') : 'N/A' }}
                                             </td>
                                             <td>
                                                 @if ($status->contract->user)
@@ -82,24 +82,8 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <span
-                                                    class="badge 
-                                                    @switch($status->status)
-                                                        @case('pending') bg-label-warning @break
-                                                        @case('assigned') bg-label-info @break
-                                                        @case('under_review') bg-label-secondary @break
-                                                        @case('reserved') bg-label-primary @break
-                                                        @case('delivery_in_progress') bg-label-success @break
-                                                        @case('agreement_inspection') bg-label-secondary @break
-                                                        @case('awaiting_return') bg-label-secondary @break
-                                                        @case('returned') bg-label-success @break
-                                                        @case('complete') bg-label-success @break
-                                                        @case('cancelled') bg-label-danger @break
-                                                        @case('rejected') bg-label-danger @break
-                                                        @default bg-label-secondary
-                                                    @endswitch">
-                                                    {{ ucfirst($status->status) }}
-                                                </span>
+                                                <x-status-badge :status="$status->status" />
+
                                             </td>
                                             <td>
                                                 <div class="dropdown">

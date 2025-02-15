@@ -22,13 +22,13 @@ class DatabaseSeeder extends Seeder
         // فراخوانی Seederهای مختلف
         $this->call([
             UserSeeder::class,       // Seeder مربوط به کاربران
-            CarModelSeeder::class,    // Seeder مربوط به مدل‌های خودرو
-            CarSeeder::class,        // Seeder مربوط به خودروها
-            CustomerSeeder::class,    // Seeder مربوط به مشتریان
-            ContractSeeder::class,   // Seeder مربوط به قراردادها
-            FineSeeder::class,       // Seeder مربوط به جریمه‌ها
-            PaymentSeeder::class,    // Seeder مربوط به پرداخت‌ها
-            TollSeeder::class,       // Seeder مربوط به عوارض
+            // CarModelSeeder::class,    // Seeder مربوط به مدل‌های خودرو
+            // CarSeeder::class,        // Seeder مربوط به خودروها
+            // CustomerSeeder::class,    // Seeder مربوط به مشتریان
+            // ContractSeeder::class,   // Seeder مربوط به قراردادها
+            // FineSeeder::class,       // Seeder مربوط به جریمه‌ها
+            // PaymentSeeder::class,    // Seeder مربوط به پرداخت‌ها
+            // TollSeeder::class,       // Seeder مربوط به عوارض
         ]);
     }
 }

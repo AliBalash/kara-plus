@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female', 'other'])->nullable(); // جنسیت
             $table->string('email')->unique(); // ایمیل (منحصر به‌فرد)
             $table->string('phone'); // شماره تماس
+            $table->string('messenger_phone'); // شماره تماس
             $table->text('address')->nullable(); // آدرس
             $table->string('passport_number')->unique()->nullable(); // شماره پاسپورت
             $table->date('passport_expiry_date')->nullable(); // تاریخ انقضای پاسپورت

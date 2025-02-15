@@ -17,8 +17,11 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade'); // ارجاع به جدول کاربران (کارشناس)
             $table->unsignedBigInteger('customer_id'); // ارجاع به جدول مشتریان
             $table->unsignedBigInteger('car_id'); // ارجاع به جدول خودروها
-            $table->date('start_date'); // تاریخ شروع اجاره
-            $table->date('end_date')->nullable(); // تاریخ پایان اجاره
+            $table->string('agent_sale')->nullable(); // نام نماینده‌ی فروش
+            $table->dateTime('pickup_date'); // تاریخ و ساعت تحویل
+            $table->dateTime('return_date'); // تاریخ و ساعت بازگشت
+            $table->string('pickup_location'); // مکان تحویل خودرو
+            $table->string('return_location'); // مکان بازگشت خودرو
             $table->decimal('total_price', 10, 2); // مبلغ کل اجاره
             $table->enum('current_status', [
                 'pending',

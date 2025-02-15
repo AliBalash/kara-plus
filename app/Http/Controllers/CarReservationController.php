@@ -21,7 +21,6 @@ class CarReservationController extends Controller
 
     public function reserveCar(Request $request)
     {
-
         // اعتبارسنجی داده‌ها
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
@@ -34,6 +33,7 @@ class CarReservationController extends Controller
             'pickup_date' => 'required|date|after_or_equal:today',
             'return_date' => 'required|date|after_or_equal:today|after_or_equal:pickup_date',
             'carId' => 'required|integer|exists:cars,id',
+            'total_price' => 'required|numeric|min:0', // اضافه کردن اعتبارسنجی برای total_price
         ]);
 
         if ($validator->fails()) {
@@ -45,17 +45,17 @@ class CarReservationController extends Controller
         }
 
         // ایجاد یک نمونه از Guzzle Client
-        $client = new Client();
+        // $client = new Client();
         // فراخوانی API خارجی (genderize.io)
-        $response = $client->get("https://api.genderize.io", [
-            'query' => [
-                'name' => $request->first_name
-            ]
-        ]);
+        // $response = $client->get("https://api.genderize.io", [
+        //     'query' => [
+        //         'name' => $request->first_name
+        //     ]
+        // ]);
         // دریافت داده‌های پاسخ
-        $data = json_decode($response->getBody()->getContents(), true);
+        // $data = json_decode($response->getBody()->getContents(), true);
         // بررسی وجود جنسیت در پاسخ
-        $gender = isset($data['gender']) ? $data['gender'] : null;
+        // $gender = isset($data['gender']) ? $data['gender'] : null;
 
         // اگر اعتبارسنجی موفق بود، داده‌ها ذخیره می‌شوند
         $customer = Customer::updateOrCreate(
@@ -63,20 +63,23 @@ class CarReservationController extends Controller
             [
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
-                'gender' => $gender,
                 'phone' => $request->phone,
+                'messenger_phone' => $request->messenger_phone,
                 'registration_date' => now(),
                 'status' => 'active',
             ]
         );
 
+        // ایجاد قرارداد
         $contract = Contract::create([
             'customer_id' => $customer->id,
             'car_id' => $request->carId,
-            'start_date' => $request->pickup_date,
-            'end_date' => $request->return_date,
+            'pickup_date' => $request->pickup_date, // Field should be 'pickup_date'
+            'return_date' => $request->return_date,
+            'pickup_location' => $request->pickup_location, // Field should be 'pickup_location'
+            'return_location' => $request->return_location, // Field should be 'return_location'
             'total_price' => $request->total_price,
-            'status' => 'pending',
+            'current_status' => 'pending', // It should be 'current_status', not 'status'
         ]);
 
         // برای دیباگ، داده‌ها را در کنسول نمایش بدهید (بدون ارسال به کلاینت)

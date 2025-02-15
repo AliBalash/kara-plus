@@ -34,7 +34,7 @@
                     <th>#</th> <!-- افزودن ستون ID قرارداد -->
                     <th>Customer</th>
                     <th>Car</th>
-                    <th>Start Date</th>
+                    <th>Pickup Date</th>
                     <th>End Date</th>
                     <th>Expert</th>
                     <th>Status</th>
@@ -47,8 +47,8 @@
                         <td>{{ $contract->id }}</td> <!-- نمایش ID قرارداد -->
                         <td>{{ $contract->customer->fullName() }}</td>
                         <td>{{ $contract->car->fullName() }}</td>
-                        <td>{{ \Carbon\Carbon::parse($contract->start_date)->format('d M Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($contract->end_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}</td>
                         <td>
                             @if ($contract->user)
                                 <span class="badge bg-primary">{{ $contract->user->fullName() }}</span>
