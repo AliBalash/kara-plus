@@ -14,6 +14,7 @@ use App\Livewire\Pages\Panel\Expert\Customer\CustomerDetail;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDocumentUpload;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerHistory;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerList;
+use App\Livewire\Pages\Panel\Expert\DiscountCode\DiscountCodeList;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesForm;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreement;
@@ -67,6 +68,7 @@ Route::middleware(['auth.check'])->group(function () {
 
 
 
+    Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
 
 });
 

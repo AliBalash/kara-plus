@@ -41,7 +41,7 @@
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody class="table-border-bottom-0">
+            <tbody class="table-border-bottom-0" wire:poll.5s>
                 @foreach ($contracts as $contract)
                     <tr>
                         <td>{{ $contract->id }}</td> <!-- نمایش ID قرارداد -->
