@@ -1,5 +1,148 @@
 <div>
     <div class="row">
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Total Discount Codes</span>
+                    <h3 class="card-title mb-2">{{ $discountCodesCount }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Used Discount Codes</span>
+                    <h3 class="card-title mb-2">{{ $usedDiscountCodes }} ({{ $usageRate }}%)</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Average Discount Percentage</span>
+                    <h3 class="card-title mb-2">{{ $averageDiscount }}%</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+
+                    <span class="fw-semibold d-block mb-1">My Discount Codes</span>
+                    <h3 class="card-title mb-2">{{ $userDiscountCodes }} (Used: {{ $userUsedDiscountCodes }})</h3>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Total Contracts</span>
+                    <h3 class="card-title mb-2">{{ $totalContracts }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Active Contracts</span>
+                    <h3 class="card-title mb-2">{{ $activeContracts }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Completed Contracts</span>
+                    <h3 class="card-title mb-2">{{ $completedContracts }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Cancelled Contracts</span>
+                    <h3 class="card-title mb-2">{{ $cancelledContracts }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Contracts Under Review</span>
+                    <h3 class="card-title mb-2">{{ $underReviewContracts }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Average Contract Price</span>
+                    <h3 class="card-title mb-2">${{ number_format($averageTotalPrice, 2) }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-md-12 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">Latest Contracts</span>
+                    <ul>
+                        @foreach ($latestContracts as $contract)
+                            <li>{{ $contract->customer->name }} - {{ ucfirst($contract->current_status) }} -
+                                ${{ $contract->total_price }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-md-12 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <span class="fw-semibold d-block mb-1">My Last Contract Status</span>
+                    <h3 class="card-title mb-2">{{ ucfirst($lastUserContractStatus) ?? 'N/A' }}</h3>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="col-lg-12 col-md-12 col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="fw-semibold mb-3">Top 3 Cars with Most Contracts</h5>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Brand</th>
+                                <th>Total Contracts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($topBrands as $car)
+                                <tr>
+                                    <td>{{ $car['brand'] }}</td>
+                                    <td>{{ $car['total'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
         <div class="col-lg-8 mb-4 order-0">
             <div class="card">
                 <div class="d-flex align-items-end row">
@@ -10,7 +153,7 @@
                                 You have done <span class="fw-bold">72%</span> more sales today. Check your new badge in
                                 your profile.
                             </p>
-    
+
                             <a href="javascript:;" class="btn btn-sm btn-outline-primary">View Badges</a>
                         </div>
                     </div>
@@ -106,7 +249,7 @@
                         </div>
                         <div id="growthChart"></div>
                         <div class="text-center fw-semibold pt-3 mb-2">62% Company Growth</div>
-    
+
                         <div class="d-flex px-xxl-4 px-lg-2 p-4 gap-xxl-3 gap-lg-1 gap-3 justify-content-between">
                             <div class="d-flex">
                                 <div class="me-2">
@@ -120,7 +263,8 @@
                             </div>
                             <div class="d-flex">
                                 <div class="me-2">
-                                    <span class="badge bg-label-info p-2"><i class="bx bx-wallet text-info"></i></span>
+                                    <span class="badge bg-label-info p-2"><i
+                                            class="bx bx-wallet text-info"></i></span>
                                 </div>
                                 <div class="d-flex flex-column">
                                     <small>2021</small>
@@ -156,7 +300,8 @@
                             </div>
                             <span class="d-block mb-1">Payments</span>
                             <h3 class="card-title text-nowrap mb-2">$2,456</h3>
-                            <small class="text-danger fw-semibold"><i class="bx bx-down-arrow-alt"></i> -14.82%</small>
+                            <small class="text-danger fw-semibold"><i class="bx bx-down-arrow-alt"></i>
+                                -14.82%</small>
                         </div>
                     </div>
                 </div>
@@ -258,7 +403,8 @@
                         </li>
                         <li class="d-flex mb-4 pb-1">
                             <div class="avatar flex-shrink-0 me-3">
-                                <span class="avatar-initial rounded bg-label-success"><i class="bx bx-closet"></i></span>
+                                <span class="avatar-initial rounded bg-label-success"><i
+                                        class="bx bx-closet"></i></span>
                             </div>
                             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
                                 <div class="me-2">
@@ -272,7 +418,8 @@
                         </li>
                         <li class="d-flex mb-4 pb-1">
                             <div class="avatar flex-shrink-0 me-3">
-                                <span class="avatar-initial rounded bg-label-info"><i class="bx bx-home-alt"></i></span>
+                                <span class="avatar-initial rounded bg-label-info"><i
+                                        class="bx bx-home-alt"></i></span>
                             </div>
                             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
                                 <div class="me-2">
@@ -304,7 +451,7 @@
             </div>
         </div>
         <!--/ Order Statistics -->
-    
+
         <!-- Expense Overview -->
         <div class="col-md-6 col-lg-4 order-1 mb-4">
             <div class="card h-100">
@@ -312,8 +459,8 @@
                     <ul class="nav nav-pills" role="tablist">
                         <li class="nav-item">
                             <button type="button" class="nav-link active" role="tab" data-bs-toggle="tab"
-                                data-bs-target="#navs-tabs-line-card-income" aria-controls="navs-tabs-line-card-income"
-                                aria-selected="true">
+                                data-bs-target="#navs-tabs-line-card-income"
+                                aria-controls="navs-tabs-line-card-income" aria-selected="true">
                                 Income
                             </button>
                         </li>
@@ -360,7 +507,7 @@
             </div>
         </div>
         <!--/ Expense Overview -->
-    
+
         <!-- Transactions -->
         <div class="col-md-6 col-lg-4 order-2 mb-4">
             <div class="card h-100">
@@ -382,8 +529,8 @@
                     <ul class="p-0 m-0">
                         <li class="d-flex mb-4 pb-1">
                             <div class="avatar flex-shrink-0 me-3">
-                                <img src="{{ asset('assets/panel/assets/img/icons/unicons/paypal.png') }}" alt="User"
-                                    class="rounded" />
+                                <img src="{{ asset('assets/panel/assets/img/icons/unicons/paypal.png') }}"
+                                    alt="User" class="rounded" />
                             </div>
                             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
                                 <div class="me-2">
@@ -398,8 +545,8 @@
                         </li>
                         <li class="d-flex mb-4 pb-1">
                             <div class="avatar flex-shrink-0 me-3">
-                                <img src="{{ asset('assets/panel/assets/img/icons/unicons/wallet.png') }}" alt="User"
-                                    class="rounded" />
+                                <img src="{{ asset('assets/panel/assets/img/icons/unicons/wallet.png') }}"
+                                    alt="User" class="rounded" />
                             </div>
                             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
                                 <div class="me-2">
@@ -414,8 +561,8 @@
                         </li>
                         <li class="d-flex mb-4 pb-1">
                             <div class="avatar flex-shrink-0 me-3">
-                                <img src="{{ asset('assets/panel/assets/img/icons/unicons/chart.png') }}" alt="User"
-                                    class="rounded" />
+                                <img src="{{ asset('assets/panel/assets/img/icons/unicons/chart.png') }}"
+                                    alt="User" class="rounded" />
                             </div>
                             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
                                 <div class="me-2">
@@ -446,8 +593,8 @@
                         </li>
                         <li class="d-flex mb-4 pb-1">
                             <div class="avatar flex-shrink-0 me-3">
-                                <img src="{{ asset('assets/panel/assets/img/icons/unicons/wallet.png') }}" alt="User"
-                                    class="rounded" />
+                                <img src="{{ asset('assets/panel/assets/img/icons/unicons/wallet.png') }}"
+                                    alt="User" class="rounded" />
                             </div>
                             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
                                 <div class="me-2">
@@ -482,5 +629,5 @@
         </div>
         <!--/ Transactions -->
     </div>
-    
+
 </div>
