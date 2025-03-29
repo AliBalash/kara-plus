@@ -39,11 +39,13 @@ class RentalRequestForm extends Component
     public $filteredCarModels = [];
 
     // Mount method to load initial data
+    public $customerDocumentsCompleted = false;
+    public $paymentsExist = false;
+
     public function mount($contractId = null)
     {
         $this->carModels = CarModel::all();
         if ($contractId) {
-
             $this->contract = Contract::findOrFail($contractId);
             $this->total_price = $this->contract->total_price;
             $this->agent_sale = $this->contract->agent_sale;
@@ -64,10 +66,18 @@ class RentalRequestForm extends Component
             $this->nationality = $this->contract->customer->nationality;
             $this->license_number = $this->contract->customer->license_number;
 
+            // بررسی مدارک مشتری
+            if ($this->contract->customer && $this->contract->customerDocument) {
+                $this->customerDocumentsCompleted = true;
+            }
 
+            // بررسی پرداخت‌ها
+            if ($this->contract->payments()->exists()) {
+                $this->paymentsExist = true;
+            }
 
             // Set initial selected values based on the contract's car
-            $this->selectedBrand = $this->contract->car->carModel->id;  // Using brand for filtering
+            $this->selectedBrand = $this->contract->car->carModel->id;
             $this->selectedCarId = $this->contract->car->id;
 
             // Fetch cars based on initial brand selection

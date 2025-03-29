@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
 use App\Models\CustomerDocument;
+use App\Models\Payment;
 
 class CustomerDocumentUpload extends Component
 {
@@ -24,8 +25,17 @@ class CustomerDocumentUpload extends Component
         $this->customerId = $customerId;
         $this->contractId = $contractId;
 
+        // بررسی وجود اسناد مشتری
+        $this->hasCustomerDocument = CustomerDocument::where('customer_id', $this->customerId)
+            ->where('contract_id', $this->contractId)
+            ->exists();
 
-        // بررسی وجود فایل‌های از قبل آپلود شده
+        // بررسی وجود پرداخت‌ها
+        $this->hasPayments = Payment::where('customer_id', $this->customerId)
+            ->where('contract_id', $this->contractId)
+            ->exists();
+
+        // بررسی وجود فایل‌های آپلود شده
         $this->existingFiles = [
             'visa' => Storage::disk('public')->exists("CustomerDocument/visa_{$this->customerId}_{$this->contractId}.jpg")
                 ? Storage::url("CustomerDocument/visa_{$this->customerId}_{$this->contractId}.jpg")
@@ -41,6 +51,7 @@ class CustomerDocumentUpload extends Component
                 : null,
         ];
     }
+
 
     public function uploadDocument()
     {

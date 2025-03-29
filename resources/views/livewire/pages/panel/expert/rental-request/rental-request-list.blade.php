@@ -41,10 +41,10 @@
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody class="table-border-bottom-0" wire:poll.5s>
+            <tbody class="table-border-bottom-0" wire:poll.10s>
                 @foreach ($contracts as $contract)
-                    <tr>
-                        <td>{{ $contract->id }}</td> <!-- نمایش ID قرارداد -->
+                    <tr wire:key="contract-{{ $contract->id }}">
+                        <td>{{ $contract->id }}</td>
                         <td>{{ $contract->customer->fullName() }}</td>
                         <td>{{ $contract->car->fullName() }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
@@ -58,7 +58,6 @@
                         </td>
                         <td>
                             <x-status-badge :status="$contract->current_status" />
-
                         </td>
                         <td>
                             <div class="dropdown">
@@ -68,47 +67,36 @@
                                 </button>
                                 <div class="dropdown-menu">
                                     @if (is_null($contract->user_id))
-                                        <!-- گزینه Assign to Me -->
                                         <a wire:click.prevent="assignToMe({{ $contract->id }})" class="dropdown-item"
                                             href="javascript:void(0);">
                                             <i class="bx bx-user-check me-1"></i> Assign to Me
                                         </a>
                                     @endif
                                     @if ($contract->user_id === auth()->id())
-                                        <!-- گزینه Details -->
                                         <a class="dropdown-item"
                                             href="{{ route('rental-requests.details', $contract->id) }}">
                                             <i class="bx bx-info-circle me-1"></i> Details
                                         </a>
-
-                                        <!-- گزینه Edit -->
                                         <a class="dropdown-item"
                                             href="{{ route('rental-requests.form', $contract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </a>
-
-
-                                        <!-- گزینه Set to Reserved -->
                                         <a class="dropdown-item" href="javascript:void(0);"
                                             wire:click.prevent="changeStatusToReserve({{ $contract->id }})">
                                             <i class="bx bx-bookmark me-1"></i> Set to Reserved
                                         </a>
-
-                                        <!-- گزینه Delete -->
                                         <a class="dropdown-item" href="javascript:void(0);"
                                             wire:click.prevent="deleteContract({{ $contract->id }})">
                                             <i class="bx bx-trash me-1"></i> Delete
                                         </a>
                                     @endif
-
-
                                 </div>
                             </div>
-
                         </td>
                     </tr>
                 @endforeach
             </tbody>
+
         </table>
     </div>
 </div>
