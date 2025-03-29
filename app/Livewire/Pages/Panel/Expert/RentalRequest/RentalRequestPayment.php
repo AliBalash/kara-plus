@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use Livewire\Component;
 use App\Models\Payment;
 use App\Models\Contract;
+use App\Models\CustomerDocument;
 use App\Models\Fine;
 
 class RentalRequestPayment extends Component
@@ -19,6 +20,9 @@ class RentalRequestPayment extends Component
     public $totalPrice;        // Total price from the contract
     public $fines;             // Fines associated with the contract
 
+    public $hasCustomerDocument;
+    public $hasPayments;
+    
     protected $rules = [
         'amount' => 'required|numeric|min:0',
         'payment_type' => 'required|in:rental_fee,fine',
@@ -29,6 +33,17 @@ class RentalRequestPayment extends Component
     {
         $this->contractId = $contractId;
         $this->customerId = $customerId;
+
+        // بررسی وجود اسناد مشتری
+        $this->hasCustomerDocument = CustomerDocument::where('customer_id', $this->customerId)
+            ->where('contract_id', $this->contractId)
+            ->exists();
+
+        // بررسی وجود پرداخت‌ها
+        $this->hasPayments = Payment::where('customer_id', $this->customerId)
+            ->where('contract_id', $this->contractId)
+            ->exists();
+
 
         // Fetch existing payments for this contract and customer
         $this->existingPayments = Payment::where('contract_id', $contractId)

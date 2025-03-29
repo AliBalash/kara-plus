@@ -17,27 +17,40 @@
 
     <ul class="nav nav-pills flex-column flex-md-row mb-3">
         <li class="nav-item">
-            <a class="nav-link" href="{{ route('rental-requests.form', $contractId) }}">
+            <a class="nav-link {{ request()->routeIs('rental-requests.form') ? 'active' : '' }}"
+                href="{{ route('rental-requests.form', $contractId) }}">
                 <i class="bx bxs-info-square me-1"></i> Rental Information
             </a>
         </li>
+
         <li class="nav-item">
-            <a class="nav-link" href="{{ route('customer.documents', [$contractId, $customerId]) }}">
+            <a class="nav-link {{ request()->routeIs('customer.documents') ? 'active' : '' }}"
+                href="{{ route('customer.documents', [$contractId, $customerId]) }}">
                 <i class="bx bx-file me-1"></i> Customer Document
+                @if ($hasCustomerDocument)
+                    ✔
+                @endif
             </a>
         </li>
+
         <li class="nav-item">
-            <a class="nav-link active" href="{{ route('rental-requests.payment', [$contractId, $customerId]) }}">
+            <a class="nav-link {{ request()->routeIs('rental-requests.payment') ? 'active' : '' }}"
+                href="{{ route('rental-requests.payment', [$contractId, $customerId]) }}">
                 <i class="bx bx-money me-1"></i> Payment
+                @if ($hasPayments)
+                    ✔
+                @endif
             </a>
         </li>
-        <!-- افزودن لینک تاریخچه درخواست -->
+
         <li class="nav-item">
-            <a class="nav-link " href="{{ route('rental-requests.history', $contractId) }}">
+            <a class="nav-link {{ request()->routeIs('rental-requests.history') ? 'active' : '' }}"
+                href="{{ route('rental-requests.history', $contractId) }}">
                 <i class="bx bx-history me-1"></i> History
             </a>
         </li>
     </ul>
+
 
     <div class="card">
         <h5 class="card-header">Make a Payment</h5>

@@ -21,7 +21,6 @@
 
     <ul class="nav nav-pills flex-column flex-md-row mb-3">
         <li class="nav-item">
-            <!-- اگر contract موجود نیست، فقط از مسیر پیش‌فرض استفاده می‌کنیم -->
             <a class="nav-link active"
                 href="{{ isset($contract->id) ? route('rental-requests.form', $contract->id) : '#' }}">
                 <i class="bx bxs-info-square me-1"></i> Rental Information
@@ -32,6 +31,9 @@
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('customer.documents', [$contract->id, $contract->customer->id]) }}">
                     <i class="bx bx-file me-1"></i> Customer Document
+                    @if ($customerDocumentsCompleted)
+                        ✔
+                    @endif
                 </a>
             </li>
 
@@ -39,19 +41,20 @@
                 <a class="nav-link"
                     href="{{ route('rental-requests.payment', [$contract->id, $contract->customer->id]) }}">
                     <i class="bx bx-money me-1"></i> Payment
+                    @if ($paymentsExist)
+                        ✔
+                    @endif
                 </a>
             </li>
 
-            <!-- افزودن لینک تاریخچه درخواست -->
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('rental-requests.history', $contract->id) }}">
                     <i class="bx bx-history me-1"></i> History
                 </a>
             </li>
         @endif
-
-
     </ul>
+
 
 
     <form wire:submit.prevent="submit">
@@ -377,13 +380,11 @@
                         <div class="input-group">
                             <span class="input-group-text" id="basic-addon-passport-expiry-date">Passport Expiry
                                 Date</span>
-                                <input type="date"
+                            <input type="date"
                                 class="form-control @error('passport_expiry_date') is-invalid @enderror"
-                                min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}"
-                                name="passport_expiry_date"
-                                wire:model="passport_expiry_date"
-                                onfocus="this.value=''" />
-                        
+                                min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" name="passport_expiry_date"
+                                wire:model="passport_expiry_date" onfocus="this.value=''" />
+
                             @error('passport_expiry_date')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
