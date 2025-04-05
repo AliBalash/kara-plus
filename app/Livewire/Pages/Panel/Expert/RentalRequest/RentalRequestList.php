@@ -53,7 +53,7 @@ class RentalRequestList extends Component
 
             // ارسال دستور برای به‌روزرسانی داده‌ها
             $this->dispatch('refreshContracts');
-            session()->flash('message', 'Status changed to Reserved successfully.');
+            session()->flash('success', 'Status changed to Reserved successfully.');
         } else {
             session()->flash('error', 'You are not authorized to perform this action.');
         }

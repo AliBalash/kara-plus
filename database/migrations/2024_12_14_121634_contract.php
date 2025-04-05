@@ -28,7 +28,7 @@ return new class extends Migration
                 'assigned',
                 'under_review',
                 'reserved',
-                'delivery_in_progress',
+                'delivery',
                 'agreement_inspection',
                 'awaiting_return',
                 'returned',

@@ -1,6 +1,71 @@
 <div class="container-xxl flex-grow-1 container-p-y">
     <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Rental Request /</span> Detail</h4>
 
+
+    <ul class="nav nav-pills flex-column flex-md-row mb-3">
+        <li class="nav-item">
+            <a class="nav-link active"
+                href="{{ isset($contract->id) ? route('rental-requests.form', $contract->id) : '#' }}">
+                <i class="bx bxs-info-square me-1"></i> Rental Information
+            </a>
+        </li>
+
+        @if (isset($contract->customer))
+            {{-- Customer Document --}}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('customer.documents', [$contract->id, $contract->customer->id]) }}">
+                    <i class="bx bx-file me-1"></i> Customer Document
+                    @if ($customerDocumentsCompleted ?? false)
+                        ✔
+                    @endif
+                </a>
+            </li>
+
+            {{-- Pickup Document --}}
+            <li class="nav-item">
+                <a class="nav-link"
+                    href="{{ route('rental-requests.pickup-document', [$contract->id, $contract->customer->id]) }}">
+                    <i class="bx bx-upload me-1"></i> Pickup Document
+                    @if ($pickupDocumentsCompleted ?? false)
+                        ✔
+                    @endif
+                </a>
+            </li>
+
+            {{-- Return Document --}}
+            <li class="nav-item">
+                <a class="nav-link"
+                    href="{{ route('rental-requests.return-document', [$contract->id, $contract->customer->id]) }}">
+                    <i class="bx bx-download me-1"></i> Return Document
+                    @if ($returnDocumentsCompleted ?? false)
+                        ✔
+                    @endif
+                </a>
+            </li>
+
+            {{-- Payment --}}
+            <li class="nav-item">
+                <a class="nav-link"
+                    href="{{ route('rental-requests.payment', [$contract->id, $contract->customer->id]) }}">
+                    <i class="bx bx-money me-1"></i> Payment
+                    @if ($paymentsExist ?? false)
+                        ✔
+                    @endif
+                </a>
+            </li>
+
+            {{-- Status / History --}}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('rental-requests.history', $contract->id) }}">
+                    <i class="bx bx-history me-1"></i> Status & History
+                </a>
+            </li>
+        @endif
+    </ul>
+
+
+
+
     <div>
         @if (session()->has('message'))
             <div class="alert alert-success">
@@ -15,16 +80,27 @@
                     <div class="card mb-4">
                         <h5 class="card-header">Contract Information</h5>
                         <div class="card-body demo-vertical-spacing demo-only-element">
-                            <!-- Pickup Date -->
+                            <!-- Delivery Date -->
                             <div class="input-group">
-                                <span class="input-group-text">Pickup Date</span>
+                                <span class="input-group-text">Delivery Date</span>
                                 <span class="form-control">{{ $contract->pickup_date }}</span>
+                            </div>
+                            <!-- Pickup Location -->
+                            <div class="input-group">
+                                <span class="input-group-text">Pickup Location</span>
+                                <span class="form-control">{{ $contract->pickup_location }}</span>
                             </div>
 
                             <!-- Return Date -->
                             <div class="input-group">
                                 <span class="input-group-text">Return Date</span>
                                 <span class="form-control">{{ $contract->return_date }}</span>
+                            </div>
+
+                            <!-- Return Location -->
+                            <div class="input-group">
+                                <span class="input-group-text">Return Location</span>
+                                <span class="form-control">{{ $contract->return_location }}</span>
                             </div>
 
                             <!-- Total Price -->
@@ -36,7 +112,7 @@
                             <!-- Status -->
                             <div class="input-group">
                                 <span class="input-group-text">Status</span>
-                                <span class="form-control">{{ $contract->status }}</span>
+                                <span class="form-control">{{ $contract->statusLabel() }}</span>
                             </div>
 
                             <!-- Notes -->
@@ -158,6 +234,24 @@
                             <span class="input-group-text">License Number</span>
                             <span class="form-control">{{ $contract->customer->license_number }}</span>
                         </div>
+                        <div class="input-group">
+                            <span class="input-group-text">Agent</span>
+                            <span class="form-control">{{ $contract->user->name }}</span>
+                        </div>
+
+                        @if ($contract->customerDocument)
+                            <div class="input-group">
+                                <span class="input-group-text">Document Uploaded</span>
+                                <span class="form-control text-success">Yes</span>
+                            </div>
+                        @else
+                            <div class="input-group">
+                                <span class="input-group-text">Document Uploaded</span>
+                                <span class="form-control text-danger">No</span>
+                            </div>
+                        @endif
+
+
                     </div>
                 </div>
             </div>

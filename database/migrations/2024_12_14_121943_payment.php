@@ -13,13 +13,18 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id(); // شناسه پرداخت
-            $table->foreignId('contract_id')->constrained('contracts')->onDelete('cascade'); // ارجاع به قرارداد مرتبط
-            $table->foreignId('customer_id')->constrained('customers')->onDelete('cascade'); // ارجاع به مشتری مرتبط
-            $table->decimal('amount', 10, 2); // مبلغ پرداخت‌شده
-            $table->enum('payment_type', ['rental_fee', 'fine'])->default('rental_fee'); // نوع پرداخت (هزینه اجاره یا جریمه)
+            $table->foreignId('contract_id')->nullable()->constrained('contracts')->onDelete('cascade'); // ارجاع به قرارداد (در صورت وجود)
+            $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('cascade'); // ارجاع به مشتری
+            $table->foreignId('car_id')->nullable()->constrained('cars')->onDelete('cascade'); // در صورت نیاز به ارتباط با خودرو
+            $table->decimal('amount', 10, 2); // مبلغ پرداختی
+            $table->enum('currency', ['IRR', 'USD', 'AED'])->default('IRR');
+            $table->enum('payment_type', ['rental_fee', 'prepaid_fine', 'toll', 'fine'])->default('rental_fee'); // نوع پرداخت
+            $table->text('description')->nullable(); // توضیحات (در صورت نیاز)
             $table->date('payment_date'); // تاریخ پرداخت
-            $table->timestamps(); // زمان‌های ایجاد و ویرایش
-        });
+            $table->boolean('is_refundable')->default(false); // آیا این پرداخت بازگشت‌پذیر است؟ (برای پیش‌پرداخت خلافی)
+            $table->boolean('is_paid')->default(true); // وضعیت پرداخت
+            $table->timestamps();
+        }); 
         
         
     }

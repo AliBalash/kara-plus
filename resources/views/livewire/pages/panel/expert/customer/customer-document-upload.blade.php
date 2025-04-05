@@ -33,15 +33,15 @@
             </a>
         </li>
 
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('rental-requests.payment') ? 'active' : '' }}"
-                href="{{ route('rental-requests.payment', [$contractId, $customerId]) }}">
-                <i class="bx bx-money me-1"></i> Payment
-                @if ($this->hasPayments)
-                    ✔
-                @endif
-            </a>
-        </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('rental-requests.payment') ? 'active' : '' }}"
+                    href="{{ route('rental-requests.payment', [$contractId, $customerId]) }}">
+                    <i class="bx bx-money me-1"></i> Payment
+                    @if ($this->hasPayments)
+                        ✔
+                    @endif
+                </a>
+            </li>
 
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('rental-requests.history') ? 'active' : '' }}"

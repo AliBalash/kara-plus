@@ -44,7 +44,7 @@ class Dashboard extends Component
 
         // آمار کلی قراردادها
         $this->totalContracts = Contract::count();
-        $this->activeContracts = Contract::whereIn('current_status', ['assigned', 'under_review', 'delivery_in_progress'])->count();
+        $this->activeContracts = Contract::whereIn('current_status', ['assigned', 'under_review', 'delivery'])->count();
         $this->completedContracts = Contract::where('current_status', 'complete')->count();
         $this->cancelledContracts = Contract::where('current_status', 'cancelled')->count();
         $this->underReviewContracts = Contract::where('current_status', 'under_review')->count();

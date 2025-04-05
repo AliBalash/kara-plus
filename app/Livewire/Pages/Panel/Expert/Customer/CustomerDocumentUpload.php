@@ -18,6 +18,8 @@ class CustomerDocumentUpload extends Component
     public $passport;
     public $license;
     public $ticket;
+    public $hasCustomerDocument;
+    public $hasPayments;
     public $existingFiles = [];
 
     public function mount($customerId, $contractId)

@@ -42,19 +42,43 @@ class Login extends Component
             'password' => 'required',
         ]);
 
-        if (Auth::attempt(['phone' => $this->phone, 'password' => $this->password])) {
+        // تبدیل شماره تلفن ورودی به فرمت استاندارد
+        $normalizedPhone = $this->normalizePhoneNumber($this->phone);
 
-            session()->regenerate(); // بازسازی نشست برای جلوگیری از حملات CSRF
+        if (Auth::attempt(['phone' => $normalizedPhone, 'password' => $this->password])) {
+            session()->regenerate(); // بازسازی نشست برای امنیت بیشتر
 
-            // کاربر را دریافت کنید
+            // دریافت کاربر و آپدیت زمان آخرین ورود
             $user = Auth::user();
-            // به‌روزرسانی last_login
-            $user->updateLastLogin();
+            $user->update(['last_login' => now()]);
 
-            // ریدایرکت به داشبورد
             return redirect()->to(route('expert.dashboard'));
         } else {
-            session()->flash('error', 'Invalid credentials');
+            session()->flash('error', 'شماره یا رمز عبور نادرست است.');
         }
+    }
+
+    // تابع استاندارد‌سازی شماره تلفن
+    private function normalizePhoneNumber($phone)
+    {
+        $phone = trim($phone);
+
+        if (preg_match('/^09\d{9}$/', $phone)) {
+            return '+98' . substr($phone, 1);
+        }
+
+        if (preg_match('/^098\d{9}$/', $phone)) {
+            return '+98' . substr($phone, 2);
+        }
+
+        if (preg_match('/^0971\d{9,10}$/', $phone)) {
+            return '+971' . substr($phone, 4);
+        }
+
+        if (preg_match('/^971\d{9}$/', $phone)) {
+            return '+971' . substr($phone, 3);
+        }
+
+        return $phone; // اگر فرمت نامشخص بود، همان مقدار را برگرداند
     }
 }
