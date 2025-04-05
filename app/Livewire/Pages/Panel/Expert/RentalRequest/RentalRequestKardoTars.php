@@ -5,24 +5,24 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use App\Models\Contract;
 use Livewire\Component;
 
-class RentalRequestReserved extends Component
+class RentalRequestKardoTars extends Component
 {
 
-    public $reservedContracts;
+    public $kardotarsContracts;
     protected $listeners = [
         'refreshContracts' => '$refresh',
     ];
 
     public function mount()
     {
-        $this->reservedContracts = Contract::where('current_status', 'reserved')->latest()->get();
+        $this->kardotarsContracts = Contract::where('current_status', 'delivery')->get();
     }
 
     public $search = '';  // متغیر جستجو
     // متد برای فیلتر کردن داده‌ها بر اساس جستجو
     public function updatedSearch()
     {
-        $this->reservedContracts = Contract::query()
+        $this->kardotarsContracts = Contract::query()
             ->whereHas('customer', function ($query) {
                 $query->where('first_name', 'like', '%' . $this->search . '%')
                     ->orWhere('last_name', 'like', '%' . $this->search . '%');
@@ -32,15 +32,15 @@ class RentalRequestReserved extends Component
             ->get();
     }
 
-    public function changeStatusToDelivery($contractId)
+    public function changeStatusToAwaitingReturn($contractId)
     {
         $contract = Contract::findOrFail($contractId);
 
         // تغییر وضعیت به 'delivery'
-        $contract->changeStatus('delivery', auth()->id());
+        $contract->changeStatus('awaiting_return', auth()->id());
         
         // **بروزرسانی لیست قراردادها**
-        $this->reservedContracts = Contract::where('current_status', 'reserved')->get();
+        $this->kardotarsContracts = Contract::where('current_status', 'delivery')->get();
 
         // ارسال دستور برای به‌روزرسانی داده‌ها
         $this->dispatch('refreshContracts');
@@ -49,8 +49,8 @@ class RentalRequestReserved extends Component
 
     public function render()
     {
-        return view('livewire.pages.panel.expert.rental-request.rental-request-reserved', [
-            'contracts' => $this->reservedContracts,
+        return view('livewire.pages.panel.expert.rental-request.rental-request-kardotars', [
+            'contracts' => $this->kardotarsContracts,
         ]);
     }
 }

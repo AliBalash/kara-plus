@@ -1,6 +1,6 @@
 <div class="container">
     <h4 class="fw-bold py-3 mb-4">
-        <span class="text-muted fw-light">Contract /</span> Pickup Document
+        <span class="text-muted fw-light">Contract /</span> Return Document
     </h4>
 
     @if (session()->has('message'))
@@ -17,7 +17,7 @@
 
 
     <div class="card">
-        <h5 class="card-header">Upload Pickup Documents</h5>
+        <h5 class="card-header">Upload Return Documents</h5>
         <div class="card-body">
             <form wire:submit.prevent="uploadDocuments">
 

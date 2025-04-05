@@ -9,33 +9,67 @@ class Payment extends Model
 {
     use HasFactory;
 
-    /**
-     * ویژگی‌های قابل پر کردن (mass assignable).
-     *
-     * @var array
-     */
     protected $fillable = [
         'contract_id',
         'customer_id',
+        'car_id',
         'amount',
+        'currency',
         'payment_type',
+        'description',
         'payment_date',
+        'is_refundable',
+        'is_paid'
     ];
 
-    /**
-     * تبدیل‌های مربوط به نوع داده‌ها.
-     *
-     * @var array
-     */
     protected $casts = [
         'payment_date' => 'date',
-        'amount' => 'decimal:2',
+        'is_refundable' => 'boolean',
+        'is_paid' => 'boolean',
     ];
 
     /**
-     * رابطه با مدل Contract (قرارداد).
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * دریافت پرداخت‌های انجام‌شده
+     */
+    public static function getPaidPayments()
+    {
+        return self::where('is_paid', true)->get();
+    }
+
+    /**
+     * دریافت پرداخت‌های معوقه
+     */
+    public static function getUnpaidPayments()
+    {
+        return self::where('is_paid', false)->get();
+    }
+
+    /**
+     * دریافت پرداخت‌های قابل استرداد
+     */
+    public static function getRefundablePayments()
+    {
+        return self::where('is_refundable', true)->get();
+    }
+
+    /**
+     * محاسبه کل پرداخت‌های یک قرارداد خاص
+     */
+    public static function getTotalPaymentsForContract($contractId)
+    {
+        return self::where('contract_id', $contractId)->sum('amount');
+    }
+
+    /**
+     * محاسبه کل مبلغ پرداخت‌شده توسط یک مشتری
+     */
+    public static function getTotalPaymentsForCustomer($customerId)
+    {
+        return self::where('customer_id', $customerId)->sum('amount');
+    }
+
+    /**
+     * ارتباط با قرارداد
      */
     public function contract()
     {
@@ -43,48 +77,18 @@ class Payment extends Model
     }
 
     /**
-     * متد برای گرفتن نوع پرداخت به صورت فرمت‌شده.
-     *
-     * @return string
+     * ارتباط با مشتری
      */
-    public function getPaymentTypeLabelAttribute()
-    {
-        return ucfirst($this->payment_type);
-    }
-
-    // Relationship with Customer model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
     }
 
     /**
-     * متد برای گرفتن مبلغ پرداخت‌شده با فرمت مناسب.
-     *
-     * @return string
+     * ارتباط با خودرو
      */
-    public function getFormattedAmountAttribute()
+    public function car()
     {
-        return number_format($this->amount, 2);
-    }
-
-    /**
-     * متد برای چک کردن نوع پرداخت (هزینه اجاره یا جریمه).
-     *
-     * @return bool
-     */
-    public function isRentalFee(): bool
-    {
-        return $this->payment_type === 'rental_fee';
-    }
-
-    /**
-     * متد برای چک کردن اینکه پرداخت به عنوان جریمه بوده است یا خیر.
-     *
-     * @return bool
-     */
-    public function isFinePayment(): bool
-    {
-        return $this->payment_type === 'fine';
+        return $this->belongsTo(Car::class);
     }
 }

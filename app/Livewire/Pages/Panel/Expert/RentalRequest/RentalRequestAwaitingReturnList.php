@@ -5,24 +5,24 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use App\Models\Contract;
 use Livewire\Component;
 
-class RentalRequestReserved extends Component
+class RentalRequestAwaitingReturnList extends Component
 {
 
-    public $reservedContracts;
+    public $awaitContracts;
     protected $listeners = [
         'refreshContracts' => '$refresh',
     ];
 
     public function mount()
     {
-        $this->reservedContracts = Contract::where('current_status', 'reserved')->latest()->get();
+        $this->awaitContracts = Contract::where('current_status', 'awaiting_return')->get();
     }
 
     public $search = '';  // متغیر جستجو
     // متد برای فیلتر کردن داده‌ها بر اساس جستجو
     public function updatedSearch()
     {
-        $this->reservedContracts = Contract::query()
+        $this->awaitContracts = Contract::query()
             ->whereHas('customer', function ($query) {
                 $query->where('first_name', 'like', '%' . $this->search . '%')
                     ->orWhere('last_name', 'like', '%' . $this->search . '%');
@@ -32,25 +32,27 @@ class RentalRequestReserved extends Component
             ->get();
     }
 
-    public function changeStatusToDelivery($contractId)
+    public function changeStatusToPayment($contractId)
     {
         $contract = Contract::findOrFail($contractId);
 
-        // تغییر وضعیت به 'delivery'
-        $contract->changeStatus('delivery', auth()->id());
-        
+        // تغییر وضعیت به 'awaiting_return'
+        $contract->changeStatus('payment', auth()->id());
+
         // **بروزرسانی لیست قراردادها**
-        $this->reservedContracts = Contract::where('current_status', 'reserved')->get();
+        $this->awaitContracts = Contract::where('current_status', 'awaiting_return')->get();
 
         // ارسال دستور برای به‌روزرسانی داده‌ها
         $this->dispatch('refreshContracts');
-        session()->flash('success', 'Status changed to Reserved successfully.');
+        session()->flash('success', 'Status changed to payment successfully.');
     }
-
     public function render()
     {
-        return view('livewire.pages.panel.expert.rental-request.rental-request-reserved', [
-            'contracts' => $this->reservedContracts,
-        ]);
+        return view(
+            'livewire.pages.panel.expert.rental-request.rental-request-awaiting-return-list',
+            [
+                'contracts' => $this->awaitContracts
+            ]
+        );
     }
 }

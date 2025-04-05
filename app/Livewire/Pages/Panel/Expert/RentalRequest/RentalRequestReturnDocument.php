@@ -2,13 +2,13 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
-use App\Models\PickupDocument;
+use App\Models\ReturnDocument;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\Component;
 
-class RentalRequestPickupDocument extends Component
+class RentalRequestReturnDocument extends Component
 {
 
     use WithFileUploads;
@@ -26,17 +26,17 @@ class RentalRequestPickupDocument extends Component
     {
         $this->contractId = $contractId;
         $this->existingFiles = [
-            'tarsContract' => Storage::disk('public')->exists("PickupDocument/tars_contract_{$this->contractId}.jpg")
-                ? Storage::url("PickupDocument/tars_contract_{$this->contractId}.jpg")
+            'tarsContract' => Storage::disk('public')->exists("ReturnDocument/tars_contract_{$this->contractId}.jpg")
+                ? Storage::url("ReturnDocument/tars_contract_{$this->contractId}.jpg")
                 : null,
-            'kardoContract' => Storage::disk('public')->exists("PickupDocument/kardo_contract_{$this->contractId}.jpg")
-                ? Storage::url("PickupDocument/kardo_contract_{$this->contractId}.jpg")
+            'kardoContract' => Storage::disk('public')->exists("ReturnDocument/kardo_contract_{$this->contractId}.jpg")
+                ? Storage::url("ReturnDocument/kardo_contract_{$this->contractId}.jpg")
                 : null,
-            'factorContract' => Storage::disk('public')->exists("PickupDocument/factor_contract_{$this->contractId}.jpg")
-                ? Storage::url("PickupDocument/factor_contract_{$this->contractId}.jpg")
+            'factorContract' => Storage::disk('public')->exists("ReturnDocument/factor_contract_{$this->contractId}.jpg")
+                ? Storage::url("ReturnDocument/factor_contract_{$this->contractId}.jpg")
                 : null,
-            'carVideo' => Storage::disk('public')->exists("PickupDocument/car_video_{$this->contractId}.mp4")
-                ? Storage::url("PickupDocument/car_video_{$this->contractId}.mp4")
+            'carVideo' => Storage::disk('public')->exists("ReturnDocument/car_video_{$this->contractId}.mp4")
+                ? Storage::url("ReturnDocument/car_video_{$this->contractId}.mp4")
                 : null,
         ];
     }
@@ -82,7 +82,7 @@ class RentalRequestPickupDocument extends Component
         $uploadedPaths = [];
 
         try {
-            $pickupDocument = PickupDocument::updateOrCreate(
+            $returnDocument = ReturnDocument::updateOrCreate(
                 ['contract_id' => $this->contractId],
                 ['user_id' => auth()->id()]
             );
@@ -90,37 +90,37 @@ class RentalRequestPickupDocument extends Component
 
             // Tars Contract Upload
             if ($this->tarsContract) {
-                $tarsPath = $this->tarsContract->storeAs('PickupDocument', "tars_contract_{$this->contractId}.jpg", 'public');
+                $tarsPath = $this->tarsContract->storeAs('ReturnDocument', "tars_contract_{$this->contractId}.jpg", 'public');
                 if (!$tarsPath) throw new \Exception('Error uploading Tars contract.');
-                $pickupDocument->tars_contract = $tarsPath;
+                $returnDocument->tars_contract = $tarsPath;
                 $uploadedPaths[] = $tarsPath;
             }
 
             // Kardo Contract Upload
             if ($this->kardoContract) {
-                $kardoPath = $this->kardoContract->storeAs('PickupDocument', "kardo_contract_{$this->contractId}.jpg", 'public');
+                $kardoPath = $this->kardoContract->storeAs('ReturnDocument', "kardo_contract_{$this->contractId}.jpg", 'public');
                 if (!$kardoPath) throw new \Exception('Error uploading Kardo contract.');
-                $pickupDocument->kardo_contract = $kardoPath;
+                $returnDocument->kardo_contract = $kardoPath;
                 $uploadedPaths[] = $kardoPath;
             }
 
             // Factor Contract Upload
             if ($this->factorContract) {
-                $factorPath = $this->factorContract->storeAs('PickupDocument', "factor_contract_{$this->contractId}.jpg", 'public');
+                $factorPath = $this->factorContract->storeAs('ReturnDocument', "factor_contract_{$this->contractId}.jpg", 'public');
                 if (!$factorPath) throw new \Exception('Error uploading factor contract.');
-                $pickupDocument->factor_contract = $factorPath;
+                $returnDocument->factor_contract = $factorPath;
                 $uploadedPaths[] = $factorPath;
             }
 
             // Car Video Upload
             if ($this->carVideo) {
-                $videoPath = $this->carVideo->storeAs('PickupDocument', "car_video_{$this->contractId}.mp4", 'public');
+                $videoPath = $this->carVideo->storeAs('ReturnDocument', "car_video_{$this->contractId}.mp4", 'public');
                 if (!$videoPath) throw new \Exception('Error uploading car video.');
-                $pickupDocument->car_video = $videoPath;
+                $returnDocument->car_video = $videoPath;
                 $uploadedPaths[] = $videoPath;
             }
-            $pickupDocument->user_id = auth()->id();
-            $pickupDocument->save();
+            $returnDocument->user_id = auth()->id();
+            $returnDocument->save();
 
 
 
@@ -138,14 +138,13 @@ class RentalRequestPickupDocument extends Component
 
             session()->flash('error', 'Error uploading documents: ' . $e->getMessage());
         }
-
     }
 
 
     public function removeFile($fileType)
     {
         $extension = ($fileType === 'car_video') ? 'mp4' : 'jpg';
-        $filePath = "PickupDocument/{$fileType}_{$this->contractId}.{$extension}";
+        $filePath = "ReturnDocument/{$fileType}_{$this->contractId}.{$extension}";
 
         if (Storage::disk('public')->exists($filePath)) {
             Storage::disk('public')->delete($filePath);
@@ -153,19 +152,18 @@ class RentalRequestPickupDocument extends Component
 
         $this->existingFiles[$fileType] = null;
 
-        $pickupDocument = PickupDocument::where('contract_id', $this->contractId)->first();
-        if ($pickupDocument) {
-            $pickupDocument->{$fileType} = null;
-            $pickupDocument->save();
+        $returnDocument = ReturnDocument::where('contract_id', $this->contractId)->first();
+        if ($returnDocument) {
+            $returnDocument->{$fileType} = null;
+            $returnDocument->save();
         }
 
         session()->flash('message', ucfirst($fileType) . ' successfully removed.');
 
         $this->mount($this->contractId);
     }
-
     public function render()
     {
-        return view('livewire.pages.panel.expert.rental-request.rental-request-pickup-document');
+        return view('livewire.pages.panel.expert.rental-request.rental-request-return-document');
     }
 }

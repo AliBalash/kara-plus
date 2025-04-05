@@ -1,5 +1,5 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Reserved</h4>
+    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Kardo Tars</h4>
 
     <div class="row" style="padding: 0.5rem 1.5rem">
         <div class="">
@@ -15,7 +15,7 @@
 
     <!-- نمایش پیام‌ها -->
     @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert" wire:key="success-message">
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
             <strong>Success!</strong> {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -34,46 +34,32 @@
                     <th>#</th> <!-- افزودن ستون ID قرارداد -->
                     <th>Customer</th>
                     <th>Car</th>
-                    <th>Pickup Date</th>
-                    {{-- <th>End Date</th> --}}
+                    <th>Delivery Date</th>
+                    <th>Return Date</th>
                     <th>Expert</th>
-                    <th>Location</th>
-                    <th>Document</th>
+                    <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
-                @foreach ($reservedContracts as $reservedContract)
+                @foreach ($kardotarsContracts as $kardotarsContract)
                     <tr>
-                        <td>{{ $reservedContract->id }}</td> <!-- نمایش ID قرارداد -->
-                        <td>{{ $reservedContract->customer->fullName() }}</td>
-                        <td>{{ $reservedContract->car->fullName() }}</td>
-                        <td>{{ \Carbon\Carbon::parse($reservedContract->pickup_date)->format('d M Y') }}</td>
-                        {{-- <td>{{ \Carbon\Carbon::parse($reservedContract->return_date)->format('d M Y') }}</td> --}}
+                        <td>{{ $kardotarsContract->id }}</td> <!-- نمایش ID قرارداد -->
+                        <td>{{ $kardotarsContract->customer->fullName() }}</td>
+                        <td>{{ $kardotarsContract->car->fullName() }}</td>
+                        <td>{{ \Carbon\Carbon::parse($kardotarsContract->pickup_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($kardotarsContract->return_date)->format('d M Y') }}</td>
                         <td>
-                            @if ($reservedContract->user)
-                                <span class="badge bg-primary">{{ $reservedContract->user->fullName() }}</span>
+                            @if ($kardotarsContract->user)
+                                <span class="badge bg-primary">{{ $kardotarsContract->user->fullName() }}</span>
                             @else
                                 <span class="badge bg-secondary">No User</span>
                             @endif
                         </td>
                         <td>
-                            {{$reservedContract->pickup_location}}
-                            {{-- <x-status-badge :status="$reservedContract->current_status" /> --}}
-                           
-                        </td>
-                        <td>
-                            @if ($reservedContract->customerDocument()->exists())
-                                <span class="badge bg-warning">📄 Customer</span>
-                            @endif
 
-                            @if ($reservedContract->ReturnDocument()->exists())
-                                <span class="badge bg-success">📄 Return</span>
-                            @endif
+                            <x-status-badge :status="$kardotarsContract->current_status" />
 
-                            @if ($reservedContract->pickupDocument()->exists())
-                                <span class="badge bg-primary">📄 Deliver</span>
-                            @endif
                         </td>
                         <td>
                             <div class="dropdown">
@@ -86,29 +72,39 @@
 
                                     <!-- گزینه Pickup Document -->
                                     <a class="dropdown-item"
-                                        href="{{ route('rental-requests.pickup-document', $reservedContract->id) }}">
-                                        <i class="bx bx-file me-1"></i> Delivery Document
+                                        href="{{ route('rental-requests.pickup-document', $kardotarsContract->id) }}">
+                                        <i class="bx bx-file me-1"></i> Pickup Document
                                     </a>
 
-
+                                    <!-- گزینه Pickup Document -->
                                     <a class="dropdown-item" href="javascript:void(0);"
-                                        wire:click.prevent="changeStatusToDelivery({{ $reservedContract->id }})">
-                                        <i class="bx bx-bookmark me-1"></i> Set to Delivery
+                                        wire:click.prevent="changeStatusToAwaitingReturn({{ $kardotarsContract->id }})">
+                                        <i class="bx bx-bookmark me-1"></i> Kardo Tars Inspection
                                     </a>
 
 
 
-                                    @if ($reservedContract->user_id === auth()->id())
+
+                                    @if ($kardotarsContract->user_id === auth()->id())
                                         <!-- گزینه Details -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $reservedContract->id) }}">
+                                            href="{{ route('rental-requests.details', $kardotarsContract->id) }}">
                                             <i class="bx bx-info-circle me-1"></i> Details
                                         </a>
 
                                         <!-- گزینه Edit -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.form', $reservedContract->id) }}">
+                                            href="{{ route('rental-requests.form', $kardotarsContract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
+                                        </a>
+
+
+
+
+                                        <!-- گزینه Delete -->
+                                        <a class="dropdown-item" href="javascript:void(0);"
+                                            wire:click.prevent="deleteContract({{ $kardotarsContract->id }})">
+                                            <i class="bx bx-trash me-1"></i> Delete
                                         </a>
                                     @endif
 

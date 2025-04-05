@@ -1,5 +1,5 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Agreement</h4>
+    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Await Contracts</h4>
 
     <div class="row" style="padding: 0.5rem 1.5rem">
         <div class="">
@@ -15,7 +15,7 @@
 
     <!-- نمایش پیام‌ها -->
     @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <div class="alert alert-success alert-dismissible fade show" role="alert" wire:key="success-message">
             <strong>Success!</strong> {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -31,35 +31,48 @@
         <table class="table table-hover">
             <thead>
                 <tr>
-                    <th>#</th> <!-- افزودن ستون ID قرارداد -->
+                    <th>#</th>
                     <th>Customer</th>
                     <th>Car</th>
-                    <th>Pickup Date</th>
-                    <th>Return Date</th>
+                    <th>End Date</th>
                     <th>Expert</th>
                     <th>Status</th>
+                    <th>Document</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
-                @foreach ($agreementContracts as $agreementContract)
+                @foreach ($awaitContracts as $awaitContract)
                     <tr>
-                        <td>{{ $agreementContract->id }}</td> <!-- نمایش ID قرارداد -->
-                        <td>{{ $agreementContract->customer->fullName() }}</td>
-                        <td>{{ $agreementContract->car->fullName() }}</td>
-                        <td>{{ \Carbon\Carbon::parse($agreementContract->pickup_date)->format('d M Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($agreementContract->return_date)->format('d M Y') }}</td>
+                        <td>{{ $awaitContract->id }}</td> <!-- نمایش ID قرارداد -->
+                        <td>{{ $awaitContract->customer->fullName() }}</td>
+                        <td>{{ $awaitContract->car->fullName() }}</td>
+                        {{-- <td>{{ \Carbon\Carbon::parse($awaitContract->pickup_date)->format('d M Y') }}</td> --}}
+                        <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y') }}</td>
                         <td>
-                            @if ($agreementContract->user)
-                                <span class="badge bg-primary">{{ $agreementContract->user->fullName() }}</span>
+                            @if ($awaitContract->user)
+                                <span class="badge bg-primary">{{ $awaitContract->user->fullName() }}</span>
                             @else
                                 <span class="badge bg-secondary">No User</span>
                             @endif
                         </td>
                         <td>
+                            <x-status-badge :status="$awaitContract->current_status" />
 
-                            <x-status-badge :status="$agreementContract->current_status" />
+                            
+                        </td>
+                        <td>
+                            @if ($awaitContract->customerDocument()->exists())
+                                <span class="badge bg-warning">📄 Customer</span>
+                            @endif
 
+                            @if ($awaitContract->ReturnDocument()->exists())
+                                <span class="badge bg-success">📄 Return</span>
+                            @endif
+
+                            @if ($awaitContract->pickupDocument()->exists())
+                                <span class="badge bg-primary">📄 Deliver</span>
+                            @endif
                         </td>
                         <td>
                             <div class="dropdown">
@@ -70,40 +83,31 @@
                                 <div class="dropdown-menu">
 
 
-                                    <!-- گزینه Pickup Document -->
+                                    <!-- گزینه Return Document -->
                                     <a class="dropdown-item"
-                                        href="{{ route('rental-requests.agreement-inspection', $agreementContract->id) }}">
-                                        <i class="bx bx-file me-1"></i> Agreement Inspection
+                                        href="{{ route('rental-requests.return-document', $awaitContract->id) }}">
+                                        <i class="bx bx-file me-1"></i> Return Document
                                     </a>
 
-                                    
-                                    @if (is_null($agreementContract->user_id))
-                                        <!-- گزینه Assign to Me -->
-                                        <a wire:click.prevent="assignToMe({{ $agreementContract->id }})"
-                                            class="dropdown-item" href="javascript:void(0);">
-                                            <i class="bx bx-user-check me-1"></i> Assign to Me
-                                        </a>
-                                    @endif
-                                    @if ($agreementContract->user_id === auth()->id())
+
+                                    <a class="dropdown-item" href="javascript:void(0);"
+                                        wire:click.prevent="changeStatusToPayment({{ $awaitContract->id }})">
+                                        <i class="bx bx-money me-1"></i> Set to Payment
+                                    </a>
+
+
+
+                                    @if ($awaitContract->user_id === auth()->id())
                                         <!-- گزینه Details -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $agreementContract->id) }}">
+                                            href="{{ route('rental-requests.details', $awaitContract->id) }}">
                                             <i class="bx bx-info-circle me-1"></i> Details
                                         </a>
 
                                         <!-- گزینه Edit -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.form', $agreementContract->id) }}">
+                                            href="{{ route('rental-requests.form', $awaitContract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
-                                        </a>
-
-
-
-
-                                        <!-- گزینه Delete -->
-                                        <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="deleteContract({{ $agreementContract->id }})">
-                                            <i class="bx bx-trash me-1"></i> Delete
                                         </a>
                                     @endif
 

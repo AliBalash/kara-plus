@@ -35,7 +35,7 @@
                                         <th>#</th> <!-- افزودن ستون ID قرارداد -->
                                         <th>Customer</th>
                                         <th>Car</th>
-                                        <th>Pickup Date</th>
+                                        <th>Delivery Date</th>
                                         <th>Return Date</th>
                                         <th>Expert</th>
                                         <th>Status</th>
@@ -68,7 +68,7 @@
                                                         @case('assigned') bg-label-info @break
                                                         @case('under_review') bg-label-secondary @break
                                                         @case('reserved') bg-label-primary @break
-                                                        @case('delivery_in_progress') bg-label-dark @break
+                                                        @case('delivery') bg-label-dark @break
                                                         @case('agreement_inspection') bg-label-light @break
                                                         @case('awaiting_return') bg-label-warning @break
                                                         @case('returned') bg-label-success @break

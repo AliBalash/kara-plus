@@ -34,10 +34,11 @@
                     <th>#</th> <!-- افزودن ستون ID قرارداد -->
                     <th>Customer</th>
                     <th>Car</th>
-                    <th>Pickup Date</th>
+                    <th>Delivery Date</th>
                     <th>End Date</th>
                     <th>Expert</th>
                     <th>Status</th>
+                    <th>Document</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -58,6 +59,19 @@
                         </td>
                         <td>
                             <x-status-badge :status="$contract->current_status" />
+                        </td>
+                        <td>
+                            @if ($contract->customerDocument()->exists())
+                                <span class="badge bg-warning">📄 Customer</span>
+                            @endif
+
+                            @if ($contract->ReturnDocument()->exists())
+                                <span class="badge bg-success">📄 Return</span>
+                            @endif
+
+                            @if ($contract->pickupDocument()->exists())
+                                <span class="badge bg-primary">📄 Deliver</span>
+                            @endif
                         </td>
                         <td>
                             <div class="dropdown">

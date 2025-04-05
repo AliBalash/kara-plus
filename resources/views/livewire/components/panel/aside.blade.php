@@ -2,7 +2,7 @@
     <div class="app-brand demo">
         <a href="index.html" class="app-brand-link">
             <span class="app-brand-logo demo">
-                <img width="120" src="{{asset('assets/panel/assets/img/logo/logo.png')}}" alt="logo">
+                <img width="120" src="{{ asset('assets/panel/assets/img/logo/logo.png') }}" alt="logo">
             </span>
             {{-- <span class="app-brand-text demo menu-text fw-bolder ms-2">Sneat</span> --}}
         </a>
@@ -23,15 +23,6 @@
             </a>
         </li>
 
-
-        <li class="menu-item {{ Request::routeIs('discount.codes') ? 'active' : '' }}">
-            <a href="{{ route('discount.codes') }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bxs-discount"></i>
-                <div data-i18n="Analytics">Discount Codes</div>
-            </a>
-        </li>
-
-        
 
 
         <!-- Rental Request -->
@@ -60,9 +51,22 @@
                     </a>
                 </li>
 
-                <li class="menu-item {{ Request::routeIs('rental-requests.agreement') ? 'active' : '' }}">
-                    <a href="{{ route('rental-requests.agreement') }}" class="menu-link">
-                        <div data-i18n="Without menu">Agreement</div>
+                <li class="menu-item {{ Request::routeIs('rental-requests.kardotars') ? 'active' : '' }}">
+                    <a href="{{ route('rental-requests.kardotars') }}" class="menu-link">
+                        <div data-i18n="Without menu">Kardo Tars</div>
+                    </a>
+                </li>
+
+                <li class="menu-item {{ Request::routeIs('rental-requests.awaiting') ? 'active' : '' }}">
+                    <a href="{{ route('rental-requests.awaiting') }}" class="menu-link">
+                        <div data-i18n="Without menu">Awaiting Return</div>
+                    </a>
+                </li>
+
+
+                <li class="menu-item {{ Request::routeIs('rental-requests.payment.list') ? 'active' : '' }}">
+                    <a href="{{ route('rental-requests.payment.list') }}" class="menu-link">
+                        <div data-i18n="Without menu">Payment</div>
                     </a>
                 </li>
 
@@ -177,6 +181,15 @@
                 </li>
             </ul>
         </li>
+
+
+        <li class="menu-item {{ Request::routeIs('discount.codes') ? 'active' : '' }}">
+            <a href="{{ route('discount.codes') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bxs-discount"></i>
+                <div data-i18n="Analytics">Discount Codes</div>
+            </a>
+        </li>
+
 
     </ul>
 </aside>

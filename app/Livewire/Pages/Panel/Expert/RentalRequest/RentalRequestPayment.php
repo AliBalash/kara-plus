@@ -6,33 +6,41 @@ use Livewire\Component;
 use App\Models\Payment;
 use App\Models\Contract;
 use App\Models\CustomerDocument;
-use App\Models\Fine;
+use Carbon\Carbon;
 
 class RentalRequestPayment extends Component
 {
     public $contractId;
     public $customerId;
     public $amount;
+    public $currency = 'IRR';
     public $payment_type;
     public $payment_date;
+    public $is_refundable = false;
 
-    public $existingPayments;  // List of existing payments
-    public $totalPrice;        // Total price from the contract
-    public $fines;             // Fines associated with the contract
+    public $existingPayments;
+    public $totalPrice;
+    public $rentalPaid;
+    public $remainingBalance;
 
     public $hasCustomerDocument;
     public $hasPayments;
-    
+
     protected $rules = [
         'amount' => 'required|numeric|min:0',
-        'payment_type' => 'required|in:rental_fee,fine',
+        'currency' => 'required|in:IRR,USD,AED',
+        'payment_type' => 'required|in:rental_fee,prepaid_fine,toll,fine',
         'payment_date' => 'required|date',
+        'is_refundable' => 'required|boolean',
     ];
 
     public function mount($contractId, $customerId)
     {
         $this->contractId = $contractId;
         $this->customerId = $customerId;
+
+        // دریافت total_price از مدل Contract
+        $this->totalPrice = Contract::where('id', $this->contractId)->value('total_price') ?? 0;
 
         // بررسی وجود اسناد مشتری
         $this->hasCustomerDocument = CustomerDocument::where('customer_id', $this->customerId)
@@ -44,56 +52,59 @@ class RentalRequestPayment extends Component
             ->where('contract_id', $this->contractId)
             ->exists();
 
+        $this->loadData();
+    }
 
-        // Fetch existing payments for this contract and customer
-        $this->existingPayments = Payment::where('contract_id', $contractId)
-            ->where('customer_id', $customerId)
+    public function loadData()
+    {
+        $this->existingPayments = Payment::where('contract_id', $this->contractId)
+            ->where('customer_id', $this->customerId)
             ->get();
 
-        // Fetch total price from the contract
-        $this->totalPrice = Contract::where('id', $contractId)->value('total_price');
+        $this->rentalPaid = $this->existingPayments
+            ->where('payment_type', 'rental_fee')
+            ->sum('amount');
 
-        // Fetch fines associated with the contract
-        $this->fines = Fine::where('contract_id', $contractId)->get();
+        $this->remainingBalance = $this->totalPrice - $this->rentalPaid;
     }
+
 
     public function submitPayment()
     {
         $this->validate();
 
         try {
-            // Create new payment entry
             Payment::create([
                 'contract_id' => $this->contractId,
                 'customer_id' => $this->customerId,
                 'amount' => $this->amount,
+                'currency' => $this->currency,
                 'payment_type' => $this->payment_type,
-                'payment_date' => $this->payment_date,
+                'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
+                'is_paid' => false,
+                'is_refundable' => $this->is_refundable,
             ]);
 
-            session()->flash('message', 'Payment successfully added!');
+            session()->flash('message', 'Payment was successfully added!');
             $this->resetForm();
-            $this->existingPayments = Payment::where('contract_id', $this->contractId)
-                ->where('customer_id', $this->customerId)
-                ->get(); // Refresh payments list
-
+            $this->loadData();
+            $this->dispatch('payment-updated');
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to add payment: ' . $e->getMessage());
+            session()->flash('error', 'Error adding payment: ' . $e->getMessage());
         }
     }
 
     public function resetForm()
     {
         $this->amount = '';
+        $this->currency = 'IRR';
         $this->payment_type = '';
         $this->payment_date = '';
+        $this->is_refundable = false;
     }
 
     public function render()
     {
-        $rentalPaid = $this->existingPayments->where('payment_type', 'rental_fee')->sum('amount');
-        $remainingBalance = $this->totalPrice - $rentalPaid;
-
-        return view('livewire.pages.panel.expert.rental-request.rental-request-payment', compact('rentalPaid', 'remainingBalance'));
+        return view('livewire.pages.panel.expert.rental-request.rental-request-payment');
     }
 }

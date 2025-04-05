@@ -4,7 +4,7 @@
         case 'assigned': $badgeClass = 'bg-label-info'; break;
         case 'under_review': $badgeClass = 'bg-label-secondary'; break;
         case 'reserved': $badgeClass = 'bg-label-primary'; break;
-        case 'delivery_in_progress': $badgeClass = 'bg-label-dark'; break;
+        case 'delivery': $badgeClass = 'bg-label-dark'; break;
         case 'agreement_inspection': $badgeClass = 'bg-label-light'; break;
         case 'awaiting_return': $badgeClass = 'bg-label-warning'; break;
         case 'returned': $badgeClass = 'bg-label-success'; break;

@@ -56,7 +56,7 @@ class Contract extends Model
      */
     public function isActive(): bool
     {
-        return $this->current_status === 'assigned' || $this->current_status === 'under_review' || $this->current_status === 'delivery_in_progress';
+        return $this->current_status === 'assigned' || $this->current_status === 'under_review' || $this->current_status === 'delivery';
     }
 
     /**
@@ -171,5 +171,10 @@ class Contract extends Model
     public function pickupDocument()
     {
         return $this->hasOne(PickupDocument::class);
+    }
+
+    public function ReturnDocument()
+    {
+        return $this->hasOne(ReturnDocument::class);
     }
 }
