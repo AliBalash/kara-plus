@@ -312,4 +312,19 @@ class RentalRequestForm extends Component
     {
         return view('livewire.pages.panel.expert.rental-request.rental-request-form');
     }
+
+
+    public function changeStatusToReserve($contractId)
+    {
+        $contract = Contract::findOrFail($contractId);
+
+        if ($contract->user_id === auth()->id()) {
+            // تغییر وضعیت به 'assigned'
+            $contract->changeStatus('reserved', auth()->id());
+
+            session()->flash('message', 'Status changed to Reserved successfully.');
+        } else {
+            session()->flash('error', 'You are not authorized to perform this action.');
+        }
+    }
 }

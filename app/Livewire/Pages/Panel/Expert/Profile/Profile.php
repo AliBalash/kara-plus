@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\Profile;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -54,9 +55,10 @@ class Profile extends Component
         $user = Auth::user();
 
         if ($this->new_avatar) {
-            // حذف عکس قبلی اگر وجود داشته باشد
-            if ($user->avatar && file_exists(public_path('storage/' . $user->avatar))) {
-                unlink(public_path('storage/' . $user->avatar));
+
+
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
             }
 
             // آپلود عکس جدید

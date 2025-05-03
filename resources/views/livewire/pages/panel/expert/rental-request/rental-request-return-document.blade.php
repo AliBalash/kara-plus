@@ -1,7 +1,25 @@
 <div class="container">
-    <h4 class="fw-bold py-3 mb-4">
-        <span class="text-muted fw-light">Contract /</span> Return Document
-    </h4>
+
+
+    <div class="row">
+
+        <div class="col-lg-4 text-start">
+            <h4 class="fw-bold py-3 mb-4">
+                <span class="text-muted fw-light">Contract /</span> Return Document
+            </h4>
+        </div>
+
+        @if (!empty($contractId))
+            <div class="col-lg-8 text-end">
+                <a class="btn btn-danger fw-bold" href="javascript:void(0);"
+                    onclick="if(confirm('Are you sure you want to set this contract to Payment?')) { @this.changeStatusToPayment({{ $contractId }}) }">
+                    Set to Payment
+                    <i class="bx bxs-log-in-circle"></i>
+                </a>
+            </div>
+        @endif
+
+    </div>
 
     @if (session()->has('message'))
         <div class="alert alert-success">{{ session('message') }}</div>
@@ -15,18 +33,16 @@
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
+    <x-detail-rental-request-tabs :contract-id="$contractId" />
+
 
     <div class="card">
         <h5 class="card-header">Upload Return Documents</h5>
         <div class="card-body">
-            <form wire:submit.prevent="uploadDocuments">
-
-
+            {{-- <form wire:submit.prevent="uploadDocuments">
                 <div class="row">
                     <!-- Tars Contract -->
                     <div class="col-md-6 mb-3">
-
-                        {{-- Modal Zoom Picture --}}
                         <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel"
                             aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
@@ -42,7 +58,6 @@
                                 </div>
                             </div>
                         </div>
-                        {{-- Modal Zoom Picture --}}
 
                         <label class="form-label">Tars Contract</label>
                         @if (!empty($existingFiles['tarsContract']))
@@ -129,9 +144,11 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary mt-3">Upload Documents</button>
-            </form>
+                 <button type="submit" class="btn btn-primary mt-3">Upload Documents</button> 
+             </form>  --}}
 
+
+            No Action And Submit Any Form
 
         </div>
 

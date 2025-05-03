@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Models\Contract;
 use App\Models\ReturnDocument;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -162,8 +163,20 @@ class RentalRequestReturnDocument extends Component
 
         $this->mount($this->contractId);
     }
+    
     public function render()
     {
         return view('livewire.pages.panel.expert.rental-request.rental-request-return-document');
+    }
+
+
+    public function changeStatusToPayment($contractId)
+    {
+        $contract = Contract::findOrFail($contractId);
+
+        // تغییر وضعیت به 'awaiting_return'
+        $contract->changeStatus('payment', auth()->id());
+
+        session()->flash('message', 'Status changed to payment successfully.');
     }
 }

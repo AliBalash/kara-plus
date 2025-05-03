@@ -76,11 +76,11 @@
                                         <i class="bx bx-file me-1"></i> Pickup Document
                                     </a>
 
-                                    <!-- گزینه Pickup Document -->
+                                    {{-- <!-- گزینه Pickup Document -->
                                     <a class="dropdown-item" href="javascript:void(0);"
                                         wire:click.prevent="changeStatusToAwaitingReturn({{ $kardotarsContract->id }})">
                                         <i class="bx bx-bookmark me-1"></i> Kardo Tars Inspection
-                                    </a>
+                                    </a> --}}
 
 
 
@@ -91,15 +91,6 @@
                                             href="{{ route('rental-requests.details', $kardotarsContract->id) }}">
                                             <i class="bx bx-info-circle me-1"></i> Details
                                         </a>
-
-                                        <!-- گزینه Edit -->
-                                        <a class="dropdown-item"
-                                            href="{{ route('rental-requests.form', $kardotarsContract->id) }}">
-                                            <i class="bx bx-edit-alt me-1"></i> Edit
-                                        </a>
-
-
-
 
                                         <!-- گزینه Delete -->
                                         <a class="dropdown-item" href="javascript:void(0);"

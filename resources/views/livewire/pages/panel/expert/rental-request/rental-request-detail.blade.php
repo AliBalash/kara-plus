@@ -2,66 +2,8 @@
     <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Rental Request /</span> Detail</h4>
 
 
-    <ul class="nav nav-pills flex-column flex-md-row mb-3">
-        <li class="nav-item">
-            <a class="nav-link active"
-                href="{{ isset($contract->id) ? route('rental-requests.form', $contract->id) : '#' }}">
-                <i class="bx bxs-info-square me-1"></i> Rental Information
-            </a>
-        </li>
+    <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
-        @if (isset($contract->customer))
-            {{-- Customer Document --}}
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('customer.documents', [$contract->id, $contract->customer->id]) }}">
-                    <i class="bx bx-file me-1"></i> Customer Document
-                    @if ($customerDocumentsCompleted ?? false)
-                        ✔
-                    @endif
-                </a>
-            </li>
-
-            {{-- Pickup Document --}}
-            <li class="nav-item">
-                <a class="nav-link"
-                    href="{{ route('rental-requests.pickup-document', [$contract->id, $contract->customer->id]) }}">
-                    <i class="bx bx-upload me-1"></i> Pickup Document
-                    @if ($pickupDocumentsCompleted ?? false)
-                        ✔
-                    @endif
-                </a>
-            </li>
-
-            {{-- Return Document --}}
-            <li class="nav-item">
-                <a class="nav-link"
-                    href="{{ route('rental-requests.return-document', [$contract->id, $contract->customer->id]) }}">
-                    <i class="bx bx-download me-1"></i> Return Document
-                    @if ($returnDocumentsCompleted ?? false)
-                        ✔
-                    @endif
-                </a>
-            </li>
-
-            {{-- Payment --}}
-            <li class="nav-item">
-                <a class="nav-link"
-                    href="{{ route('rental-requests.payment', [$contract->id, $contract->customer->id]) }}">
-                    <i class="bx bx-money me-1"></i> Payment
-                    @if ($paymentsExist ?? false)
-                        ✔
-                    @endif
-                </a>
-            </li>
-
-            {{-- Status / History --}}
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('rental-requests.history', $contract->id) }}">
-                    <i class="bx bx-history me-1"></i> Status & History
-                </a>
-            </li>
-        @endif
-    </ul>
 
 
 

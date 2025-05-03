@@ -32,20 +32,7 @@ class RentalRequestKardoTars extends Component
             ->get();
     }
 
-    public function changeStatusToAwaitingReturn($contractId)
-    {
-        $contract = Contract::findOrFail($contractId);
-
-        // تغییر وضعیت به 'delivery'
-        $contract->changeStatus('awaiting_return', auth()->id());
-        
-        // **بروزرسانی لیست قراردادها**
-        $this->kardotarsContracts = Contract::where('current_status', 'delivery')->get();
-
-        // ارسال دستور برای به‌روزرسانی داده‌ها
-        $this->dispatch('refreshContracts');
-        session()->flash('success', 'Status changed to Reserved successfully.');
-    }
+    
 
     public function render()
     {

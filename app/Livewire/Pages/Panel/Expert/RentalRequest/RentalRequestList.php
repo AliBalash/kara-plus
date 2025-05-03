@@ -43,21 +43,7 @@ class RentalRequestList extends Component
         }
     }
 
-    public function changeStatusToReserve($contractId)
-    {
-        $contract = Contract::findOrFail($contractId);
-
-        if ($contract->user_id === auth()->id()) {
-            // تغییر وضعیت به 'assigned'
-            $contract->changeStatus('reserved', auth()->id());
-
-            // ارسال دستور برای به‌روزرسانی داده‌ها
-            $this->dispatch('refreshContracts');
-            session()->flash('success', 'Status changed to Reserved successfully.');
-        } else {
-            session()->flash('error', 'You are not authorized to perform this action.');
-        }
-    }
+    
 
 
     public $search = '';  // متغیر جستجو
@@ -82,4 +68,5 @@ class RentalRequestList extends Component
             'contracts' => $this->contracts,
         ]);
     }
+
 }

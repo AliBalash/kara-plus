@@ -94,9 +94,9 @@ Route::get('/auth/login', Login::class)->name('auth.login')->middleware('auth.gu
 
 
 
-use App\Imports\CarImport;
-use Maatwebsite\Excel\Facades\Excel;
-Route::get('/import-cars', function () {
+// use App\Imports\CarImport;
+// use Maatwebsite\Excel\Facades\Excel;
+// Route::get('/import-cars', function () {
     // Masir file Excel ro moshakhas mikonid
     // $filePath = storage_path('app/private/Cars.xlsx');
     // // Import file Excel
@@ -104,11 +104,11 @@ Route::get('/import-cars', function () {
 
     // // Return success message
     // return 'Data has been imported successfully from the given file.';
-});
+// });
 
 
-use App\Livewire\Reservation\ReserveCarForm;
+// use App\Livewire\Reservation\ReserveCarForm;
 
-Route::get('/reservations', ReserveCarForm::class);
-Route::post('/reserve-car', [CarReservationController::class, 'reserveCar'])->name('reserve.car');
+// Route::get('/reservations', ReserveCarForm::class);
+// Route::post('/reserve-car', [CarReservationController::class, 'reserveCar'])->name('reserve.car');
 
