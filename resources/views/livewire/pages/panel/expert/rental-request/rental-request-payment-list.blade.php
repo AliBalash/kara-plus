@@ -31,26 +31,38 @@
         <table class="table table-hover">
             <thead>
                 <tr>
-                    <th>#</th> <!-- ID پرداخت -->
+                    <th>#</th> <!-- Contract or Payment Number -->
                     <th>Customer</th>
-                    <th>Transaction ID</th>
-                    <th>Amount</th>
-                    <th>Payment Method</th>
-                    <th>Payment Date</th>
+                    <th>Car Type</th>
+                    <th>Delivery Date</th>
+                    <th>Total Contract Amount</th>
+                    <th>Amount Paid</th>
+                    <th>Remaining</th>
+                    <th>Payment Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
-                @foreach ($paymentContracts as $payment)
-                    <!-- دسترسی به پرداخت‌های قرارداد -->
+                @foreach ($paymentContracts as $contract)
+                    @php
+                        $paid = $contract->payments->sum('amount');
+                        $remaining = $contract->total_price - $paid;
+                    @endphp
                     <tr>
-                        <td>{{ $payment->id }}</td>
-                        <td>{{ $payment->customer->fullName() }}</td>
-                        <td>{{ $payment->transaction_id }}</td>
-                        <td>{{ number_format($payment->amount, 2) }} {{ $payment->currency }}</td>
-                        <td>{{ ucfirst($payment->payment_method) }}</td>
-                        <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
-
+                        <td>{{ $contract->id }}</td>
+                        <td>{{ $contract->customer->fullName() }}</td>
+                        <td>{{ $contract->car->fullName() }}</td>
+                        <td>{{ $contract->pickup_date ? $contract->pickup_date->format('d M Y') : '-' }}</td>
+                        <td>{{ number_format($contract->total_price, 2) }} Toman</td>
+                        <td>{{ number_format($paid, 2) }} Toman</td>
+                        <td>{{ number_format($remaining, 2) }} Toman</td>
+                        <td>
+                            @if ($remaining <= 0)
+                                <span class="badge bg-success">Settled</span>
+                            @else
+                                <span class="badge bg-warning">Remaining</span>
+                            @endif
+                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
@@ -58,23 +70,29 @@
                                     <i class="bx bx-dots-vertical-rounded"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <!-- گزینه مشاهده جزئیات -->
-                                    @if ($payment->user_id === auth()->id())
-                                        <!-- گزینه Details -->
+
+                                    <a class="dropdown-item"
+                                        href="{{ route('rental-requests.payment', [$contract->id, $contract->customer->id]) }}">
+                                        <i class="bx bx-money me-1"></i> Payment
+                                    </a>
+
+                                    @if ($contract->user_id === auth()->id())
+                                        <!-- Details option -->
+
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $payment->id) }}">
+                                            href="{{ route('rental-requests.details', $contract->id) }}">
                                             <i class="bx bx-info-circle me-1"></i> Details
                                         </a>
 
-                                        <!-- گزینه Edit -->
+                                        <!-- Edit option -->
                                         <a class="dropdown-item"
-                                            href="{{ route('rental-requests.form', $payment->id) }}">
+                                            href="{{ route('rental-requests.form', $contract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </a>
 
-                                        <!-- گزینه Delete -->
+                                        <!-- Delete option -->
                                         <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="deleteContract({{ $payment->id }})">
+                                            wire:click.prevent="deleteContract({{ $contract->id }})">
                                             <i class="bx bx-trash me-1"></i> Delete
                                         </a>
                                     @endif
@@ -85,6 +103,8 @@
                 @endforeach
             </tbody>
         </table>
+
+
     </div>
 
 

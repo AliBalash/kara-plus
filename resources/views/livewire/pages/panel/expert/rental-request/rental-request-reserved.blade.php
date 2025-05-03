@@ -58,9 +58,9 @@
                             @endif
                         </td>
                         <td>
-                            {{$reservedContract->pickup_location}}
+                            {{ $reservedContract->pickup_location }}
                             {{-- <x-status-badge :status="$reservedContract->current_status" /> --}}
-                           
+
                         </td>
                         <td>
                             @if ($reservedContract->customerDocument()->exists())
@@ -83,20 +83,11 @@
                                 </button>
                                 <div class="dropdown-menu">
 
-
                                     <!-- گزینه Pickup Document -->
                                     <a class="dropdown-item"
                                         href="{{ route('rental-requests.pickup-document', $reservedContract->id) }}">
                                         <i class="bx bx-file me-1"></i> Delivery Document
                                     </a>
-
-
-                                    <a class="dropdown-item" href="javascript:void(0);"
-                                        wire:click.prevent="changeStatusToDelivery({{ $reservedContract->id }})">
-                                        <i class="bx bx-bookmark me-1"></i> Set to Delivery
-                                    </a>
-
-
 
                                     @if ($reservedContract->user_id === auth()->id())
                                         <!-- گزینه Details -->
@@ -104,16 +95,7 @@
                                             href="{{ route('rental-requests.details', $reservedContract->id) }}">
                                             <i class="bx bx-info-circle me-1"></i> Details
                                         </a>
-
-                                        <!-- گزینه Edit -->
-                                        <a class="dropdown-item"
-                                            href="{{ route('rental-requests.form', $reservedContract->id) }}">
-                                            <i class="bx bx-edit-alt me-1"></i> Edit
-                                        </a>
                                     @endif
-
-
-
 
                                 </div>
                             </div>

@@ -32,20 +32,7 @@ class RentalRequestAwaitingReturnList extends Component
             ->get();
     }
 
-    public function changeStatusToPayment($contractId)
-    {
-        $contract = Contract::findOrFail($contractId);
-
-        // تغییر وضعیت به 'awaiting_return'
-        $contract->changeStatus('payment', auth()->id());
-
-        // **بروزرسانی لیست قراردادها**
-        $this->awaitContracts = Contract::where('current_status', 'awaiting_return')->get();
-
-        // ارسال دستور برای به‌روزرسانی داده‌ها
-        $this->dispatch('refreshContracts');
-        session()->flash('success', 'Status changed to payment successfully.');
-    }
+    
     public function render()
     {
         return view(

@@ -95,10 +95,7 @@
                                             href="{{ route('rental-requests.form', $contract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </a>
-                                        <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="changeStatusToReserve({{ $contract->id }})">
-                                            <i class="bx bx-bookmark me-1"></i> Set to Reserved
-                                        </a>
+                                        
                                         <a class="dropdown-item" href="javascript:void(0);"
                                             wire:click.prevent="deleteContract({{ $contract->id }})">
                                             <i class="bx bx-trash me-1"></i> Delete

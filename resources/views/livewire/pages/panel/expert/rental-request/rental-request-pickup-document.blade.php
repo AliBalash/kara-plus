@@ -1,7 +1,34 @@
 <div class="container">
-    <h4 class="fw-bold py-3 mb-4">
-        <span class="text-muted fw-light">Contract /</span> Pickup Document
-    </h4>
+
+
+    <div class="row">
+
+        <div class="col-lg-4 text-start">
+            <h4 class="fw-bold py-3 mb-4">
+                <span class="text-muted fw-light">Contract /</span> Pickup Document
+            </h4>
+        </div>
+
+        @if (!empty($contractId))
+            <div class="col-lg-8 text-end">
+                <a class="btn btn-danger fw-bold" href="javascript:void(0);"
+                    onclick="if(confirm('Are you sure you want to set this contract to Delivery?')) { @this.changeStatusToDelivery({{ $contractId }}) }">
+                    Set to Delivery (permission :for rider)
+                    <i class="bx bxs-log-in-circle"></i>
+                </a>
+
+                <a class="btn btn-danger fw-bold" href="javascript:void(0);"
+                    onclick="if(confirm('Are you sure you want to set this contract to Tars Kardo?')) { @this.changeStatusToAwaitingReturn({{ $contractId }}) }">
+                    Kardo Tars Inspection (permission :for kardo tars expert)
+                    <i class="bx bxs-log-in-circle"></i>
+                </a>
+
+            </div>
+        @endif
+
+    </div>
+
+    
 
     @if (session()->has('message'))
         <div class="alert alert-success">{{ session('message') }}</div>
@@ -14,6 +41,8 @@
     @if (session()->has('error'))
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
+
+    <x-detail-rental-request-tabs :contract-id="$contractId" />
 
 
     <div class="card">

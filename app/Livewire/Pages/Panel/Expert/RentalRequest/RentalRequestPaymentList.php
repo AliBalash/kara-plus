@@ -16,12 +16,10 @@ class RentalRequestPaymentList extends Component
 
     public function mount()
     {
-
         // فقط قراردادهایی که در وضعیت 'payment' هستند و حداقل یک پرداخت مرتبط دارند
         $this->paymentContracts = Contract::where('current_status', 'payment')
+            ->latest()
             ->get();
-            
-
     }
 
     public function updatedSearch()
@@ -46,14 +44,6 @@ class RentalRequestPaymentList extends Component
 
         // تغییر وضعیت قرارداد به 'complete'
         $contract->changeStatus('complete', auth()->id());
-
-        // بروزرسانی لیست قراردادها با وضعیت 'payment'
-        $this->paymentContracts = Contract::where('current_status', 'payment')
-            ->whereHas('payments')
-            ->get();
-
-        // ارسال دستور برای بروزرسانی
-        $this->dispatch('refreshContracts');
         session()->flash('success', 'Status changed to complete successfully.');
     }
 

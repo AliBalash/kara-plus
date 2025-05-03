@@ -1,5 +1,24 @@
 <div>
-    <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Rental Request /</span> Information</h4>
+    <div class="row">
+
+        <div class="col-lg-6 text-start">
+            <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Rental Request /</span> Information</h4>
+        </div>
+
+        @if (!empty($contract->id))
+            <div class="col-lg-6 text-end">
+                <a class="btn btn-danger fw-bold" href="javascript:void(0);"
+                    onclick="if(confirm('Are you sure you want to set this contract to Reserved?')) { @this.changeStatusToReserve({{ $contract->id }}) }">
+                    Set to Reserved
+                    <i class="bx bxs-log-in-circle"></i>
+                </a>
+
+            </div>
+        @endif
+
+    </div>
+
+
 
     @if (session()->has('message'))
         <div class="alert alert-success">
@@ -18,44 +37,9 @@
             {{ session('error') }}
         </div>
     @endif
-
-    <ul class="nav nav-pills flex-column flex-md-row mb-3">
-        <li class="nav-item">
-            <a class="nav-link active"
-                href="{{ isset($contract->id) ? route('rental-requests.form', $contract->id) : '#' }}">
-                <i class="bx bxs-info-square me-1"></i> Rental Information
-            </a>
-        </li>
-
-        @if (isset($contract->customer))
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('customer.documents', [$contract->id, $contract->customer->id]) }}">
-                    <i class="bx bx-file me-1"></i> Customer Document
-                    @if ($customerDocumentsCompleted)
-                        ✔
-                    @endif
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link"
-                    href="{{ route('rental-requests.payment', [$contract->id, $contract->customer->id]) }}">
-                    <i class="bx bx-money me-1"></i> Payment
-                    @if ($paymentsExist)
-                        ✔
-                    @endif
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('rental-requests.history', $contract->id) }}">
-                    <i class="bx bx-history me-1"></i> History
-                </a>
-            </li>
-        @endif
-    </ul>
-
-
+    @if (!empty($contract->id))
+        <x-detail-rental-request-tabs :contract-id="$contract->id" />
+    @endif
 
     <form wire:submit.prevent="submit">
 

@@ -32,20 +32,6 @@ class RentalRequestReserved extends Component
             ->get();
     }
 
-    public function changeStatusToDelivery($contractId)
-    {
-        $contract = Contract::findOrFail($contractId);
-
-        // تغییر وضعیت به 'delivery'
-        $contract->changeStatus('delivery', auth()->id());
-        
-        // **بروزرسانی لیست قراردادها**
-        $this->reservedContracts = Contract::where('current_status', 'reserved')->get();
-
-        // ارسال دستور برای به‌روزرسانی داده‌ها
-        $this->dispatch('refreshContracts');
-        session()->flash('success', 'Status changed to Reserved successfully.');
-    }
 
     public function render()
     {

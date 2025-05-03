@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Models\Contract;
 use App\Models\PickupDocument;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -138,7 +139,6 @@ class RentalRequestPickupDocument extends Component
 
             session()->flash('error', 'Error uploading documents: ' . $e->getMessage());
         }
-
     }
 
 
@@ -167,5 +167,26 @@ class RentalRequestPickupDocument extends Component
     public function render()
     {
         return view('livewire.pages.panel.expert.rental-request.rental-request-pickup-document');
+    }
+
+    public function changeStatusToDelivery($contractId)
+    {
+        $contract = Contract::findOrFail($contractId);
+
+        // تغییر وضعیت به 'delivery'
+        $contract->changeStatus('delivery', auth()->id());
+
+        session()->flash('message', 'Status changed to Delivery successfully.');
+    }
+
+
+    public function changeStatusToAwaitingReturn($contractId)
+    {
+        $contract = Contract::findOrFail($contractId);
+
+        // تغییر وضعیت به 'delivery'
+        $contract->changeStatus('awaiting_return', auth()->id());
+
+        session()->flash('message', 'Status changed to Kardo Tars successfully.');
     }
 }
