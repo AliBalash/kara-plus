@@ -39,16 +39,16 @@ class CustomerDocumentUpload extends Component
 
         // بررسی وجود فایل‌های آپلود شده
         $this->existingFiles = [
-            'visa' => Storage::disk('public')->exists("CustomerDocument/visa_{$this->customerId}_{$this->contractId}.jpg")
+            'visa' => Storage::disk('myimage')->exists("CustomerDocument/visa_{$this->customerId}_{$this->contractId}.jpg")
                 ? Storage::url("CustomerDocument/visa_{$this->customerId}_{$this->contractId}.jpg")
                 : null,
-            'passport' => Storage::disk('public')->exists("CustomerDocument/passport_{$this->customerId}_{$this->contractId}.jpg")
+            'passport' => Storage::disk('myimage')->exists("CustomerDocument/passport_{$this->customerId}_{$this->contractId}.jpg")
                 ? Storage::url("CustomerDocument/passport_{$this->customerId}_{$this->contractId}.jpg")
                 : null,
-            'license' => Storage::disk('public')->exists("CustomerDocument/license_{$this->customerId}_{$this->contractId}.jpg")
+            'license' => Storage::disk('myimage')->exists("CustomerDocument/license_{$this->customerId}_{$this->contractId}.jpg")
                 ? Storage::url("CustomerDocument/license_{$this->customerId}_{$this->contractId}.jpg")
                 : null,
-            'ticket' => Storage::disk('public')->exists("CustomerDocument/ticket_{$this->customerId}_{$this->contractId}.jpg")
+            'ticket' => Storage::disk('myimage')->exists("CustomerDocument/ticket_{$this->customerId}_{$this->contractId}.jpg")
                 ? Storage::url("CustomerDocument/ticket_{$this->customerId}_{$this->contractId}.jpg")
                 : null,
         ];
@@ -105,19 +105,19 @@ class CustomerDocumentUpload extends Component
 
         // Store the uploaded files
         if ($this->visa) {
-            $visaPath = $this->visa->storeAs('CustomerDocument', "visa_{$this->customerId}_{$this->contractId}.jpg", 'public');
+            $visaPath = $this->visa->storeAs('CustomerDocument', "visa_{$this->customerId}_{$this->contractId}.jpg", 'myimage');
             $customerDocument->visa = $visaPath;
         }
         if ($this->passport) {
-            $passportPath = $this->passport->storeAs('CustomerDocument', "passport_{$this->customerId}_{$this->contractId}.jpg", 'public');
+            $passportPath = $this->passport->storeAs('CustomerDocument', "passport_{$this->customerId}_{$this->contractId}.jpg", 'myimage');
             $customerDocument->passport = $passportPath;
         }
         if ($this->license) {
-            $licensePath = $this->license->storeAs('CustomerDocument', "license_{$this->customerId}_{$this->contractId}.jpg", 'public');
+            $licensePath = $this->license->storeAs('CustomerDocument', "license_{$this->customerId}_{$this->contractId}.jpg", 'myimage');
             $customerDocument->license = $licensePath;
         }
         if ($this->ticket) {
-            $ticketPath = $this->ticket->storeAs('CustomerDocument', "ticket_{$this->customerId}_{$this->contractId}.jpg", 'public');
+            $ticketPath = $this->ticket->storeAs('CustomerDocument', "ticket_{$this->customerId}_{$this->contractId}.jpg", 'myimage');
             $customerDocument->ticket = $ticketPath;
         }
 
@@ -131,8 +131,8 @@ class CustomerDocumentUpload extends Component
     {
         $filePath = "CustomerDocument/{$fileType}_{$this->customerId}_{$this->contractId}.jpg";
 
-        if (Storage::disk('public')->exists($filePath)) {
-            Storage::disk('public')->delete($filePath);
+        if (Storage::disk('myimage')->exists($filePath)) {
+            Storage::disk('myimage')->delete($filePath);
         }
 
         $this->existingFiles[$fileType] = null;

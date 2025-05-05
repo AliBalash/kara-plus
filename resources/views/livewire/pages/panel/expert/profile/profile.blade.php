@@ -20,6 +20,14 @@
                             <span class="d-none d-sm-block">Upload new photo</span>
                         </label>
 
+                        {{-- Loading Indicator --}}
+                        <div wire:loading wire:target="new_avatar" class="mt-2">
+                            <div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem;">
+                                <span class="visually-hidden">Uploading Image...</span>
+                            </div>
+                        </div>
+
+
                         @if ($new_avatar)
                             <small>Preview:</small>
                             <img src="{{ $new_avatar->temporaryUrl() }}" class="rounded mt-2" width="100">

@@ -27,16 +27,16 @@ class RentalRequestPickupDocument extends Component
     {
         $this->contractId = $contractId;
         $this->existingFiles = [
-            'tarsContract' => Storage::disk('public')->exists("PickupDocument/tars_contract_{$this->contractId}.jpg")
+            'tarsContract' => Storage::disk('myimage')->exists("PickupDocument/tars_contract_{$this->contractId}.jpg")
                 ? Storage::url("PickupDocument/tars_contract_{$this->contractId}.jpg")
                 : null,
-            'kardoContract' => Storage::disk('public')->exists("PickupDocument/kardo_contract_{$this->contractId}.jpg")
+            'kardoContract' => Storage::disk('myimage')->exists("PickupDocument/kardo_contract_{$this->contractId}.jpg")
                 ? Storage::url("PickupDocument/kardo_contract_{$this->contractId}.jpg")
                 : null,
-            'factorContract' => Storage::disk('public')->exists("PickupDocument/factor_contract_{$this->contractId}.jpg")
+            'factorContract' => Storage::disk('myimage')->exists("PickupDocument/factor_contract_{$this->contractId}.jpg")
                 ? Storage::url("PickupDocument/factor_contract_{$this->contractId}.jpg")
                 : null,
-            'carVideo' => Storage::disk('public')->exists("PickupDocument/car_video_{$this->contractId}.mp4")
+            'carVideo' => Storage::disk('myimage')->exists("PickupDocument/car_video_{$this->contractId}.mp4")
                 ? Storage::url("PickupDocument/car_video_{$this->contractId}.mp4")
                 : null,
         ];
@@ -91,7 +91,7 @@ class RentalRequestPickupDocument extends Component
 
             // Tars Contract Upload
             if ($this->tarsContract) {
-                $tarsPath = $this->tarsContract->storeAs('PickupDocument', "tars_contract_{$this->contractId}.jpg", 'public');
+                $tarsPath = $this->tarsContract->storeAs('PickupDocument', "tars_contract_{$this->contractId}.jpg", 'myimage');
                 if (!$tarsPath) throw new \Exception('Error uploading Tars contract.');
                 $pickupDocument->tars_contract = $tarsPath;
                 $uploadedPaths[] = $tarsPath;
@@ -99,7 +99,7 @@ class RentalRequestPickupDocument extends Component
 
             // Kardo Contract Upload
             if ($this->kardoContract) {
-                $kardoPath = $this->kardoContract->storeAs('PickupDocument', "kardo_contract_{$this->contractId}.jpg", 'public');
+                $kardoPath = $this->kardoContract->storeAs('PickupDocument', "kardo_contract_{$this->contractId}.jpg", 'myimage');
                 if (!$kardoPath) throw new \Exception('Error uploading Kardo contract.');
                 $pickupDocument->kardo_contract = $kardoPath;
                 $uploadedPaths[] = $kardoPath;
@@ -107,7 +107,7 @@ class RentalRequestPickupDocument extends Component
 
             // Factor Contract Upload
             if ($this->factorContract) {
-                $factorPath = $this->factorContract->storeAs('PickupDocument', "factor_contract_{$this->contractId}.jpg", 'public');
+                $factorPath = $this->factorContract->storeAs('PickupDocument', "factor_contract_{$this->contractId}.jpg", 'myimage');
                 if (!$factorPath) throw new \Exception('Error uploading factor contract.');
                 $pickupDocument->factor_contract = $factorPath;
                 $uploadedPaths[] = $factorPath;
@@ -115,7 +115,7 @@ class RentalRequestPickupDocument extends Component
 
             // Car Video Upload
             if ($this->carVideo) {
-                $videoPath = $this->carVideo->storeAs('PickupDocument', "car_video_{$this->contractId}.mp4", 'public');
+                $videoPath = $this->carVideo->storeAs('PickupDocument', "car_video_{$this->contractId}.mp4", 'myimage');
                 if (!$videoPath) throw new \Exception('Error uploading car video.');
                 $pickupDocument->car_video = $videoPath;
                 $uploadedPaths[] = $videoPath;
@@ -134,7 +134,7 @@ class RentalRequestPickupDocument extends Component
 
             // حذف فایل‌های آپلود شده در صورت خطا
             foreach ($uploadedPaths as $path) {
-                Storage::disk('public')->delete($path);
+                Storage::disk('myimage')->delete($path);
             }
 
             session()->flash('error', 'Error uploading documents: ' . $e->getMessage());
@@ -147,8 +147,8 @@ class RentalRequestPickupDocument extends Component
         $extension = ($fileType === 'car_video') ? 'mp4' : 'jpg';
         $filePath = "PickupDocument/{$fileType}_{$this->contractId}.{$extension}";
 
-        if (Storage::disk('public')->exists($filePath)) {
-            Storage::disk('public')->delete($filePath);
+        if (Storage::disk('myimage')->exists($filePath)) {
+            Storage::disk('myimage')->delete($filePath);
         }
 
         $this->existingFiles[$fileType] = null;
