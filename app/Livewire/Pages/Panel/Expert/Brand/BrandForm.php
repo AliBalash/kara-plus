@@ -71,12 +71,12 @@ class BrandForm extends Component
         //     if ($carModel->brand_icon && Storage::exists('public/' . $carModel->brand_icon)) {
         //         Storage::delete('public/' . $carModel->brand_icon);
         //     }
-        //     $path = $this->brandIcon->store('brand-icons', 'public');
+        //     $path = $this->brandIcon->store('brand-icons', 'myimage');
         //     $carModel->brand_icon = $path;
         // }
 
         // if ($this->additionalImage) {
-        //     $additionalImagePath = $this->additionalImage->store('additional-images', 'public');
+        //     $additionalImagePath = $this->additionalImage->store('additional-images', 'myimage');
         //     // Handle saving additional image
         // }
 

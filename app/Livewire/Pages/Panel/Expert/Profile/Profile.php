@@ -57,12 +57,12 @@ class Profile extends Component
         if ($this->new_avatar) {
 
 
-            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-                Storage::disk('public')->delete($user->avatar);
+            if ($user->avatar && Storage::disk('myimage')->exists($user->avatar)) {
+                Storage::disk('myimage')->delete($user->avatar);
             }
 
             // آپلود عکس جدید
-            $avatarPath = $this->new_avatar->store('avatars', 'public');
+            $avatarPath = $this->new_avatar->store('avatars', 'myimage');
             $user->avatar = $avatarPath; // اصلاح مسیر ذخیره‌سازی
         }
 
