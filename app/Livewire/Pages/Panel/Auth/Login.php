@@ -54,7 +54,7 @@ class Login extends Component
 
             return redirect()->to(route('expert.dashboard'));
         } else {
-            session()->flash('error', 'شماره یا رمز عبور نادرست است.');
+            session()->flash('error', 'The number or password is incorrect.');
         }
     }
 

@@ -78,9 +78,9 @@
                                 <div class="dropdown-menu">
 
                                     <!-- گزینه Details -->
-                                    <a class="dropdown-item" href="{{ route('car.detail', $car->id) }}">
+                                    {{-- <a class="dropdown-item" href="{{ route('car.detail', $car->id) }}">
                                         <i class="bx bx-info-circle me-1"></i> Details
-                                    </a>
+                                    </a> --}}
 
                                     <!-- گزینه Edit -->
                                     <a class="dropdown-item" href="{{ route('car.form', $car->id) }}">

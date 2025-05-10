@@ -322,6 +322,13 @@ class RentalRequestForm extends Component
             // تغییر وضعیت به 'assigned'
             $contract->changeStatus('reserved', auth()->id());
 
+            // تغییر وضعیت ماشین به reserved
+            if ($contract->car) {
+                $contract->car->status = 'reserved';
+                $contract->car->save();
+            }
+
+
             session()->flash('message', 'Status changed to Reserved successfully.');
         } else {
             session()->flash('error', 'You are not authorized to perform this action.');
