@@ -95,11 +95,15 @@
                                             href="{{ route('rental-requests.form', $contract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </a>
-                                        
+
                                         <a class="dropdown-item" href="javascript:void(0);"
                                             wire:click.prevent="deleteContract({{ $contract->id }})">
                                             <i class="bx bx-trash me-1"></i> Delete
                                         </a>
+                                    @else
+                                        <span class="dropdown-item text-muted">
+                                            <i class="bx bx-block me-1"></i> This request does not belong to you
+                                        </span>
                                     @endif
                                 </div>
                             </div>

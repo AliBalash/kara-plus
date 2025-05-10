@@ -208,10 +208,12 @@
                                     @if ($selectedBrand)
                                         @foreach ($cars as $car)
                                             <option value="{{ $car->id }}"
-                                                @if ($car->id == $selectedCarId) selected @endif>
+                                                @if ($car->id == $selectedCarId) selected @endif
+                                                @if ($car->status !== 'available') disabled @endif>
                                                 {{ $car->carModel->fullname() }} -
                                                 {{ $car->manufacturing_year }} -
-                                                {{ $car->color ?? 'No Color' }}
+                                                {{ $car->color ?? 'No Color' }} -
+                                                [{{ ucfirst($car->status) }}]
                                             </option>
                                         @endforeach
                                     @endif
