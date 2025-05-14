@@ -15,7 +15,7 @@ class RentalRequestAwaitingReturnList extends Component
 
     public function mount()
     {
-        $this->awaitContracts = Contract::where('current_status', 'awaiting_return')->get();
+        $this->awaitContracts = Contract::where('current_status', 'awaiting_return')->latest()->get();
     }
 
     public $search = '';  // متغیر جستجو

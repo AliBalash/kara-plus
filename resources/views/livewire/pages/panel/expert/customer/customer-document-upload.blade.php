@@ -24,12 +24,33 @@
         <div class="card-body">
             <form wire:submit.prevent="uploadDocument" enctype="multipart/form-data">
                 <div class="row">
+
+
+                    {{-- Modal Zoom Picture --}}
+                    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel"
+                        aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="imageModalLabel">View Image</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <img id="modalImage" src="" class="img-fluid" alt="Preview">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{-- Modal Zoom Picture --}}
+
                     <!-- Visa -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Visa</label>
                         @if (!empty($existingFiles['visa']))
                             <div class="mb-2">
-                                <img src="{{ $existingFiles['visa'] }}" class="img-thumbnail" width="150">
+                                <img src="{{ $existingFiles['visa'] }}" class="img-thumbnail" width="150"
+                                    onclick="openModal('{{ $existingFiles['visa'] }}')">
                                 <button type="button" class="btn btn-warning mt-2"
                                     onclick="confirmDeletion('visa')">Remove</button>
                             </div>
@@ -49,7 +70,8 @@
                         <label class="form-label">Passport</label>
                         @if (!empty($existingFiles['passport']))
                             <div class="mb-2">
-                                <img src="{{ $existingFiles['passport'] }}" class="img-thumbnail" width="150">
+                                <img src="{{ $existingFiles['passport'] }}" class="img-thumbnail" width="150"
+                                    onclick="openModal('{{ $existingFiles['passport'] }}')">
                                 <button type="button" class="btn btn-warning mt-2"
                                     onclick="confirmDeletion('passport')">Remove</button>
                             </div>
@@ -70,6 +92,7 @@
                         @if (!empty($existingFiles['license']))
                             <div class="mb-2">
                                 <img src="{{ $existingFiles['license'] }}" class="img-thumbnail" width="150">
+                                onclick="openModal('{{ $existingFiles['license'] }}')">
                                 <button type="button" class="btn btn-warning mt-2"
                                     onclick="confirmDeletion('license')">Remove</button>
                             </div>
@@ -89,7 +112,8 @@
                         <label class="form-label">Flight Ticket</label>
                         @if (!empty($existingFiles['ticket']))
                             <div class="mb-2">
-                                <img src="{{ $existingFiles['ticket'] }}" class="img-thumbnail" width="150">
+                                <img src="{{ $existingFiles['ticket'] }}" class="img-thumbnail" width="150"
+                                    onclick="openModal('{{ $existingFiles['ticket'] }}')">
                                 <button type="button" class="btn btn-warning mt-2"
                                     onclick="confirmDeletion('ticket')">Remove</button>
                             </div>
@@ -115,9 +139,16 @@
     <script>
         function confirmDeletion(fileType) {
             if (confirm('Are you sure you want to delete this file?')) {
-                // If confirmed, call the Livewire removeFile function
                 @this.call('removeFile', fileType);
             }
+        }
+    </script>
+
+    <script>
+        function openModal(imageUrl) {
+            document.getElementById('modalImage').src = imageUrl;
+            var myModal = new bootstrap.Modal(document.getElementById('imageModal'));
+            myModal.show();
         }
     </script>
 @endpush

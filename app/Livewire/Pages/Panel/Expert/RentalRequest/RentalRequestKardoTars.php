@@ -15,7 +15,7 @@ class RentalRequestKardoTars extends Component
 
     public function mount()
     {
-        $this->kardotarsContracts = Contract::where('current_status', 'delivery')->get();
+        $this->kardotarsContracts = Contract::where('current_status', 'delivery')->latest()->get();
     }
 
     public $search = '';  // متغیر جستجو
