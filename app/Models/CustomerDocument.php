@@ -15,7 +15,8 @@ class CustomerDocument extends Model
         'visa',
         'passport',
         'license',
-        'ticket',
+        'hotel_name',
+        'hotel_address',
     ];
 
     // Relationship with Customer model

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('cascade'); // ارجاع به مشتری
             $table->foreignId('car_id')->nullable()->constrained('cars')->onDelete('cascade'); // در صورت نیاز به ارتباط با خودرو
             $table->decimal('amount', 10, 2); // مبلغ پرداختی
+            $table->decimal('rate', 12, 4)->nullable(); // نرخ تبدیل ارز نسبت به ریال
             $table->enum('currency', ['IRR', 'USD', 'AED'])->default('IRR');
             $table->enum('payment_type', ['rental_fee', 'prepaid_fine', 'toll', 'fine'])->default('rental_fee'); // نوع پرداخت
             $table->text('description')->nullable(); // توضیحات (در صورت نیاز)

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -110,5 +111,13 @@ class Car extends Model
     public function insurance()
     {
         return $this->hasOne(Insurance::class); // یک خودرو یک بیمه دارد
+    }
+
+
+    public function currentContract()
+    {
+        return $this->hasOne(\App\Models\Contract::class)
+            ->where('current_status', 'reserved')
+            ->latest('pickup_date');
     }
 }

@@ -19,7 +19,8 @@ class Payment extends Model
         'description',
         'payment_date',
         'is_refundable',
-        'is_paid'
+        'is_paid',
+        'rate'
     ];
 
     protected $casts = [

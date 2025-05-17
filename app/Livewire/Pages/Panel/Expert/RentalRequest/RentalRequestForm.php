@@ -104,28 +104,27 @@ class RentalRequestForm extends Component
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 'max:255',
-                Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
+                // Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
             ],
             'phone' => 'required|regex:/^[0-9]{10,15}$/',
             'messenger_phone' => 'required|regex:/^[0-9]{10,15}$/',
-            'address' => 'required|string|max:255',
+            'address' => 'nullable|string|max:255',
             'national_code' => [
                 'required',
                 // 'regex:/^[0-9]{10}$/',
-                Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
             ],
             'passport_number' => [
-                'required',
+                'nullable',
                 'string',
                 'max:50',
                 Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
             ],
-            'passport_expiry_date' => 'required|date|after_or_equal:today',
+            'passport_expiry_date' => 'nullable|date|after_or_equal:today',
             'nationality' => 'required|string|max:100',
-            'license_number' => 'required|string|max:50',
+            'license_number' => 'nullable|string|max:50',
         ];
     }
 
@@ -264,8 +263,8 @@ class RentalRequestForm extends Component
 
             $customer = Customer::updateOrCreate(
                 [
-                    'email' => $this->email, // جستجو برای ایمیل مشابه
-                    'national_code' => $this->national_code // Match existing customer by national code
+                    'phone' => $this->phone,
+                    'email' => $this->email 
                 ],
                 $customerData
             );
