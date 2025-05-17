@@ -10,8 +10,10 @@ class CarList extends Component
 {
     public $search = '';
     public $selectedBrand = '';
+    public $onlyReserved = false;
 
-    protected $queryString = ['search'];
+
+    protected $queryString = ['search', 'onlyReserved'];
     use WithPagination;
 
     public function render()
@@ -22,7 +24,7 @@ class CarList extends Component
             ->distinct()
             ->pluck('brand');
 
-        $cars = Car::with('carModel')
+        $cars = Car::with(['carModel', 'currentContract'])
             ->when($this->search, function ($query) {
                 if (is_numeric($this->search)) {
                     $query->where('plate_number', 'like', '%' . $this->search . '%');
@@ -37,6 +39,9 @@ class CarList extends Component
                 $query->whereHas('carModel', function ($query) {
                     $query->where('brand', $this->selectedBrand);
                 });
+            })
+            ->when($this->onlyReserved, function ($query) {
+                $query->where('status', 'reserved');
             })
             ->paginate(10);
 

@@ -57,17 +57,8 @@
                             @endif
                         </td>
                         <td>
-                            <span
-                                class="badge 
-                                @switch($contract->status)
-                                    @case('active') bg-label-primary @break
-                                    @case('completed') bg-label-success @break
-                                    @case('cancelled') bg-label-danger @break
-                                    @case('pending') bg-label-warning @break
-                                    @default bg-label-secondary
-                                @endswitch">
-                                {{ ucfirst($contract->status) }}
-                            </span>
+                            <x-status-badge :status="$contract->current_status" />
+
                         </td>
                         <td>
                             <div class="dropdown">

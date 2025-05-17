@@ -26,7 +26,7 @@
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Amount</label>
-                        <input type="number" class="form-control" wire:model="amount" step="0.01">
+                        <input type="number" class="form-control" wire:model="amount" step="0.01" placeholder="$">
                         @error('amount')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
@@ -34,7 +34,7 @@
 
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Currency</label>
-                        <select class="form-control" wire:model="currency">
+                        <select class="form-control" wire:model.live="currency">
                             <option value="IRR">Rial</option>
                             <option value="USD">Dollar</option>
                             <option value="AED">Dirham</option>
@@ -43,6 +43,20 @@
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
+
+
+                    @if ($currency !== 'IRR')
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Exchange Rate (to IRR)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.0001" class="form-control" required wire:model="rate">
+                            </div>
+                            @error('rate')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    @endif
+
 
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Payment Type</label>
@@ -113,6 +127,7 @@
                     <th>Amount</th>
                     <th>Currency</th>
                     <th>Payment Type</th>
+                    <th>Refundable</th>
                     <th>Payment Date</th>
                 </tr>
             </thead>
@@ -120,8 +135,9 @@
                 @forelse ($existingPayments as $payment)
                     <tr>
                         <td>{{ number_format($payment->amount, 2) }}</td>
-                        <td>{{ $payment->currency }}</td>
+                        <td>{{ $payment->currency }}  {{$payment->currency !== 'IRR' ? '( '. $payment->rate . ' )' : null}}</td>
                         <td>{{ ucfirst($payment->payment_type) }}</td>
+                        <td>{{ $payment->is_refundable == true ? 'Yes' : 'No'  }}</td>
                         <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
                     </tr>
                 @empty

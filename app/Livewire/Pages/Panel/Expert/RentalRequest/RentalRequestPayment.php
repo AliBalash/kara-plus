@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\Contract;
 use App\Models\CustomerDocument;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 
 class RentalRequestPayment extends Component
 {
@@ -26,12 +27,17 @@ class RentalRequestPayment extends Component
     public $hasCustomerDocument;
     public $hasPayments;
 
+    public $rate;
+
+
     protected $rules = [
         'amount' => 'required|numeric|min:0',
         'currency' => 'required|in:IRR,USD,AED',
         'payment_type' => 'required|in:rental_fee,prepaid_fine,toll,fine',
         'payment_date' => 'required|date',
         'is_refundable' => 'required|boolean',
+        'rate' => 'nullable|numeric|min:0.0001',
+
     ];
 
     public function mount($contractId, $customerId)
@@ -72,7 +78,6 @@ class RentalRequestPayment extends Component
     public function submitPayment()
     {
         $this->validate();
-
         try {
             Payment::create([
                 'contract_id' => $this->contractId,
@@ -83,6 +88,7 @@ class RentalRequestPayment extends Component
                 'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                 'is_paid' => false,
                 'is_refundable' => $this->is_refundable,
+                'rate' => $this->currency !== 'IRR' ? $this->rate : null,
             ]);
 
             session()->flash('message', 'Payment was successfully added!');

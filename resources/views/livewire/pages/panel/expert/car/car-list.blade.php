@@ -2,20 +2,25 @@
     <h5 class="card-header">Cars</h5>
 
     <div class="row" style="padding: 0.5rem 1.5rem">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="nav-item d-flex align-items-center">
                 <i class="bx bx-search fs-4 lh-0"></i>
                 <input type="text" class="form-control border-0 shadow-none" placeholder="Search..."
                     aria-label="Search..." wire:model.live.debounce.1000ms="search">
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <select class="form-select" wire:model.live="selectedBrand">
                 <option value="">All Brands</option>
                 @foreach ($brands as $brand)
                     <option value="{{ $brand }}">{{ $brand }}</option>
                 @endforeach
             </select>
+        </div>
+
+        <div class="col-md-4 mt-2 d-flex align-items-center">
+            <input type="checkbox" id="onlyReserved" wire:model.live="onlyReserved" class="form-check-input me-1">
+            <label for="onlyReserved" class="form-check-label">Show only reserved cars</label>
         </div>
     </div>
 
@@ -40,9 +45,7 @@
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Plate Number</th>
-                    <th>Brand</th>
-                    <th>Model</th>
+                    <th>Car Model</th>
                     <th>Color</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -53,12 +56,10 @@
                 @forelse ($cars as $car)
                     <tr>
                         <td>{{ $car->id }}</td>
-                        <td>{{ $car->plate_number }}</td>
-                        <td>{{ $car->carModel->brand }}</td>
-                        <td>{{ $car->carModel->model }}</td>
+                        <td>{{ $car->fullname() }}</td>
                         <td>{{ $car->color ?? 'N/A' }}</td>
                         <td>
-                            <span
+                            <div
                                 class="badge 
                                 @switch($car->status)
                                     @case('available') bg-label-success @break
@@ -67,8 +68,23 @@
                                     @default bg-label-secondary
                                 @endswitch">
                                 {{ ucfirst($car->status) }}
-                            </span>
+                            </div>
+
+                            @if ($car->status === 'reserved' && $car->currentContract)
+                                <div>
+
+                                    <small>
+                                        <strong>Pickup:</strong>
+                                        {{ \Carbon\Carbon::parse($car->currentContract->pickup_date)->format('d M Y') }}<br>
+                                        <strong>Return:</strong>
+                                        {{ \Carbon\Carbon::parse($car->currentContract->return_date)->format('d M Y') }}
+
+                                    </small>
+                                </div>
+                            @endif
+
                         </td>
+
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
