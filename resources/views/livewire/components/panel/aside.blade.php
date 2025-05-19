@@ -53,7 +53,7 @@
 
                 <li class="menu-item {{ Request::routeIs('rental-requests.kardotars') ? 'active' : '' }}">
                     <a href="{{ route('rental-requests.kardotars') }}" class="menu-link">
-                        <div data-i18n="Without menu">Kardo Tars</div>
+                        <div data-i18n="Without menu">Cardo Tars</div>
                     </a>
                 </li>
 

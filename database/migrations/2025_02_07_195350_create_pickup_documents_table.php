@@ -18,7 +18,11 @@ return new class extends Migration
             $table->string('tars_contract')->nullable();
             $table->string('kardo_contract')->nullable();
             $table->string('factor_contract')->nullable();
-            $table->string('car_video')->nullable();
+            $table->string('car_dashboard')->nullable();
+            $table->string('car_inside_video')->nullable();
+            $table->string('car_outside_video')->nullable();
+            $table->string('fuelLevel')->nullable();
+            $table->string('mileage')->nullable();
             $table->timestamps();
 
             $table->foreign('contract_id')->references('id')->on('contracts')->onDelete('cascade');

@@ -1,4 +1,4 @@
-<ul class="nav nav-pills flex-column flex-md-row mb-3">
+<ul class="nav nav-pills flex-column flex-md-row mb-3" wire:ignore>
     {{-- Rental Information --}}
     <li class="nav-item">
         <a class="nav-link {{ request()->routeIs('rental-requests.form') ? 'active' : '' }}"

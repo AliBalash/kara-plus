@@ -44,10 +44,9 @@
                         @enderror
                     </div>
 
-
-                    @if ($currency !== 'IRR')
+                    @if ($currency !== 'AED')
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Exchange Rate (to IRR)</label>
+                            <label class="form-label">Exchange Rate (to AED)</label>
                             <div class="input-group">
                                 <input type="number" step="0.0001" class="form-control" required wire:model="rate">
                             </div>
@@ -56,6 +55,7 @@
                             @enderror
                         </div>
                     @endif
+
 
 
                     <div class="col-md-4 mb-3">
@@ -87,7 +87,25 @@
                             <option value="1">Yes</option>
                         </select>
                     </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Receipt Upload (Optional)</label>
+                        <input type="file" class="form-control" wire:model="receipt">
+                        @error('receipt')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+
+                        @if ($receipt)
+                            <div class="mt-2">
+                                <strong>Preview:</strong><br>
+                                <img src="{{ $receipt->temporaryUrl() }}" alt="Receipt Preview" class="img-thumbnail"
+                                    width="200">
+                            </div>
+                        @endif
+                    </div>
                 </div>
+
+
 
                 <button type="submit" class="btn btn-primary mt-3">Submit Payment</button>
             </form>
@@ -129,16 +147,26 @@
                     <th>Payment Type</th>
                     <th>Refundable</th>
                     <th>Payment Date</th>
+                    <th>Receipt</th>
+
                 </tr>
             </thead>
             <tbody>
                 @forelse ($existingPayments as $payment)
                     <tr>
                         <td>{{ number_format($payment->amount, 2) }}</td>
-                        <td>{{ $payment->currency }}  {{$payment->currency !== 'IRR' ? '( '. $payment->rate . ' )' : null}}</td>
+                        <td>{{ $payment->currency }}
+                            {{ $payment->currency !== 'AED' ? '( ' . $payment->rate . ' )' : null }}</td>
                         <td>{{ ucfirst($payment->payment_type) }}</td>
-                        <td>{{ $payment->is_refundable == true ? 'Yes' : 'No'  }}</td>
+                        <td>{{ $payment->is_refundable == true ? 'Yes' : 'No' }}</td>
                         <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
+                        <td>
+                            @if ($payment->receipt)
+                                <a href="{{ asset('storage/') . '/' . $payment->receipt }}" target="_blank">View</a>
+                            @else
+                                N/A
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr>

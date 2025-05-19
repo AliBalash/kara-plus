@@ -23,11 +23,11 @@ return new class extends Migration
             $table->text('description')->nullable(); // توضیحات (در صورت نیاز)
             $table->date('payment_date'); // تاریخ پرداخت
             $table->boolean('is_refundable')->default(false); // آیا این پرداخت بازگشت‌پذیر است؟ (برای پیش‌پرداخت خلافی)
-            $table->boolean('is_paid')->default(true); // وضعیت پرداخت
+            $table->boolean('is_paid')->default(true); // وضعیت پرداخت            
+            $table->string('receipt')->nullable()->after('rate');
+
             $table->timestamps();
-        }); 
-        
-        
+        });
     }
 
     /**
@@ -36,6 +36,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('payments');
-
     }
 };
