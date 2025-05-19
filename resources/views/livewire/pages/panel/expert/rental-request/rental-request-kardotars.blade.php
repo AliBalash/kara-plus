@@ -1,5 +1,5 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Kardo Tars</h4>
+    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Cardo Tars</h4>
 
     <div class="row" style="padding: 0.5rem 1.5rem">
         <div class="">
@@ -75,12 +75,6 @@
                                         href="{{ route('rental-requests.pickup-document', $kardotarsContract->id) }}">
                                         <i class="bx bx-file me-1"></i> Pickup Document
                                     </a>
-
-                                    {{-- <!-- گزینه Pickup Document -->
-                                    <a class="dropdown-item" href="javascript:void(0);"
-                                        wire:click.prevent="changeStatusToAwaitingReturn({{ $kardotarsContract->id }})">
-                                        <i class="bx bx-bookmark me-1"></i> Kardo Tars Inspection
-                                    </a> --}}
 
 
 

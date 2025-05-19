@@ -39,10 +39,14 @@
     <div class="card">
         <h5 class="card-header">Upload Return Documents</h5>
         <div class="card-body">
-            {{-- <form wire:submit.prevent="uploadDocuments">
+            <form wire:submit.prevent="uploadDocuments">
+
+
                 <div class="row">
                     <!-- Tars Contract -->
                     <div class="col-md-6 mb-3">
+
+                        {{-- Modal Zoom Picture --}}
                         <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel"
                             aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
@@ -58,6 +62,7 @@
                                 </div>
                             </div>
                         </div>
+                        {{-- Modal Zoom Picture --}}
 
                         <label class="form-label">Tars Contract</label>
                         @if (!empty($existingFiles['tarsContract']))
@@ -78,9 +83,9 @@
                         @enderror
                     </div>
 
-                    <!-- Kardo Contract -->
+                    <!-- Cardo Contract -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Kardo Contract</label>
+                        <label class="form-label">Cardo Contract</label>
                         @if (!empty($existingFiles['kardoContract']))
                             <div class="mb-2">
                                 <img src="{{ $existingFiles['kardoContract'] }}" class="img-thumbnail" width="150"
@@ -99,13 +104,90 @@
                         @enderror
                     </div>
 
-                    <!-- Factor Contract -->
+
+                    <!-- Inside Car Video -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Factor Contract</label>
+                        <label class="form-label">Inside Car Video</label>
+                        @if (!empty($existingFiles['carVideoInside']))
+                            <div class="mb-2">
+                                <video width="150" controls>
+                                    <source src="{{ $existingFiles['carVideoInside'] }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                                <button type="button" class="btn btn-warning mt-2"
+                                    onclick="confirmDeletion('car_video_inside')">Remove</button>
+                            </div>
+                        @endif
+                        <input type="file" class="form-control" wire:model="carVideoInside">
+                        <div wire:loading wire:target="carVideoInside" class="progress mt-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                style="width: 100%;">
+                                Uploading...
+                            </div>
+                        </div>
+                        @error('carVideoInside')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <!-- Outside Car Video -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Outside Car Video</label>
+                        @if (!empty($existingFiles['carVideoOutside']))
+                            <div class="mb-2">
+                                <video width="150" controls>
+                                    <source src="{{ $existingFiles['carVideoOutside'] }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                                <button type="button" class="btn btn-warning mt-2"
+                                    onclick="confirmDeletion('car_video_outside')">Remove</button>
+                            </div>
+                        @endif
+                        <input type="file" class="form-control" wire:model="carVideoOutside">
+                        <div wire:loading wire:target="carVideoOutside" class="progress mt-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                style="width: 100%;">
+                                Uploading...
+                            </div>
+                        </div>
+                        @error('carVideoOutside')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+
+                    <!-- Dashboard Photo -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Dashboard Photo</label>
+                        @if (!empty($existingFiles['carDashboard']))
+                            <div class="mb-2">
+                                <img src="{{ $existingFiles['carDashboard'] }}" alt="Dashboard Photo" width="150"
+                                    class="img-thumbnail">
+                                <button type="button" class="btn btn-warning mt-2"
+                                    onclick="confirmDeletion('car_dashboard')">Remove</button>
+                            </div>
+                        @endif
+                        <input type="file" class="form-control" wire:model="carDashboard">
+                        <div wire:loading wire:target="carDashboard" class="progress mt-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                style="width: 100%;">
+                                Uploading...
+                            </div>
+                        </div>
+                        @error('carDashboard')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+
+
+                    <!-- Watcher's Receipt -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Watcher's Receipt</label>
                         @if (!empty($existingFiles['factorContract']))
                             <div class="mb-2">
-                                <img src="{{ $existingFiles['factorContract'] }}" class="img-thumbnail" width="150"
-                                    onclick="openModal('{{ $existingFiles['factorContract'] }}')">
+                                <img src="{{ $existingFiles['factorContract'] }}" class="img-thumbnail"
+                                    width="150" onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 <button type="button" class="btn btn-warning mt-2"
                                     onclick="confirmDeletion('factor_contract')">Remove</button>
                             </div>
@@ -120,35 +202,41 @@
                         @enderror
                     </div>
 
-                    <!-- Car Video -->
+
+
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Car Video</label>
-                        @if (!empty($existingFiles['carVideo']))
-                            <div class="mb-2">
-                                <video width="150" controls>
-                                    <source src="{{ $existingFiles['carVideo'] }}" type="video/mp4">
-                                    Your browser does not support the video tag.
-                                </video>
-                                <button type="button" class="btn btn-warning mt-2"
-                                    onclick="confirmDeletion('car_video')">Remove</button>
+
+                        <div class="card mb-4 mb-xl-0">
+                            <h5 class="card-header">Fuel Level</h5>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="fuelRange" class="form-label">Select fuel level (%)</label>
+                                    <input type="range" class="form-range" min="0" max="100"
+                                        step="10" id="fuelRange" wire:model.live="fuelLevel">
+
+                                    <div class="mt-2">
+                                        <span class="badge bg-primary">Selected: {{ $fuelLevel }}%</span>
+                                    </div>
+                                </div>
                             </div>
-                        @endif
-                        <input type="file" class="form-control" wire:model="carVideo">
-                        <div wire:loading wire:target="carVideo" class="progress mt-2">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                                style="width: 100%;">Uploading...</div>
                         </div>
-                        @error('carVideo')
+                    </div>
+
+                    <!-- Mileage -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Mileage</label>
+                        <input type="text" class="form-control" wire:model="mileage" placeholder="Mileage Car">
+                        @error('mileage')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
+
+
                 </div>
 
-                 <button type="submit" class="btn btn-primary mt-3">Upload Documents</button> 
-             </form>  --}}
+                <button type="submit" class="btn btn-primary mt-3">Upload Documents</button>
+            </form>
 
-
-            No Action And Submit Any Form
 
         </div>
 

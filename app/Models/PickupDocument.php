@@ -15,7 +15,11 @@ class PickupDocument extends Model
         'tars_contract',
         'kardo_contract',
         'factor_contract',
-        'car_video',
+        'car_dashboard',
+        'car_inside_video',
+        'car_outside_video',
+        'fuelLevel',
+        'mileage',
     ];
 
     public function contract()

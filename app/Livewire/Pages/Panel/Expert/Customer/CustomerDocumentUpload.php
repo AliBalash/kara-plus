@@ -64,13 +64,16 @@ class CustomerDocumentUpload extends Component
             return Storage::disk('myimage')->exists($path) ? Storage::url($path) : null;
         })->filter()->first();
 
-        $this->hotel_name = $customerDocument->hotel_name;
-        $this->hotel_address = $customerDocument->hotel_address;
+        if (!empty($customerDocument)) {
+
+            $this->hotel_name = $customerDocument->hotel_name;
+            $this->hotel_address = $customerDocument->hotel_address;
+        }
 
         // بررسی وجود فایل‌های آپلود شده
         $this->existingFiles = [
             'visa' => $visaPath,
-            'passport' =>$passportPath,
+            'passport' => $passportPath,
             'license' => $licensePath,
             'ticket' => $ticketPath
         ];

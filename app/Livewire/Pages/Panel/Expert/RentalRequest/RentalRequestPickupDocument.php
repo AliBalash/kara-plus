@@ -18,7 +18,11 @@ class RentalRequestPickupDocument extends Component
     public $tarsContract;
     public $kardoContract;
     public $factorContract;
-    public $carVideo;
+    public $carDashboard;
+    public $carVideoOutside;
+    public $carVideoInside;
+    public $fuelLevel  = 50;
+    public $mileage;
     public $existingFiles = [];
 
 
@@ -26,6 +30,11 @@ class RentalRequestPickupDocument extends Component
     public function mount($contractId)
     {
         $this->contractId = $contractId;
+        $pickup = PickupDocument::where('contract_id', $contractId)->first();
+        if (!empty($pickup)) {
+            $this->fuelLevel = $pickup->fuelLevel;
+            $this->mileage = $pickup->mileage;
+        }
         $this->existingFiles = [
             'tarsContract' => Storage::disk('myimage')->exists("PickupDocument/tars_contract_{$this->contractId}.jpg")
                 ? Storage::url("PickupDocument/tars_contract_{$this->contractId}.jpg")
@@ -36,15 +45,24 @@ class RentalRequestPickupDocument extends Component
             'factorContract' => Storage::disk('myimage')->exists("PickupDocument/factor_contract_{$this->contractId}.jpg")
                 ? Storage::url("PickupDocument/factor_contract_{$this->contractId}.jpg")
                 : null,
-            'carVideo' => Storage::disk('myimage')->exists("PickupDocument/car_video_{$this->contractId}.mp4")
-                ? Storage::url("PickupDocument/car_video_{$this->contractId}.mp4")
+            'carDashboard' => Storage::disk('myimage')->exists("PickupDocument/car_dashboard_{$this->contractId}.jpg")
+                ? Storage::url("PickupDocument/car_dashboard_{$this->contractId}.jpg")
+                : null,
+            'carVideoOutside' => Storage::disk('myimage')->exists("PickupDocument/car_video_outside_{$this->contractId}.mp4")
+                ? Storage::url("PickupDocument/car_video_outside_{$this->contractId}.mp4")
+                : null,
+            'carVideoInside' => Storage::disk('myimage')->exists("PickupDocument/car_video_inside_{$this->contractId}.mp4")
+                ? Storage::url("PickupDocument/car_video_inside_{$this->contractId}.mp4")
                 : null,
         ];
     }
 
     public function uploadDocuments()
     {
-        $validationRules = [];
+        $validationRules = [
+            'fuelLevel' => 'required',
+            'mileage' => 'required',
+        ];
 
         // Tars Contract Validation
         if ($this->tarsContract) {
@@ -67,16 +85,36 @@ class RentalRequestPickupDocument extends Component
             $validationRules['factorContract'] = 'image|max:2048';
         }
 
-        // Car Video Validation
-        if ($this->carVideo) {
-            $validationRules['carVideo'] = 'required|mimetypes:video/mp4|max:10240';
-        } elseif (!$this->carVideo && empty($this->existingFiles['carVideo'])) {
-            $validationRules['carVideo'] = 'mimetypes:video/mp4|max:10240';
+
+
+        // Car Dashboard  Validation
+        if ($this->carDashboard) {
+            $validationRules['carDashboard'] = 'required|image|max:2048';
+        } elseif (!$this->carDashboard && empty($this->existingFiles['carDashboard'])) {
+            $validationRules['carDashboard'] = 'image|max:2048';
         }
+
+
+        // Car Video Inside Validation
+        if ($this->carVideoInside) {
+            $validationRules['carVideoInside'] = 'required|mimetypes:video/mp4|max:10240';
+        } elseif (!$this->carVideoInside && empty($this->existingFiles['carVideoInside'])) {
+            $validationRules['carVideoInside'] = 'mimetypes:video/mp4|max:10240';
+        }
+
+        // Car Video Outside Validation
+        if ($this->carVideoOutside) {
+            $validationRules['carVideoOutside'] = 'required|mimetypes:video/mp4|max:10240';
+        } elseif (!$this->carVideoOutside && empty($this->existingFiles['carVideoOutside'])) {
+            $validationRules['carVideoOutside'] = 'mimetypes:video/mp4|max:10240';
+        }
+
+
 
         if ($validationRules) {
             $this->validate($validationRules);
         }
+
 
         // Start Database Transaction
         DB::beginTransaction();
@@ -87,7 +125,8 @@ class RentalRequestPickupDocument extends Component
                 ['contract_id' => $this->contractId],
                 ['user_id' => auth()->id()]
             );
-
+            $pickupDocument->fuelLevel = $this->fuelLevel;
+            $pickupDocument->mileage = $this->mileage;
 
             // Tars Contract Upload
             if ($this->tarsContract) {
@@ -113,11 +152,28 @@ class RentalRequestPickupDocument extends Component
                 $uploadedPaths[] = $factorPath;
             }
 
-            // Car Video Upload
-            if ($this->carVideo) {
-                $videoPath = $this->carVideo->storeAs('PickupDocument', "car_video_{$this->contractId}.mp4", 'myimage');
+
+            // Car Dashboard  Upload
+            if ($this->carDashboard) {
+                $carDashboardPath = $this->carDashboard->storeAs('PickupDocument', "car_dashboard_{$this->contractId}.jpg", 'myimage');
+                if (!$carDashboardPath) throw new \Exception('Error uploading dashboard photo.');
+                $pickupDocument->car_dashboard = $carDashboardPath;
+                $uploadedPaths[] = $carDashboardPath;
+            }
+
+            // Car Video Inside Upload
+            if ($this->carVideoInside) {
+                $videoPath = $this->carVideoInside->storeAs('PickupDocument', "car_video_inside_{$this->contractId}.mp4", 'myimage');
+                if (!$videoPath) throw new \Exception('Error uploading car inside video.');
+                $pickupDocument->car_inside_video = $videoPath;
+                $uploadedPaths[] = $videoPath;
+            }
+
+            // Car Video Outside Upload
+            if ($this->carVideoOutside) {
+                $videoPath = $this->carVideoOutside->storeAs('PickupDocument', "car_video_outside_{$this->contractId}.mp4", 'myimage');
                 if (!$videoPath) throw new \Exception('Error uploading car video.');
-                $pickupDocument->car_video = $videoPath;
+                $pickupDocument->car_outside_video = $videoPath;
                 $uploadedPaths[] = $videoPath;
             }
             $pickupDocument->user_id = auth()->id();
@@ -144,9 +200,9 @@ class RentalRequestPickupDocument extends Component
 
     public function removeFile($fileType)
     {
-        $extension = ($fileType === 'car_video') ? 'mp4' : 'jpg';
+        $videoFields = ['car_video_outside', 'car_video_inside'];
+        $extension = in_array($fileType, $videoFields) ? 'mp4' : 'jpg';
         $filePath = "PickupDocument/{$fileType}_{$this->contractId}.{$extension}";
-
         if (Storage::disk('myimage')->exists($filePath)) {
             Storage::disk('myimage')->delete($filePath);
         }

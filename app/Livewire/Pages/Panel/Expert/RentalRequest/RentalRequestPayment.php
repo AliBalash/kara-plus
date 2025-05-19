@@ -7,10 +7,12 @@ use App\Models\Payment;
 use App\Models\Contract;
 use App\Models\CustomerDocument;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Http;
+use Livewire\WithFileUploads;
 
 class RentalRequestPayment extends Component
 {
+
+    use WithFileUploads;
     public $contractId;
     public $customerId;
     public $amount;
@@ -27,6 +29,9 @@ class RentalRequestPayment extends Component
     public $hasCustomerDocument;
     public $hasPayments;
 
+    public $receipt;
+
+
     public $rate;
 
 
@@ -37,7 +42,7 @@ class RentalRequestPayment extends Component
         'payment_date' => 'required|date',
         'is_refundable' => 'required|boolean',
         'rate' => 'nullable|numeric|min:0.0001',
-
+        'receipt' => 'nullable|image|max:2048', // optional receipt image
     ];
 
     public function mount($contractId, $customerId)
@@ -78,7 +83,15 @@ class RentalRequestPayment extends Component
     public function submitPayment()
     {
         $this->validate();
+
         try {
+            $receiptPath = null;
+
+            if ($this->receipt) {
+                $filename = "payment_receipt_{$this->contractId}_" . time() . '.' . $this->receipt->getClientOriginalExtension();
+                $receiptPath = $this->receipt->storeAs('payment_receipts', $filename, 'myimage');
+            }
+
             Payment::create([
                 'contract_id' => $this->contractId,
                 'customer_id' => $this->customerId,
@@ -88,7 +101,8 @@ class RentalRequestPayment extends Component
                 'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                 'is_paid' => false,
                 'is_refundable' => $this->is_refundable,
-                'rate' => $this->currency !== 'IRR' ? $this->rate : null,
+                'rate' => $this->currency !== 'AED' ? $this->rate : null,
+                'receipt' => $receiptPath, // store receipt path
             ]);
 
             session()->flash('message', 'Payment was successfully added!');
@@ -100,12 +114,15 @@ class RentalRequestPayment extends Component
         }
     }
 
+
     public function resetForm()
     {
         $this->amount = '';
-        $this->currency = 'IRR';
+        $this->currency = 'AUD';
         $this->payment_type = '';
         $this->payment_date = '';
+        $this->rate = '';
+        $this->receipt = '';
         $this->is_refundable = false;
     }
 
