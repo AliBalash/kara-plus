@@ -6,27 +6,95 @@
         </a>
     </div>
 
-    <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
-        <!-- Search -->
-        {{-- <div class="navbar-nav align-items-center">
-            <div class="nav-item d-flex align-items-center">
-                <i class="bx bx-search fs-4 lh-0"></i>
-                <input type="text" class="form-control border-0 shadow-none" placeholder="Search..."
-                    aria-label="Search..." />
-            </div>
-        </div> --}}
-        <!-- /Search -->
+    <div class="navbar-nav-right d-flex align-items-center w-100 justify-content-between" id="navbar-collapse">
 
-        <!-- Current Date -->
-        <div class="navbar-nav align-items-center">
-            <div class="nav-item d-flex align-items-center">
-                <i class="bx bx-calendar fs-4 lh-0"></i>
-                <span class="ms-2">{{ \Carbon\Carbon::now()->format('l, d F Y') }}</span>
-            </div>
+        <!-- تاریخ - چپ -->
+        <div class="d-flex align-items-center">
+            <i class="bx bx-calendar fs-4 lh-0"></i>
+            <span class="ms-2">{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}</span>
         </div>
-        <!-- /Current Date -->
 
-        <ul class="navbar-nav flex-row align-items-center ms-auto">
+        <!-- Search - Centered and Responsive -->
+        <div class="position-absolute start-50 translate-middle-x w-100 px-3" style="max-width: 600px;">
+            <div class="input-group shadow-sm rounded-3 overflow-hidden">
+                <span class="input-group-text bg-white border-0">
+                    <i class="bx bx-search fs-4 lh-0"></i>
+                </span>
+                <input type="text" wire:model.live.debounce.2000ms="query" class="form-control border-0 shadow-none"
+                    placeholder="Search cars..." aria-label="Search" />
+            </div>
+
+            @if (strlen($query) > 1)
+                <ul class="list-group position-absolute mt-2 w-100 shadow-lg"
+                    style="z-index: 1000; max-height: 350px; overflow-y: auto;
+                backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.65); 
+                border-radius: 1rem;">
+                    @forelse ($cars as $car)
+                        <a href="{{ route('car.form', $car->id) }}" class="text-decoration-none text-dark">
+                            <li class="list-group-item border-0 py-3 mb-1 shadow-sm"
+                                style="background-color: rgba(255, 255, 255, 0.5); 
+                               transition: background-color 0.2s ease, transform 0.2s ease;"
+                                onmouseover="this.style.backgroundColor='rgba(255,255,255,0.8)'; this.style.transform='scale(1.01)'"
+                                onmouseout="this.style.backgroundColor='rgba(255,255,255,0.5)'; this.style.transform='scale(1)'">
+
+                                {{-- Top Row --}}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="fw-bold" style="font-size: 1.1rem;">
+                                        {{ $car->fullname() }}
+                                    </div>
+                                    <span
+                                        class="badge bg-{{ $car->status === 'available' ? 'success' : ($car->status === 'reserved' ? 'warning' : 'danger') }}">
+                                        {{ ucfirst($car['status']) }}
+                                    </span>
+                                </div>
+
+
+                                @if ($car->status === 'reserved')
+                                    <div class="mt-2">
+                                        <div class="d-flex justify-content-end">
+                                            <small class="text-muted m-1">
+                                                <i class="bx bx-calendar-check"></i> Pickup:
+                                                {{ \Carbon\Carbon::parse($car->currentContract->pickup_date)->translatedFormat('d M Y') }}
+                                            </small>
+                                            <small class="text-muted m-1">
+                                                <i class="bx bx-calendar-minus"></i> Return:
+                                                {{ \Carbon\Carbon::parse($car->currentContract->return_date)->translatedFormat('d M Y') }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                @endif
+
+
+                                {{-- Year --}}
+                                <div class="d-flex justify-content-between align-items-center mt-1">
+                                    <small class="text-muted">Year: {{ $car->manufacturing_year }}</small>
+                                </div>
+
+                                {{-- Price & Insurance --}}
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    <span class="badge bg-dark">
+                                        {{ number_format($car->price_per_day) }} AED / Day
+                                    </span>
+                                    @php
+                                        $insuranceExpired = $car->isInsuranceExpired();
+                                    @endphp
+                                    <span class="badge bg-{{ $insuranceExpired ? 'danger' : 'primary' }}">
+                                        Insurance: {{ $insuranceExpired ? 'Expired' : 'Valid' }}
+                                    </span>
+                                </div>
+
+                            </li>
+                        </a>
+                    @empty
+                        <li class="list-group-item text-center text-muted">No cars matched your search.</li>
+                    @endforelse
+                </ul>
+            @endif
+        </div>
+
+
+
+        <ul class="navbar-nav flex-row align-items-center">
             <!-- Place this tag where you want the button to render. -->
             <!-- User -->
             <li class="nav-item navbar-dropdown dropdown-user dropdown">

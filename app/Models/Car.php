@@ -20,7 +20,11 @@ class Car extends Model
         'status',
         'availability',
         'mileage',
-        'price_per_day',
+        'price_per_day_short',
+        'price_per_day_mid',
+        'price_per_day_long',
+        'ldw_price',
+        'scdw_price',
         'service_due_date',
         'damage_report',
         'manufacturing_year',
@@ -28,6 +32,13 @@ class Car extends Model
         'notes',
         'chassis_number',
         'gps',
+        'issue_date',
+        'expiry_date',
+        'passing_date',
+        'passing_valid_for_days',
+        'passing_status',
+        'registration_valid_for_days',
+        'registration_status',
     ];
 
     /**
@@ -113,11 +124,15 @@ class Car extends Model
         return $this->hasOne(Insurance::class); // یک خودرو یک بیمه دارد
     }
 
-
     public function currentContract()
     {
         return $this->hasOne(\App\Models\Contract::class)
             ->where('current_status', 'reserved')
             ->latest('pickup_date');
+    }
+
+    public function options()
+    {
+        return $this->hasMany(CarOption::class);
     }
 }

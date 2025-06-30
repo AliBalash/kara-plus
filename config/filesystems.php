@@ -37,6 +37,13 @@ return [
             'throw' => false,
         ],
 
+        'car_pics' => [
+            'driver' => 'local',
+            'root' => public_path('assets/car-pics'),
+            'url' => env('APP_URL') . '/assets/car-pics',
+            'visibility' => 'public',
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

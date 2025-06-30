@@ -77,7 +77,7 @@
                         </div>
 
                         <div class="input-group mt-2">
-                            <span class="input-group-text">Delivery Date</span>
+                            <span class="input-group-text">Pickup Date</span>
                             <input type="date" class="form-control @error('deliveryDate') is-invalid @enderror"
                                 wire:model="deliveryDate">
                             @error('deliveryDate')

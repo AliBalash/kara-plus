@@ -15,8 +15,6 @@ class RentalRequestReturnDocument extends Component
     use WithFileUploads;
 
     public $contractId;
-    public $tarsContract;
-    public $kardoContract;
     public $factorContract;
     public $carDashboard;
     public $carVideoOutside;
@@ -36,12 +34,6 @@ class RentalRequestReturnDocument extends Component
             $this->mileage = $pickup->mileage;
         }
         $this->existingFiles = [
-            'tarsContract' => Storage::disk('myimage')->exists("ReturnDocument/tars_contract_{$this->contractId}.jpg")
-                ? Storage::url("ReturnDocument/tars_contract_{$this->contractId}.jpg")
-                : null,
-            'kardoContract' => Storage::disk('myimage')->exists("ReturnDocument/kardo_contract_{$this->contractId}.jpg")
-                ? Storage::url("ReturnDocument/kardo_contract_{$this->contractId}.jpg")
-                : null,
             'factorContract' => Storage::disk('myimage')->exists("ReturnDocument/factor_contract_{$this->contractId}.jpg")
                 ? Storage::url("ReturnDocument/factor_contract_{$this->contractId}.jpg")
                 : null,
@@ -64,49 +56,35 @@ class RentalRequestReturnDocument extends Component
             'mileage' => 'required',
         ];
 
-        // Tars Contract Validation
-        if ($this->tarsContract) {
-            $validationRules['tarsContract'] = 'required|image|max:2048';
-        } elseif (!$this->tarsContract && empty($this->existingFiles['tarsContract'])) {
-            $validationRules['tarsContract'] = 'image|max:2048';
-        }
-
-        // Kardo Contract Validation
-        if ($this->kardoContract) {
-            $validationRules['kardoContract'] = 'required|image|max:2048';
-        } elseif (!$this->kardoContract && empty($this->existingFiles['kardoContract'])) {
-            $validationRules['kardoContract'] = 'image|max:2048';
-        }
-
         // Factor Contract Validation
         if ($this->factorContract) {
-            $validationRules['factorContract'] = 'required|image|max:2048';
+            $validationRules['factorContract'] = 'required|image|max:8048';
         } elseif (!$this->factorContract && empty($this->existingFiles['factorContract'])) {
-            $validationRules['factorContract'] = 'image|max:2048';
+            $validationRules['factorContract'] = 'image|max:8048';
         }
 
 
 
         // Car Dashboard  Validation
         if ($this->carDashboard) {
-            $validationRules['carDashboard'] = 'required|image|max:2048';
+            $validationRules['carDashboard'] = 'required|image|max:8048';
         } elseif (!$this->carDashboard && empty($this->existingFiles['carDashboard'])) {
-            $validationRules['carDashboard'] = 'image|max:2048';
+            $validationRules['carDashboard'] = 'image|max:8048';
         }
 
 
         // Car Video Inside Validation
         if ($this->carVideoInside) {
-            $validationRules['carVideoInside'] = 'required|mimetypes:video/mp4|max:10240';
+            $validationRules['carVideoInside'] = 'required|max:20240';
         } elseif (!$this->carVideoInside && empty($this->existingFiles['carVideoInside'])) {
-            $validationRules['carVideoInside'] = 'mimetypes:video/mp4|max:10240';
+            $validationRules['carVideoInside'] = 'max:20240';
         }
 
         // Car Video Outside Validation
         if ($this->carVideoOutside) {
-            $validationRules['carVideoOutside'] = 'required|mimetypes:video/mp4|max:10240';
+            $validationRules['carVideoOutside'] = 'required|max:20240';
         } elseif (!$this->carVideoOutside && empty($this->existingFiles['carVideoOutside'])) {
-            $validationRules['carVideoOutside'] = 'mimetypes:video/mp4|max:10240';
+            $validationRules['carVideoOutside'] = 'max:20240';
         }
 
 
@@ -127,22 +105,6 @@ class RentalRequestReturnDocument extends Component
             );
             $pickupDocument->fuelLevel = $this->fuelLevel;
             $pickupDocument->mileage = $this->mileage;
-
-            // Tars Contract Upload
-            if ($this->tarsContract) {
-                $tarsPath = $this->tarsContract->storeAs('ReturnDocument', "tars_contract_{$this->contractId}.jpg", 'myimage');
-                if (!$tarsPath) throw new \Exception('Error uploading Tars contract.');
-                $pickupDocument->tars_contract = $tarsPath;
-                $uploadedPaths[] = $tarsPath;
-            }
-
-            // Kardo Contract Upload
-            if ($this->kardoContract) {
-                $kardoPath = $this->kardoContract->storeAs('ReturnDocument', "kardo_contract_{$this->contractId}.jpg", 'myimage');
-                if (!$kardoPath) throw new \Exception('Error uploading Kardo contract.');
-                $pickupDocument->kardo_contract = $kardoPath;
-                $uploadedPaths[] = $kardoPath;
-            }
 
             // Factor Contract Upload
             if ($this->factorContract) {

@@ -6,15 +6,26 @@
         </div>
 
         @if (!empty($contract->id))
-            <div class="col-lg-6 text-end">
-                <a class="btn btn-danger fw-bold" href="javascript:void(0);"
-                    onclick="if(confirm('Are you sure you want to set this contract to Reserved?')) { @this.changeStatusToReserve({{ $contract->id }}) }">
-                    Set to Reserved
-                    <i class="bx bxs-log-in-circle"></i>
-                </a>
 
-            </div>
+            @if (is_null($contract->user_id))
+                <a class="btn btn-info fw-bold m-2" href="javascript:void(0);"
+                    onclick="if(confirm('Are you sure you want to assign this contract to self?')) { @this.assignToMe({{ $contract->id }}) }">
+                    Assign to Me
+                    <i class="bx bx-user-plus"></i>
+                </a>
+            @else
+                <div class="col-lg-6 text-end">
+                    <a class="btn btn-danger fw-bold" href="javascript:void(0);"
+                        onclick="if(confirm('Are you sure you want to set this contract to Reserved?')) { @this.changeStatusToReserve({{ $contract->id }}) }">
+                        Set to Reserved
+                        <i class="bx bxs-log-in-circle"></i>
+                    </a>
+                </div>
+            @endif
         @endif
+
+
+
 
     </div>
 
