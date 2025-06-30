@@ -26,17 +26,14 @@ class RentalRequestList extends Component
         $contract = Contract::findOrFail($contractId);
 
         if (is_null($contract->user_id)) {
-            // اختصاص کاربر به قرارداد
             $contract->update([
                 'user_id' => auth()->id(),
             ]);
 
-            // تغییر وضعیت به 'assigned'
             $contract->changeStatus('assigned', auth()->id());
 
             session()->flash('success', 'Contract assigned to you successfully.');
 
-            // ارسال دستور برای به‌روزرسانی داده‌ها
             $this->dispatch('refreshContracts');
         } else {
             session()->flash('error', 'This contract is already assigned.');

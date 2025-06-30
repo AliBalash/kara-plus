@@ -22,9 +22,9 @@
                     <div class="card mb-4">
                         <h5 class="card-header">Contract Information</h5>
                         <div class="card-body demo-vertical-spacing demo-only-element">
-                            <!-- Delivery Date -->
+                            <!-- Pickup Date -->
                             <div class="input-group">
-                                <span class="input-group-text">Delivery Date</span>
+                                <span class="input-group-text">Pickup Date</span>
                                 <span class="form-control">{{ $contract->pickup_date }}</span>
                             </div>
                             <!-- Pickup Location -->

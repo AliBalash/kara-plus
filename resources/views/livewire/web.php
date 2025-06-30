@@ -31,8 +31,6 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPaymentList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPickupDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReserved;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReturnDocument;
-use App\Models\User;
-use Spatie\Permission\Models\Permission;
 
 Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
@@ -52,7 +50,7 @@ Route::middleware(['auth.check'])->group(function () {
     
     Route::get('/expert/rental-requests/kardo-tars', RentalRequestKardoTars::class)->name('rental-requests.kardotars');
     Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
-
+    
     Route::get('/expert/rental-requests/awaiting-return', RentalRequestAwaitingReturnList::class)->name('rental-requests.awaiting');
     Route::get('/expert/rental-requests/payment-list', RentalRequestPaymentList::class)->name('rental-requests.payment.list');
 
@@ -96,17 +94,17 @@ Route::get('/auth/login', Login::class)->name('auth.login')->middleware('auth.gu
 
 
 
-// use App\Imports\CarImport;
-// use Maatwebsite\Excel\Facades\Excel;
-// Route::get('/import-cars', function () {
-//     Masir file Excel ro moshakhas mikonid
-//     $filePath = storage_path('app/private/Cars.xlsx');
-//     // Import file Excel
-//     Excel::import(new CarImport, $filePath);
+use App\Imports\CarImport;
+use Maatwebsite\Excel\Facades\Excel;
+Route::get('/import-cars', function () {
+    // Masir file Excel ro moshakhas mikonid
+    // $filePath = storage_path('app/private/Cars.xlsx');
+    // // Import file Excel
+    // Excel::import(new CarImport, $filePath);
 
-//     // Return success message
-//     return 'Data has been imported successfully from the given file.';
-// });
+    // // Return success message
+    // return 'Data has been imported successfully from the given file.';
+});
 
 
 // use App\Livewire\Reservation\ReserveCarForm;
@@ -114,12 +112,3 @@ Route::get('/auth/login', Login::class)->name('auth.login')->middleware('auth.gu
 // Route::get('/reservations', ReserveCarForm::class);
 // Route::post('/reserve-car', [CarReservationController::class, 'reserveCar'])->name('reserve.car');
 
-
-// Route::get('/test', function () {
-//     $permission = Permission::create(['name' => 'car']);
-
-//     $user = User::find(20);
-//     $user->givePermissionTo('car');
-//     dd($user->permissions );
-
-// });

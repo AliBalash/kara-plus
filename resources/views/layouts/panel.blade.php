@@ -21,6 +21,10 @@
         href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,46200;1,500;1,600;1,700&display=swap"
         rel="stylesheet" />
 
+    <!-- Bootstrap Icons CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+
     <!-- Icons -->
     <link rel="stylesheet" href="{{ asset('assets/panel/assets/vendor/fonts/boxicons.css') }}" />
 

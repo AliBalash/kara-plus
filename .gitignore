@@ -2,6 +2,7 @@
 /vendor/
 /node_modules/
 .env
+/public/assets/car-pics
 
 # Ignore storage except gitignore in the directory
 /storage/*.key

@@ -42,6 +42,10 @@ class RentalRequestForm extends Component
     public $customerDocumentsCompleted = false;
     public $paymentsExist = false;
 
+    protected $listeners = [
+        'refreshContracts' => '$refresh',
+    ];
+
     public function mount($contractId = null)
     {
         $this->carModels = CarModel::all();
@@ -264,7 +268,7 @@ class RentalRequestForm extends Component
             $customer = Customer::updateOrCreate(
                 [
                     'phone' => $this->phone,
-                    'email' => $this->email 
+                    'email' => $this->email
                 ],
                 $customerData
             );
@@ -331,6 +335,27 @@ class RentalRequestForm extends Component
             session()->flash('message', 'Status changed to Reserved successfully.');
         } else {
             session()->flash('error', 'You are not authorized to perform this action.');
+        }
+    }
+
+
+    public function assignToMe($contractId)
+    {
+        $contract = Contract::findOrFail($contractId);
+
+        if (is_null($contract->user_id)) {
+            $contract->update([
+                'user_id' => auth()->id(),
+            ]);
+
+            $contract->changeStatus('assigned', auth()->id());
+
+            session()->flash('success', 'Contract assigned to you successfully.');
+
+
+            $this->dispatch('refreshContracts');
+        } else {
+            session()->flash('error', 'This contract is already assigned to someone.');
         }
     }
 }

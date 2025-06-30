@@ -29,6 +29,7 @@ class Dashboard extends Component
     public $lastUserContractStatus;
 
     public $topBrands;
+    public $reservedCars;
 
     public function mount()
     {
@@ -76,6 +77,12 @@ class Dashboard extends Component
                 'total' => $contract->total
             ];
         });
+
+
+        $this->reservedCars = \App\Models\Contract::with(['car.carModel'])
+            ->where('current_status', 'reserved')
+            ->latest()
+            ->get();
     }
 
 

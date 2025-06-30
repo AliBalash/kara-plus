@@ -87,7 +87,7 @@ class CarModel extends Model
     }
 
     // رابطه چندشکلی برای تصاویر
-    public function images()
+    public function image()
     {
         return $this->morphOne(Image::class, 'imageable');
     }

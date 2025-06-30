@@ -34,7 +34,7 @@
                     <th>#</th> <!-- Contract or Payment Number -->
                     <th>Customer</th>
                     <th>Car Type</th>
-                    <th>Delivery Date</th>
+                    <th>Pickup Date</th>
                     <th>Total Contract Amount</th>
                     <th>Amount Paid</th>
                     <th>Remaining</th>

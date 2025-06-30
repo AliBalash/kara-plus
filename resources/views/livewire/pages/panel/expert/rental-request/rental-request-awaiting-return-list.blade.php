@@ -34,7 +34,7 @@
                     <th>#</th>
                     <th>Customer</th>
                     <th>Car</th>
-                    <th>End Date</th>
+                    <th>Return Date</th>
                     <th>Expert</th>
                     <th>Status</th>
                     <th>Document</th>

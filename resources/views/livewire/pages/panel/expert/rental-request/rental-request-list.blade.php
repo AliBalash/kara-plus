@@ -34,8 +34,8 @@
                     <th>#</th> <!-- افزودن ستون ID قرارداد -->
                     <th>Customer</th>
                     <th>Car</th>
-                    <th>Delivery Date</th>
-                    <th>End Date</th>
+                    <th>Pickup Date</th>
+                    <th>Return Date</th>
                     <th>Expert</th>
                     <th>Status</th>
                     <th>Document</th>

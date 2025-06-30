@@ -66,47 +66,47 @@ class RentalRequestPickupDocument extends Component
 
         // Tars Contract Validation
         if ($this->tarsContract) {
-            $validationRules['tarsContract'] = 'required|image|max:2048';
+            $validationRules['tarsContract'] = 'required|image|max:8048';
         } elseif (!$this->tarsContract && empty($this->existingFiles['tarsContract'])) {
-            $validationRules['tarsContract'] = 'image|max:2048';
+            $validationRules['tarsContract'] = 'image|max:8048';
         }
 
         // Kardo Contract Validation
         if ($this->kardoContract) {
-            $validationRules['kardoContract'] = 'required|image|max:2048';
+            $validationRules['kardoContract'] = 'required|image|max:8048';
         } elseif (!$this->kardoContract && empty($this->existingFiles['kardoContract'])) {
-            $validationRules['kardoContract'] = 'image|max:2048';
+            $validationRules['kardoContract'] = 'image|max:8048';
         }
 
         // Factor Contract Validation
         if ($this->factorContract) {
-            $validationRules['factorContract'] = 'required|image|max:2048';
+            $validationRules['factorContract'] = 'required|image|max:8048';
         } elseif (!$this->factorContract && empty($this->existingFiles['factorContract'])) {
-            $validationRules['factorContract'] = 'image|max:2048';
+            $validationRules['factorContract'] = 'image|max:8048';
         }
 
 
 
         // Car Dashboard  Validation
         if ($this->carDashboard) {
-            $validationRules['carDashboard'] = 'required|image|max:2048';
+            $validationRules['carDashboard'] = 'required|image|max:8048';
         } elseif (!$this->carDashboard && empty($this->existingFiles['carDashboard'])) {
-            $validationRules['carDashboard'] = 'image|max:2048';
+            $validationRules['carDashboard'] = 'image|max:8048';
         }
 
 
         // Car Video Inside Validation
         if ($this->carVideoInside) {
-            $validationRules['carVideoInside'] = 'required|mimetypes:video/mp4|max:10240';
+            $validationRules['carVideoInside'] = 'required|max:20240';
         } elseif (!$this->carVideoInside && empty($this->existingFiles['carVideoInside'])) {
-            $validationRules['carVideoInside'] = 'mimetypes:video/mp4|max:10240';
+            $validationRules['carVideoInside'] = 'max:10240';
         }
 
         // Car Video Outside Validation
         if ($this->carVideoOutside) {
-            $validationRules['carVideoOutside'] = 'required|mimetypes:video/mp4|max:10240';
+            $validationRules['carVideoOutside'] = 'required|max:20240';
         } elseif (!$this->carVideoOutside && empty($this->existingFiles['carVideoOutside'])) {
-            $validationRules['carVideoOutside'] = 'mimetypes:video/mp4|max:10240';
+            $validationRules['carVideoOutside'] = 'max:10240';
         }
 
 
