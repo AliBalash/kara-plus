@@ -18,43 +18,17 @@ class CarModel extends Model
     protected $fillable = [
         'brand',
         'model',
-        'engine_capacity',
-        'fuel_type',
-        'gearbox_type',
-        'seating_capacity',
+        'brand_icon',
+        'is_featured'
     ];
 
-    /**
-     * تبدیل‌های مربوط به نوع داده‌ها.
-     *
-     * @var array
-     */
     protected $casts = [
-        'engine_capacity' => 'float',
-        'seating_capacity' => 'integer',
+        'is_featured' => 'boolean',
     ];
 
-    /**
-     * متد برای بررسی نوع سوخت.
-     *
-     * @return bool
-     */
-    public function isElectric(): bool
-    {
-        return $this->fuel_type === 'electric';
-    }
 
-    /**
-     * متد برای بررسی نوع گیربکس.
-     *
-     * @return bool
-     */
-    public function isAutomatic(): bool
-    {
-        return $this->gearbox_type === 'automatic';
-    }
 
-    /**
+    /*
      * متد برای ترکیب برند و مدل ماشین.
      *
      * @return string
@@ -64,17 +38,7 @@ class CarModel extends Model
         return $this->brand . ' ' . $this->model;
     }
 
-    /**
-     * متد برای دریافت ماشین‌های با سوخت خاص.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $fuelType
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeByFuelType($query, string $fuelType)
-    {
-        return $query->where('fuel_type', $fuelType);
-    }
+
 
     /**
      * رابطه با مدل Car (ماشین‌ها).

@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\Car;
 
 use App\Models\Car;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -11,6 +12,7 @@ class CarList extends Component
     public $search = '';
     public $selectedBrand = '';
     public $onlyReserved = false;
+    protected $listeners = ['deletecar'];
 
 
     protected $queryString = ['search', 'onlyReserved'];
@@ -46,5 +48,25 @@ class CarList extends Component
             ->paginate(10);
 
         return view('livewire.pages.panel.expert.car.car-list', compact('cars', 'brands'));
+    }
+
+
+    public function deletecar($id)
+    {
+        $car = Car::findOrFail($id);
+
+        // Delete related options if needed
+        $car->options()->delete();
+
+        // Delete the image file if it exists
+        if ($car->carModel->image && Storage::disk('car_pics')->exists($car->carModel->image->file_name)) {
+            Storage::disk('car_pics')->delete($car->carModel->image->file_name);
+        }
+
+        // Delete the car record
+        $car->delete();
+
+        // Flash success message to session
+        session()->flash('success', 'Car has been deleted successfully.');
     }
 }

@@ -93,8 +93,8 @@
 
             <ul class="menu-sub">
 
-                <li class="menu-item {{ Request::routeIs('car.form') ? 'active' : '' }}">
-                    <a href="{{ route('car.form') }}" class="menu-link">
+                <li class="menu-item {{ Request::routeIs('car.create') ? 'active' : '' }}">
+                    <a href="{{ route('car.create') }}" class="menu-link">
                         <div data-i18n="Without menu">Add</div>
                     </a>
                 </li>

@@ -9,6 +9,8 @@ use App\Livewire\Pages\Panel\Expert\Brand\BrandForm;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandList;
 use App\Livewire\Pages\Panel\Expert\Car\CarDetail;
 use App\Livewire\Pages\Panel\Expert\Car\CarForm;
+use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
+use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\CarList;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDetail;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDocumentUpload;
@@ -49,7 +51,7 @@ Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/rental-requests/reserved', RentalRequestReserved::class)->name('rental-requests.reserved');
     Route::get('/expert/rental-requests/pickup-document/{contractId}', RentalRequestPickupDocument::class)->name('rental-requests.pickup-document');
     Route::get('/expert/rental-requests/return-document/{contractId}', RentalRequestReturnDocument::class)->name('rental-requests.return-document');
-    
+
     Route::get('/expert/rental-requests/kardo-tars', RentalRequestKardoTars::class)->name('rental-requests.kardotars');
     Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
 
@@ -60,8 +62,12 @@ Route::middleware(['auth.check'])->group(function () {
 
     Route::get('/expert/car/list/', CarList::class)->name('car.list');
     Route::get('/expert/car/detail/{carId}', CarDetail::class)->name('car.detail');
-    Route::get('/expert/car/form/{carId?}', CarForm::class)->name('car.form');
 
+
+    // Route::get('/expert/car/form/{carId?}', CarForm::class)->name('car.form');
+
+    Route::get('/expert/car/create', CreateCarForm::class)->name('car.create');
+    Route::get('/expert/car/edit/{carId}', EditCarForm::class)->name('car.edit');
 
     Route::get('/expert/brand/list', BrandList::class)->name('brand.list');
     Route::get('/expert/brand/detail/{brandId}', BrandDetail::class)->name('brand.detail');
@@ -83,7 +89,6 @@ Route::middleware(['auth.check'])->group(function () {
 
 
     Route::get('/my-profile', Profile::class)->name('profile.me');
-
 });
 
 

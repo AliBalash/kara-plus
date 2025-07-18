@@ -32,17 +32,7 @@
                             @enderror
                         </div>
 
-                        <!-- Engine Capacity -->
-                        <div class="input-group">
-                            <span class="input-group-text" id="engine-capacity-addon">Engine Capacity (L)</span>
-                            <input type="number" step="0.1"
-                                class="form-control @error('engineCapacity') is-invalid @enderror"
-                                placeholder="Enter Engine Capacity" name="engine_capacity"
-                                wire:model.live="engineCapacity">
-                            @error('engineCapacity')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+
                     </div>
                 </div>
             </div>
@@ -67,13 +57,24 @@
 
                         <div class="mb-3">
                             <label for="additionalImage" class="form-label">Additional Image</label>
-                            <input type="file" class="form-control" id="additionalImage" wire:model="additionalImage">
+                            <input type="file" class="form-control" id="additionalImage"
+                                wire:model="additionalImage">
                             <small class="form-text text-muted">Recommended size: 800x450 pixels, format: PNG</small>
+
                             @error('additionalImage')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
+
+                            <!-- Loading bar when image is uploading -->
+                            <div wire:loading wire:target="additionalImage" class="progress mt-2" style="height: 40px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info fs-5 fw-bold text-center"
+                                    style="width: 100%;">
+                                    Uploading Image...
+                                </div>
+                            </div>
                         </div>
-                        
+
+
 
                         @if ($additionalImages)
                             <img src="{{ asset('assets/car-pics/' . $additionalImages->file_name) }}"
@@ -82,46 +83,6 @@
                             <img src="{{ asset('assets/car-pics/car test.webp') }}" alt="Default Image" width="100">
                         @endif
 
-                        <!-- Fuel Type -->
-                        <div class="input-group">
-                            <span class="input-group-text" id="fuel-type-addon">Fuel Type</span>
-                            <select class="form-control @error('fuelType') is-invalid @enderror" name="fuel_type"
-                                wire:model="fuelType">
-                                <option value="">Select Fuel Type</option>
-                                <option value="petrol">Petrol</option>
-                                <option value="diesel">Diesel</option>
-                                <option value="hybrid">Hybrid</option>
-                                <option value="electric">Electric</option>
-                            </select>
-                            @error('fuelType')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Gearbox Type -->
-                        <div class="input-group">
-                            <span class="input-group-text" id="gearbox-type-addon">Gearbox Type</span>
-                            <select class="form-control @error('gearboxType') is-invalid @enderror" name="gearbox_type"
-                                wire:model="gearboxType">
-                                <option value="">Select Gearbox Type</option>
-                                <option value="manual">Manual</option>
-                                <option value="automatic">Automatic</option>
-                            </select>
-                            @error('gearboxType')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Seating Capacity -->
-                        <div class="input-group">
-                            <span class="input-group-text" id="seating-capacity-addon">Seating Capacity</span>
-                            <input type="number" class="form-control @error('seatingCapacity') is-invalid @enderror"
-                                placeholder="Enter Seating Capacity" name="seating_capacity"
-                                wire:model.live="seatingCapacity">
-                            @error('seatingCapacity')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
                     </div>
                 </div>
             </div>

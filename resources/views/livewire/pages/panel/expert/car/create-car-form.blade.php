@@ -4,6 +4,7 @@
             {{ session('message') }}
         </div>
     @endif
+
     <form wire:submit.prevent="submit">
         <div class="row">
             <!-- Car Information -->
@@ -13,54 +14,48 @@
                         <h5 class="card-header">Car Information</h5>
                         <div class="card-body demo-vertical-spacing demo-only-element">
 
-
-                            <!-- Car Brand Selection -->
+                            <!-- انتخاب برند -->
                             <div class="input-group">
-                                <span class="input-group-text" id="car-brand-addon">Car Brand</span>
-                                <select class="form-control @error('selectedBrand') is-invalid @enderror"
-                                    id="car_brand_id" name="car_brand_id" wire:model.live="selectedBrand"
-                                    aria-describedby="car-brand-addon">
+                                <span class="input-group-text">Car Brand</span>
+                                <select class="form-control text-uppercase @error('selectedBrand') is-invalid @enderror"
+                                    wire:model.live="selectedBrand" required>
                                     <option value="">Select Brand</option>
-                                    @foreach ($carModels as $model)
-                                        <option value="{{ $model->id }}"
-                                            @if ($model->id == $selectedBrand) selected @endif>
-                                            {{ $model->fullname() }}
-                                        </option>
+                                    @foreach ($brands as $brand)
+                                        <option value="{{ $brand }}">{{ $brand }}</option>
                                     @endforeach
                                 </select>
                                 @error('selectedBrand')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <!-- Car Model Selection (Filtered by Brand) -->
-                            <div class="input-group">
-                                <span class="input-group-text" id="car-model-id-addon">Car Model</span>
-                                <select class="form-control @error('selectedCarId') is-invalid @enderror"
-                                    id="car_model_id" name="car_model_id" wire:model="selectedCarId"
-                                    aria-describedby="car-model-id-addon">
-                                    <option value="">Select Model</option>
-                                    @if ($selectedBrand)
-                                        @foreach ($cars as $car)
-                                            <option value="{{ $car->id }}"
-                                                @if ($car->id == $selectedCarId) selected @endif>
-                                                {{ $car->carModel->model }} -
-                                                {{ $car->manufacturing_year }} -
-                                                {{ $car->color ?? 'No Color' }}
+
+                            <!-- انتخاب مدل (فقط وقتی برند انتخاب شده باشد نمایش داده می‌شود) -->
+                            @if ($selectedBrand)
+                                <div class="input-group mt-3">
+                                    <span class="input-group-text">Car Model</span>
+                                    <select class="form-control text-uppercase @error('selectedModelId') is-invalid @enderror"
+                                        wire:model.live="selectedModelId" required>
+                                        <option value="">Select Model</option>
+                                        @foreach ($models as $model)
+                                            <option value="{{ $model->id }}">
+                                                {{ $model->model }}
                                             </option>
                                         @endforeach
-                                    @endif
-                                </select>
-                                @error('selectedCarId')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                                    </select>
+                                    @error('selectedModelId')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endif
 
-                            @if ($selectedCarId)
+                            @if ($selectedModelId)
+                                <!-- Plate Number -->
                                 <div class="input-group">
                                     <span class="input-group-text" id="plate-number-addon">Plate Number</span>
                                     <input type="text"
                                         class="form-control @error('plate_number') is-invalid @enderror"
-                                        placeholder="Plate Number" name="plate_number" wire:model="plate_number">
+                                        placeholder="Plate Number" name="plate_number" wire:model="plate_number"
+                                        required>
                                     @error('plate_number')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -71,16 +66,10 @@
                                     <span class="input-group-text" id="status-addon">Status</span>
                                     <select
                                         class="form-control border border-warning @error('status') is-invalid @enderror"
-                                        name="status" wire:model="status">
-                                        <option value="available" {{ $status == 'available' ? 'selected' : '' }}>
-                                            Available
-                                        </option>
-                                        <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Reserved
-                                        </option>
-                                        <option value="under_maintenance"
-                                            {{ $status == 'under_maintenance' ? 'selected' : '' }}>
-                                            Under Maintenance
-                                        </option>
+                                        name="status" wire:model="status" required>
+                                        <option value="available">Available</option>
+                                        <option value="reserved">Reserved</option>
+                                        <option value="under_maintenance">Under Maintenance</option>
                                     </select>
                                     @error('status')
                                         <span class="text-danger small">{{ $message }}</span>
@@ -91,8 +80,7 @@
                                 <div class="input-group">
                                     <span class="input-group-text" id="availability-addon">Availability</span>
                                     <select class="form-select @error('availability') is-invalid @enderror"
-                                        wire:model="availability">
-                                        <option value="">Select availability</option>
+                                        wire:model="availability" required>
                                         <option value="true">Available</option>
                                         <option value="false">Not Available</option>
                                     </select>
@@ -105,7 +93,7 @@
                                 <div class="input-group">
                                     <span class="input-group-text" id="mileage-addon">Mileage</span>
                                     <input type="number" class="form-control @error('mileage') is-invalid @enderror"
-                                        placeholder="Mileage" name="mileage" wire:model="mileage">
+                                        placeholder="Mileage" name="mileage" wire:model="mileage" required>
                                     @error('mileage')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -116,7 +104,8 @@
                                     <span class="input-group-text">Price (1-6 days)</span>
                                     <input type="number"
                                         class="form-control @error('price_per_day_short') is-invalid @enderror"
-                                        wire:model="price_per_day_short" placeholder="Price for short-term (درهم)">
+                                        wire:model="price_per_day_short" placeholder="Price for short-term (درهم)"
+                                        required>
                                     @error('price_per_day_short')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -170,7 +159,7 @@
                                     <span class="input-group-text" id="service-due-date-addon">Service Due Date</span>
                                     <input type="date"
                                         class="form-control @error('service_due_date') is-invalid @enderror"
-                                        name="service_due_date" wire:model="service_due_date">
+                                        name="service_due_date" wire:model="service_due_date" >
                                     @error('service_due_date')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -193,7 +182,7 @@
                                     <input type="number"
                                         class="form-control @error('manufacturing_year') is-invalid @enderror"
                                         placeholder="Manufacturing Year" name="manufacturing_year"
-                                        wire:model="manufacturing_year">
+                                        wire:model="manufacturing_year" required>
                                     @error('manufacturing_year')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -215,7 +204,7 @@
                                     <input type="text"
                                         class="form-control @error('chassis_number') is-invalid @enderror"
                                         placeholder="Chassis Number" name="chassis_number"
-                                        wire:model="chassis_number">
+                                        wire:model="chassis_number" required>
                                     @error('chassis_number')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -235,48 +224,34 @@
                                     @enderror
                                 </div>
 
-
-                                <div class="mb-3">
-                                    <label class="form-label">Existing Image</label>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <div style="position: relative;">
-                                            @if ($car->carModel->image && $car->carModel->image->file_name)
-                                                <img src="{{ asset('assets/' . $car->carModel->image->file_path . $car->carModel->image->file_name) }}"
-                                                    width="400" height="200"
-                                                    style="object-fit: cover; border-radius: 8px;">
-                                            @else
-                                                <p class="text-muted">No image uploaded yet.</p>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- File Upload -->
-                                <div class="input-group mb-3">
-                                    <span class="input-group-text">Upload Image</span>
-                                    <input type="file"
-                                        class="form-control @error('newImage') is-invalid @enderror"
-                                        wire:model="newImage">
-                                </div>
-                                <div wire:loading wire:target="newImage" class="progress mt-2" style="height: 40px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info fs-5 fw-bold text-center"
-                                        style="width: 100%;">
-                                        Uploading Image...
-                                    </div>
-                                </div>
-
-                                @error('newImage')
-                                    <span class="text-danger">{{ $message }}</span>
-                                @enderror
-
                             @endif
 
                         </div>
                     </div>
                 </div>
+
+                @if ($selectedModelId)
+                    <!-- Is Featured (Brand Highlight) -->
+                    <div class="card mb-4">
+                        <h5 class="card-header">
+                            Featured
+                        </h5>
+                        <div class="card-body demo-vertical-spacing demo-only-element">
+                            <div class="form-check form-switch d-flex align-items-center gap-3 fs-5">
+                                <input class="form-check-input" type="checkbox" id="isFeatured"
+                                    wire:model="is_featured" style="width: 3rem; height: 1.5rem;">
+                                <label class="form-check-label fw-bold d-flex align-items-center gap-2"
+                                    for="isFeatured">
+                                    <i class="bx bx-star bx-sm text-warning"></i>
+                                    Special Brand
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
 
-            <!-- Additional Fields (Registration, Service Dates, etc.) -->
+            <!-- Additional Fields -->
             <div class="col-md-6">
                 <div class="col-md-12">
                     <div class="card mb-4">
@@ -421,8 +396,6 @@
                                     min="1" placeholder="e.g., 2">
                             </div>
 
-
-
                             {{-- Fuel Type --}}
                             <div class="mb-3">
                                 <label class="form-label">Fuel Type</label>
@@ -442,7 +415,7 @@
                                     placeholder="e.g., 1600">
                             </div>
 
-                            
+
                             {{-- Unlimited Kilometers --}}
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="unlimited_km"
@@ -457,23 +430,16 @@
                                 <label class="form-check-label" for="base_insurance">Base Insurance</label>
                             </div>
 
-                            
                         </div>
                     </div>
-
-
                 </div>
             </div>
         </div>
 
-
-
         <div class="mt-2">
-            <button type="submit" class="btn btn-primary">Submit</button>
+            <button type="submit" class="btn btn-primary">Add Car</button>
             <span wire:loading wire:target="submit" class="spinner-border spinner-border-sm ms-2" role="status"
                 aria-hidden="true"></span>
-
         </div>
-
     </form>
 </div>
