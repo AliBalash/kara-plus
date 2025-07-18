@@ -99,17 +99,15 @@
                                     </a> --}}
 
                                     <!-- گزینه Edit -->
-                                    <a class="dropdown-item" href="{{ route('car.form', $car->id) }}">
+                                    <a class="dropdown-item" href="{{ route('car.edit', $car->id) }}">
                                         <i class="bx bx-edit-alt me-1"></i> Edit
                                     </a>
 
                                     <!-- گزینه Delete -->
-                                    @if ($car->user_id === auth()->id())
-                                        <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="deletecar({{ $car->id }})">
-                                            <i class="bx bx-trash me-1"></i> Delete
-                                        </a>
-                                    @endif
+                                    <a class="dropdown-item" href="javascript:void(0);"
+                                        onclick="if(confirm('Are you sure you want to delete this car?')) { Livewire.dispatch('deletecar', {{ $car->id }}) }">
+                                        <i class="bx bx-trash me-1"></i> Delete
+                                    </a>
                                 </div>
                             </div>
 

@@ -7,6 +7,7 @@ use App\Models\CarModel;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
+use Illuminate\Support\Str;
 
 class BrandForm extends Component
 {
@@ -15,19 +16,17 @@ class BrandForm extends Component
     public $brandId;
     public $brand;
     public $model;
-    public $engineCapacity;
-    public $fuelType;
-    public $gearboxType;
-    public $seatingCapacity;
     public $brandIcon;
-    public $additionalImage;
     public $currentBrandIcon;
+    public $additionalImage;
 
     public function mount($brandId = null)
     {
         if ($brandId) {
             $this->loadCarModelData($brandId);
         }
+
+
     }
 
     private function loadCarModelData($brandId)
@@ -37,10 +36,6 @@ class BrandForm extends Component
         $this->brandId = $brandId;
         $this->brand = $carModel->brand;
         $this->model = $carModel->model;
-        $this->engineCapacity = $carModel->engine_capacity;
-        $this->fuelType = $carModel->fuel_type;
-        $this->gearboxType = $carModel->gearbox_type;
-        $this->seatingCapacity = $carModel->seating_capacity;
         $this->currentBrandIcon = $carModel->brand_icon;
     }
     public function save()
@@ -48,44 +43,59 @@ class BrandForm extends Component
         $this->validate([
             'brand' => 'required|string|max:255',
             'model' => 'required|string|max:255',
-            'engineCapacity' => 'required|numeric|min:0',
-            'fuelType' => 'required|string',
-            'gearboxType' => 'required|string',
-            'seatingCapacity' => 'required|integer|min:1',
             'brandIcon' => 'nullable|image|mimes:jpg,jpeg,png|max:1024',
-            'additionalImage' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'additionalImage' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5048',
+
         ]);
 
         $carModel = $this->brandId ? CarModel::findOrFail($this->brandId) : new CarModel();
 
         $carModel->brand = $this->brand;
         $carModel->model = $this->model;
-        $carModel->engine_capacity = $this->engineCapacity;
-        $carModel->fuel_type = $this->fuelType;
-        $carModel->gearbox_type = $this->gearboxType;
-        $carModel->seating_capacity = $this->seatingCapacity;
 
 
 
-        // if ($this->brandIcon) {
-        //     if ($carModel->brand_icon && Storage::exists('public/' . $carModel->brand_icon)) {
-        //         Storage::delete('public/' . $carModel->brand_icon);
-        //     }
-        //     $path = $this->brandIcon->store('brand-icons', 'myimage');
-        //     $carModel->brand_icon = $path;
-        // }
+        if ($this->brandIcon) {
+            if ($carModel->brand_icon && Storage::exists('public/' . $carModel->brand_icon)) {
+                Storage::delete('public/' . $carModel->brand_icon);
+            }
+            $path = $this->brandIcon->store('brand-icons', 'myimage');
+            $carModel->brand_icon = $path;
+        }
+        $carModel->save();
 
-        // if ($this->additionalImage) {
-        //     $additionalImagePath = $this->additionalImage->store('additional-images', 'myimage');
-        //     // Handle saving additional image
-        // }
+        // Handle image upload
+        if ($this->additionalImage) {
+            $imageModel = $carModel->image;
+            // Delete old image if exists
+            if ($imageModel && $imageModel->file_name) {
+                Storage::disk('car_pics')->delete($imageModel->file_name);
+            }
 
-        // $carModel->save();
+            $extension = $this->additionalImage->getClientOriginalExtension();
+            $carName = $carModel->fullname();
+            $safeName = Str::slug($carName) . '.' . $extension;
 
-        session()->flash('success', $this->brandId 
-        ? 'The car model has been successfully updated!' 
-        : 'A new car model has been successfully added!');
-    
+            Storage::disk('car_pics')->putFileAs('', $this->additionalImage, $safeName);
+
+            // Update or create image
+            if (!$imageModel) {
+                $imageModel = $carModel->image()->create([
+                    'file_path' => 'car-pics/',
+                    'file_name' => $safeName,
+                ]);
+            } else {
+                $imageModel->update([
+                    'file_name' => $safeName
+                ]);
+            }
+        }
+
+
+        session()->flash('success', $this->brandId
+            ? 'The car model has been successfully updated!'
+            : 'A new car model has been successfully added!');
+
         // return redirect()->route('brand.add');
     }
 
@@ -93,9 +103,8 @@ class BrandForm extends Component
     public function render()
     {
         $additionalImages = $this->brandId
-            ? CarModel::findOrFail($this->brandId)->images
+            ? CarModel::findOrFail($this->brandId)->image
             : null;
-
         return view(
             'livewire.pages.panel.expert.brand.brand-form',
             compact('additionalImages')

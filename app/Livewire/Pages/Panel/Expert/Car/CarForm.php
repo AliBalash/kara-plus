@@ -60,7 +60,7 @@ class CarForm extends Component
         'price_per_day_long' => 'nullable|numeric|min:0',
         'ldw_price' => 'nullable|numeric|min:0',
         'scdw_price' => 'nullable|numeric|min:0',
-        'service_due_date' => 'date',
+        'service_due_date' => 'date|nullable',
         'damage_report' => 'nullable|string',
         'manufacturing_year' => 'required|numeric|min:1900',
         'color' => 'required|string|max:255',
@@ -96,8 +96,7 @@ class CarForm extends Component
             // Fetch cars based on the selected brand
             $this->filterCarsByBrand($this->selectedBrand);
         } else {
-            // Reset the fields if no carId is provided
-            $this->resetCarData();
+            abort(404);
         }
     }
 
@@ -140,7 +139,7 @@ class CarForm extends Component
         $this->registration_status = $car->registration_status;
         $this->car_options = $car->options->pluck('option_value', 'option_key')->toArray();
         // Ensure booleans are correctly cast for Livewire checkboxes
-        foreach (['base_insurance', 'unlimited_km', 'cruise_control', 'air_conditioning'] as $key) {
+        foreach (['base_insurance', 'unlimited_km', ] as $key) {
             if (isset($this->car_options[$key])) {
                 $this->car_options[$key] = $this->car_options[$key] == '1' ? true : false;
             }
@@ -283,7 +282,7 @@ class CarForm extends Component
             $imageModel->save();
         }
 
-
+        
 
         // Provide success feedback to the user
         session()->flash('message', 'Car details updated successfully.');

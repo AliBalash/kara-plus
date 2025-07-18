@@ -16,13 +16,10 @@ return new class extends Migration
             $table->string('brand'); // برند
             $table->string('model'); // مدل
             $table->string('brand_icon')->nullable(); //  ایکون برند 
-            $table->float('engine_capacity')->nullable(); // حجم موتور
-            $table->enum('fuel_type', ['petrol', 'diesel', 'hybrid', 'electric'])->nullable(); // نوع سوخت
-            $table->enum('gearbox_type', ['manual', 'automatic'])->nullable(); // نوع گیربکس
-            $table->integer('seating_capacity')->default(4); // ظرفیت سرنشین
+            $table->boolean('is_featured')->default(false);
+
             $table->timestamps();
         });
-        
     }
 
     /**
@@ -31,6 +28,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('car_models');
-
     }
 };
