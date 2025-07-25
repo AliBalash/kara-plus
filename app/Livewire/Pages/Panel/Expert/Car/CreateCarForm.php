@@ -5,10 +5,8 @@ namespace App\Livewire\Pages\Panel\Expert\Car;
 
 use App\Models\Car;
 use App\Models\CarModel;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use Illuminate\Support\Str;
 
 class CreateCarForm extends Component
 {

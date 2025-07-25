@@ -200,23 +200,38 @@ class RentalRequestPickupDocument extends Component
 
     public function removeFile($fileType)
     {
-        $videoFields = ['car_video_outside', 'car_video_inside'];
-        $extension = in_array($fileType, $videoFields) ? 'mp4' : 'jpg';
+        // نگاشت جدید با کلیدهای منطبق بر view
+        $mapping = [
+            'tars_contract' => ['db_field' => 'tars_contract', 'extension' => 'jpg'],
+            'kardo_contract' => ['db_field' => 'kardo_contract', 'extension' => 'jpg'],
+            'factor_contract' => ['db_field' => 'factor_contract', 'extension' => 'jpg'],
+            'car_dashboard' => ['db_field' => 'car_dashboard', 'extension' => 'jpg'],
+            'car_video_outside' => ['db_field' => 'car_outside_video', 'extension' => 'mp4'],
+            'car_video_inside' => ['db_field' => 'car_inside_video', 'extension' => 'mp4'],
+        ];
+
+        if (!array_key_exists($fileType, $mapping)) {
+            session()->flash('error', 'The file type "' . $fileType . '" is not valid.');
+            return;
+        }
+
+        $dbField = $mapping[$fileType]['db_field'];
+        $extension = $mapping[$fileType]['extension'];
+
+        // ساخت مسیر فایل با استفاده از fileType (نه db_field)
         $filePath = "PickupDocument/{$fileType}_{$this->contractId}.{$extension}";
+
         if (Storage::disk('myimage')->exists($filePath)) {
             Storage::disk('myimage')->delete($filePath);
         }
 
-        $this->existingFiles[$fileType] = null;
-
         $pickupDocument = PickupDocument::where('contract_id', $this->contractId)->first();
         if ($pickupDocument) {
-            $pickupDocument->{$fileType} = null;
+            $pickupDocument->$dbField = null;
             $pickupDocument->save();
         }
 
-        session()->flash('message', ucfirst($fileType) . ' successfully removed.');
-
+        session()->flash('message', 'File deleted successfully.');
         $this->mount($this->contractId);
     }
 

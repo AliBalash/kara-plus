@@ -51,7 +51,7 @@
                         <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y') }}</td>
                         <td>
                             @if ($awaitContract->user)
-                                <span class="badge bg-primary">{{ $awaitContract->user->fullName() }}</span>
+                                <span class="badge bg-primary">{{ $awaitContract->user->shortName() }}</span>
                             @else
                                 <span class="badge bg-secondary">No User</span>
                             @endif
@@ -59,7 +59,7 @@
                         <td>
                             <x-status-badge :status="$awaitContract->current_status" />
 
-                            
+
                         </td>
                         <td>
                             @if ($awaitContract->customerDocument()->exists())
@@ -90,7 +90,7 @@
                                     </a>
 
 
-                                    
+
 
 
 

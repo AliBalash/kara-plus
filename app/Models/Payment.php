@@ -12,6 +12,7 @@ class Payment extends Model
     protected $fillable = [
         'contract_id',
         'customer_id',
+        'user_id',
         'car_id',
         'amount',
         'currency',
@@ -61,6 +62,12 @@ class Payment extends Model
     {
         return self::where('contract_id', $contractId)->sum('amount');
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
 
     /**
      * محاسبه کل مبلغ پرداخت‌شده توسط یک مشتری

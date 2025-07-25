@@ -1,8 +1,8 @@
 <ul class="nav nav-pills flex-column flex-md-row mb-3" wire:ignore>
     {{-- Rental Information --}}
     <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('rental-requests.form') ? 'active' : '' }}"
-            href="{{ isset($contract->id) ? route('rental-requests.form', $contract->id) : '#' }}">
+        <a class="nav-link {{ request()->routeIs('expert.rental-requests.edit') ? 'active' : '' }}"
+            href="{{ isset($contract->id) ? route('expert.rental-requests.edit', $contract->id) : '#' }}">
             <i class="bx bxs-info-square me-1"></i> Rental Information
         </a>
     </li>

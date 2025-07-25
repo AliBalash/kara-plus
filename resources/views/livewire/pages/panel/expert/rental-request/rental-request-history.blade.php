@@ -42,7 +42,7 @@
                                 </td>
                                 <td>
                                     @if ($status->contract->user)
-                                        <span class="badge bg-primary">{{ $status->contract->user->fullName() }}</span>
+                                        <span class="badge bg-primary">{{ $status->contract->user->shortName() }}</span>
                                     @else
                                         <span class="badge bg-secondary">No Expert</span>
                                     @endif
@@ -66,7 +66,7 @@
 
                                             <!-- گزینه Edit -->
                                             <a class="dropdown-item"
-                                                href="{{ route('rental-requests.form', $status->contract->id) }}">
+                                                href="{{ route('expert.rental-requests.edit', $status->contract->id) }}">
                                                 <i class="bx bx-edit-alt me-1"></i> Edit
                                             </a>
 

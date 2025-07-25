@@ -51,7 +51,8 @@
                         <td>{{ \Carbon\Carbon::parse($kardotarsContract->return_date)->format('d M Y') }}</td>
                         <td>
                             @if ($kardotarsContract->user)
-                                <span class="badge bg-primary">{{ $kardotarsContract->user->fullName() }}</span>
+                                <span class="badge bg-primary">{{ $kardotarsContract->user->shortName() }}</span>
+
                             @else
                                 <span class="badge bg-secondary">No User</span>
                             @endif

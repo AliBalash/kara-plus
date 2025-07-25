@@ -74,12 +74,10 @@
                                     </a>
 
                                     <!-- گزینه Delete -->
-                                    @if ($brand->user_id === auth()->id())
                                         <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="deletebrand({{ $brand->id }})">
+                                            wire:click.prevent="deleteBrand({{ $brand->id }})">
                                             <i class="bx bx-trash me-1"></i> Delete
                                         </a>
-                                    @endif
                                 </div>
                             </div>
                         </td>

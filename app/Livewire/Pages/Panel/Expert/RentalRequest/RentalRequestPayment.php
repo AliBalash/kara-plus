@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\Contract;
 use App\Models\CustomerDocument;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Livewire\WithFileUploads;
 
 class RentalRequestPayment extends Component
@@ -95,6 +96,7 @@ class RentalRequestPayment extends Component
             Payment::create([
                 'contract_id' => $this->contractId,
                 'customer_id' => $this->customerId,
+                'user_id' => Auth::id(), 
                 'amount' => $this->amount,
                 'currency' => $this->currency,
                 'payment_type' => $this->payment_type,
@@ -102,7 +104,7 @@ class RentalRequestPayment extends Component
                 'is_paid' => false,
                 'is_refundable' => $this->is_refundable,
                 'rate' => $this->currency !== 'AED' ? $this->rate : null,
-                'receipt' => $receiptPath, // store receipt path
+                'receipt' => $receiptPath,
             ]);
 
             session()->flash('message', 'Payment was successfully added!');

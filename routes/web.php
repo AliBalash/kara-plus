@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\CarReservationController;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Pages\Panel\Expert\Dashboard;
 use App\Livewire\Pages\Panel\Auth\Login;
@@ -8,7 +7,6 @@ use App\Livewire\Pages\Panel\Expert\Brand\BrandDetail;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandForm;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandList;
 use App\Livewire\Pages\Panel\Expert\Car\CarDetail;
-use App\Livewire\Pages\Panel\Expert\Car\CarForm;
 use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\CarList;
@@ -23,6 +21,7 @@ use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingReturnList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestEdit;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestForm;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestHistory;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestKardoTars;
@@ -33,8 +32,6 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPaymentList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPickupDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReserved;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReturnDocument;
-use App\Models\User;
-use Spatie\Permission\Models\Permission;
 
 Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
@@ -44,6 +41,12 @@ Route::middleware(['auth.check'])->group(function () {
 
     Route::get('/expert/rental-requests/list', RentalRequestList::class)->name('rental-requests.list');
     Route::get('/expert/rental-requests/form/{contractId?}', RentalRequestForm::class)->name('rental-requests.form');
+
+
+    Route::get('/expert/rental-requests/edit/{contractId}/', RentalRequestEdit::class)
+        ->name('expert.rental-requests.edit');
+
+
     Route::get('/expert/rental-requests/me', RentalRequestMe::class)->name('rental-requests.me');
     Route::get('/expert/rental-requests/detail/{contractId}', RentalRequestDetail::class)->name('rental-requests.details');
     Route::get('/expert/rental-requests/history/{contractId}', RentalRequestHistory::class)->name('rental-requests.history');

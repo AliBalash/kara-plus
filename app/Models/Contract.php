@@ -99,6 +99,13 @@ class Contract extends Model
         return $this->belongsTo(Car::class);
     }
 
+
+    // همه‌ی آیتم‌های قیمت
+    public function charges()
+    {
+        return $this->hasMany(ContractCharges::class);
+    }
+
     /**
      * متد برای محاسبه قیمت نهایی قرارداد با توجه به روزهای اجاره.
      *

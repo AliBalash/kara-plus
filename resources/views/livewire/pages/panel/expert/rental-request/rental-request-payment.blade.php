@@ -146,6 +146,7 @@
                     <th>Currency</th>
                     <th>Payment Type</th>
                     <th>Refundable</th>
+                    <th>Created By</th>
                     <th>Payment Date</th>
                     <th>Receipt</th>
 
@@ -159,6 +160,7 @@
                             {{ $payment->currency !== 'AED' ? '( ' . $payment->rate . ' )' : null }}</td>
                         <td>{{ ucfirst($payment->payment_type) }}</td>
                         <td>{{ $payment->is_refundable == true ? 'Yes' : 'No' }}</td>
+                        <td>{{ $payment->user?->shortName() ?? '—' }}</td>
                         <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
                         <td>
                             @if ($payment->receipt)

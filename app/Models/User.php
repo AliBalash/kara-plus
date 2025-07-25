@@ -6,13 +6,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable , HasRoles;
+    use HasFactory, Notifiable, HasRoles;
 
 
     protected $fillable = [
@@ -94,14 +93,22 @@ class User extends Authenticatable
         return $this->hasMany(Contract::class, 'user_id');
     }
 
-    /**
-     * ارسال نوتیفیکیشن خوش‌آمد به کاربر.
-     *
-     * @return void
-     */
-    public function sendWelcomeNotification(): void
+    public function shortName(): string
     {
-        // مثلاً نوتیفیکیشن خوش‌آمد گویی را ارسال می‌کند
-        $this->notify(new \App\Notifications\WelcomeNotification($this));
+        $first = mb_strtolower($this->first_name, 'UTF-8');
+        $last = mb_strtoupper($this->last_name, 'UTF-8');
+
+        // بررسی ترکیب‌های چندحرفی در ابتدای نام
+        $specialPrefixes = ['sh', 'ch', 'kh'];
+        $initial = mb_substr($first, 0, 2, 'UTF-8');
+
+        if (in_array($initial, $specialPrefixes)) {
+            $short = mb_strtoupper($initial, 'UTF-8');
+        } else {
+            // اگر دو حرف اول جزو ترکیب‌ها نبود، فقط اولین حرف گرفته شود
+            $short = mb_strtoupper(mb_substr($first, 0, 1, 'UTF-8'), 'UTF-8');
+        }
+
+        return $short . '.' . $last;
     }
 }

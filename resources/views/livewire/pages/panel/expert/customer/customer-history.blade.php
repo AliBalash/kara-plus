@@ -54,8 +54,7 @@
                                             </td>
                                             <td>
                                                 @if ($contract->user)
-                                                    <span
-                                                        class="badge bg-primary">{{ $contract->user->fullName() }}</span>
+                                                        <span class="badge bg-primary">{{ $contract->user->shortName() }}</span>
                                                 @else
                                                     <span class="badge bg-secondary">No User</span>
                                                 @endif
@@ -99,7 +98,7 @@
                                                                 <i class="bx bx-info-circle me-1"></i> Details
                                                             </a>
                                                             <a class="dropdown-item"
-                                                                href="{{ route('rental-requests.form', $contract->id) }}">
+                                                                href="{{ route('expert.rental-requests.edit', $contract->id) }}">
                                                                 <i class="bx bx-edit-alt me-1"></i> Edit
                                                             </a>
                                                             <a class="dropdown-item" href="javascript:void(0);"

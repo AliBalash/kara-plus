@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id(); // شناسه پرداخت
             $table->foreignId('contract_id')->nullable()->constrained('contracts')->onDelete('cascade'); // ارجاع به قرارداد (در صورت وجود)
             $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('cascade'); // ارجاع به مشتری
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade'); // ارجاع به جدول کاربران (کارشناس)
+
             $table->foreignId('car_id')->nullable()->constrained('cars')->onDelete('cascade'); // در صورت نیاز به ارتباط با خودرو
             $table->decimal('amount', 10, 2); // مبلغ پرداختی
             $table->decimal('rate', 12, 4)->nullable(); // نرخ تبدیل ارز نسبت به ریال
