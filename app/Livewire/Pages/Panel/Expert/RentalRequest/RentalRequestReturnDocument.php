@@ -162,25 +162,48 @@ class RentalRequestReturnDocument extends Component
 
     public function removeFile($fileType)
     {
-        $videoFields = ['car_video_outside', 'car_video_inside'];
-        $extension = in_array($fileType, $videoFields) ? 'mp4' : 'jpg';
+        // نگاشت بین fileType از view و نام واقعی فیلد در دیتابیس + نوع فایل
+        $mapping = [
+            'tars_contract' => ['db_field' => 'tars_contract', 'extension' => 'jpg'],
+            'kardo_contract' => ['db_field' => 'kardo_contract', 'extension' => 'jpg'],
+            'factor_contract' => ['db_field' => 'factor_contract', 'extension' => 'jpg'],
+            'car_dashboard' => ['db_field' => 'car_dashboard', 'extension' => 'jpg'],
+            'car_video_outside' => ['db_field' => 'car_outside_video', 'extension' => 'mp4'],
+            'car_video_inside' => ['db_field' => 'car_inside_video', 'extension' => 'mp4'],
+        ];
+
+        // بررسی اعتبار کلید
+        if (!array_key_exists($fileType, $mapping)) {
+            session()->flash('error', 'The file type "' . $fileType . '" is not valid.');
+            return;
+        }
+
+        $dbField = $mapping[$fileType]['db_field'];
+        $extension = $mapping[$fileType]['extension'];
+
+        // ساخت مسیر فایل
         $filePath = "ReturnDocument/{$fileType}_{$this->contractId}.{$extension}";
+
         if (Storage::disk('myimage')->exists($filePath)) {
             Storage::disk('myimage')->delete($filePath);
         }
 
-        $this->existingFiles[$fileType] = null;
-
-        $pickupDocument = ReturnDocument::where('contract_id', $this->contractId)->first();
-        if ($pickupDocument) {
-            $pickupDocument->{$fileType} = null;
-            $pickupDocument->save();
+        // پاک کردن مقدار از دیتابیس
+        $returnDocument = ReturnDocument::where('contract_id', $this->contractId)->first();
+        if ($returnDocument) {
+            $returnDocument->$dbField = null;
+            $returnDocument->save();
         }
+
+        // پاک‌سازی فایل در UI
+        $this->existingFiles[$fileType] = null;
 
         session()->flash('message', ucfirst($fileType) . ' successfully removed.');
 
+        // بارگذاری مجدد
         $this->mount($this->contractId);
     }
+
 
     public function render()
     {

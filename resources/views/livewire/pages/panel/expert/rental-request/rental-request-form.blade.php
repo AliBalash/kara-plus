@@ -192,16 +192,11 @@
 
                             <!-- Car Brand Selection -->
                             <div class="input-group">
-                                <span class="input-group-text" id="car-brand-addon">Car Brand</span>
-                                <select class="form-control @error('selectedBrand') is-invalid @enderror"
-                                    id="car_brand_id" name="car_brand_id" wire:model.live="selectedBrand"
-                                    aria-describedby="car-brand-addon">
+                                <span class="input-group-text">Car Brand</span>
+                                <select class="form-control" wire:model.live="selectedBrand" required>
                                     <option value="">Select Brand</option>
-                                    @foreach ($carModels as $model)
-                                        <option value="{{ $model->id }}"
-                                            @if ($model->id == $selectedBrand) selected @endif>
-                                            {{ $model->fullname() }}
-                                        </option>
+                                    @foreach ($brands as $brand)
+                                        <option value="{{ $brand }}">{{ $brand }}</option>
                                     @endforeach
                                 </select>
                                 @error('selectedBrand')
@@ -210,30 +205,42 @@
                             </div>
 
                             <!-- Car Model Selection (Filtered by Brand) -->
-                            <div class="input-group">
-                                <span class="input-group-text" id="car-model-id-addon">Car Model</span>
-                                <select class="form-control @error('selectedCarId') is-invalid @enderror"
-                                    id="car_model_id" name="car_model_id" wire:model.live="selectedCarId"
-                                    aria-describedby="car-model-id-addon">
-                                    <option value="">Select Model</option>
-                                    @if ($selectedBrand)
-                                        @foreach ($cars as $car)
+                            @if ($selectedBrand)
+                                <div class="input-group mt-3">
+                                    <span class="input-group-text">Car Model</span>
+                                    <select class="form-control" wire:model.live="selectedModelId" required>
+                                        <option value="">Select Model</option>
+                                        @foreach ($models as $model)
+                                            <option value="{{ $model->id }}">{{ $model->model }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('selectedModelId')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endif
+
+                            <!-- Car Selection -->
+                            @if ($selectedModelId)
+                                <div class="input-group mt-3">
+                                    <span class="input-group-text">Available Cars</span>
+                                    <select class="form-control" wire:model.live="selectedCarId" required>
+                                        <option value="">Select Car</option>
+                                        @foreach ($carsForModel as $car)
                                             <option value="{{ $car->id }}"
-                                                @if ($car->id == $selectedCarId) selected @endif
                                                 @if ($car->status !== 'available') disabled @endif>
-                                                {{ $car->carModel->fullname() }} -
+                                                {{ $car->plate_number }} -
                                                 {{ $car->manufacturing_year }} -
                                                 {{ $car->color ?? 'No Color' }} -
                                                 [{{ ucfirst($car->status) }}]
                                             </option>
                                         @endforeach
-                                    @endif
-
-                                </select>
-                                @error('selectedCarId')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                                    </select>
+                                    @error('selectedCarId')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endif
 
 
                             <!-- Display the selected car details (plate number and year) -->
@@ -241,40 +248,30 @@
                                 @php
                                     $selectedCar = App\Models\Car::find($selectedCarId);
                                 @endphp
-                                <div class="input-group">
-                                    <span class="input-group-text" id="plate-number-addon">Plate Number</span>
-                                    <input type="text"
-                                        class="form-control @error('plate_number') is-invalid @enderror"
-                                        value="{{ $selectedCar->plate_number }}" disabled />
-
-                                </div>
-
-                                <div class="input-group">
-                                    <span class="input-group-text" id="manufacturing-year-addon">Manufacturing
-                                        Year</span>
-                                    <input type="text"
-                                        class="form-control @error('manufacturing_year') is-invalid @enderror"
-                                        value="{{ $selectedCar->manufacturing_year }}" disabled />
-                                </div>
-
-                                <!-- Price Per Day -->
-                                <div class="input-group">
-                                    <span class="input-group-text" id="price-per-day-addon">Per Day $</span>
-                                    <input type="number"
-                                        class="form-control @error('price_per_day') is-invalid @enderror"
-                                        id="price_per_day" name="price_per_day"
-                                        value="{{ $selectedCar->price_per_day }}" placeholder="Price per day"
-                                        aria-describedby="price-per-day-addon" disabled />
-                                </div>
-
-                                <!-- Service Due Date -->
-                                <div class="input-group">
-                                    <span class="input-group-text" id="service-due-date-addon">Service Due Date</span>
-                                    <input type="date"
-                                        class="form-control @error('service_due_date') is-invalid @enderror"
-                                        id="service_due_date" name="service_due_date"
-                                        value="{{ $selectedCar->service_due_date }}"
-                                        aria-describedby="service-due-date-addon" disabled />
+                                <div class="mt-3 p-3 border rounded">
+                                    <h6>Selected Car Details</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>Plate Number:</strong> {{ $selectedCar->plate_number }}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Year:</strong> {{ $selectedCar->manufacturing_year }}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Color:</strong> {{ $selectedCar->color ?? 'N/A' }}
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-4">
+                                            <strong>Daily Price:</strong> {{ $selectedCar->price_per_day }} AED
+                                        </div>
+                                        <div class="col-md-8">
+                                            <strong>Price Tiers:</strong><br>
+                                            1-6 days: {{ $selectedCar->price_per_day_short }} AED<br>
+                                            7-20 days: {{ $selectedCar->price_per_day_mid }} AED<br>
+                                            21+ days: {{ $selectedCar->price_per_day_long }} AED
+                                        </div>
+                                    </div>
                                 </div>
                             @endif
 
@@ -294,7 +291,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-pickup-location">Pickup Location</span>
                                 <select class="form-control @error('pickup_location') is-invalid @enderror"
-                                    name="pickup_location" wire:model="pickup_location">
+                                    name="pickup_location" wire:model.live="pickup_location">
                                     <option value="">Location</option>
                                     <option value="UAE/Dubai/Clock Tower/Main Branch">UAE/Dubai/Clock Tower/Main Branch
                                     </option>
@@ -330,7 +327,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon-pickup-location">Return Location</span>
                                 <select class="form-control @error('return_location') is-invalid @enderror"
-                                    name="return_location" wire:model="return_location">
+                                    name="return_location" wire:model.live="return_location">
                                     <option value="">Location</option>
                                     <option value="UAE/Dubai/Clock Tower/Main Branch">UAE/Dubai/Clock Tower/Main Branch
                                     </option>
@@ -395,13 +392,11 @@
 
                             <!-- Total Price -->
                             <div class="input-group">
-                                <span class="input-group-text" id="basic-addon-total-price">$</span>
-                                <input type="number" class="form-control @error('total_price') is-invalid @enderror"
-                                    placeholder="Total Price" name="total_price" wire:model="total_price" disabled>
-                                @error('total_price')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <span class="input-group-text" id="basic-addon-total-price">Total Amount</span>
+                                <input type="text" class="form-control"
+                                    value="{{ number_format($final_total) }} AED" disabled>
                             </div>
+
 
                             <div class="input-group">
                                 <span class="input-group-text">Agent Sale</span>
@@ -421,6 +416,122 @@
                     </div>
                 </div>
 
+
+                <!-- Services and Insurance Section -->
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <h5 class="card-header">Services & Insurance</h5>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Services -->
+                                <div class="col-md-6">
+                                    <h6>Additional Services</h6>
+                                    @foreach ($services as $key => $service)
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                wire:model.live="selected_services" value="{{ $key }}"
+                                                id="service-{{ $key }}"
+                                                @if (in_array($key, $selected_services)) checked @endif>
+                                            <label class="form-check-label" for="service-{{ $key }}">
+                                                {{ $service['label'] }} -
+                                                @if ($service['amount'] > 0)
+                                                    {{ number_format($service['amount']) }} AED
+                                                    @if ($service['per_day'])
+                                                        /day
+                                                    @endif
+                                                @else
+                                                    Free
+                                                @endif
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                <!-- Insurance -->
+                                <div class="col-md-6">
+                                    <h6>Insurance</h6>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio"
+                                            wire:model.live="selected_insurance" value="ldw_insurance"
+                                            id="insurance-ldw" @if ($selected_insurance === 'ldw_insurance') checked @endif>
+                                        <label class="form-check-label" for="insurance-ldw">
+                                            LDW Insurance -
+                                            @if ($selectedCarId)
+                                                {{ number_format(App\Models\Car::find($selectedCarId)->ldw_price) }}
+                                                AED/day
+                                            @else
+                                                --
+                                            @endif
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                            wire:model.live="selected_insurance" value="scdw_insurance"
+                                            id="insurance-scdw" @if ($selected_insurance === 'scdw_insurance') checked @endif>
+                                        <label class="form-check-label" for="insurance-scdw">
+                                            Full Coverage (SCDW) -
+                                            @if ($selectedCarId)
+                                                {{ number_format(App\Models\Car::find($selectedCarId)->scdw_price) }}
+                                                AED/day
+                                            @else
+                                                --
+                                            @endif
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Cost Breakdown Section -->
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <h5 class="card-header">Cost Breakdown</h5>
+                        <div class="card-body">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Base Rental Cost
+                                        @if ($rental_days)
+                                            ({{ $rental_days }} days)
+                                        @endif
+                                    </th>
+                                    <td>{{ number_format($base_price) }} AED</td>
+                                </tr>
+                                <tr>
+                                    <th>Pickup Transfer Cost</th>
+                                    <td>{{ number_format($transfer_costs['pickup']) }} AED</td>
+                                </tr>
+                                <tr>
+                                    <th>Return Transfer Cost</th>
+                                    <td>{{ number_format($transfer_costs['return']) }} AED</td>
+                                </tr>
+                                <tr>
+                                    <th>Additional Services</th>
+                                    <td>{{ number_format($services_total) }} AED</td>
+                                </tr>
+                                <tr>
+                                    <th>Insurance</th>
+                                    <td>{{ number_format($insurance_total) }} AED</td>
+                                </tr>
+                                <tr class="table-secondary">
+                                    <th>Subtotal</th>
+                                    <td>{{ number_format($subtotal) }} AED</td>
+                                </tr>
+                                <tr>
+                                    <th>Tax (5%)</th>
+                                    <td>{{ number_format($tax_amount) }} AED</td>
+                                </tr>
+                                <tr class="table-primary">
+                                    <th>Total Amount</th>
+                                    <td>{{ number_format($final_total) }} AED</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
 
             </div>

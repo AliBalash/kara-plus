@@ -13,6 +13,8 @@ class BrandList extends Component
     public $gearboxType = '';
 
     protected $queryString = ['search', 'fuelType', 'gearboxType'];
+    protected $listeners = ['deleteBrand'];
+
 
     use WithPagination;
 
@@ -33,5 +35,15 @@ class BrandList extends Component
             ->paginate(10);
 
         return view('livewire.pages.panel.expert.brand.brand-list', compact('brands'));
+    }
+
+    public function deleteBrand($id)
+    {
+        $brand = CarModel::findOrFail($id);
+        // Delete the car record
+        $brand->delete();
+
+        // Flash success message to session
+        session()->flash('success', 'Car has been deleted successfully.');
     }
 }

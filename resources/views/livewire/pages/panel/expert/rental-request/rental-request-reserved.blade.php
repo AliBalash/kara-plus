@@ -52,7 +52,8 @@
                         {{-- <td>{{ \Carbon\Carbon::parse($reservedContract->return_date)->format('d M Y') }}</td> --}}
                         <td>
                             @if ($reservedContract->user)
-                                <span class="badge bg-primary">{{ $reservedContract->user->fullName() }}</span>
+                                <span class="badge bg-primary">{{ $reservedContract->user->shortName() }}</span>
+
                             @else
                                 <span class="badge bg-secondary">No User</span>
                             @endif

@@ -42,10 +42,20 @@
                                     <div class="fw-bold" style="font-size: 1.1rem;">
                                         {{ $car->fullname() }}
                                     </div>
-                                    <span
-                                        class="badge bg-{{ $car->status === 'available' ? 'success' : ($car->status === 'reserved' ? 'warning' : 'danger') }}">
-                                        {{ ucfirst($car['status']) }}
+                                    @php
+                                        $status = $car->status ?? 'unknown';
+                                        $color = match ($status) {
+                                            'available' => 'success',
+                                            'reserved' => 'warning',
+                                            'unavailable', 'sold', 'maintenance' => 'danger',
+                                            default => 'secondary',
+                                        };
+                                    @endphp
+
+                                    <span class="badge bg-{{ $color }}">
+                                        {{ ucfirst($status) }}
                                     </span>
+
                                 </div>
 
 
@@ -54,11 +64,15 @@
                                         <div class="d-flex justify-content-end">
                                             <small class="text-muted m-1">
                                                 <i class="bx bx-calendar-check"></i> Pickup:
-                                                {{ \Carbon\Carbon::parse($car->currentContract->pickup_date)->translatedFormat('d M Y') }}
+                                                {{ optional($car->currentContract)->pickup_date
+                                                    ? \Carbon\Carbon::parse($car->currentContract->pickup_date)->translatedFormat('d M Y')
+                                                    : '-' }}
                                             </small>
                                             <small class="text-muted m-1">
                                                 <i class="bx bx-calendar-minus"></i> Return:
-                                                {{ \Carbon\Carbon::parse($car->currentContract->return_date)->translatedFormat('d M Y') }}
+                                                {{ optional($car->currentContract)->return_date
+                                                    ? \Carbon\Carbon::parse($car->currentContract->return_date)->translatedFormat('d M Y')
+                                                    : '-' }}
                                             </small>
                                         </div>
                                     </div>
