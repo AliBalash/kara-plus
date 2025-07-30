@@ -31,7 +31,6 @@
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
-
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Currency</label>
                         <select class="form-control" wire:model.live="currency">
@@ -66,6 +65,8 @@
                             <option value="prepaid_fine">Prepaid Fine</option>
                             <option value="toll">Toll</option>
                             <option value="fine">Fine</option>
+                            <option value="discount">Discount</option>
+
                         </select>
                         @error('payment_type')
                             <span class="text-danger">{{ $message }}</span>
@@ -113,28 +114,95 @@
     </div>
 
     <!-- Payment Overview -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">Payment Overview</h5>
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="alert alert-info text-center">
-                        <strong>Total Price:</strong> <span>{{ number_format($totalPrice, 2) }}</span>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="alert alert-success text-center">
-                        <strong>Total Paid:</strong> <span>{{ number_format($rentalPaid, 2) }}</span>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="alert alert-warning text-center">
-                        <strong>Remaining Balance:</strong> <span>{{ number_format($remainingBalance, 2) }}</span>
+    @php
+        $metrics = [
+            [
+                'key' => 'total',
+                'label' => 'Total Price',
+                'value' => $totalPrice,
+                'icon' => 'bi-currency-exchange',
+                'color' => 'primary',
+            ],
+            [
+                'key' => 'paid',
+                'label' => 'Paid',
+                'value' => $rentalPaid,
+                'icon' => 'bi-cash-stack',
+                'color' => 'success',
+            ],
+            [
+                'key' => 'discount',
+                'label' => 'Discounts',
+                'value' => $discounts,
+                'icon' => 'bi-percent',
+                'color' => 'warning',
+            ],
+            [
+                'key' => 'fine',
+                'label' => 'Fines',
+                'value' => $finePaid,
+                'icon' => 'bi-exclamation-triangle-fill',
+                'color' => 'danger',
+            ],
+            ['key' => 'prepaid', 'label' => 'Prepaid', 'value' => $prepaid, 'icon' => 'bi-wallet2', 'color' => 'info'],
+            ['key' => 'toll', 'label' => 'Tolls', 'value' => $tollPaid, 'icon' => 'bi-coin', 'color' => 'secondary'],
+            [
+                'key' => 'remaining',
+                'label' => 'Remaining',
+                'value' => $remainingBalance,
+                'icon' => 'bi-hourglass-split',
+                'color' => 'dark',
+            ],
+        ];
+    @endphp
+
+    <div class="row g-3 mt-1 mb-4">
+        @foreach ($metrics as $m)
+            @php
+                // کارت remaining بزرگ‌تر باشد
+                $colClass = $m['key'] === 'remaining' ? 'col-12 col-md-6 col-lg-12' : 'col-6 col-md-4 col-lg-2';
+            @endphp
+
+            <div class="{{ $colClass }}">
+                <div class="card shadow-sm border-0 text-{{ $m['color'] }} h-100">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-start">
+                        <div class="d-flex align-items-center mb-2 w-100">
+                            <i class="bi {{ $m['icon'] }} fs-2 me-3"></i>
+                            <div>
+                                <div class="h5 mb-1">{{ $m['label'] }}</div>
+                                @if ($m['key'] === 'remaining')
+                                    {{-- فرمول و نتیجه --}}
+                                    <div class="fs-5 lh-sm">
+                                        <div>
+                                            <span class="text-primary">{{ number_format($totalPrice, 2) }}</span> –
+                                            (<span class="text-success">{{ number_format($rentalPaid, 2) }}</span> +
+                                            <span class="text-warning">{{ number_format($discounts, 2) }}</span>)
+                                            + <span class="text-danger">{{ number_format($finePaid, 2) }}</span>
+                                            <span class="fw-bold fs-3 mt-2">
+                                                = {{ number_format($remainingBalance, 2) }}
+                                            </span>
+                                        </div>
+
+                                    </div>
+                                @else
+                                    {{-- مقدار ساده --}}
+                                    <div class="fs-4 fw-bold">{{ number_format($m['value'], 2) }}</div>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        @endforeach
     </div>
+
+
+
+
+
+
+
+
 
     <!-- Existing Payments -->
     <h5>Existing Payments</h5>
@@ -178,8 +246,15 @@
             </tbody>
         </table>
     </div>
-
-
-
-
 </div>
+
+@push('styles')
+    <style>
+       
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+    </style>
+@endpush

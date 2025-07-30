@@ -16,6 +16,7 @@ class Payment extends Model
         'car_id',
         'amount',
         'currency',
+        'amount_in_aed',
         'payment_type',
         'description',
         'payment_date',

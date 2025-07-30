@@ -17,7 +17,7 @@ class RentalRequestPayment extends Component
     public $contractId;
     public $customerId;
     public $amount;
-    public $currency = 'IRR';
+    public $currency = 'AED';
     public $payment_type;
     public $payment_date;
     public $is_refundable = false;
@@ -31,6 +31,10 @@ class RentalRequestPayment extends Component
     public $hasPayments;
 
     public $receipt;
+    public $finePaid;
+    public $tollPaid;
+    public $discounts;
+    public $prepaid;
 
 
     public $rate;
@@ -39,7 +43,7 @@ class RentalRequestPayment extends Component
     protected $rules = [
         'amount' => 'required|numeric|min:0',
         'currency' => 'required|in:IRR,USD,AED',
-        'payment_type' => 'required|in:rental_fee,prepaid_fine,toll,fine',
+        'payment_type' => 'required|in:rental_fee,prepaid_fine,toll,fine,discount',
         'payment_date' => 'required|date',
         'is_refundable' => 'required|boolean',
         'rate' => 'nullable|numeric|min:0.0001',
@@ -75,15 +79,41 @@ class RentalRequestPayment extends Component
 
         $this->rentalPaid = $this->existingPayments
             ->where('payment_type', 'rental_fee')
-            ->sum('amount');
+            ->sum('amount_in_aed');
 
-        $this->remainingBalance = $this->totalPrice - $this->rentalPaid;
+        $this->finePaid = $this->existingPayments
+            ->where('payment_type', 'fine')
+            ->sum('amount_in_aed');
+
+        $this->tollPaid = $this->existingPayments
+            ->where('payment_type', 'toll')
+            ->sum('amount_in_aed');
+
+        $this->discounts = $this->existingPayments
+            ->where('payment_type', 'discount')
+            ->sum('amount_in_aed');
+
+        $this->prepaid = $this->existingPayments
+            ->where('payment_type', 'prepaid_fine')
+            ->sum('amount_in_aed');  // ← محاسبه‌ی پیش‌پرداخت
+
+        // Remaining = total – (rental + discounts) + fines
+        $this->remainingBalance = $this->totalPrice
+            - ($this->rentalPaid + $this->discounts)
+            + $this->finePaid;
     }
 
 
     public function submitPayment()
     {
         $this->validate();
+        if ($this->currency !== 'AED' && empty($this->rate)) {
+            $this->addError('rate', 'Exchange rate is required for non-AED currencies.');
+        }
+
+        $aedAmount = $this->currency === 'AED'
+            ? $this->amount
+            : round($this->amount * $this->rate, 2);
 
         try {
             $receiptPath = null;
@@ -96,16 +126,18 @@ class RentalRequestPayment extends Component
             Payment::create([
                 'contract_id' => $this->contractId,
                 'customer_id' => $this->customerId,
-                'user_id' => Auth::id(), 
+                'user_id' => Auth::id(),
                 'amount' => $this->amount,
                 'currency' => $this->currency,
+                'rate' => $this->currency !== 'AED' ? $this->rate : null,
+                'amount_in_aed' => $aedAmount,
                 'payment_type' => $this->payment_type,
                 'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                 'is_paid' => false,
                 'is_refundable' => $this->is_refundable,
-                'rate' => $this->currency !== 'AED' ? $this->rate : null,
                 'receipt' => $receiptPath,
             ]);
+
 
             session()->flash('message', 'Payment was successfully added!');
             $this->resetForm();
@@ -120,7 +152,7 @@ class RentalRequestPayment extends Component
     public function resetForm()
     {
         $this->amount = '';
-        $this->currency = 'AUD';
+        $this->currency = 'AED';
         $this->payment_type = '';
         $this->payment_date = '';
         $this->rate = '';
