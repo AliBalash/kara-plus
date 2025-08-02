@@ -49,11 +49,23 @@ class RentalRequestPaymentList extends Component
 
     public function render()
     {
-        return view(
-            'livewire.pages.panel.expert.rental-request.rental-request-payment-list',
-            [
-                'contracts' => $this->paymentContracts
-            ]
-        );
+        $this->paymentContracts = Contract::query()
+            ->where('current_status', 'payment')
+            ->whereHas('payments')
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->whereHas('customer', function ($q) {
+                        $q->where('first_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('last_name', 'like', '%' . $this->search . '%');
+                    })->orWhere('id', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->with(['payments', 'customer', 'car']) // Eager load relationships
+            ->latest()
+            ->get();
+
+        return view('livewire.pages.panel.expert.rental-request.rental-request-payment-list', [
+            'contracts' => $this->paymentContracts
+        ]);
     }
 }

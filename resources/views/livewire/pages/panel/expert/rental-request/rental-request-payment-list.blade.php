@@ -31,13 +31,12 @@
         <table class="table table-hover">
             <thead>
                 <tr>
-                    <th>#</th> <!-- Contract or Payment Number -->
+                    <th>#</th>
                     <th>Customer</th>
                     <th>Car Type</th>
                     <th>Pickup Date</th>
-                    <th>Total Contract Amount</th>
-                    <th>Amount Paid</th>
-                    <th>Remaining</th>
+                    <th>Total Contract (AED)</th>
+                    <th>Remaining (AED)</th>
                     <th>Payment Status</th>
                     <th>Actions</th>
                 </tr>
@@ -45,22 +44,31 @@
             <tbody class="table-border-bottom-0">
                 @foreach ($paymentContracts as $contract)
                     @php
-                        $paid = $contract->payments->sum('amount');
-                        $remaining = $contract->total_price - $paid;
+                        // Get all payments converted to AED
+                        $payments = $contract->payments;
+
+                        $rentalPaid = $payments->where('payment_type', 'rental_fee')->sum('amount_in_aed');
+                        $fines = $payments->where('payment_type', 'fine')->sum('amount_in_aed');
+                        $discounts = $payments->where('payment_type', 'discount')->sum('amount_in_aed');
+                        $prepaid = $payments->where('payment_type', 'prepaid_fine')->sum('amount_in_aed');
+
+                        $remaining = $contract->total_price - ($rentalPaid + $discounts) + $fines;
                     @endphp
                     <tr>
                         <td>{{ $contract->id }}</td>
                         <td>{{ $contract->customer->fullName() }}</td>
                         <td>{{ $contract->car->fullName() }}</td>
-                        <td>{{ $contract->pickup_date ? $contract->pickup_date->format('d M Y') : '-' }}</td>
-                        <td>{{ number_format($contract->total_price, 2) }} Toman</td>
-                        <td>{{ number_format($paid, 2) }} Toman</td>
-                        <td>{{ number_format($remaining, 2) }} Toman</td>
+                        <td>{{ $contract->pickup_date?->format('d M Y') }}</td>
+                        <td>{{ number_format($contract->total_price, 2) }}</td>
+                        <td>{{ number_format($remaining, 2) }}</td>
                         <td>
                             @if ($remaining <= 0)
                                 <span class="badge bg-success">Settled</span>
                             @else
-                                <span class="badge bg-warning">Remaining</span>
+                                <span class="badge bg-warning">Pending ({{ number_format($remaining, 2) }} AED)</span>
+                            @endif
+                            @if ($contract->payments->where('is_refundable', true)->count())
+                                <span class="badge bg-info mt-1">Refundable</span>
                             @endif
                         </td>
                         <td>
