@@ -104,8 +104,9 @@
                                     </a>
 
                                     <!-- گزینه Delete -->
+
                                     <a class="dropdown-item" href="javascript:void(0);"
-                                        onclick="if(confirm('Are you sure you want to delete this car?')) { Livewire.dispatch('deletecar', {{ $car->id }}) }">
+                                        onclick="if(confirm('Are you sure you want to delete this car?')) { @this.call('deletecar', {{ $car->id }}) }">
                                         <i class="bx bx-trash me-1"></i> Delete
                                     </a>
                                 </div>
