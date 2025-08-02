@@ -352,12 +352,11 @@ class RentalRequestEdit extends Component
                 'max:255',
                 // Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
             ],
-            'phone' => 'required|regex:/^[0-9]{10,15}$/',
-            'messenger_phone' => 'required|regex:/^[0-9]{10,15}$/',
+            'phone' => 'required|max:15',
+            'messenger_phone' => 'required|max:15',
             'address' => 'nullable|string|max:255',
             'national_code' => [
                 'required',
-                // 'regex:/^[0-9]{10}$/',
             ],
             'passport_number' => [
                 'nullable',
