@@ -30,7 +30,7 @@
                 backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.65); 
                 border-radius: 1rem;">
                     @forelse ($cars as $car)
-                        <a href="{{ route('car.form', $car->id) }}" class="text-decoration-none text-dark">
+                        <a href="{{ route('car.edit', $car->id) }}" class="text-decoration-none text-dark">
                             <li class="list-group-item border-0 py-3 mb-1 shadow-sm"
                                 style="background-color: rgba(255, 255, 255, 0.5); 
                                transition: background-color 0.2s ease, transform 0.2s ease;"
