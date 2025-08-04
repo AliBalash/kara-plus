@@ -268,8 +268,8 @@
                                         <div class="col-md-8">
                                             <strong>Price Tiers:</strong><br>
                                             1-6 days: {{ $selectedCar->price_per_day_short }} AED<br>
-                                            7-20 days: {{ $selectedCar->price_per_day_mid }} AED<br>
-                                            21+ days: {{ $selectedCar->price_per_day_long }} AED
+                                            7-28 days: {{ $selectedCar->price_per_day_mid }} AED<br>
+                                            28+ days: {{ $selectedCar->price_per_day_long }} AED
                                         </div>
                                     </div>
                                 </div>
