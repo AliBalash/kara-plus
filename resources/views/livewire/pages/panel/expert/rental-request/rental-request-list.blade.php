@@ -36,10 +36,10 @@
                     <th>Car</th>
                     <th>Pickup Date</th>
                     <th>Return Date</th>
-                    <th>Expert</th>
-                    <th>Status</th>
-                    <th>Document</th>
                     <th>Actions</th>
+                    <th>Status</th>
+                    <th>Expert</th>
+                    <th>Document</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0" wire:poll.10s>
@@ -50,30 +50,6 @@
                         <td>{{ $contract->car->fullName() }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}</td>
-                        <td>
-                            @if ($contract->user)
-                                <span class="badge bg-primary">{{ $contract->user->shortName() }}</span>
-                                
-                            @else
-                                <span class="badge bg-secondary">No User</span>
-                            @endif
-                        </td>
-                        <td>
-                            <x-status-badge :status="$contract->current_status" />
-                        </td>
-                        <td>
-                            @if ($contract->customerDocument()->exists())
-                                <span class="badge bg-warning">📄 Customer</span>
-                            @endif
-
-                            @if ($contract->ReturnDocument()->exists())
-                                <span class="badge bg-success">📄 Return</span>
-                            @endif
-
-                            @if ($contract->pickupDocument()->exists())
-                                <span class="badge bg-primary">📄 Deliver</span>
-                            @endif
-                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
@@ -108,6 +84,30 @@
                                     @endif
                                 </div>
                             </div>
+                        </td>
+                        <td>
+                            <x-status-badge :status="$contract->current_status" />
+                        </td>
+
+                        <td>
+                            @if ($contract->user)
+                                <span class="badge bg-primary">{{ $contract->user->shortName() }}</span>
+                            @else
+                                <span class="badge bg-secondary">No User</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if ($contract->customerDocument()->exists())
+                                <span class="badge bg-warning">📄 Customer</span>
+                            @endif
+
+                            @if ($contract->ReturnDocument()->exists())
+                                <span class="badge bg-success">📄 Return</span>
+                            @endif
+
+                            @if ($contract->pickupDocument()->exists())
+                                <span class="badge bg-primary">📄 Deliver</span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach

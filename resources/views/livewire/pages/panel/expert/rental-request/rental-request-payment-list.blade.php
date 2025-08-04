@@ -37,8 +37,8 @@
                     <th>Pickup Date</th>
                     <th>Total Contract (AED)</th>
                     <th>Remaining (AED)</th>
-                    <th>Payment Status</th>
                     <th>Actions</th>
+                    <th>Payment Status</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
@@ -61,16 +61,6 @@
                         <td>{{ $contract->pickup_date?->format('d M Y') }}</td>
                         <td>{{ number_format($contract->total_price, 2) }}</td>
                         <td>{{ number_format($remaining, 2) }}</td>
-                        <td>
-                            @if ($remaining <= 0)
-                                <span class="badge bg-success">Settled</span>
-                            @else
-                                <span class="badge bg-warning">Pending ({{ number_format($remaining, 2) }} AED)</span>
-                            @endif
-                            @if ($contract->payments->where('is_refundable', true)->count())
-                                <span class="badge bg-info mt-1">Refundable</span>
-                            @endif
-                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
@@ -106,6 +96,16 @@
                                     @endif
                                 </div>
                             </div>
+                        </td>
+                        <td>
+                            @if ($remaining <= 0)
+                                <span class="badge bg-success">Settled</span>
+                            @else
+                                <span class="badge bg-warning">Pending ({{ number_format($remaining, 2) }} AED)</span>
+                            @endif
+                            @if ($contract->payments->where('is_refundable', true)->count())
+                                <span class="badge bg-info mt-1">Refundable</span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
