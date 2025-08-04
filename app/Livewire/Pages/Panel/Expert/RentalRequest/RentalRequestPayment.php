@@ -35,9 +35,11 @@ class RentalRequestPayment extends Component
     public $tollPaid;
     public $discounts;
     public $prepaid;
-
-
     public $rate;
+    public $security_note = '';
+    public $contract;
+    public $contractMeta = [];
+
 
 
     protected $rules = [
@@ -54,6 +56,8 @@ class RentalRequestPayment extends Component
     {
         $this->contractId = $contractId;
         $this->customerId = $customerId;
+        $this->contractMeta = Contract::find($this->contractId)?->meta ?? [];
+
 
         // دریافت total_price از مدل Contract
         $this->totalPrice = Contract::where('id', $this->contractId)->value('total_price') ?? 0;
@@ -147,6 +151,30 @@ class RentalRequestPayment extends Component
             session()->flash('error', 'Error adding payment: ' . $e->getMessage());
         }
     }
+
+    public function submitDeposit()
+    {
+        if (!empty($this->security_note)) {
+            $contract = Contract::find($this->contractId);
+            if (!$contract) {
+                session()->flash('error', 'Contract not found.');
+                return;
+            }
+
+            $meta = $contract->meta ?? [];
+            $meta['security_deposit_note'] = $this->security_note;
+
+            $contract->meta = $meta;
+            $contract->save();
+
+            // هم در دیتابیس ذخیره شد، هم برای ویو آپدیت شد
+            $this->contractMeta = $meta;
+
+            session()->flash('message', 'Security deposit information was successfully saved.');
+            $this->security_note = '';
+        }
+    }
+
 
 
     public function resetForm()
