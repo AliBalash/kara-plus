@@ -34,21 +34,53 @@
                     <th>#</th>
                     <th>Customer</th>
                     <th>Car</th>
-                    <th>Return Date</th>
-                    <th>Expert</th>
-                    <th>Status</th>
-                    <th>Document</th>
+                    <th>
+                        <a href="#" wire:click="sortBy('return_date')">
+                            Return Date
+                            @if ($sortField === 'return_date')
+                                <i
+                                    class="bx {{ $sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt' }}"></i>
+                            @else
+                                <i class="bx bx-sort"></i>
+                            @endif
+                        </a>
+                    </th>
                     <th>Actions</th>
+                    <th>Status</th>
+                    <th>Expert</th>
+                    <th>Document</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
                 @foreach ($awaitContracts as $awaitContract)
                     <tr>
-                        <td>{{ $awaitContract->id }}</td> <!-- نمایش ID قرارداد -->
+                        <td>{{ $awaitContract->id }}</td>
                         <td>{{ $awaitContract->customer->fullName() }}</td>
                         <td>{{ $awaitContract->car->fullName() }}</td>
-                        {{-- <td>{{ \Carbon\Carbon::parse($awaitContract->pickup_date)->format('d M Y') }}</td> --}}
-                        <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y H:i') }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
+                                    data-bs-toggle="dropdown">
+                                    <i class="bx bx-dots-vertical-rounded"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item"
+                                        href="{{ route('rental-requests.return-document', $awaitContract->id) }}">
+                                        <i class="bx bx-file me-1"></i> Return Document
+                                    </a>
+                                    @if ($awaitContract->user_id === auth()->id())
+                                        <a class="dropdown-item"
+                                            href="{{ route('rental-requests.details', $awaitContract->id) }}">
+                                            <i class="bx bx-info-circle me-1"></i> Details
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <x-status-badge :status="$awaitContract->current_status" />
+                        </td>
                         <td>
                             @if ($awaitContract->user)
                                 <span class="badge bg-primary">{{ $awaitContract->user->shortName() }}</span>
@@ -57,61 +89,41 @@
                             @endif
                         </td>
                         <td>
-                            <x-status-badge :status="$awaitContract->current_status" />
-
-
-                        </td>
-                        <td>
                             @if ($awaitContract->customerDocument()->exists())
                                 <span class="badge bg-warning">📄 Customer</span>
                             @endif
-
                             @if ($awaitContract->ReturnDocument()->exists())
                                 <span class="badge bg-success">📄 Return</span>
                             @endif
-
                             @if ($awaitContract->pickupDocument()->exists())
                                 <span class="badge bg-primary">📄 Deliver</span>
                             @endif
-                        </td>
-                        <td>
-                            <div class="dropdown">
-                                <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
-                                    data-bs-toggle="dropdown">
-                                    <i class="bx bx-dots-vertical-rounded"></i>
-                                </button>
-                                <div class="dropdown-menu">
-
-
-                                    <!-- گزینه Return Document -->
-                                    <a class="dropdown-item"
-                                        href="{{ route('rental-requests.return-document', $awaitContract->id) }}">
-                                        <i class="bx bx-file me-1"></i> Return Document
-                                    </a>
-
-
-
-
-
-
-                                    @if ($awaitContract->user_id === auth()->id())
-                                        <!-- گزینه Details -->
-                                        <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $awaitContract->id) }}">
-                                            <i class="bx bx-info-circle me-1"></i> Details
-                                        </a>
-                                    @endif
-
-
-
-
-                                </div>
-                            </div>
-
                         </td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
+
+        <!-- Add Pagination Links -->
+        <div class="mt-4">
+            {{ $awaitContracts->links() }}
+        </div>
     </div>
 </div>
+
+@push('styles')
+    <style>
+        th a {
+            text-decoration: none;
+            color: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        th a:hover {
+            color: #007bff;
+            /* Or your preferred hover color */
+        }
+    </style>
+@endpush
