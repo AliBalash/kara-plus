@@ -37,6 +37,8 @@ return new class extends Migration
                 'rejected'
             ])->default('pending'); // وضعیت قرارداد
             $table->text('notes')->nullable(); // یادداشت‌ها
+            $table->json('meta')->nullable();
+
             $table->timestamps();
 
             $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
