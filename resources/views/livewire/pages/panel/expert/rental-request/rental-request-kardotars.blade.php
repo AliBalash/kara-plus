@@ -36,9 +36,9 @@
                     <th>Car</th>
                     <th>Pickup Date</th>
                     <th>Return Date</th>
-                    <th>Expert</th>
-                    <th>Status</th>
                     <th>Actions</th>
+                    <th>Status</th>
+                    <th>Expert</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
@@ -47,21 +47,9 @@
                         <td>{{ $kardotarsContract->id }}</td> <!-- نمایش ID قرارداد -->
                         <td>{{ $kardotarsContract->customer->fullName() }}</td>
                         <td>{{ $kardotarsContract->car->fullName() }}</td>
-                        <td>{{ \Carbon\Carbon::parse($kardotarsContract->pickup_date)->format('d M Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($kardotarsContract->return_date)->format('d M Y') }}</td>
-                        <td>
-                            @if ($kardotarsContract->user)
-                                <span class="badge bg-primary">{{ $kardotarsContract->user->shortName() }}</span>
+                        <td>{{ \Carbon\Carbon::parse($kardotarsContract->pickup_date)->format('d M Y H:i') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($kardotarsContract->return_date)->format('d M Y H:i') }}</td>
 
-                            @else
-                                <span class="badge bg-secondary">No User</span>
-                            @endif
-                        </td>
-                        <td>
-
-                            <x-status-badge :status="$kardotarsContract->current_status" />
-
-                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
@@ -94,12 +82,18 @@
                                         </a>
                                     @endif
 
-
-
-
                                 </div>
                             </div>
-
+                        </td>
+                        <td>
+                            <x-status-badge :status="$kardotarsContract->current_status" />
+                        </td>
+                        <td>
+                            @if ($kardotarsContract->user)
+                                <span class="badge bg-primary">{{ $kardotarsContract->user->shortName() }}</span>
+                            @else
+                                <span class="badge bg-secondary">No User</span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach

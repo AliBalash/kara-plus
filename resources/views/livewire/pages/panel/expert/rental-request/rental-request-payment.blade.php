@@ -105,11 +105,34 @@
                         @endif
                     </div>
                 </div>
-
-
-
                 <button type="submit" class="btn btn-primary mt-3">Submit Payment</button>
             </form>
+
+
+            @if (session()->has('message-deposite'))
+                <div class="alert alert-success mt-3">
+                    {{ session('message') }}
+                </div>
+            @endif
+
+            <form class="my-5" wire:submit.prevent="submitDeposit">
+
+                <div class="col-md-12 mb-3">
+                    <label class="form-label">Security Deposit Details (optional)</label>
+                    <textarea class="form-control" wire:model.defer="security_note" rows="3"
+                        placeholder="E.g., Deposit of 1000 AED, refundable after inspection"></textarea>
+                </div>
+
+                @if (!empty($contractMeta['security_deposit_note']))
+                    <div class="alert alert-secondary mt-4">
+                        <strong>Security Deposit:</strong><br>
+                        {{ $contractMeta['security_deposit_note'] }}
+                    </div>
+                @endif
+                <button type="submit" class="btn btn-dark mt-3">Submit Security Deposit</button>
+
+            </form>
+
         </div>
     </div>
 
@@ -250,8 +273,6 @@
 
 @push('styles')
     <style>
-       
-
         .card:hover {
             transform: translateY(-4px);
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
