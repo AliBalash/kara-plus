@@ -93,7 +93,8 @@ class Car extends Model
      */
     public function fullName(): string
     {
-        return $this->carModel->fullName() . ' (' . $this->plate_number . ')';
+        return $this->carModel->fullName() ;
+        // return $this->carModel->fullName() . ' (' . $this->plate_number . ')';
     }
 
     /**

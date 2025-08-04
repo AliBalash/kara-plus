@@ -26,6 +26,7 @@ class Contract extends Model
         'total_price',
         'current_status',
         'notes',
+        'meta',
     ];
 
     /**
@@ -37,6 +38,7 @@ class Contract extends Model
         'pickup_date' => 'datetime',
         'return_date' => 'datetime',
         'total_price' => 'decimal:2',
+        'meta' => 'array',
     ];
 
     /**
