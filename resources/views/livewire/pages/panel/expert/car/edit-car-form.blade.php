@@ -86,9 +86,9 @@
                                 @enderror
                             </div>
 
-                            <!-- Price for 7-20 Days -->
+                            <!-- Price for 7-28 Days -->
                             <div class="input-group">
-                                <span class="input-group-text">Price (7-20 days)</span>
+                                <span class="input-group-text">Price (7-28 days)</span>
                                 <input type="number"
                                     class="form-control @error('price_per_day_mid') is-invalid @enderror"
                                     wire:model="price_per_day_mid" placeholder="Price for mid-term (درهم)">
@@ -97,9 +97,9 @@
                                 @enderror
                             </div>
 
-                            <!-- Price for 21+ Days -->
+                            <!-- Price for 28+ Days -->
                             <div class="input-group">
-                                <span class="input-group-text">Price (21+ days)</span>
+                                <span class="input-group-text">Price (28+ days)</span>
                                 <input type="number"
                                     class="form-control @error('price_per_day_long') is-invalid @enderror"
                                     wire:model="price_per_day_long" placeholder="Price for long-term (درهم)">
