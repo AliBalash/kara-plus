@@ -84,7 +84,7 @@
 
                                         <!-- گزینه Edit -->
                                         <a class="dropdown-item"
-                                            href="{{ route('expert.rental-requests.edit', $contract->id) }}">
+                                            href="{{ route('rental-requests.edit', $contract->id) }}">
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </a>
                                     @endif
