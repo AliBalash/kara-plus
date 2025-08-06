@@ -41,7 +41,7 @@ class RentalRequestEdit extends Component
     public $filteredCarModels = [];
     public $customerDocumentsCompleted = false;
     public $paymentsExist = false;
-    public $selected_services = [];
+    public $selected_services = ['basic_insurance'];
     public $selected_insurance = null;
     public $services_total = 0;
     public $insurance_total = 0;
