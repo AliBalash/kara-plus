@@ -98,7 +98,7 @@
                                                                 <i class="bx bx-info-circle me-1"></i> Details
                                                             </a>
                                                             <a class="dropdown-item"
-                                                                href="{{ route('expert.rental-requests.edit', $contract->id) }}">
+                                                                href="{{ route('rental-requests.edit', $contract->id) }}">
                                                                 <i class="bx bx-edit-alt me-1"></i> Edit
                                                             </a>
                                                             <a class="dropdown-item" href="javascript:void(0);"
