@@ -20,9 +20,9 @@ use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
 use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingReturnList;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCreate;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestEdit;
-use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestForm;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestHistory;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestKardoTars;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestList;
@@ -37,15 +37,9 @@ Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
 
 
-
-
     Route::get('/expert/rental-requests/list', RentalRequestList::class)->name('rental-requests.list');
-    Route::get('/expert/rental-requests/form/{contractId?}', RentalRequestForm::class)->name('rental-requests.form');
-
-
-    Route::get('/expert/rental-requests/edit/{contractId}/', RentalRequestEdit::class)
-        ->name('expert.rental-requests.edit');
-
+    Route::get('/expert/rental-requests/create/', RentalRequestCreate::class)->name('rental-requests.creat');
+    Route::get('/expert/rental-requests/edit/{contractId}/', RentalRequestEdit::class)->name('rental-requests.edit');
 
     Route::get('/expert/rental-requests/me', RentalRequestMe::class)->name('rental-requests.me');
     Route::get('/expert/rental-requests/detail/{contractId}', RentalRequestDetail::class)->name('rental-requests.details');
