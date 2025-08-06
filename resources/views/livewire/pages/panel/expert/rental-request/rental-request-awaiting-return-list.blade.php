@@ -45,6 +45,7 @@
                             @endif
                         </a>
                     </th>
+                    <th>Return Location</th>
                     <th>Actions</th>
                     <th>Status</th>
                     <th>Expert</th>
@@ -58,6 +59,7 @@
                         <td>{{ $awaitContract->customer->fullName() }}</td>
                         <td>{{ $awaitContract->car->fullName() }}</td>
                         <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y H:i') }}</td>
+                        <td>{{ $awaitContract->return_location }}</td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"

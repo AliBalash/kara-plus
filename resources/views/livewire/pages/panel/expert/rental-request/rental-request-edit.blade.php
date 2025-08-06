@@ -382,7 +382,7 @@
                         <!-- Notes -->
                         <div class="input-group">
                             <span class="input-group-text" id="basic-addon-notes">Note</span>
-                            <textarea class="form-control " wire:model="note" placeholder="Contract Notes" name="notes">{{ $contract?->notes }}</textarea>
+                            <textarea class="form-control " wire:model="notes" placeholder="Contract Notes" name="notes">{{ $contract?->notes }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -400,7 +400,7 @@
                                         <input class="form-check-input" type="checkbox"
                                             wire:model.live="selected_services" value="{{ $key }}"
                                             id="service-{{ $key }}"
-                                            @if (in_array($key, $selected_services)) checked @endif>
+                                            @if ($key === 'basic_insurance') checked disabled @elseif (in_array($key, $selected_services)) checked @endif>
                                         <label class="form-check-label" for="service-{{ $key }}">
                                             {{ $service['label'] }} -
                                             @if ($service['amount'] > 0)
