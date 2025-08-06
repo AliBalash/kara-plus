@@ -34,8 +34,8 @@
 
                 <ul class="menu-sub">
 
-                    <li class="menu-item {{ Request::routeIs('rental-requests.form') ? 'active' : '' }}">
-                        <a href="{{ route('rental-requests.form') }}" class="menu-link">
+                    <li class="menu-item {{ Request::routeIs('rental-requests.creat') ? 'active' : '' }}">
+                        <a href="{{ route('rental-requests.creat') }}" class="menu-link">
                             <div data-i18n="Without menu">Add</div>
                         </a>
                     </li>

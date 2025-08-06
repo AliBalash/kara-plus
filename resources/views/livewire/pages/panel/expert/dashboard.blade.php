@@ -39,7 +39,7 @@
                                             <div class="text-success fw-bold">
                                                 ${{ number_format($contract->total_price, 2) }} <small
                                                     class="text-muted">AED</small></div>
-                                            <a href="{{ route('expert.rental-requests.edit', $contract->id) }}"
+                                            <a href="{{ route('rental-requests.edit', $contract->id) }}"
                                                 class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-eye"></i> View
                                             </a>
