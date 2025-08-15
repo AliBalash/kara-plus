@@ -26,7 +26,7 @@ class RentalRequestEdit extends Component
     public $return_location;
     public $return_date;
     public $pickup_date;
-    public $note;
+    public $notes;
     public $first_name;
     public $last_name;
     public $email;
@@ -41,8 +41,8 @@ class RentalRequestEdit extends Component
     public $filteredCarModels = [];
     public $customerDocumentsCompleted = false;
     public $paymentsExist = false;
-    public $selected_services = ['basic_insurance'];
-    public $selected_insurance = null;
+    public $selected_services = [];
+    public $selected_insurance = 'ldw_insurance'; // پیش‌فرض روی LDW تنظیم می‌شه    public $selected_insurance = null;
     public $services_total = 0;
     public $insurance_total = 0;
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
@@ -61,23 +61,8 @@ class RentalRequestEdit extends Component
 
 
     public $carsForModel = [];
-    public $services = [
-        'basic_insurance' => [
-            'label'   => 'بیمه پایه',
-            'amount'  => 0,
-            'per_day' => false
-        ],
-        'child_seat' => [
-            'label'   => 'صندلی کودک',
-            'amount'  => 20,
-            'per_day' => true
-        ],
-        'additional_driver' => [
-            'label'   => 'راننده اضافه',
-            'amount'  => 20,
-            'per_day' => false
-        ]
-    ];
+
+
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => [
@@ -143,44 +128,39 @@ class RentalRequestEdit extends Component
     ];
 
 
+    public $services = [];
+
     public function mount($contractId)
     {
+        $this->services = config('carservices');
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->contract = Contract::findOrFail($contractId);
 
         // Initialize properties from contract
         $this->initializeFromContract();
-        $this->calculateCosts();
         $this->loadChargesFromDatabase($contractId);
+        $this->calculateCosts();
     }
-    private function loadChargesFromDatabase($contractid)
+
+
+    private function loadChargesFromDatabase($contractId)
     {
-        $charges = ContractCharges::where('contract_id', $contractid)->get();
+        $charges = ContractCharges::where('contract_id', $contractId)->get();
         $this->selected_services = [];
-        $this->selected_insurance = null;
+        $this->selected_insurance = 'ldw_insurance'; // پیش‌فرض روی LDW
 
         foreach ($charges as $charge) {
-            // بازیابی خدمات
-            if ($charge->type === 'addon') {
-                if ($charge->title === 'Basic Insurance') {
-                    $this->selected_insurance = 'basic_insurance';
-                } elseif ($charge->title === 'LDW Insurance') {
-                    $this->selected_insurance = 'ldw_insurance';
-                } elseif ($charge->title === 'Full Coverage (SCDW)') {
-                    $this->selected_insurance = 'scdw_insurance';
-                } else {
-                    // پیدا کردن کلید سرویس بر اساس عنوان
-                    foreach ($this->services as $key => $service) {
-                        if ($service['label'] === $charge->title) {
-                            $this->selected_services[] = $key;
-                            break;
-                        }
+            if ($charge->type === 'addon' || $charge->type === 'insurance') {
+                if (array_key_exists($charge->title, $this->services)) {
+                    if (in_array($charge->title, ['ldw_insurance', 'scdw_insurance'])) {
+                        $this->selected_insurance = $charge->title;
+                    } elseif ($charge->title !== 'basic_insurance') {
+                        $this->selected_services[] = $charge->title;
                     }
                 }
             }
         }
 
-        // محاسبات را پس از بارگذاری انجام دهید
         $this->calculateCosts();
     }
 
@@ -192,7 +172,7 @@ class RentalRequestEdit extends Component
         $this->return_location = $this->contract->return_location;
         $this->pickup_date = \Carbon\Carbon::parse($this->contract->pickup_date)->format('Y-m-d\TH:i');
         $this->return_date = \Carbon\Carbon::parse($this->contract->return_date)->format('Y-m-d\TH:i');
-        $this->note = $this->contract->note;
+        $this->notes = $this->contract->notes;
 
         // Customer data
         $customer = $this->contract->customer()->firstOrFail();
@@ -219,10 +199,6 @@ class RentalRequestEdit extends Component
         // Documents and payments
         $this->customerDocumentsCompleted = (bool)$this->contract->customerDocument;
         $this->paymentsExist = $this->contract->payments()->exists();
-
-        // Services and insurance
-        $this->selected_services = $this->contract->selected_services ?? [];
-        $this->selected_insurance = $this->contract->selected_insurance;
     }
 
 
@@ -265,7 +241,7 @@ class RentalRequestEdit extends Component
 
     private function getCarDailyRate(Car $car, int $days): float
     {
-        if ($days >= 21) return $car->price_per_day_long;
+        if ($days >= 28) return $car->price_per_day_long;
         if ($days >= 7) return $car->price_per_day_mid;
         return $car->price_per_day_short;
     }
@@ -294,28 +270,21 @@ class RentalRequestEdit extends Component
         $insuranceTotal = 0;
         $days = $this->rental_days;
 
-        // محاسبه خدمات
         foreach ($this->selected_services as $serviceId) {
             $service = $this->services[$serviceId] ?? null;
             if ($service) {
-                $servicesTotal += $service['per_day']
-                    ? $service['amount'] * $days
-                    : $service['amount'];
+                $amount = $service['amount'] ?? 0;
+                $servicesTotal += $service['per_day'] ? $amount * $days : $amount;
             }
         }
 
-        // محاسبه بیمه (اضافه کردن شرط برای بیمه پایه)
-        if ($this->selected_insurance) {
-            if ($this->selected_insurance === 'basic_insurance') {
-                // محاسبه بیمه پایه از سرویس‌ها
-                $insuranceTotal += $this->services['basic_insurance']['amount'] * $days;
-            } elseif ($this->selectedCarId) {
-                $car = $this->getSelectedCar();
-                if ($car) {
-                    $insuranceAmount = ($this->selected_insurance === 'ldw_insurance')
-                        ? $car->ldw_price
-                        : $car->scdw_price;
-                    $insuranceTotal += $insuranceAmount * $days;
+        if ($this->selected_insurance && $this->selectedCarId) {
+            $car = Car::find($this->selectedCarId);
+            if ($car) {
+                if ($this->selected_insurance === 'ldw_insurance') {
+                    $insuranceTotal += ($car->ldw_price ?? 0) * $days;
+                } elseif ($this->selected_insurance === 'scdw_insurance') {
+                    $insuranceTotal += ($car->scdw_price ?? 0) * $days;
                 }
             }
         }
@@ -334,39 +303,36 @@ class RentalRequestEdit extends Component
 
     protected function rules()
     {
-        // If editing, get the customer ID (if the contract exists, fetch the customer's ID)
         $customerId = $this->contract ? $this->contract->customer->id : null;
         return [
-            'selectedBrand' => ['required', 'string'], // یا اگر قراره exists باشه، باید اصلاح بشه
+            'selectedBrand' => ['required', 'string'],
             'selectedModelId' => ['required', 'exists:car_models,id'],
             'selectedCarId' => ['required', 'exists:cars,id'],
-            'pickup_location' => 'required|',
-            'return_location' => 'required|',
-            'pickup_date' => 'required|',
-            'return_date' => 'required|',
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'pickup_location' => ['required', Rule::in(array_keys($this->locationCosts))],
+            'return_location' => ['required', Rule::in(array_keys($this->locationCosts))],
+            'pickup_date' => ['required', 'date'],
+            'return_date' => ['required', 'date', 'after_or_equal:pickup_date'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => [
                 'nullable',
                 'email',
                 'max:255',
-                // Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
+                Rule::unique('customers')->ignore($customerId),
             ],
-            'phone' => 'required|max:15',
-            'messenger_phone' => 'required|max:15',
-            'address' => 'nullable|string|max:255',
-            'national_code' => [
-                'required',
-            ],
+            'phone' => ['required', 'max:15'],
+            'messenger_phone' => ['required', 'max:15'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'national_code' => ['required'],
             'passport_number' => [
                 'nullable',
                 'string',
                 'max:50',
-                Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
+                Rule::unique('customers')->ignore($customerId),
             ],
-            'passport_expiry_date' => 'nullable|date|after_or_equal:today',
-            'nationality' => 'required|string|max:100',
-            'license_number' => 'nullable|string|max:50',
+            'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'nationality' => ['required', 'string', 'max:100'],
+            'license_number' => ['nullable', 'string', 'max:50'],
         ];
     }
 
@@ -375,8 +341,6 @@ class RentalRequestEdit extends Component
         'total_price.required' => 'The total price field is required.',
         'total_price.numeric' => 'The total price must be a valid number.',
         'total_price.min' => 'The total price cannot be negative.',
-        'pickup_location.required' => 'The pickup location field is required.',
-        'return_location.required' => 'The return location field is required.',
         'pickup_date.required' => 'The return pickup date is required.',
         'return_date.required' => 'The return date field is required.',
         'selectedBrand.required' => 'The car brand field is required.',
@@ -386,6 +350,11 @@ class RentalRequestEdit extends Component
         'first_name.required' => 'First name is required.',
         'first_name.string' => 'First name must be a string.',
         'first_name.max' => 'First name cannot be longer than 255 characters.',
+
+        'pickup_location.required' => 'The pickup location is required.',
+        'pickup_location.in' => 'The selected pickup location is invalid.',
+        'return_location.required' => 'The return location is required.',
+        'return_location.in' => 'The selected return location is invalid.',
 
         'last_name.required' => 'Last name is required.',
         'last_name.string' => 'Last name must be a string.',
@@ -437,6 +406,11 @@ class RentalRequestEdit extends Component
         if ($this->isCostRelatedField($propertyName)) {
             $this->calculateCosts();
         }
+
+        // اطمینان از لود مجدد ماشین‌ها هنگام تغییر مدل
+        if ($propertyName === 'selectedModelId') {
+            $this->loadCars();
+        }
     }
 
     private function isCostRelatedField($propertyName)
@@ -475,23 +449,22 @@ class RentalRequestEdit extends Component
 
     private function storeContractCharges(Contract $contract)
     {
-        // حذف رکوردهای قبلی
         ContractCharges::where('contract_id', $contract->id)->delete();
 
-        // هزینه پایه اجاره
+        // هزینه پایه
         ContractCharges::create([
             'contract_id' => $contract->id,
-            'title' => 'Base Rental Cost',
+            'title' => 'base_rental',
             'amount' => $this->base_price,
             'type' => 'base',
-            'description' => "{$this->rental_days} days × {$this->dailyRate} AED"
+            'description' => "{$this->rental_days} روز × {$this->dailyRate} درهم"
         ]);
 
         // هزینه‌های انتقال
         if ($this->transfer_costs['pickup'] > 0) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => 'Pickup Transfer Cost',
+                'title' => 'pickup_transfer',
                 'amount' => $this->transfer_costs['pickup'],
                 'type' => 'location_fee',
                 'description' => $this->pickup_location
@@ -501,7 +474,7 @@ class RentalRequestEdit extends Component
         if ($this->transfer_costs['return'] > 0) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => 'Return Transfer Cost',
+                'title' => 'return_transfer',
                 'amount' => $this->transfer_costs['return'],
                 'type' => 'location_fee',
                 'description' => $this->return_location
@@ -510,52 +483,39 @@ class RentalRequestEdit extends Component
 
         // خدمات اضافی
         foreach ($this->selected_services as $serviceId) {
-            $service = $this->services[$serviceId] ?? null;
-            if (!$service) continue;
-
-            $amount = $service['per_day']
-                ? $service['amount'] * $this->rental_days
-                : $service['amount'];
+            if (!array_key_exists($serviceId, $this->services) || $serviceId === 'basic_insurance') {
+                continue;
+            }
+            $service = $this->services[$serviceId];
+            $amount = $service['per_day'] ? $service['amount'] * $this->rental_days : $service['amount'];
 
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => $service['label'],
+                'title' => $serviceId,
                 'amount' => $amount,
                 'type' => 'addon',
-                'description' => $service['per_day']
-                    ? "{$this->rental_days} days × {$service['amount']} AED"
-                    : 'One-time fee'
+                'description' => $service['per_day'] ? "{$this->rental_days} روز × {$service['amount']} درهم" : 'یک‌بار هزینه'
             ]);
         }
 
         // بیمه‌ها
-        if ($this->selected_insurance) {
-            $insuranceLabel = '';
+        if ($this->selected_insurance && in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance'])) {
             $insuranceAmount = 0;
+            $car = Car::find($this->selectedCarId);
 
-            if ($this->selected_insurance === 'basic_insurance') {
-                $insuranceLabel = 'Basic Insurance';
-                $insuranceAmount = $this->services['basic_insurance']['amount'] * $this->rental_days;
-            } elseif ($this->selectedCarId) {
-                $car = Car::find($this->selectedCarId);
-                if ($car) {
-                    if ($this->selected_insurance === 'ldw_insurance') {
-                        $insuranceLabel = 'LDW Insurance';
-                        $insuranceAmount = $car->ldw_price * $this->rental_days;
-                    } elseif ($this->selected_insurance === 'scdw_insurance') {
-                        $insuranceLabel = 'Full Coverage (SCDW)';
-                        $insuranceAmount = $car->scdw_price * $this->rental_days;
-                    }
-                }
+            if ($this->selected_insurance === 'ldw_insurance' && $car) {
+                $insuranceAmount = ($car->ldw_price ?? 0) * $this->rental_days;
+            } elseif ($this->selected_insurance === 'scdw_insurance' && $car) {
+                $insuranceAmount = ($car->scdw_price ?? 0) * $this->rental_days;
             }
 
             if ($insuranceAmount > 0) {
                 ContractCharges::create([
                     'contract_id' => $contract->id,
-                    'title' => $insuranceLabel,
+                    'title' => $this->selected_insurance,
                     'amount' => $insuranceAmount,
-                    'type' => 'addon',
-                    'description' => "{$this->rental_days} days"
+                    'type' => 'insurance',
+                    'description' => "{$this->rental_days} روز"
                 ]);
             }
         }
@@ -564,10 +524,10 @@ class RentalRequestEdit extends Component
         if ($this->tax_amount > 0) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => 'Tax (5%)',
+                'title' => 'tax',
                 'amount' => $this->tax_amount,
                 'type' => 'tax',
-                'description' => '5% VAT'
+                'description' => '۵٪ مالیات بر ارزش افزوده'
             ]);
         }
     }
@@ -603,7 +563,7 @@ class RentalRequestEdit extends Component
             'return_date' => $this->return_date,
             'selected_services' => $this->selected_services,
             'selected_insurance' => $this->selected_insurance,
-            'notes' => $this->note,
+            'notes' => $this->notes,
         ];
 
         $this->contract->update($contractData);
@@ -656,6 +616,28 @@ class RentalRequestEdit extends Component
         }
     }
 
+    private function getCarReservations($carId)
+    {
+        if (!$carId) {
+            return [];
+        }
+
+        $reservations = Contract::where('car_id', $carId)
+            ->whereIn('current_status', ['pending', 'assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection', 'awaiting_return'])
+            ->where('return_date', '>=', now())
+            ->select('pickup_date', 'return_date')
+            ->get()
+            ->map(function ($contract) {
+                return [
+                    'pickup_date' => Carbon::parse($contract->pickup_date)->format('Y-m-d H:i'),
+                    'return_date' => Carbon::parse($contract->return_date)->format('Y-m-d H:i'),
+                ];
+            })
+            ->toArray();
+
+        return $reservations;
+    }
+
     public function changeStatusToReserve($contractId)
     {
         $contract = Contract::findOrFail($contractId);
@@ -685,5 +667,35 @@ class RentalRequestEdit extends Component
     public function updatedSelectedCarId()
     {
         $this->calculateCosts();
+        // آپدیت دستی services برای اطمینان
+        if ($this->selectedCarId) {
+            $car = Car::find($this->selectedCarId);
+            if ($car) {
+                $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
+                $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
+            }
+        }
+    }
+
+    public function render()
+    {
+        // مستقیماً $this->services رو آپدیت می‌کنیم
+        if ($this->selectedCarId) {
+            $car = Car::find($this->selectedCarId);
+            if ($car) {
+                $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
+                $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
+            }
+        }
+
+        $services = array_map(function ($service) {
+            $service['label'] = $service['label_en'];
+            return $service;
+        }, $this->services);
+
+        return view('livewire.pages.panel.expert.rental-request.rental-request-edit', [
+            'brands' => $this->brands,
+            'services' => $services,
+        ]);
     }
 }

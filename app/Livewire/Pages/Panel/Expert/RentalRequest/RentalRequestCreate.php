@@ -15,137 +15,136 @@ use Illuminate\Support\Str;
 
 class RentalRequestCreate extends Component
 {
-
-    public $contract;  // Contract data
-    public $cars;
-    public $carModels;
-    public $selectedBrand; // Store the selected brand ID
-    public $selectedCarId; // Store the selected car model ID
-    public $selectedCar; // Store the selected car 
-
-    public $total_price;
-    public $agent_sale;
+    public $selectedBrand;
+    public $selectedModelId;
+    public $selectedCarId;
     public $pickup_location;
     public $return_location;
-    public $return_date;
     public $pickup_date;
-    public $note;
-
-    public $first_name, $last_name, $email, $phone, $messenger_phone;
+    public $return_date;
+    public $notes;
+    public $agent_sale;
+    public $first_name;
+    public $last_name;
+    public $email;
+    public $phone;
+    public $messenger_phone;
     public $address;
     public $national_code;
     public $passport_number;
     public $passport_expiry_date;
     public $nationality;
     public $license_number;
-    // Dynamic array for car models of the selected brand
-    public $filteredCarModels = [];
-
-    // Mount method to load initial data
-    public $customerDocumentsCompleted = false;
-    public $paymentsExist = false;
-
-    public $selected_services = ['basic_insurance'];
-    public $selected_insurance = null;
+    public $selected_services = [];
+    public $selected_insurance = 'ldw_insurance'; // پیش‌فرض LDW
     public $services_total = 0;
     public $insurance_total = 0;
-
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
     public $tax_rate = 0.05;
     public $tax_amount = 0;
     public $subtotal = 0;
     public $final_total = 0;
-
-    public $rental_days = 1; // مقدار پیش‌فرض 1 روز
+    public $rental_days = 1;
     public $dailyRate;
     public $base_price;
-
-    public $brands = []; // لیست برندها (رشته)
-    public $models = []; // لیست مدل‌های مربوط به برند انتخاب شده
-    public $selectedModelId; // ID مدل انتخاب شده
-    public $carsForModel = []; // لیست خودروهای مربوط به مدل انتخاب شده
-
-    public $services = [
-        'basic_insurance' => [
-            'label'   => 'بیمه پایه',
-            'amount'  => 0,
-            'per_day' => false
-        ],
-        'child_seat' => [
-            'label'   => 'صندلی کودک',
-            'amount'  => 20,
-            'per_day' => true
-        ],
-        'additional_driver' => [
-            'label'   => 'راننده اضافه',
-            'amount'  => 20,
-            'per_day' => false
-        ]
-    ];
+    public $brands = [];
+    public $models = [];
+    public $carsForModel = [];
+    public $services = [];
 
     private $locationCosts = [
-        'UAE/Dubai/Clock Tower/Main Branch' => [
-            'under_3' => 0,
-            'over_3' => 0
-        ],
-        'UAE/Dubai/Downtown' => [
-            'under_3' => 50,
-            'over_3' => 50
-        ],
-        'UAE/Dubai/Dubai Airport/Terminal 1' => [
-            'under_3' => 50,
-            'over_3' => 0
-        ],
-        'UAE/Dubai/Dubai Airport/Terminal 2' => [
-            'under_3' => 50,
-            'over_3' => 0
-        ],
-        'UAE/Dubai/Dubai Airport/Terminal 3' => [
-            'under_3' => 50,
-            'over_3' => 0
-        ],
-        'UAE/Dubai/Jumeirah 1, 2, 3' => [
-            'under_3' => 45,
-            'over_3' => 45
-        ],
-        'UAE/Dubai/JBR' => [
-            'under_3' => 45,
-            'over_3' => 45
-        ],
-        'UAE/Dubai/Marina' => [
-            'under_3' => 45,
-            'over_3' => 45
-        ],
-        'UAE/Dubai/JLT' => [
-            'under_3' => 45,
-            'over_3' => 45
-        ],
-        'UAE/Dubai/JVC' => [
-            'under_3' => 60,
-            'over_3' => 60
-        ],
-        'UAE/Dubai/Damac Hills' => [
-            'under_3' => 60,
-            'over_3' => 60
-        ],
-        'UAE/Dubai/Palm' => [
-            'under_3' => 70,
-            'over_3' => 70
-        ],
-        'UAE/Dubai/Jebel Ali – Ibn Battuta – Hatta & more' => [
-            'under_3' => 70,
-            'over_3' => 70
-        ],
-        'UAE/Sharjah Airport' => [
-            'under_3' => 100,
-            'over_3' => 100
-        ],
-        'UAE/Abu Dhabi Airport' => [
-            'under_3' => 200,
-            'over_3' => 200
-        ]
+        'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
+        'UAE/Dubai/Downtown' => ['under_3' => 50, 'over_3' => 50],
+        'UAE/Dubai/Dubai Airport/Terminal 1' => ['under_3' => 50, 'over_3' => 0],
+        'UAE/Dubai/Dubai Airport/Terminal 2' => ['under_3' => 50, 'over_3' => 0],
+        'UAE/Dubai/Dubai Airport/Terminal 3' => ['under_3' => 50, 'over_3' => 0],
+        'UAE/Dubai/Jumeirah 1, 2, 3' => ['under_3' => 45, 'over_3' => 45],
+        'UAE/Dubai/JBR' => ['under_3' => 45, 'over_3' => 45],
+        'UAE/Dubai/Marina' => ['under_3' => 45, 'over_3' => 45],
+        'UAE/Dubai/JLT' => ['under_3' => 45, 'over_3' => 45],
+        'UAE/Dubai/JVC' => ['under_3' => 60, 'over_3' => 60],
+        'UAE/Dubai/Damac Hills' => ['under_3' => 60, 'over_3' => 60],
+        'UAE/Dubai/Palm' => ['under_3' => 70, 'over_3' => 70],
+        'UAE/Dubai/Jebel Ali – Ibn Battuta – Hatta & more' => ['under_3' => 70, 'over_3' => 70],
+        'UAE/Sharjah Airport' => ['under_3' => 100, 'over_3' => 100],
+        'UAE/Abu Dhabi Airport' => ['under_3' => 200, 'over_3' => 200],
     ];
 
+    public function mount()
+    {
+        $this->services = config('carservices');
+        $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
+    }
+
+    public function updated($propertyName)
+    {
+        $this->validateOnly($propertyName);
+
+        if ($this->isCostRelatedField($propertyName)) {
+            $this->calculateCosts();
+        }
+
+        if ($propertyName === 'selectedModelId') {
+            $this->loadCars();
+        }
+    }
+
+    private function isCostRelatedField($propertyName)
+    {
+        $costRelatedFields = [
+            'pickup_date',
+            'return_date',
+            'selectedCarId',
+            'pickup_location',
+            'return_location',
+            'selected_services',
+            'selected_insurance',
+        ];
+
+        return in_array($propertyName, $costRelatedFields) ||
+            Str::startsWith($propertyName, 'selected_services.');
+    }
+
+    public function updatedSelectedBrand()
+    {
+        $this->selectedModelId = null;
+        $this->selectedCarId = null;
+        $this->loadModels();
+        $this->calculateCosts();
+    }
+
+    public function updatedSelectedModelId()
+    {
+        $this->selectedCarId = null;
+        $this->loadCars();
+        $this->calculateCosts();
+    }
+
+    public function updatedSelectedCarId()
+    {
+        $this->calculateCosts();
+        if ($this->selectedCarId) {
+            $car = Car::find($this->selectedCarId);
+            if ($car) {
+                $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
+                $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
+            }
+        }
+    }
+
+    private function loadModels()
+    {
+        $this->models = $this->selectedBrand
+            ? CarModel::where('brand', $this->selectedBrand)->orderBy('model')->get()
+            : [];
+    }
+
+    private function loadCars()
+    {
+        $this->carsForModel = $this->selectedModelId
+            ? Car::where('car_model_id', $this->selectedModelId)->with('carModel')->get()
+            : [];
+    }
 
     public function calculateCosts()
     {
@@ -161,9 +160,20 @@ class RentalRequestCreate extends Component
         if ($this->pickup_date && $this->return_date) {
             $pickup = Carbon::parse($this->pickup_date);
             $return = Carbon::parse($this->return_date);
-            $this->rental_days = max(1, $pickup->diffInDays($return));
+
+            // اگر به هر دلیل زمان برگشت برابر یا قبل از تحویل بود، حداقل 1 روز قرار بده
+            if ($return->lte($pickup)) {
+                $this->rental_days = 1;
+                return;
+            }
+
+            // اختلاف زمان را بر حسب ثانیه بگیر و بر 86400 تقسیم کن و به بالا گرد کن
+            $seconds = $return->getTimestamp() - $pickup->getTimestamp();
+            $days = (int) ceil($seconds / 86400);
+
+            $this->rental_days = max(1, $days);
         } else {
-            $this->rental_days = 1; // مقدار پیش‌فرض اگر تاریخ‌ها تنظیم نشده باشند
+            $this->rental_days = 1;
         }
     }
 
@@ -172,7 +182,8 @@ class RentalRequestCreate extends Component
         if ($this->selectedCarId && $this->rental_days) {
             $car = Car::find($this->selectedCarId);
             $this->dailyRate = $this->getCarDailyRate($car, $this->rental_days);
-            $this->base_price = $this->dailyRate * $this->rental_days;
+            // محاسبه و گرد کردن قیمت پایه به دو رقم اعشار
+            $this->base_price = round($this->dailyRate * $this->rental_days, 2);
         } else {
             $this->dailyRate = 0;
             $this->base_price = 0;
@@ -181,8 +192,8 @@ class RentalRequestCreate extends Component
 
     private function getCarDailyRate(Car $car, int $days): float
     {
-        if ($days >= 21) return $car->price_per_day_long;
-        if ($days >= 7) return $car->price_per_day_mid;
+        if ($days >= 28) return $car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short;
+        if ($days >= 7) return $car->price_per_day_mid ?? $car->price_per_day_short;
         return $car->price_per_day_short;
     }
 
@@ -191,11 +202,9 @@ class RentalRequestCreate extends Component
         $this->transfer_costs = [
             'pickup' => $this->calculateLocationFee($this->pickup_location, $this->rental_days),
             'return' => $this->calculateLocationFee($this->return_location, $this->rental_days),
-            'total' => 0
+            'total' => 0,
         ];
-
-        $this->transfer_costs['total'] =
-            $this->transfer_costs['pickup'] + $this->transfer_costs['return'];
+        $this->transfer_costs['total'] = $this->transfer_costs['pickup'] + $this->transfer_costs['return'];
     }
 
     private function calculateLocationFee($location, $days)
@@ -210,28 +219,21 @@ class RentalRequestCreate extends Component
         $insuranceTotal = 0;
         $days = $this->rental_days;
 
-        // محاسبه خدمات
         foreach ($this->selected_services as $serviceId) {
             $service = $this->services[$serviceId] ?? null;
             if ($service) {
-                $servicesTotal += $service['per_day']
-                    ? $service['amount'] * $days
-                    : $service['amount'];
+                $amount = $service['amount'] ?? 0;
+                $servicesTotal += $service['per_day'] ? $amount * $days : $amount;
             }
         }
 
-        // محاسبه بیمه (اضافه کردن شرط برای بیمه پایه)
-        if ($this->selected_insurance) {
-            if ($this->selected_insurance === 'basic_insurance') {
-                // محاسبه بیمه پایه از سرویس‌ها
-                $insuranceTotal += $this->services['basic_insurance']['amount'] * $days;
-            } elseif ($this->selectedCarId) {
-                $car = Car::find($this->selectedCarId);
-                if ($car) {
-                    $insuranceAmount = ($this->selected_insurance === 'ldw_insurance')
-                        ? $car->ldw_price
-                        : $car->scdw_price;
-                    $insuranceTotal += $insuranceAmount * $days;
+        if ($this->selected_insurance && $this->selectedCarId) {
+            $car = Car::find($this->selectedCarId);
+            if ($car) {
+                if ($this->selected_insurance === 'ldw_insurance') {
+                    $insuranceTotal += ($car->ldw_price ?? 0) * $days;
+                } elseif ($this->selected_insurance === 'scdw_insurance') {
+                    $insuranceTotal += ($car->scdw_price ?? 0) * $days;
                 }
             }
         }
@@ -240,7 +242,6 @@ class RentalRequestCreate extends Component
         $this->insurance_total = $insuranceTotal;
     }
 
-
     private function calculateTaxAndTotal()
     {
         $this->subtotal = $this->base_price + $this->services_total + $this->insurance_total + $this->transfer_costs['total'];
@@ -248,342 +249,141 @@ class RentalRequestCreate extends Component
         $this->final_total = $this->subtotal + $this->tax_amount;
     }
 
-
-
-    protected $listeners = [
-        'refreshContracts' => '$refresh',
-    ];
-
-    public function mount($contractId = null)
+    private function getCarReservations($carId)
     {
-        $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
+        if (!$carId) return [];
 
-        if ($contractId) {
-            $this->contract = Contract::findOrFail($contractId);
-
-            $this->total_price = $this->contract->total_price;
-            $this->agent_sale = $this->contract->agent_sale;
-            $this->pickup_location = $this->contract->pickup_location;
-            $this->return_location = $this->contract->return_location;
-            $this->pickup_date = \Carbon\Carbon::parse($this->contract->pickup_date)->format('Y-m-d\TH:i');
-            $this->return_date = \Carbon\Carbon::parse($this->contract->return_date)->format('Y-m-d\TH:i');
-            $this->note = $this->contract->note;
-            $this->first_name = $this->contract->customer->first_name;
-            $this->last_name = $this->contract->customer->last_name;
-            $this->email = $this->contract->customer->email;
-            $this->phone = $this->contract->customer->phone;
-            $this->messenger_phone = $this->contract->customer->messenger_phone;
-            $this->address = $this->contract->customer->address;
-            $this->national_code = $this->contract->customer->national_code;
-            $this->passport_number = $this->contract->customer->passport_number;
-            $this->passport_expiry_date = $this->contract->customer->passport_expiry_date;
-            $this->nationality = $this->contract->customer->nationality;
-            $this->license_number = $this->contract->customer->license_number;
-
-            $this->selectedBrand = $this->contract->car->carModel->brand;
-            $this->loadModels();
-            $this->selectedModelId = $this->contract->car->car_model_id;
-            $this->loadCars();
-            $this->selectedCarId = $this->contract->car->id;
-
-            // بررسی مدارک مشتری
-            if ($this->contract->customer && $this->contract->customerDocument) {
-                $this->customerDocumentsCompleted = true;
-            }
-
-            $this->selected_services = $this->contract->selected_services ?? [];
-            $this->selected_insurance = $this->contract->selected_insurance;
-
-
-            // بررسی پرداخت‌ها
-            if ($this->contract->payments()->exists()) {
-                $this->paymentsExist = true;
-            }
-
-            // Set initial selected values based on the contract's car
-            $this->selectedBrand = $this->contract->car->carModel->id;
-            $this->selectedCarId = $this->contract->car->id;
-
-            $this->calculateCosts();
-
-            $this->loadChargesFromDatabase($this->contract);
-
-
-
-            // Fetch cars based on initial brand selection
-            $this->filterCarsByBrand($this->selectedBrand);
-        }
+        return Contract::where('car_id', $carId)
+            ->whereIn('current_status', ['pending', 'assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection', 'awaiting_return'])
+            ->where('return_date', '>=', now())
+            ->select('pickup_date', 'return_date')
+            ->get()
+            ->map(function ($contract) {
+                return [
+                    'pickup_date' => Carbon::parse($contract->pickup_date)->format('Y-m-d H:i'),
+                    'return_date' => Carbon::parse($contract->return_date)->format('Y-m-d H:i'),
+                ];
+            })
+            ->toArray();
     }
 
-
-    private function loadChargesFromDatabase(Contract $contract)
-    {
-        $charges = ContractCharges::where('contract_id', $contract->id)->get();
-
-        $this->selected_services = [];
-        $this->selected_insurance = null;
-
-        foreach ($charges as $charge) {
-            // بازیابی خدمات
-            if ($charge->type === 'addon') {
-                if ($charge->title === 'Basic Insurance') {
-                    $this->selected_insurance = 'basic_insurance';
-                } elseif ($charge->title === 'LDW Insurance') {
-                    $this->selected_insurance = 'ldw_insurance';
-                } elseif ($charge->title === 'Full Coverage (SCDW)') {
-                    $this->selected_insurance = 'scdw_insurance';
-                } else {
-                    // پیدا کردن کلید سرویس بر اساس عنوان
-                    foreach ($this->services as $key => $service) {
-                        if ($service['label'] === $charge->title) {
-                            $this->selected_services[] = $key;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // محاسبات را پس از بارگذاری انجام دهید
-        $this->calculateCosts();
-    }
-
-
-    // Add other fields for car and customer information as necessary
-    // Add this to the validation rules
     protected function rules()
     {
-        // If editing, get the customer ID (if the contract exists, fetch the customer's ID)
-        $customerId = $this->contract ? $this->contract->customer->id : null;
         return [
-            'selectedBrand' => ['required', 'string'], // یا اگر قراره exists باشه، باید اصلاح بشه
+            'selectedBrand' => ['required', 'string'],
             'selectedModelId' => ['required', 'exists:car_models,id'],
             'selectedCarId' => ['required', 'exists:cars,id'],
-            'pickup_location' => 'required|',
-            'return_location' => 'required|',
-            'pickup_date' => 'required|',
-            'return_date' => 'required|',
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => [
-                'nullable',
-                'email',
-                'max:255',
-                // Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
-            ],
-            'phone' => 'required|max:15',
-            'messenger_phone' => 'required|max:15',
-            'address' => 'nullable|string|max:255',
-            'national_code' => [
+            'pickup_location' => ['required', Rule::in(array_keys($this->locationCosts))],
+            'return_location' => ['required', Rule::in(array_keys($this->locationCosts))],
+            'pickup_date' => [
                 'required',
+                'date',
+                'after_or_equal:today',
+                function ($attribute, $value, $fail) {
+                    if ($this->selectedCarId && $this->return_date) {
+                        $pickup = Carbon::parse($value);
+                        $return = Carbon::parse($this->return_date);
+                        $reservations = $this->getCarReservations($this->selectedCarId);
+
+                        foreach ($reservations as $reservation) {
+                            $existingPickup = Carbon::parse($reservation['pickup_date']);
+                            $existingReturn = Carbon::parse($reservation['return_date']);
+                            if ($pickup->lessThanOrEqualTo($existingReturn) && $return->greaterThanOrEqualTo($existingPickup)) {
+                                $fail("The selected car is already reserved from {$reservation['pickup_date']} to {$reservation['return_date']}.");
+                            }
+                        }
+                    }
+                },
             ],
-            'passport_number' => [
-                'nullable',
-                'string',
-                'max:50',
-                Rule::unique('customers')->ignore($customerId), // Ignore the current customer when updating
-            ],
-            'passport_expiry_date' => 'nullable|date|after_or_equal:today',
-            'nationality' => 'required|string|max:100',
-            'license_number' => 'nullable|string|max:50',
+            'return_date' => ['required', 'date', 'after:pickup_date', 'after_or_equal:today'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers')],
+            'phone' => ['required', 'max:15'],
+            'messenger_phone' => ['required', 'max:15'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'national_code' => ['required'],
+            'passport_number' => ['nullable', 'string', 'max:50', Rule::unique('customers')],
+            'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'nationality' => ['required', 'string', 'max:100'],
+            'license_number' => ['nullable', 'string', 'max:50'],
+            'selected_insurance' => ['required', Rule::in(['ldw_insurance', 'scdw_insurance'])],
         ];
     }
 
-
     protected $messages = [
-        'total_price.required' => 'The total price field is required.',
-        'total_price.numeric' => 'The total price must be a valid number.',
-        'total_price.min' => 'The total price cannot be negative.',
-        'pickup_location.required' => 'The pickup location field is required.',
-        'return_location.required' => 'The return location field is required.',
-        'pickup_date.required' => 'The return pickup date is required.',
-        'return_date.required' => 'The return date field is required.',
         'selectedBrand.required' => 'The car brand field is required.',
-        'selectedBrand.exists' => 'The selected car brand is invalid.',
-        'selectedCarId.required' => 'The car model field is required.',
-        'selectedCarId.exists' => 'The selected car model is invalid.',
+        'selectedModelId.required' => 'The car model field is required.',
+        'selectedModelId.exists' => 'The selected car model is invalid.',
+        'selectedCarId.required' => 'The car field is required.',
+        'selectedCarId.exists' => 'The selected car is invalid.',
+        'pickup_location.required' => 'The pickup location is required.',
+        'pickup_location.in' => 'The selected pickup location is invalid.',
+        'return_location.required' => 'The return location is required.',
+        'return_location.in' => 'The selected return location is invalid.',
+        'pickup_date.required' => 'The pickup date and time is required.',
+        'pickup_date.date' => 'Please provide a valid date for pickup.',
+        'pickup_date.after_or_equal' => 'The pickup date cannot be in the past.',
+        'return_date.required' => 'The return date and time is required.',
+        'return_date.date' => 'Please provide a valid date for return.',
+        'return_date.after' => 'The return date must be after the pickup date.',
+        'return_date.after_or_equal' => 'The return date cannot be in the past.',
         'first_name.required' => 'First name is required.',
         'first_name.string' => 'First name must be a string.',
         'first_name.max' => 'First name cannot be longer than 255 characters.',
-
         'last_name.required' => 'Last name is required.',
         'last_name.string' => 'Last name must be a string.',
         'last_name.max' => 'Last name cannot be longer than 255 characters.',
-
-        'email.required' => 'Email is required.',
         'email.email' => 'Please provide a valid email address.',
         'email.max' => 'Email cannot be longer than 255 characters.',
-        'email.unique' => 'This email is already registered in the system.',
-
+        'email.unique' => 'This email is already registered.',
         'phone.required' => 'Phone number is required.',
-        'messenger_phone.required' => 'messenger phone number is required.',
-        'phone.regex' => 'Please provide a valid phone number.',
-        'messenger_phone.regex' => 'Please provide a valid messenger phone number.',
-        'address.required' => 'Address is required.',
+        'phone.max' => 'Phone number cannot be longer than 15 characters.',
+        'messenger_phone.required' => 'Messenger phone number is required.',
+        'messenger_phone.max' => 'Messenger phone number cannot be longer than 15 characters.',
         'address.string' => 'Address must be a string.',
         'address.max' => 'Address cannot be longer than 255 characters.',
-
         'national_code.required' => 'National Code is required.',
-        'national_code.regex' => 'National Code must be a 10-digit number.',
-        'national_code.unique' => 'This National Code is already registered in the system.',
-
-        'passport_number.required' => 'Passport Number is required.',
         'passport_number.string' => 'Passport Number must be a string.',
         'passport_number.max' => 'Passport Number cannot be longer than 50 characters.',
-        'passport_number.unique' => 'This Passport Number is already registered in the system.',
-
-        'passport_expiry_date.required' => 'Passport Expiry Date is required.',
+        'passport_number.unique' => 'This passport number is already registered.',
         'passport_expiry_date.date' => 'Please provide a valid date for Passport Expiry.',
         'passport_expiry_date.after_or_equal' => 'Passport Expiry Date cannot be in the past.',
-
         'nationality.required' => 'Nationality is required.',
         'nationality.string' => 'Nationality must be a string.',
         'nationality.max' => 'Nationality cannot be longer than 100 characters.',
-
-        'license_number.required' => 'License Number is required.',
         'license_number.string' => 'License Number must be a string.',
         'license_number.max' => 'License Number cannot be longer than 50 characters.',
-
-
+        'selected_insurance.required' => 'You must select an insurance option.',
+        'selected_insurance.in' => 'The selected insurance option is invalid.',
     ];
-
-
-
-    // Calculate the total price dynamically based on user inputs
-    public function updated($propertyName)
-    {
-
-        $this->validateOnly($propertyName);
-
-        // فیلدهای مؤثر بر محاسبات قیمت
-        $costRelatedFields = [
-            'pickup_date',
-            'return_date',
-            'selectedCarId',
-            'pickup_location',
-            'return_location',
-            'selected_services',
-            'selected_insurance'
-        ];
-
-        if (
-            in_array($propertyName, $costRelatedFields) ||
-            Str::startsWith($propertyName, 'selected_services.') ||
-            $propertyName === 'selected_insurance'
-        ) {
-            $this->calculateCosts();
-        }
-    }
-
-    public function calculateTotalPrice()
-    {
-        if ($this->pickup_date && $this->return_date && $this->selectedCarId) {
-            $pickupDate = \Carbon\Carbon::parse($this->pickup_date);
-            $returnDate = \Carbon\Carbon::parse($this->return_date);
-
-            // Calculate the difference in days between pickup and return date
-            $days = $pickupDate->diffInDays($returnDate);
-
-            // Get the selected car's price per day
-            $car = Car::find($this->selectedCarId);
-            $pricePerDay = $car->price_per_day;
-
-            // Calculate total price
-            $totalPrice = $days * $pricePerDay;
-
-            // Update the total price
-            $this->total_price = $totalPrice;
-        }
-    }
-
-    // Method to filter cars by the selected brand
-
-    public function updatedSelectedBrand()
-    {
-        $this->selectedModelId = null;
-        $this->selectedCarId = null;
-        $this->loadModels();
-        $this->calculateCosts();
-    }
-
-    private function loadModels()
-    {
-        $this->models = [];
-        if ($this->selectedBrand) {
-            $this->models = CarModel::where('brand', $this->selectedBrand)
-                ->orderBy('model')
-                ->get();
-        }
-    }
-
-    public function updatedSelectedModelId()
-    {
-        $this->selectedCarId = null;
-        $this->loadCars();
-        $this->calculateCosts();
-    }
-
-    private function loadCars()
-    {
-        $this->carsForModel = [];
-        if ($this->selectedModelId) {
-            $this->carsForModel = Car::where('car_model_id', $this->selectedModelId)
-                ->with('carModel')
-                ->get();
-        }
-    }
-
-    // Method to filter car models based on the selected brand
-    public function filterCarsByBrand($brand)
-    {
-        if ($brand) {
-            $this->cars = Car::whereHas('carModel', function ($query) use ($brand) {
-                $query->where('id', $brand);
-            })->get();
-        } else {
-            $this->cars = [];
-        }
-    }
-
 
     public function submit()
     {
         $this->validate();
-        // Start a database transaction
         DB::beginTransaction();
-        try {
 
+        try {
             $this->calculateCosts();
 
-            // Update or create the customer
-            $customerData = [
-                'first_name' => $this->first_name,
-                'last_name' => $this->last_name,
-                'national_code' => $this->national_code,
-                'email' => $this->email,
-                'phone' => $this->phone,
-                'messenger_phone' => $this->messenger_phone,
-                'address' => $this->address,
-                'passport_number' => $this->passport_number,
-                'passport_expiry_date' => $this->passport_expiry_date,
-                'nationality' => $this->nationality,
-                'license_number' => $this->license_number,
-            ];
-
             $customer = Customer::updateOrCreate(
+                ['phone' => $this->phone, 'email' => $this->email],
                 [
+                    'first_name' => $this->first_name,
+                    'last_name' => $this->last_name,
+                    'national_code' => $this->national_code,
+                    'email' => $this->email,
                     'phone' => $this->phone,
-                    'email' => $this->email
-                ],
-                $customerData
+                    'messenger_phone' => $this->messenger_phone,
+                    'address' => $this->address,
+                    'passport_number' => $this->passport_number,
+                    'passport_expiry_date' => $this->passport_expiry_date,
+                    'nationality' => $this->nationality,
+                    'license_number' => $this->license_number,
+                ]
             );
 
-            // افزودن ذخیره‌سازی خدمات و بیمه
-            $contractData['selected_services'] = $this->selected_services;
-            $contractData['selected_insurance'] = $this->selected_insurance;
-            $contractData['total_price'] = $this->final_total; // ذخیره مبلغ نهایی
-            // Update or create the contract
-            $contractData = [
+            $contract = Contract::create([
                 'user_id' => null,
                 'customer_id' => $customer->id,
                 'car_id' => $this->selectedCarId,
@@ -595,174 +395,118 @@ class RentalRequestCreate extends Component
                 'return_date' => $this->return_date,
                 'selected_services' => $this->selected_services,
                 'selected_insurance' => $this->selected_insurance,
-                'notes' => $this->notes ?? null,
-            ];
+                'notes' => $this->notes,
+            ]);
 
+            $contract->changeStatus('pending', auth()->id());
+            $this->storeContractCharges($contract);
 
-            if ($this->contract) {
-                $this->contract->update($contractData);
-                session()->flash('info', 'Contract Updated successfully!');
-            } else {
-                $this->contract = Contract::create($contractData);
-                $this->contract->changeStatus('pending', auth()->id());
-                session()->flash('message', 'Contract saved successfully!');
-            }
-
-            $this->storeContractCharges($this->contract);
-
-
-            // Commit the transaction
             DB::commit();
+            session()->flash('message', 'Contract created successfully!');
         } catch (\Exception $e) {
-            // Rollback the transaction in case of an error
             DB::rollBack();
-            session()->flash('error', 'An error occurred while saving the contract.');
-            throw $e;
+            session()->flash('error', 'An error occurred: ' . $e->getMessage());
         }
     }
 
-    public function render()
-    {
-        return view('livewire.pages.panel.expert.rental-request.rental-request-create');
-    }
-
-
     private function storeContractCharges(Contract $contract)
     {
-        // حذف رکوردهای قبلی
         ContractCharges::where('contract_id', $contract->id)->delete();
 
-        // هزینه پایه اجاره
         ContractCharges::create([
             'contract_id' => $contract->id,
-            'title' => 'Base Rental Cost',
+            'title' => 'base_rental',
             'amount' => $this->base_price,
             'type' => 'base',
-            'description' => "{$this->rental_days} days × {$this->dailyRate} AED"
+            // نمایش روز به صورت عدد صحیح و dailyRate با دو رقم اعشار
+            'description' => ((int)$this->rental_days) . " روز × " . number_format($this->dailyRate, 2) . " درهم",
         ]);
 
-        // هزینه‌های انتقال
         if ($this->transfer_costs['pickup'] > 0) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => 'Pickup Transfer Cost',
+                'title' => 'pickup_transfer',
                 'amount' => $this->transfer_costs['pickup'],
                 'type' => 'location_fee',
-                'description' => $this->pickup_location
+                'description' => $this->pickup_location,
             ]);
         }
 
         if ($this->transfer_costs['return'] > 0) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => 'Return Transfer Cost',
+                'title' => 'return_transfer',
                 'amount' => $this->transfer_costs['return'],
                 'type' => 'location_fee',
-                'description' => $this->return_location
+                'description' => $this->return_location,
             ]);
         }
 
-        // خدمات اضافی
         foreach ($this->selected_services as $serviceId) {
-            $service = $this->services[$serviceId] ?? null;
-            if (!$service) continue;
-
-            $amount = $service['per_day']
-                ? $service['amount'] * $this->rental_days
-                : $service['amount'];
+            if (!array_key_exists($serviceId, $this->services)) continue;
+            $service = $this->services[$serviceId];
+            $amount = $service['per_day'] ? $service['amount'] * $this->rental_days : $service['amount'];
 
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => $service['label'],
+                'title' => $serviceId,
                 'amount' => $amount,
                 'type' => 'addon',
-                'description' => $service['per_day']
-                    ? "{$this->rental_days} days × {$service['amount']} AED"
-                    : 'One-time fee'
+                'description' => $service['per_day'] ? ((int)$this->rental_days) . " روز × " . number_format($service['amount'], 2) . " درهم" : 'یک‌بار هزینه',
             ]);
         }
 
-        // بیمه‌ها
-        if ($this->selected_insurance) {
-            $insuranceLabel = '';
+        if ($this->selected_insurance && in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance'])) {
             $insuranceAmount = 0;
-
-            if ($this->selected_insurance === 'basic_insurance') {
-                $insuranceLabel = 'Basic Insurance';
-                $insuranceAmount = $this->services['basic_insurance']['amount'] * $this->rental_days;
-            } elseif ($this->selectedCarId) {
-                $car = Car::find($this->selectedCarId);
-                if ($car) {
-                    if ($this->selected_insurance === 'ldw_insurance') {
-                        $insuranceLabel = 'LDW Insurance';
-                        $insuranceAmount = $car->ldw_price * $this->rental_days;
-                    } elseif ($this->selected_insurance === 'scdw_insurance') {
-                        $insuranceLabel = 'Full Coverage (SCDW)';
-                        $insuranceAmount = $car->scdw_price * $this->rental_days;
-                    }
+            $car = Car::find($this->selectedCarId);
+            if ($car) {
+                if ($this->selected_insurance === 'ldw_insurance') {
+                    $insuranceAmount = ($car->ldw_price ?? 0) * $this->rental_days;
+                } elseif ($this->selected_insurance === 'scdw_insurance') {
+                    $insuranceAmount = ($car->scdw_price ?? 0) * $this->rental_days;
                 }
-            }
 
-            if ($insuranceAmount > 0) {
-                ContractCharges::create([
-                    'contract_id' => $contract->id,
-                    'title' => $insuranceLabel,
-                    'amount' => $insuranceAmount,
-                    'type' => 'addon',
-                    'description' => "{$this->rental_days} days"
-                ]);
+                if ($insuranceAmount > 0) {
+                    ContractCharges::create([
+                        'contract_id' => $contract->id,
+                        'title' => $this->selected_insurance,
+                        'amount' => $insuranceAmount,
+                        'type' => 'insurance',
+                        'description' => ((int)$this->rental_days) . " روز",
+                    ]);
+                }
             }
         }
 
-        // مالیات
         if ($this->tax_amount > 0) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => 'Tax (5%)',
+                'title' => 'tax',
                 'amount' => $this->tax_amount,
                 'type' => 'tax',
-                'description' => '5% VAT'
+                'description' => '۵٪ مالیات بر ارزش افزوده',
             ]);
         }
     }
 
-    public function changeStatusToReserve($contractId)
+    public function render()
     {
-        $contract = Contract::findOrFail($contractId);
-
-        if ($contract->user_id === auth()->id()) {
-            // تغییر وضعیت قرارداد به 'reserved'
-            $contract->changeStatus('reserved', auth()->id());
-
-            // تغییر وضعیت خودرو به 'reserved'
-            if ($contract->car) {
-                $contract->car->update(['status' => 'reserved']);
+        if ($this->selectedCarId) {
+            $car = Car::find($this->selectedCarId);
+            if ($car) {
+                $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
+                $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
             }
-
-            session()->flash('message', 'Status changed to Reserved successfully.');
-        } else {
-            session()->flash('error', 'You are not authorized to perform this action.');
         }
-    }
 
+        $services = array_map(function ($service) {
+            $service['label'] = $service['label_en'];
+            return $service;
+        }, $this->services);
 
-    public function assignToMe($contractId)
-    {
-        $contract = Contract::findOrFail($contractId);
-
-        if (is_null($contract->user_id)) {
-            $contract->update([
-                'user_id' => auth()->id(),
-            ]);
-
-            $contract->changeStatus('assigned', auth()->id());
-
-            session()->flash('success', 'Contract assigned to you successfully.');
-
-
-            $this->dispatch('refreshContracts');
-        } else {
-            session()->flash('error', 'This contract is already assigned to someone.');
-        }
+        return view('livewire.pages.panel.expert.rental-request.rental-request-create', [
+            'brands' => $this->brands,
+            'services' => $services,
+        ]);
     }
 }
