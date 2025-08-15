@@ -114,7 +114,6 @@ Route::get('/auth/login', Login::class)->name('auth.login')->middleware('auth.gu
 // use App\Livewire\Reservation\ReserveCarForm;
 
 // Route::get('/reservations', ReserveCarForm::class);
-// Route::post('/reserve-car', [CarReservationController::class, 'reserveCar'])->name('reserve.car');
 
 
 // Route::get('/test', function () {
