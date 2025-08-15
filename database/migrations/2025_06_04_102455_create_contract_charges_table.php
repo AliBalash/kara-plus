@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('contract_id')->constrained('contracts')->onDelete('cascade');
             $table->string('title'); // عنوان هزینه (مثلاً: "صندلی کودک")
             $table->decimal('amount', 10, 2); // مبلغ این آیتم
-            $table->enum('type', ['base', 'addon', 'location_fee', 'discount', 'tax'])->default('addon'); // نوع آیتم
+            $table->text('type')->nullable(); // نوع آیتم
             $table->text('description')->nullable(); // توضیح اختیاری برای توضیح بیشتر
             $table->timestamps();
         });
