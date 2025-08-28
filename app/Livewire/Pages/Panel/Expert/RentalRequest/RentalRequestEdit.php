@@ -59,6 +59,9 @@ class RentalRequestEdit extends Component
     public $contract;
     public $contractId;
 
+    public $kardo_required;
+
+
 
     public $carsForModel = [];
 
@@ -173,6 +176,7 @@ class RentalRequestEdit extends Component
         $this->pickup_date = \Carbon\Carbon::parse($this->contract->pickup_date)->format('Y-m-d\TH:i');
         $this->return_date = \Carbon\Carbon::parse($this->contract->return_date)->format('Y-m-d\TH:i');
         $this->notes = $this->contract->notes;
+        $this->kardo_required = $this->contract->kardo_required;
 
         // Customer data
         $customer = $this->contract->customer()->firstOrFail();
@@ -564,6 +568,7 @@ class RentalRequestEdit extends Component
             'selected_services' => $this->selected_services,
             'selected_insurance' => $this->selected_insurance,
             'notes' => $this->notes,
+            'kardo_required' => $this->kardo_required,
         ];
 
         $this->contract->update($contractData);
@@ -651,7 +656,7 @@ class RentalRequestEdit extends Component
                 $contract->car->update(['status' => 'reserved']);
             }
 
-            session()->flash('message', 'Status changed to Reserved successfully.');
+            session()->flash('success', 'Status changed to Reserved successfully.');
         } else {
             session()->flash('error', 'You are not authorized to perform this action.');
         }
