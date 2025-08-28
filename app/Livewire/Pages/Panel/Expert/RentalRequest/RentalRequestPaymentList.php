@@ -51,7 +51,6 @@ class RentalRequestPaymentList extends Component
     {
         $this->paymentContracts = Contract::query()
             ->where('current_status', 'payment')
-            ->whereHas('payments')
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->whereHas('customer', function ($q) {

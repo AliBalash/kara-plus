@@ -17,11 +17,7 @@
                     <i class="bx bxs-log-in-circle"></i>
                 </a>
 
-                <a class="btn btn-danger fw-bold" href="javascript:void(0);"
-                    onclick="if(confirm('Are you sure you want to set this contract to Tars Cardo?')) { @this.changeStatusToAwaitingReturn({{ $contractId }}) }">
-                    Cardo Tars Inspection (permission :for Cardo tars expert)
-                    <i class="bx bxs-log-in-circle"></i>
-                </a>
+
 
             </div>
         @endif
@@ -92,26 +88,48 @@
                         @enderror
                     </div>
 
-                    <!-- Cardo Contract -->
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Cardo Contract</label>
-                        @if (!empty($existingFiles['kardoContract']))
-                            <div class="mb-2">
-                                <img src="{{ $existingFiles['kardoContract'] }}" class="img-thumbnail" width="150"
-                                    onclick="openModal('{{ $existingFiles['kardoContract'] }}')">
-                                <button type="button" class="btn btn-warning mt-2"
-                                    onclick="confirmDeletion('kardo_contract')">Remove</button>
+
+                    @if ($contract->kardo_required)
+                        <!-- Cardo Contract (existing interactive block) -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Cardo Contract</label>
+                            @if (!empty($existingFiles['kardoContract']))
+                                <div class="mb-2">
+                                    <img src="{{ $existingFiles['kardoContract'] }}" class="img-thumbnail"
+                                        width="150" onclick="openModal('{{ $existingFiles['kardoContract'] }}')">
+                                    <button type="button" class="btn btn-warning mt-2"
+                                        onclick="confirmDeletion('kardo_contract')">Remove</button>
+                                </div>
+                                @error('kardoContract')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                            @endif
+                            <input type="file" class="form-control" wire:model="kardoContract">
+                            <div wire:loading wire:target="kardoContract" class="progress mt-2">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                    style="width: 100%;">Uploading...</div>
                             </div>
-                        @endif
-                        <input type="file" class="form-control" wire:model="kardoContract">
-                        <div wire:loading wire:target="kardoContract" class="progress mt-2">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                                style="width: 100%;">Uploading...</div>
+                            @error('kardoContract')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
                         </div>
-                        @error('kardoContract')
-                            <span class="text-danger">{{ $message }}</span>
-                        @enderror
-                    </div>
+                    @else
+                        <!-- Cardo Contract shown but disabled (locked) -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Cardo Contract
+                                <i class="bx bx-lock text-muted" title="Locked"></i>
+                            </label>
+
+                            {{-- disabled input (no wire:model so Livewire won't try to bind) --}}
+                            <input type="file" class="form-control" disabled aria-disabled="true">
+
+                            <div class="mt-2">
+                                <p class="text-info mb-0">KARDO inspection is not required for this contract.</p>
+                            </div>
+                        </div>
+                    @endif
+
 
 
                     <!-- Inside Car Video -->
@@ -167,7 +185,7 @@
 
                     <!-- Dashboard Photo -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Dashboard Photo</label>
+                        <label class="form-label">KM/Fuel Photo</label>
                         @if (!empty($existingFiles['carDashboard']))
                             <div class="mb-2">
                                 <img src="{{ $existingFiles['carDashboard'] }}" alt="Dashboard Photo" width="150"
