@@ -24,6 +24,7 @@ class Contract extends Model
         'return_location',
         'return_date',
         'total_price',
+        'kardo_required',
         'current_status',
         'notes',
         'meta',
