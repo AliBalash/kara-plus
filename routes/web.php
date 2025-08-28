@@ -19,12 +19,14 @@ use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesForm;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
 use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingPickupList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingReturnList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCreate;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestEdit;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestHistory;
-use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestKardoTars;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestInspection;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestInspectionList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestMe;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPayment;
@@ -49,10 +51,13 @@ Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/rental-requests/pickup-document/{contractId}', RentalRequestPickupDocument::class)->name('rental-requests.pickup-document');
     Route::get('/expert/rental-requests/return-document/{contractId}', RentalRequestReturnDocument::class)->name('rental-requests.return-document');
 
-    Route::get('/expert/rental-requests/kardo-tars', RentalRequestKardoTars::class)->name('rental-requests.kardotars');
+    Route::get('/expert/rental-requests/awaiting-pickup', RentalRequestAwaitingPickupList::class)->name('rental-requests.awaiting.pickup');
     Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
 
-    Route::get('/expert/rental-requests/awaiting-return', RentalRequestAwaitingReturnList::class)->name('rental-requests.awaiting');
+    Route::get('/expert/rental-requests/inspection-list', RentalRequestInspectionList::class)->name('rental-requests.inspection-list');
+    Route::get('/expert/rental-requests/inspection/{contractId}', RentalRequestInspection::class)->name('rental-requests.inspection');
+
+    Route::get('/expert/rental-requests/awaiting-return', RentalRequestAwaitingReturnList::class)->name('rental-requests.awaiting.return');
     Route::get('/expert/rental-requests/payment-list', RentalRequestPaymentList::class)->name('rental-requests.payment.list');
 
 
