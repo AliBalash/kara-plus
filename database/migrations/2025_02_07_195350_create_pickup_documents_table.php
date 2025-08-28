@@ -23,6 +23,15 @@ return new class extends Migration
             $table->string('car_outside_video')->nullable();
             $table->string('fuelLevel')->nullable();
             $table->string('mileage')->nullable();
+
+            $table->timestamp('tars_approved_at')->nullable();
+            $table->unsignedBigInteger('tars_approved_by')->nullable();
+            $table->foreign('tars_approved_by')->references('id')->on('users')->onDelete('set null');
+
+            $table->timestamp('kardo_approved_at')->nullable();
+            $table->unsignedBigInteger('kardo_approved_by')->nullable();
+            $table->foreign('kardo_approved_by')->references('id')->on('users')->onDelete('set null');
+
             $table->timestamps();
 
             $table->foreign('contract_id')->references('id')->on('contracts')->onDelete('cascade');
