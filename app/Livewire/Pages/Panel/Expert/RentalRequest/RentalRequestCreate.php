@@ -23,7 +23,7 @@ class RentalRequestCreate extends Component
     public $pickup_date;
     public $return_date;
     public $notes;
-    public $agent_sale;
+    public $agent_sale = 'Website';
     public $first_name;
     public $last_name;
     public $email;
@@ -51,6 +51,10 @@ class RentalRequestCreate extends Component
     public $models = [];
     public $carsForModel = [];
     public $services = [];
+    public $contract ;
+
+
+    public $kardo_required = true;
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
@@ -74,6 +78,25 @@ class RentalRequestCreate extends Component
     {
         $this->services = config('carservices');
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
+    }
+
+    public function assignToMe($contractId)
+    {
+        $contract = Contract::findOrFail($contractId);
+        if (is_null($contract->user_id)) {
+            $contract->update([
+                'user_id' => auth()->id(),
+            ]);
+
+            $contract->changeStatus('assigned', auth()->id());
+
+            session()->flash('success', 'Contract assigned to you successfully.');
+
+
+            $this->dispatch('refreshContracts');
+        } else {
+            session()->flash('error', 'This contract is already assigned to someone.');
+        }
     }
 
     public function updated($propertyName)
@@ -308,6 +331,7 @@ class RentalRequestCreate extends Component
             'nationality' => ['required', 'string', 'max:100'],
             'license_number' => ['nullable', 'string', 'max:50'],
             'selected_insurance' => ['required', Rule::in(['ldw_insurance', 'scdw_insurance'])],
+            'kardo_required' => 'boolean'
         ];
     }
 
@@ -396,13 +420,15 @@ class RentalRequestCreate extends Component
                 'selected_services' => $this->selected_services,
                 'selected_insurance' => $this->selected_insurance,
                 'notes' => $this->notes,
+                'kardo_required' => $this->kardo_required ?? true,
             ]);
 
             $contract->changeStatus('pending', auth()->id());
+            $this->contract = $contract;
             $this->storeContractCharges($contract);
 
             DB::commit();
-            session()->flash('message', 'Contract created successfully!');
+            session()->flash('success', 'Contract created successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'An error occurred: ' . $e->getMessage());
@@ -488,6 +514,20 @@ class RentalRequestCreate extends Component
             ]);
         }
     }
+
+    public function changeStatusToReserve($contractId)
+    {
+        $contract = Contract::findOrFail($contractId);
+
+        if ($contract->current_status !== 'reserved') {
+            $contract->changeStatus('reserved', auth()->id());
+            session()->flash('success', 'Contract status changed to Reserved successfully.');
+            $this->dispatch('refreshContracts');
+        } else {
+            session()->flash('info', 'This contract is already Reserved.');
+        }
+    }
+
 
     public function render()
     {

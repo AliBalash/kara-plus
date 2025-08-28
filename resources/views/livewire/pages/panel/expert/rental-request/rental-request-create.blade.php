@@ -7,8 +7,30 @@
         </div>
     </div>
 
-    @if (session()->has('message'))
+    @isset($contract)
+        @if (is_null($contract->user_id))
+            <a class="btn btn-info fw-bold m-2 transition-all duration-300 hover:bg-info-dark" href="javascript:void(0);"
+                onclick="if(confirm('Are you sure you want to assign this contract to self?')) { @this.assignToMe({{ $contract->id }}) }">
+                <i class="bx bx-user-plus me-2"></i> Assign to Me
+            </a>
+        @else
+            <div class="col-lg-6 text-end">
+                <a class="btn btn-danger fw-bold transition-all duration-300 hover:bg-danger-dark" href="javascript:void(0);"
+                    onclick="if(confirm('Are you sure you want to set this contract to Reserved?')) { @this.changeStatusToReserve({{ $contract->id }}) }">
+                    <i class="bx bxs-log-in-circle me-2"></i> Set to Reserved
+                </a>
+            </div>
+        @endif
+    @endisset
+
+
+    @if (session()->has('success'))
         <div class="alert alert-success animate__animated animate__fadeIn">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if (session()->has('message'))
+        <div class="alert alert-info animate__animated animate__fadeIn">
             {{ session('message') }}
         </div>
     @endif
@@ -132,6 +154,18 @@
                                 placeholder="License Number" wire:model="license_number" data-bs-toggle="tooltip"
                                 title="Enter customer's license number">
                             @error('license_number')
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="bx bx-check-circle"></i></span>
+                            <div class="form-check form-check-inline mt-2 ms-2">
+                                <input type="checkbox" class="form-check-input" wire:model="kardo_required"
+                                    id="kardo_required">
+                                <label class="form-check-label" for="kardo_required">KARDO Required</label>
+                            </div>
+                            @error('kardo_required')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
@@ -352,13 +386,31 @@
 
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-user"></i></span>
-                            <input type="text" class="form-control @error('agent_sale') is-invalid @enderror"
-                                placeholder="Agent Name or Identifier" wire:model="agent_sale"
-                                data-bs-toggle="tooltip" title="Enter agent's name or identifier">
+                            <select class="form-control @error('agent_sale') is-invalid @enderror"
+                                wire:model="agent_sale" data-bs-toggle="tooltip" title="Select agent or Website">
+                                <option value="Website">Website</option>
+                                <option value="Alireza bakhshi">Alireza bakhshi</option>
+                                <option value="Mohammadreza bakhshi">Mohammadreza bakhshi</option>
+                                <option value="TACI">TACI</option>
+                                <option value="Foad sharifian">Foad sharifian</option>
+                                <option value="Shahrokh gasht">Shahrokh gasht</option>
+                                <option value="Zaman parvaz">Zaman parvaz</option>
+                                <option value="Hotel review global">Hotel review global</option>
+                                <option value="Dubai discount">Dubai discount</option>
+                                <option value="Mrs Saei">Mrs Saei</option>
+                                <option value="Dubai offer">Dubai offer</option>
+                                <option value="Mr Navid">Mr Navid</option>
+                                <option value="Mrs khorrami">Mrs khorrami</option>
+                                <option value="Mr soleimani">Mr soleimani</option>
+                                <option value="Mrs shams">Mrs shams</option>
+                                <option value="Mrs hashempour">Mrs hashempour</option>
+                                <option value="Sepris">Sepris</option>
+                            </select>
                             @error('agent_sale')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
+
 
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-note"></i></span>
