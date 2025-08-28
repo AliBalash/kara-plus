@@ -27,6 +27,13 @@
             {{ session('info') }}
         </div>
     @endif
+
+    @if (session()->has('success'))
+        <div class="alert alert-success animate__animated animate__fadeIn">
+            {{ session('success') }}
+        </div>
+    @endif
+
     @if (session()->has('error'))
         <div class="alert alert-danger animate__animated animate__fadeIn">
             {{ session('error') }}
@@ -149,6 +156,18 @@
                                 placeholder="License Number" wire:model="license_number" data-bs-toggle="tooltip"
                                 title="Enter customer's license number">
                             @error('license_number')
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="bx bx-check-circle"></i></span>
+                            <div class="form-check form-check-inline mt-2 ms-2">
+                                <input type="checkbox" class="form-check-input" wire:model="kardo_required"
+                                    id="kardo_required">
+                                <label class="form-check-label" for="kardo_required">KARDO Required</label>
+                            </div>
+                            @error('kardo_required')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
@@ -409,12 +428,28 @@
 
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-user"></i></span>
-                            <input type="text" class="form-control @error('agent_sale') is-invalid @enderror"
-                                placeholder="Agent Name or Identifier" wire:model="agent_sale"
-                                data-bs-toggle="tooltip" title="Enter agent's name or identifier">
+                            <select class="form-control @error('agent_sale') is-invalid @enderror"
+                                wire:model="agent_sale" data-bs-toggle="tooltip" title="Select agent or Website">
+                                <option value="Website">Website</option>
+                                <option value="Alireza bakhshi">Alireza bakhshi</option>
+                                <option value="Mohammadreza bakhshi">Mohammadreza bakhshi</option>
+                                <option value="TACI">TACI</option>
+                                <option value="Foad sharifian">Foad sharifian</option>
+                                <option value="Shahrokh gasht">Shahrokh gasht</option>
+                                <option value="Zaman parvaz">Zaman parvaz</option>
+                                <option value="Hotel review global">Hotel review global</option>
+                                <option value="Dubai discount">Dubai discount</option>
+                                <option value="Mrs Saei">Mrs Saei</option>
+                                <option value="Dubai offer">Dubai offer</option>
+                                <option value="Mr Navid">Mr Navid</option>
+                                <option value="Mrs khorrami">Mrs khorrami</option>
+                                <option value="Mr soleimani">Mr soleimani</option>
+                                <option value="Mrs shams">Mrs shams</option>
+                                <option value="Mrs hashempour">Mrs hashempour</option>
+                                <option value="Sepris">Sepris</option>
+                            </select>
                             @error('agent_sale')
-                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
-                                </div>
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
