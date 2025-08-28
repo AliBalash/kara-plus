@@ -51,14 +51,21 @@
                         </a>
                     </li>
 
-                    <li class="menu-item {{ Request::routeIs('rental-requests.kardotars') ? 'active' : '' }}">
-                        <a href="{{ route('rental-requests.kardotars') }}" class="menu-link">
-                            <div data-i18n="Without menu">Cardo Tars</div>
+                    <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.pickup') ? 'active' : '' }}">
+                        <a href="{{ route('rental-requests.awaiting.pickup') }}" class="menu-link">
+                            <div data-i18n="Without menu">Awaiting Pickup</div>
                         </a>
                     </li>
 
-                    <li class="menu-item {{ Request::routeIs('rental-requests.awaiting') ? 'active' : '' }}">
-                        <a href="{{ route('rental-requests.awaiting') }}" class="menu-link">
+                    <li class="menu-item {{ Request::routeIs('rental-requests.inspection-list') ? 'active' : '' }}">
+                        <a href="{{ route('rental-requests.inspection-list') }}" class="menu-link">
+                            <div data-i18n="Without menu">Inspection Contracts</div>
+                        </a>
+                    </li>
+
+
+                    <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.return') ? 'active' : '' }}">
+                        <a href="{{ route('rental-requests.awaiting.return') }}" class="menu-link">
                             <div data-i18n="Without menu">Awaiting Return</div>
                         </a>
                     </li>
@@ -77,12 +84,11 @@
                     </li>
                 </ul>
             </li>
-
-
-            <li class="menu-header small text-uppercase">
-                <span class="menu-header-text">transport</span>
-            </li>
         @endcannot
+
+        <li class="menu-header small text-uppercase">
+            <span class="menu-header-text">transport</span>
+        </li>
 
         <!-- Car -->
         <li class="menu-item {{ request()->routeIs('car.*') ? 'open' : '' }}">
