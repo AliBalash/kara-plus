@@ -1,15 +1,17 @@
 <div class="card">
     <h5 class="card-header">Cars</h5>
 
-    <div class="row" style="padding: 0.5rem 1.5rem">
-        <div class="col-md-4">
-            <div class="nav-item d-flex align-items-center">
-                <i class="bx bx-search fs-4 lh-0"></i>
-                <input type="text" class="form-control border-0 shadow-none" placeholder="Search..."
-                    aria-label="Search..." wire:model.live.debounce.1000ms="search">
+    <div class="row p-3">
+        <!-- Search -->
+        <div class="col-md-3 mb-2">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bx bx-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search..." wire:model.debounce.500ms="search">
             </div>
         </div>
-        <div class="col-md-4">
+
+        <!-- Brand Filter -->
+        <div class="col-md-3 mb-2">
             <select class="form-select" wire:model.live="selectedBrand">
                 <option value="">All Brands</option>
                 @foreach ($brands as $brand)
@@ -18,107 +20,101 @@
             </select>
         </div>
 
-        <div class="col-md-4 mt-2 d-flex align-items-center">
-            <input type="checkbox" id="onlyReserved" wire:model.live="onlyReserved" class="form-check-input me-1">
-            <label for="onlyReserved" class="form-check-label">Show only reserved cars</label>
+        <!-- Status Filter -->
+        <div class="col-md-3 mb-2">
+            <select class="form-select" wire:model.live="statusFilter">
+                <option value="">All Status</option>
+                <option value="available">Available</option>
+                <option value="reserved">Reserved</option>
+                <option value="under_maintenance">Under Maintenance</option>
+            </select>
+        </div>
+
+        <!-- Only Reserved -->
+        <div class="col-md-3 mb-2 d-flex align-items-center">
+            <input type="checkbox" class="form-check-input me-1" id="onlyReserved" wire:model.live="onlyReserved">
+            <label class="form-check-label" for="onlyReserved">Show only reserved</label>
+        </div>
+
+        <!-- Date Filters -->
+        <div class="col-md-3 mb-2">
+            <input type="date" class="form-control" wire:model.live="pickupFrom" placeholder="Pickup From">
+        </div>
+        <div class="col-md-3 mb-2">
+            <input type="date" class="form-control" wire:model.live="pickupTo" placeholder="Pickup To">
+        </div>
+
+        <!-- Clear All Filters -->
+        <div class="col-md-3 mb-2">
+            <button class="btn btn-secondary w-100" wire:click="clearFilters">Clear All Filters</button>
         </div>
     </div>
 
 
-
-    <!-- نمایش پیام‌ها -->
+    <!-- Flash Messages -->
     @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Success!</strong> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+        <div class="alert alert-success">{{ session('success') }}</div>
     @endif
     @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Error!</strong> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+        <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
+    <!-- Table -->
     <div class="table-responsive text-nowrap">
         <table class="table table-hover">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th wire:click="sortBy('id')">#</th>
                     <th>Car Model</th>
-                    <th>Color</th>
-                    <th>Status</th>
+                    <th wire:click="sortBy('color')">Color</th>
+                    <th wire:click="sortBy('status')">Status</th>
+                    <th wire:click="sortBy('pickup_date')">Pickup Date</th>
+                    <th wire:click="sortBy('return_date')">Return Date</th>
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody class="table-border-bottom-0">
-
-                @forelse ($cars as $car)
+            <tbody>
+                @forelse($cars as $car)
                     <tr>
                         <td>{{ $car->id }}</td>
                         <td>{{ $car->fullname() }}</td>
                         <td>{{ $car->color ?? 'N/A' }}</td>
                         <td>
-                            <div
+                            <span
                                 class="badge 
                                 @switch($car->status)
-                                    @case('available') bg-label-success @break
-                                    @case('reserved') bg-label-warning @break
-                                    @case('under_maintenance') bg-label-danger @break
-                                    @default bg-label-secondary
+                                    @case('available') bg-success @break
+                                    @case('reserved') bg-warning @break
+                                    @case('under_maintenance') bg-danger @break
+                                    @default bg-secondary
                                 @endswitch">
                                 {{ ucfirst($car->status) }}
-                            </div>
-
-                            @if ($car->status === 'reserved' && $car->currentContract)
-                                <div>
-
-                                    <small>
-                                        <strong>Pickup:</strong>
-                                        {{ \Carbon\Carbon::parse($car->currentContract->pickup_date)->format('d M Y') }}<br>
-                                        <strong>Return:</strong>
-                                        {{ \Carbon\Carbon::parse($car->currentContract->return_date)->format('d M Y') }}
-
-                                    </small>
-                                </div>
-                            @endif
-
+                            </span>
                         </td>
-
+                        <td>{{ $car->currentContract ? $car->currentContract->pickup_date->format('d M Y') : '-' }}</td>
+                        <td>{{ $car->currentContract ? $car->currentContract->return_date->format('d M Y') : '-' }}</td>
                         <td>
                             <div class="dropdown">
-                                <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
-                                    data-bs-toggle="dropdown">
-                                    <i class="bx bx-dots-vertical-rounded"></i>
-                                </button>
+                                <button class="btn p-0 dropdown-toggle" data-bs-toggle="dropdown"><i
+                                        class="bx bx-dots-vertical-rounded"></i></button>
                                 <div class="dropdown-menu">
-
-                                    <!-- گزینه Details -->
-                                    {{-- <a class="dropdown-item" href="{{ route('car.detail', $car->id) }}">
-                                        <i class="bx bx-info-circle me-1"></i> Details
-                                    </a> --}}
-
-                                    <!-- گزینه Edit -->
-                                    <a class="dropdown-item" href="{{ route('car.edit', $car->id) }}">
-                                        <i class="bx bx-edit-alt me-1"></i> Edit
-                                    </a>
-
-                                    <!-- گزینه Delete -->
-
+                                    <a class="dropdown-item" href="{{ route('car.edit', $car->id) }}"><i
+                                            class="bx bx-edit-alt"></i> Edit</a>
                                     <a class="dropdown-item" href="javascript:void(0);"
-                                        onclick="if(confirm('Are you sure you want to delete this car?')) { @this.call('deletecar', {{ $car->id }}) }">
-                                        <i class="bx bx-trash me-1"></i> Delete
-                                    </a>
+                                        onclick="if(confirm('Delete?')){@this.call('deletecar', {{ $car->id }})}"><i
+                                            class="bx bx-trash"></i> Delete</a>
                                 </div>
                             </div>
-
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-center">No cars found.</td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
-    <div class="mt-3">
-        {{ $cars->links() }}
-    </div>
+
+    <div class="mt-3">{{ $cars->links() }}</div>
 </div>

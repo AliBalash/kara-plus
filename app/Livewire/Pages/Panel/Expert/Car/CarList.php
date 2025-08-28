@@ -6,17 +6,65 @@ use App\Models\Car;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Database\Eloquent\Builder;
 
 class CarList extends Component
 {
+    use WithPagination;
+
     public $search = '';
     public $selectedBrand = '';
+    public $statusFilter = '';
+    public $pickupFrom;
+    public $pickupTo;
+    public $sortField = 'id';
+    public $sortDirection = 'asc';
     public $onlyReserved = false;
+
     protected $listeners = ['deletecar'];
+    protected $queryString = ['search', 'selectedBrand', 'statusFilter', 'pickupFrom', 'pickupTo', 'sortField', 'sortDirection', 'onlyReserved'];
+
+    public function sortBy($field)
+    {
+        // اگر فیلد relation هست، sortField رو نام relation بذاریم
+        if (in_array($field, ['pickup_date', 'return_date'])) {
+            $this->sortField = $field;
+        } else {
+            if ($this->sortField === $field) {
+                $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                $this->sortField = $field;
+                $this->sortDirection = 'asc';
+            }
+        }
+    }
 
 
-    protected $queryString = ['search', 'onlyReserved'];
-    use WithPagination;
+    public function deletecar($id)
+    {
+        $car = Car::findOrFail($id);
+
+        $car->options()->delete();
+
+        if ($car->carModel->image && Storage::disk('car_pics')->exists($car->carModel->image->file_name)) {
+            Storage::disk('car_pics')->delete($car->carModel->image->file_name);
+        }
+
+        $car->delete();
+        session()->flash('success', 'Car has been deleted successfully.');
+    }
+
+    public function clearFilters()
+    {
+        $this->search = '';
+        $this->selectedBrand = '';
+        $this->statusFilter = '';
+        $this->pickupFrom = null;
+        $this->pickupTo = null;
+        $this->onlyReserved = false;
+    }
+
+
 
     public function render()
     {
@@ -26,47 +74,32 @@ class CarList extends Component
             ->distinct()
             ->pluck('brand');
 
-        $cars = Car::with(['carModel', 'currentContract'])
-            ->when($this->search, function ($query) {
-                if (is_numeric($this->search)) {
-                    $query->where('plate_number', 'like', '%' . $this->search . '%');
-                } else {
-                    $query->orWhereHas('carModel', function ($query) {
-                        $query->where('brand', 'like', '%' . $this->search . '%')
-                            ->orWhere('model', 'like', '%' . $this->search . '%');
-                    });
-                }
-            })
-            ->when($this->selectedBrand, function ($query) {
-                $query->whereHas('carModel', function ($query) {
-                    $query->where('brand', $this->selectedBrand);
-                });
-            })
-            ->when($this->onlyReserved, function ($query) {
-                $query->where('status', 'reserved');
-            })
-            ->paginate(10);
+        $carsQuery = Car::with(['carModel', 'currentContract'])
+            ->when($this->search, fn($q) => $q->where(function ($q) {
+                $q->where('plate_number', 'like', '%' . $this->search . '%')
+                    ->orWhereHas('carModel', fn($q2) => $q2->where('brand', 'like', '%' . $this->search . '%')
+                        ->orWhere('model', 'like', '%' . $this->search . '%'));
+            }))
 
-        return view('livewire.pages.panel.expert.car.car-list', compact('cars', 'brands'));
-    }
+            ->when($this->selectedBrand, fn($q) => $q->whereHas('carModel', fn($q2) => $q2->where('brand', $this->selectedBrand)))
+            ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
+            ->when($this->onlyReserved, fn($q) => $q->where('status', 'reserved'))
+            ->when($this->pickupFrom, fn($q) => $q->whereHas('currentContract', fn($q2) => $q2->where('pickup_date', '>=', $this->pickupFrom)))
+            ->when($this->pickupTo, fn($q) => $q->whereHas('currentContract', fn($q2) => $q2->where('pickup_date', '<=', $this->pickupTo)));
 
-
-    public function deletecar($id)
-    {
-        $car = Car::findOrFail($id);
-
-        // Delete related options if needed
-        $car->options()->delete();
-
-        // Delete the image file if it exists
-        if ($car->carModel->image && Storage::disk('car_pics')->exists($car->carModel->image->file_name)) {
-            Storage::disk('car_pics')->delete($car->carModel->image->file_name);
+        // مرتب‌سازی روی ستون relation بدون تکراری شدن رکورد
+        if (in_array($this->sortField, ['pickup_date', 'return_date'])) {
+            $carsQuery->leftJoin('contracts', function ($join) {
+                $join->on('contracts.car_id', '=', 'cars.id')
+                    ->whereRaw('contracts.id = (select id from contracts c2 where c2.car_id = cars.id order by pickup_date desc limit 1)');
+            })->orderBy('contracts.' . $this->sortField, $this->sortDirection)
+                ->select('cars.*'); // فقط ستون های cars
+        } else {
+            $carsQuery->orderBy($this->sortField, $this->sortDirection);
         }
 
-        // Delete the car record
-        $car->delete();
+        $cars = $carsQuery->paginate(10); // pagination سالم
 
-        // Flash success message to session
-        session()->flash('success', 'Car has been deleted successfully.');
+        return view('livewire.pages.panel.expert.car.car-list', compact('cars', 'brands'));
     }
 }
