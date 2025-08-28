@@ -62,8 +62,8 @@
                         <select class="form-control" wire:model="payment_type">
                             <option value="">Select Payment Type</option>
                             <option value="rental_fee">Rental Fee</option>
-                            <option value="prepaid_fine">Prepaid Fine</option>
-                            <option value="toll">Toll</option>
+                            <option value="Security_deposit">Security deposit</option>
+                            <option value="Salic">Salic</option>
                             <option value="fine">Fine</option>
                             <option value="discount">Discount</option>
 
@@ -167,8 +167,14 @@
                 'icon' => 'bi-exclamation-triangle-fill',
                 'color' => 'danger',
             ],
-            ['key' => 'prepaid', 'label' => 'Prepaid', 'value' => $prepaid, 'icon' => 'bi-wallet2', 'color' => 'info'],
-            ['key' => 'toll', 'label' => 'Tolls', 'value' => $tollPaid, 'icon' => 'bi-coin', 'color' => 'secondary'],
+            [
+                'key' => 'Security_deposit',
+                'label' => 'Security deposit',
+                'value' => $prepaid,
+                'icon' => 'bi-wallet2',
+                'color' => 'info',
+            ],
+            ['key' => 'Salic', 'label' => 'Salic', 'value' => $tollPaid, 'icon' => 'bi-coin', 'color' => 'secondary'],
             [
                 'key' => 'remaining',
                 'label' => 'Remaining',
@@ -194,18 +200,20 @@
                             <div>
                                 <div class="h5 mb-1">{{ $m['label'] }}</div>
                                 @if ($m['key'] === 'remaining')
-                                    {{-- فرمول و نتیجه --}}
                                     <div class="fs-5 lh-sm">
                                         <div>
-                                            <span class="text-primary">{{ number_format($totalPrice, 2) }}</span> –
-                                            (<span class="text-success">{{ number_format($rentalPaid, 2) }}</span> +
-                                            <span class="text-warning">{{ number_format($discounts, 2) }}</span>)
+                                            <span class="text-primary">{{ number_format($totalPrice, 2) }}</span>
+                                            – (
+                                            <span class="text-success">{{ number_format($rentalPaid, 2) }}</span> +
+                                            <span class="text-warning">{{ number_format($discounts, 2) }}</span> +
+                                            <span class="text-info">{{ number_format($prepaid, 2) }}</span>
+                                            )
                                             + <span class="text-danger">{{ number_format($finePaid, 2) }}</span>
+                                            + <span class="text-secondary">{{ number_format($tollPaid, 2) }}</span>
                                             <span class="fw-bold fs-3 mt-2">
                                                 = {{ number_format($remainingBalance, 2) }}
                                             </span>
                                         </div>
-
                                     </div>
                                 @else
                                     {{-- مقدار ساده --}}
@@ -249,7 +257,15 @@
                         <td>{{ number_format($payment->amount, 2) }}</td>
                         <td>{{ $payment->currency }}
                             {{ $payment->currency !== 'AED' ? '( ' . $payment->rate . ' )' : null }}</td>
-                        <td>{{ ucfirst($payment->payment_type) }}</td>
+                        <td>
+                            @if ($payment->payment_type === 'prepaid_fine')
+                                Security_deposit
+                            @elseif ($payment->payment_type === 'toll')
+                                Salic
+                            @else
+                                {{ ucfirst($payment->payment_type) }}
+                            @endif
+                        </td>
                         <td>{{ $payment->is_refundable == true ? 'Yes' : 'No' }}</td>
                         <td>{{ $payment->user?->shortName() ?? '—' }}</td>
                         <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>

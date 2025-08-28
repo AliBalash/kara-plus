@@ -25,10 +25,16 @@ class RentalRequestPickupDocument extends Component
     public $mileage;
     public $existingFiles = [];
 
+    public $contract;
+
 
 
     public function mount($contractId)
     {
+
+        $this->contractId = $contractId;
+        $this->contract = Contract::findOrFail($contractId);
+
         $this->contractId = $contractId;
         $pickup = PickupDocument::where('contract_id', $contractId)->first();
         if (!empty($pickup)) {
@@ -72,11 +78,18 @@ class RentalRequestPickupDocument extends Component
         }
 
         // Kardo Contract Validation
-        if ($this->kardoContract) {
-            $validationRules['kardoContract'] = 'required|image|max:8048';
-        } elseif (!$this->kardoContract && empty($this->existingFiles['kardoContract'])) {
-            $validationRules['kardoContract'] = 'image|max:8048';
+        if ($this->contract->kardo_required) {
+            if ($this->kardoContract) {
+                $validationRules['kardoContract'] = 'required|image|max:8048';
+            } elseif (!$this->kardoContract && empty($this->existingFiles['kardoContract'])) {
+                $validationRules['kardoContract'] = 'required|image|max:8048';
+            }
+        } else {
+            if ($this->kardoContract) {
+                $validationRules['kardoContract'] = 'image|max:8048';
+            }
         }
+        
 
         // Factor Contract Validation
         if ($this->factorContract) {
@@ -248,16 +261,5 @@ class RentalRequestPickupDocument extends Component
         $contract->changeStatus('delivery', auth()->id());
 
         session()->flash('message', 'Status changed to Delivery successfully.');
-    }
-
-
-    public function changeStatusToAwaitingReturn($contractId)
-    {
-        $contract = Contract::findOrFail($contractId);
-
-        // تغییر وضعیت به 'delivery'
-        $contract->changeStatus('awaiting_return', auth()->id());
-
-        session()->flash('message', 'Status changed to Kardo Tars successfully.');
     }
 }

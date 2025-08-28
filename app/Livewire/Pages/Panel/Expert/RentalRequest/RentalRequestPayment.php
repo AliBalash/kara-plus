@@ -99,13 +99,13 @@ class RentalRequestPayment extends Component
 
         $this->prepaid = $this->existingPayments
             ->where('payment_type', 'prepaid_fine')
-            ->sum('amount_in_aed');  // ← محاسبه‌ی پیش‌پرداخت
+            ->sum('amount_in_aed');
 
-        // Remaining = total – (rental + discounts) + fines
         $this->remainingBalance = $this->totalPrice
-            - ($this->rentalPaid + $this->discounts)
-            + $this->finePaid;
+            - ($this->rentalPaid + $this->discounts + $this->prepaid)
+            + $this->finePaid + $this->tollPaid;
     }
+
 
 
     public function submitPayment()
@@ -113,6 +113,12 @@ class RentalRequestPayment extends Component
         $this->validate();
         if ($this->currency !== 'AED' && empty($this->rate)) {
             $this->addError('rate', 'Exchange rate is required for non-AED currencies.');
+            return;
+        }
+
+        if (in_array($this->payment_type, ['fine']) && !$this->receipt) {
+            $this->addError('receipt', 'Receipt is required for fines.');
+            return;
         }
 
         $aedAmount = $this->currency === 'AED'
@@ -141,7 +147,6 @@ class RentalRequestPayment extends Component
                 'is_refundable' => $this->is_refundable,
                 'receipt' => $receiptPath,
             ]);
-
 
             session()->flash('message', 'Payment was successfully added!');
             $this->resetForm();

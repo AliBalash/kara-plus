@@ -12,8 +12,8 @@
         @if (!empty($contractId))
             <div class="col-lg-8 text-end">
                 <a class="btn btn-danger fw-bold" href="javascript:void(0);"
-                    onclick="if(confirm('Are you sure you want to set this contract to Payment?')) { @this.changeStatusToPayment({{ $contractId }}) }">
-                    Set to Payment
+                    onclick="if(confirm('Are you sure you want to set this contract to Returned and then Payment?')) { @this.changeStatusToPayment({{ $contractId }}) }">
+                    Set to Returned → Payment
                     <i class="bx bxs-log-in-circle"></i>
                 </a>
             </div>
@@ -97,7 +97,7 @@
 
                     <!-- Dashboard Photo -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Dashboard Photo</label>
+                        <label class="form-label">KM/Fuel Photo</label>
                         @if (!empty($existingFiles['carDashboard']))
                             <div class="mb-2">
                                 <img src="{{ $existingFiles['carDashboard'] }}" alt="Dashboard Photo" width="150"
@@ -125,8 +125,8 @@
                         <label class="form-label">Watcher's Receipt</label>
                         @if (!empty($existingFiles['factorContract']))
                             <div class="mb-2">
-                                <img src="{{ $existingFiles['factorContract'] }}" class="img-thumbnail"
-                                    width="150" onclick="openModal('{{ $existingFiles['factorContract'] }}')">
+                                <img src="{{ $existingFiles['factorContract'] }}" class="img-thumbnail" width="150"
+                                    onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 <button type="button" class="btn btn-warning mt-2"
                                     onclick="confirmDeletion('factor_contract')">Remove</button>
                             </div>

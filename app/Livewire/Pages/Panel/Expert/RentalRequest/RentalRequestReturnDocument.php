@@ -215,9 +215,23 @@ class RentalRequestReturnDocument extends Component
     {
         $contract = Contract::findOrFail($contractId);
 
-        // تغییر وضعیت به 'awaiting_return'
-        $contract->changeStatus('payment', auth()->id());
+        // اگر کنترکت قبلاً وضعیت payment دارد، کاری نکن
+        if ($contract->current_status === 'payment') {
+            session()->flash('message', 'Contract is already in payment status.');
+            return;
+        }
 
-        session()->flash('message', 'Status changed to payment successfully.');
+        DB::beginTransaction();
+        try {
+
+            $contract->changeStatus('returned', auth()->id());
+            // سپس به payment
+            $contract->changeStatus('payment', auth()->id());
+            DB::commit();
+            session()->flash('message', 'Status changed to Returned then Payment successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('error', 'Error changing status: ' . $e->getMessage());
+        }
     }
 }
