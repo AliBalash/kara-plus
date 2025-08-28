@@ -9,7 +9,7 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
-    public $title = 'داشبورد کارشناس';
+    public $title = 'Dashboard';
     public $discountCodesCount;
     public $usedDiscountCodes;
     public $usageRate;
@@ -30,6 +30,8 @@ class Dashboard extends Component
 
     public $topBrands;
     public $reservedCars;
+    public $returnedCars;
+
 
     public function mount()
     {
@@ -81,6 +83,11 @@ class Dashboard extends Component
 
         $this->reservedCars = \App\Models\Contract::with(['car.carModel'])
             ->where('current_status', 'reserved')
+            ->latest()
+            ->get();
+
+        $this->returnedCars = Contract::with(['car.carModel', 'customer'])
+            ->where('current_status', 'awaiting_return')
             ->latest()
             ->get();
     }
