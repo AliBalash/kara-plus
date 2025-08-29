@@ -36,7 +36,7 @@ class RentalRequestCreate extends Component
     public $nationality;
     public $license_number;
     public $selected_services = [];
-    public $selected_insurance = 'ldw_insurance'; // پیش‌فرض LDW
+    public $selected_insurance = 'ldw_insurance';
     public $services_total = 0;
     public $insurance_total = 0;
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
@@ -51,10 +51,9 @@ class RentalRequestCreate extends Component
     public $models = [];
     public $carsForModel = [];
     public $services = [];
-    public $contract ;
-
-
+    public $contract;
     public $kardo_required = true;
+    public $payment_on_delivery = true; // New property
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
@@ -91,7 +90,6 @@ class RentalRequestCreate extends Component
             $contract->changeStatus('assigned', auth()->id());
 
             session()->flash('success', 'Contract assigned to you successfully.');
-
 
             $this->dispatch('refreshContracts');
         } else {
@@ -331,7 +329,8 @@ class RentalRequestCreate extends Component
             'nationality' => ['required', 'string', 'max:100'],
             'license_number' => ['nullable', 'string', 'max:50'],
             'selected_insurance' => ['required', Rule::in(['ldw_insurance', 'scdw_insurance'])],
-            'kardo_required' => 'boolean'
+            'kardo_required' => ['boolean'],
+            'payment_on_delivery' => ['boolean'],
         ];
     }
 
@@ -380,6 +379,7 @@ class RentalRequestCreate extends Component
         'license_number.max' => 'License Number cannot be longer than 50 characters.',
         'selected_insurance.required' => 'You must select an insurance option.',
         'selected_insurance.in' => 'The selected insurance option is invalid.',
+        'payment_on_delivery.boolean' => 'The payment on delivery field must be a boolean value.', // Message for new field
     ];
 
     public function submit()
@@ -421,6 +421,7 @@ class RentalRequestCreate extends Component
                 'selected_insurance' => $this->selected_insurance,
                 'notes' => $this->notes,
                 'kardo_required' => $this->kardo_required ?? true,
+                'payment_on_delivery' => $this->payment_on_delivery ?? true, // Save new field
             ]);
 
             $contract->changeStatus('pending', auth()->id());
@@ -527,7 +528,6 @@ class RentalRequestCreate extends Component
             session()->flash('info', 'This contract is already Reserved.');
         }
     }
-
 
     public function render()
     {

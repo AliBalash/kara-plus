@@ -60,7 +60,7 @@ class RentalRequestEdit extends Component
     public $contractId;
 
     public $kardo_required;
-
+    public $payment_on_delivery;
 
 
     public $carsForModel = [];
@@ -177,6 +177,7 @@ class RentalRequestEdit extends Component
         $this->return_date = \Carbon\Carbon::parse($this->contract->return_date)->format('Y-m-d\TH:i');
         $this->notes = $this->contract->notes;
         $this->kardo_required = $this->contract->kardo_required;
+        $this->payment_on_delivery = $this->contract->payment_on_delivery; // Initialize new field
 
         // Customer data
         $customer = $this->contract->customer()->firstOrFail();
@@ -337,6 +338,8 @@ class RentalRequestEdit extends Component
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
             'nationality' => ['required', 'string', 'max:100'],
             'license_number' => ['nullable', 'string', 'max:50'],
+            'kardo_required' => ['boolean'],
+            'payment_on_delivery' => ['boolean'],
         ];
     }
 
