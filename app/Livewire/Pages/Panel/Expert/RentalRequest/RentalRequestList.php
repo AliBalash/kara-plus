@@ -56,7 +56,7 @@ class RentalRequestList extends Component
             $contract->update(['user_id' => auth()->id()]);
             $contract->changeStatus('assigned', auth()->id());
             session()->flash('success', 'Contract assigned to you successfully.');
-            $this->emit('refreshContracts');
+            $this->dispatch('refreshContracts');
         } else {
             session()->flash('error', 'This contract is already assigned.');
         }
