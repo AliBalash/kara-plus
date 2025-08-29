@@ -23,7 +23,10 @@ return new class extends Migration
             $table->string('pickup_location'); // مکان تحویل خودرو
             $table->string('return_location'); // مکان بازگشت خودرو
             $table->decimal('total_price', 10, 2); // مبلغ کل اجاره
+            $table->decimal('used_daily_rate', 10, 2)->nullable();
+            $table->text('discount_note')->nullable();
             $table->boolean('kardo_required')->default(true);
+            $table->boolean('payment_on_delivery')->default(true);
             $table->enum('current_status', [
                 'pending',
                 'assigned',

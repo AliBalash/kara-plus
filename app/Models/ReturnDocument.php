@@ -20,6 +20,7 @@ class ReturnDocument extends Model
         'car_outside_video',
         'fuelLevel',
         'mileage',
+        'note',
     ];
 
     public function contract()
