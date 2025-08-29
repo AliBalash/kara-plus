@@ -53,7 +53,10 @@ class RentalRequestCreate extends Component
     public $services = [];
     public $contract;
     public $kardo_required = true;
-    public $payment_on_delivery = true; // New property
+    public $payment_on_delivery = true;
+
+    public $apply_discount = false;
+    public $custom_daily_rate = null;
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
@@ -101,7 +104,7 @@ class RentalRequestCreate extends Component
     {
         $this->validateOnly($propertyName);
 
-        if ($this->isCostRelatedField($propertyName)) {
+        if ($this->isCostRelatedField($propertyName) || in_array($propertyName, ['apply_discount', 'custom_daily_rate'])) {
             $this->calculateCosts();
         }
 
@@ -150,6 +153,9 @@ class RentalRequestCreate extends Component
                 $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
                 $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
             }
+            // Reset custom rate when car changes
+            $this->custom_daily_rate = null;
+            $this->apply_discount = false;
         }
     }
 
@@ -202,8 +208,8 @@ class RentalRequestCreate extends Component
     {
         if ($this->selectedCarId && $this->rental_days) {
             $car = Car::find($this->selectedCarId);
-            $this->dailyRate = $this->getCarDailyRate($car, $this->rental_days);
-            // محاسبه و گرد کردن قیمت پایه به دو رقم اعشار
+            $standardRate = $this->getCarDailyRate($car, $this->rental_days);
+            $this->dailyRate = ($this->apply_discount && $this->custom_daily_rate) ? $this->custom_daily_rate : $standardRate;
             $this->base_price = round($this->dailyRate * $this->rental_days, 2);
         } else {
             $this->dailyRate = 0;
@@ -331,6 +337,8 @@ class RentalRequestCreate extends Component
             'selected_insurance' => ['required', Rule::in(['ldw_insurance', 'scdw_insurance'])],
             'kardo_required' => ['boolean'],
             'payment_on_delivery' => ['boolean'],
+            'apply_discount' => ['boolean'],
+            'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 
@@ -421,7 +429,9 @@ class RentalRequestCreate extends Component
                 'selected_insurance' => $this->selected_insurance,
                 'notes' => $this->notes,
                 'kardo_required' => $this->kardo_required ?? true,
-                'payment_on_delivery' => $this->payment_on_delivery ?? true, // Save new field
+                'used_daily_rate' => $this->dailyRate,
+                'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
+                'payment_on_delivery' => $this->payment_on_delivery ?? true,
             ]);
 
             $contract->changeStatus('pending', auth()->id());
@@ -445,9 +455,9 @@ class RentalRequestCreate extends Component
             'title' => 'base_rental',
             'amount' => $this->base_price,
             'type' => 'base',
-            // نمایش روز به صورت عدد صحیح و dailyRate با دو رقم اعشار
-            'description' => ((int)$this->rental_days) . " روز × " . number_format($this->dailyRate, 2) . " درهم",
+            'description' => ((int)$this->rental_days) . " روز × " . number_format($this->dailyRate, 2) . " درهم" . ($this->apply_discount ? ' (with discount)' : ''),
         ]);
+
 
         if ($this->transfer_costs['pickup'] > 0) {
             ContractCharges::create([

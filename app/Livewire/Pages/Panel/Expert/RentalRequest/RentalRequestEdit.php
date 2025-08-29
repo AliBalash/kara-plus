@@ -62,6 +62,9 @@ class RentalRequestEdit extends Component
     public $kardo_required;
     public $payment_on_delivery;
 
+    public $apply_discount = false;
+    public $custom_daily_rate = null;
+
 
     public $carsForModel = [];
 
@@ -138,6 +141,11 @@ class RentalRequestEdit extends Component
         $this->services = config('carservices');
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->contract = Contract::findOrFail($contractId);
+
+        if ($this->contract->used_daily_rate) {
+            $this->custom_daily_rate = $this->contract->used_daily_rate;
+            $this->apply_discount = true;
+        }
 
         // Initialize properties from contract
         $this->initializeFromContract();
@@ -222,23 +230,40 @@ class RentalRequestEdit extends Component
         if ($this->pickup_date && $this->return_date) {
             $pickup = Carbon::parse($this->pickup_date);
             $return = Carbon::parse($this->return_date);
-            $this->rental_days = max(1, $pickup->diffInDays($return));
+
+            // اگر به هر دلیل زمان برگشت برابر یا قبل از تحویل بود، حداقل 1 روز قرار بده
+            if ($return->lte($pickup)) {
+                $this->rental_days = 1;
+                return;
+            }
+
+            // اختلاف زمان را بر حسب ثانیه بگیر و بر 86400 تقسیم کن و به بالا گرد کن
+            $seconds = $return->getTimestamp() - $pickup->getTimestamp();
+            $days = (int) ceil($seconds / 86400);
+
+            $this->rental_days = max(1, $days);
         } else {
-            $this->rental_days = 1; // مقدار پیش‌فرض اگر تاریخ‌ها تنظیم نشده باشند
+            $this->rental_days = 1;
         }
     }
 
     private function calculateBasePrice()
     {
         if ($this->selectedCarId && $this->rental_days) {
-            $car = $this->getSelectedCar();
-            $this->dailyRate = $this->getCarDailyRate($car, $this->rental_days);
-            $this->base_price = $this->dailyRate * $this->rental_days;
+            $car = Car::find($this->selectedCarId);
+            $standardRate = $this->getCarDailyRate($car, $this->rental_days);
+            // اولویت به used_daily_rate موجود اگر تخفیف فعال نباشد
+            $this->dailyRate = $this->apply_discount && $this->custom_daily_rate
+                ? $this->custom_daily_rate
+                : ($this->contract->used_daily_rate ?? $standardRate);
+            $this->base_price = round($this->dailyRate * $this->rental_days, 2);
         } else {
             $this->dailyRate = 0;
             $this->base_price = 0;
         }
     }
+
+
     private function getSelectedCar()
     {
         return Car::find($this->selectedCarId);
@@ -340,6 +365,8 @@ class RentalRequestEdit extends Component
             'license_number' => ['nullable', 'string', 'max:50'],
             'kardo_required' => ['boolean'],
             'payment_on_delivery' => ['boolean'],
+            'apply_discount' => ['boolean'],
+            'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 
@@ -410,11 +437,10 @@ class RentalRequestEdit extends Component
     {
         $this->validateOnly($propertyName);
 
-        if ($this->isCostRelatedField($propertyName)) {
+        if ($this->isCostRelatedField($propertyName) || in_array($propertyName, ['apply_discount', 'custom_daily_rate'])) {
             $this->calculateCosts();
         }
 
-        // اطمینان از لود مجدد ماشین‌ها هنگام تغییر مدل
         if ($propertyName === 'selectedModelId') {
             $this->loadCars();
         }
@@ -446,6 +472,12 @@ class RentalRequestEdit extends Component
             $this->updateCustomer();
             $this->updateContract();
             $this->storeContractCharges($this->contract); // Pass the contract instance here
+
+            $oldTotal = $this->contract->total_price;
+            $newTotal = $this->final_total;
+            if ($newTotal > $oldTotal) {
+                session()->flash('info', "Extension cost: " . ($newTotal - $oldTotal) . " AED");
+            }
             DB::commit();
             session()->flash('info', 'Contract Updated successfully!');
         } catch (\Exception $e) {
@@ -464,7 +496,7 @@ class RentalRequestEdit extends Component
             'title' => 'base_rental',
             'amount' => $this->base_price,
             'type' => 'base',
-            'description' => "{$this->rental_days} روز × {$this->dailyRate} درهم"
+            'description' => ((int)$this->rental_days) . " روز × " . number_format($this->dailyRate, 2) . " درهم" . ($this->apply_discount ? ' (with discount)' : ''),
         ]);
 
         // هزینه‌های انتقال
@@ -572,6 +604,9 @@ class RentalRequestEdit extends Component
             'selected_insurance' => $this->selected_insurance,
             'notes' => $this->notes,
             'kardo_required' => $this->kardo_required,
+            'used_daily_rate' => $this->dailyRate,
+            'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
+            'payment_on_delivery' => $this->payment_on_delivery ?? true,
         ];
 
         $this->contract->update($contractData);
@@ -675,13 +710,15 @@ class RentalRequestEdit extends Component
     public function updatedSelectedCarId()
     {
         $this->calculateCosts();
-        // آپدیت دستی services برای اطمینان
         if ($this->selectedCarId) {
             $car = Car::find($this->selectedCarId);
             if ($car) {
                 $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
                 $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
             }
+            // Reset custom rate when car changes
+            $this->custom_daily_rate = null;
+            $this->apply_discount = false;
         }
     }
 
