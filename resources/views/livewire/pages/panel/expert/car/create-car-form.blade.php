@@ -408,12 +408,7 @@
                                 </select>
                             </div>
 
-                            {{-- Engine Size --}}
-                            <div class="mb-3">
-                                <label class="form-label">Engine Size (cc)</label>
-                                <input type="number" class="form-control" wire:model="car_options.engine_size"
-                                    placeholder="e.g., 1600">
-                            </div>
+                            
 
 
                             {{-- Unlimited Kilometers --}}

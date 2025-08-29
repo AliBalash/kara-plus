@@ -26,6 +26,7 @@
                             <th>Car</th>
                             <th>Pickup Date</th>
                             <th>Return Date</th>
+                            <th>Agent Sale</th>
                             <th>Expert</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -40,6 +41,8 @@
                                 <td>{{ \Carbon\Carbon::parse($status->created_at)->format('d M Y') }}</td>
                                 <td>{{ $status->contract->return_date ? \Carbon\Carbon::parse($status->contract->return_date)->format('d M Y') : 'N/A' }}
                                 </td>
+                        <td>{{ $status->contract->agent_sale }}</td>
+
                                 <td>
                                     @if ($status->contract->user)
                                         <span class="badge bg-primary">{{ $status->contract->user->shortName() }}</span>

@@ -48,6 +48,7 @@
                     <th>Return Location</th>
                     <th>Actions</th>
                     <th>Status</th>
+                    <th>Agent Sale</th>
                     <th>Expert</th>
                     <th>Document</th>
                 </tr>
@@ -83,6 +84,8 @@
                         <td>
                             <x-status-badge :status="$awaitContract->current_status" />
                         </td>
+                        <td>{{ $awaitContract->agent_sale }}</td>
+
                         <td>
                             @if ($awaitContract->user)
                                 <span class="badge bg-primary">{{ $awaitContract->user->shortName() }}</span>

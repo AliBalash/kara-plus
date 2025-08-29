@@ -94,6 +94,7 @@
                     <th wire:click="sortBy('current_status')">
                         Status <i class="bx bx-sort-alt-2"></i>
                     </th>
+                    <th>Agent Sale</th>
                     <th>Expert</th>
                     <th>Actions</th>
                     <th>Documents</th>
@@ -127,6 +128,7 @@
                                 {{ ucfirst(str_replace('_', ' ', $contract->current_status)) }}
                             </span>
                         </td>
+                        <td>{{ $contract->agent_sale }}</td>
                         <td>
                             @if ($contract->user)
                                 <span class="badge bg-primary">{{ $contract->user->shortName() }}</span>
