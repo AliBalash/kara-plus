@@ -277,6 +277,29 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="mt-3">
+                                    <div class="form-check mb-2">
+                                        <input type="checkbox" class="form-check-input"
+                                            wire:model.live="apply_discount" id="apply_discount">
+                                        <label class="form-check-label" for="apply_discount">Apply Discount
+                                            (Custom Daily Rate)</label>
+                                    </div>
+                                    @if ($apply_discount)
+                                        <div class="input-group mb-3">
+                                            <span class="input-group-text"><i class="bx bxs-discount"></i></span>
+                                            <input type="number" step="0.01"
+                                                class="form-control @error('custom_daily_rate') is-invalid @enderror"
+                                                wire:model.live="custom_daily_rate"
+                                                placeholder="Enter discounted daily rate (e.g. 180 AED)">
+                                            @error('custom_daily_rate')
+                                                <div class="invalid-feedback animate__animated animate__fadeIn">
+                                                    {{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    @endif
+                                </div>
+
                                 <div class="row mt-3">
                                     <div class="col-md-12">
                                         <strong>Future Reservations:</strong>
@@ -502,6 +525,12 @@
             <h5 class="text-primary mb-3">Cost Breakdown</h5>
             <div class="table-responsive">
                 <table class="table table-bordered shadow-sm">
+
+                    <tr>
+                        <th>Daily Rate (after discount if applied)</th>
+                        <td>{{ number_format($dailyRate) }} AED</td>
+                    </tr>
+
                     <tr>
                         <th>Base Rental Cost
                             @if ($rental_days)
