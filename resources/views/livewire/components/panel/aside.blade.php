@@ -77,6 +77,13 @@
                         </a>
                     </li>
 
+                    <li class="menu-item {{ Request::routeIs('rental-requests.confirm-payment-list') ? 'active' : '' }}">
+                        <a href="{{ route('rental-requests.confirm-payment-list') }}" class="menu-link">
+                            <div data-i18n="Without menu">Confirm Payments</div>
+                        </a>
+                    </li>
+
+
                     <li class="menu-item {{ Request::routeIs('rental-requests.me') ? 'active' : '' }}">
                         <a href="{{ route('rental-requests.me') }}" class="menu-link">
                             <div data-i18n="Without menu">Me</div>
