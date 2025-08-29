@@ -101,8 +101,8 @@
                                         onclick="confirmDeletion('kardo_contract')">Remove</button>
                                 </div>
                                 @error('kardoContract')
-                                <span class="text-danger">{{ $message }}</span>
-                            @enderror
+                                    <span class="text-danger">{{ $message }}</span>
+                                @enderror
                             @endif
                             <input type="file" class="form-control" wire:model="kardoContract">
                             <div wire:loading wire:target="kardoContract" class="progress mt-2">
@@ -229,26 +229,6 @@
                         @enderror
                     </div>
 
-
-
-                    <div class="col-md-6 mb-3">
-
-                        <div class="card mb-4 mb-xl-0">
-                            <h5 class="card-header">Fuel Level</h5>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="fuelRange" class="form-label">Select fuel level (%)</label>
-                                    <input type="range" class="form-range" min="0" max="100"
-                                        step="10" id="fuelRange" wire:model.live="fuelLevel">
-
-                                    <div class="mt-2">
-                                        <span class="badge bg-primary">Selected: {{ $fuelLevel }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Mileage -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Mileage</label>
@@ -257,9 +237,54 @@
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
+                    <!-- Note -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Note (Optional)</label>
+                        <textarea class="form-control" wire:model="note" placeholder="Add any additional notes here" rows="4"></textarea>
+                        @error('note')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
 
 
                 </div>
+
+                <div class="col-md-6 mb-3">
+                    <div class="card mb-4 mb-xl-0">
+                        <h5 class="card-header">Fuel Level</h5>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="fuelRange" class="form-label">Select fuel level (%)</label>
+                                <input type="range" class="form-range" min="0" max="100"
+                                    step="10" id="fuelRange" wire:model.live="fuelLevel">
+
+                                <div class="mt-2">
+                                    <span class="badge bg-primary">Selected: {{ $fuelLevel }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    @if ($contract->payment_on_delivery)
+                        @if ($remainingBalance > 0)
+                            <div class="alert alert-warning mt-3">
+                                <strong>Remaining Balance:</strong> {{ number_format($remainingBalance, 2) }}
+                                {{ $contract->currency }}
+                                <br>
+                                Please collect this amount from the customer upon delivery.
+                            </div>
+                        @else
+                            <div class="alert alert-success mt-3">
+                                All payments have been settled. ✅
+                            </div>
+                        @endif
+
+                    @endif
+                </div>
+
+
+
 
                 <button type="submit" class="btn btn-primary mt-3">Upload Documents</button>
             </form>

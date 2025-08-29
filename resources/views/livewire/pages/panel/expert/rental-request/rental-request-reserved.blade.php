@@ -47,6 +47,7 @@
                     </th>
                     <th>Location</th>
                     <th>Actions</th>
+                    <th>Agent Sale</th>
                     <th>Expert</th>
                     <th>Document</th>
                 </tr>
@@ -79,6 +80,8 @@
                                 </div>
                             </div>
                         </td>
+                        <td>{{ $reservedContract->agent_sale }}</td>
+
                         <td>
                             @if ($reservedContract->user)
                                 <span class="badge bg-primary">{{ $reservedContract->user->shortName() }}</span>
