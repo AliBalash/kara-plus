@@ -36,6 +36,7 @@
                     <th>Car</th>
                     <th>Pickup Date</th>
                     <th>Return Date</th>
+                    <th>Agent Sale</th>
                     <th>Expert</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -49,10 +50,11 @@
                         <td>{{ $contract->car->fullName() }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}</td>
+                        <td>{{ $contract->agent_sale }}</td>
+
                         <td>
                             @if ($contract->user)
                                 <span class="badge bg-primary">{{ $contract->user->shortName() }}</span>
-
                             @else
                                 <span class="badge bg-secondary">No User</span>
                             @endif

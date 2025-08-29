@@ -142,25 +142,6 @@
                     </div>
 
 
-
-                    <div class="col-md-6 mb-3">
-
-                        <div class="card mb-4 mb-xl-0">
-                            <h5 class="card-header">Fuel Level</h5>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="fuelRange" class="form-label">Select fuel level (%)</label>
-                                    <input type="range" class="form-range" min="0" max="100"
-                                        step="10" id="fuelRange" wire:model.live="fuelLevel">
-
-                                    <div class="mt-2">
-                                        <span class="badge bg-primary">Selected: {{ $fuelLevel }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Mileage -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Mileage</label>
@@ -169,8 +150,33 @@
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
+                    <!-- Note -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Note (Optional)</label>
+                        <textarea class="form-control" wire:model="note" placeholder="Add any additional notes here" rows="4"></textarea>
+                        @error('note')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                </div>
 
 
+                <div class="col-md-6 mb-3">
+                    <div class="card mb-4 mb-xl-0">
+                        <h5 class="card-header">Fuel Level</h5>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="fuelRange" class="form-label">Select fuel level (%)</label>
+                                <input type="range" class="form-range" min="0" max="100"
+                                    step="10" id="fuelRange" wire:model.live="fuelLevel">
+
+                                <div class="mt-2">
+                                    <span class="badge bg-primary">Selected: {{ $fuelLevel }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary mt-3">Upload Documents</button>

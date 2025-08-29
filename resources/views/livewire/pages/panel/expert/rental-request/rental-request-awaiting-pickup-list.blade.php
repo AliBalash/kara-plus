@@ -37,6 +37,7 @@
                     <th>Return Date</th>
                     <th>Actions</th>
                     <th>Status</th>
+                    <th>Agent Sale</th>
                     <th>Expert</th>
                 </tr>
             </thead>
@@ -79,6 +80,7 @@
                         <td>
                             <x-status-badge :status="$contract->current_status" />
                         </td>
+                        <td>{{ $contract->agent_sale }}</td>
 
                         <td>
                             @if ($contract->user)
