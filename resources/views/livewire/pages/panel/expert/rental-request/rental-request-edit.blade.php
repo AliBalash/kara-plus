@@ -169,6 +169,17 @@
                             </div>
                             @error('kardo_required')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                            @enderror                        </div>
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="bx bx-money"></i></span>
+                            <div class="form-check form-check-inline mt-2 ms-2">
+                                <input type="checkbox" class="form-check-input" wire:model="payment_on_delivery"
+                                    id="payment_on_delivery">
+                                <label class="form-check-label" for="payment_on_delivery">Payment on Delivery</label>
+                            </div>
+                            @error('payment_on_delivery')
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
