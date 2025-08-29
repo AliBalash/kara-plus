@@ -133,7 +133,6 @@ class CreateCarForm extends Component
             'luggage' => '',
             'min_days' => '',
             'fuel_type' => '',
-            'engine_size' => '',
             'unlimited_km' => false,
             'base_insurance' => false,
             'air_conditioning' => false,
