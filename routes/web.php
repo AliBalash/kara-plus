@@ -17,6 +17,7 @@ use App\Livewire\Pages\Panel\Expert\Customer\CustomerList;
 use App\Livewire\Pages\Panel\Expert\DiscountCode\DiscountCodeList;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesForm;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
+use App\Livewire\Pages\Panel\Expert\Payments\ConfirmPayementList;
 use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingPickupList;
@@ -59,6 +60,11 @@ Route::middleware(['auth.check'])->group(function () {
 
     Route::get('/expert/rental-requests/awaiting-return', RentalRequestAwaitingReturnList::class)->name('rental-requests.awaiting.return');
     Route::get('/expert/rental-requests/payment-list', RentalRequestPaymentList::class)->name('rental-requests.payment.list');
+
+
+    Route::get('/expert/rental-requests/confirm-payment-list',ConfirmPayementList::class)->name('rental-requests.confirm-payment-list');
+
+
 
 
 
