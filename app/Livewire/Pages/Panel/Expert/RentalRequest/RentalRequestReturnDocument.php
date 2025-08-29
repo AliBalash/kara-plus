@@ -21,6 +21,7 @@ class RentalRequestReturnDocument extends Component
     public $carVideoInside;
     public $fuelLevel  = 50;
     public $mileage;
+    public $note;
     public $existingFiles = [];
 
 
@@ -28,10 +29,11 @@ class RentalRequestReturnDocument extends Component
     public function mount($contractId)
     {
         $this->contractId = $contractId;
-        $pickup = ReturnDocument::where('contract_id', $contractId)->first();
-        if (!empty($pickup)) {
-            $this->fuelLevel = $pickup->fuelLevel;
-            $this->mileage = $pickup->mileage;
+        $return = ReturnDocument::where('contract_id', $contractId)->first();
+        if (!empty($return)) {
+            $this->fuelLevel = $return->fuelLevel;
+            $this->mileage = $return->mileage;
+            $this->note = $return->note;
         }
         $this->existingFiles = [
             'factorContract' => Storage::disk('myimage')->exists("ReturnDocument/factor_contract_{$this->contractId}.jpg")
@@ -54,6 +56,7 @@ class RentalRequestReturnDocument extends Component
         $validationRules = [
             'fuelLevel' => 'required',
             'mileage' => 'required',
+            'note' => 'nullable|string|max:1000',
         ];
 
         // Factor Contract Validation
@@ -99,18 +102,19 @@ class RentalRequestReturnDocument extends Component
         $uploadedPaths = [];
 
         try {
-            $pickupDocument = ReturnDocument::updateOrCreate(
+            $returnDocument = ReturnDocument::updateOrCreate(
                 ['contract_id' => $this->contractId],
                 ['user_id' => auth()->id()]
             );
-            $pickupDocument->fuelLevel = $this->fuelLevel;
-            $pickupDocument->mileage = $this->mileage;
+            $returnDocument->fuelLevel = $this->fuelLevel;
+            $returnDocument->mileage = $this->mileage;
+            $returnDocument->note = $this->note;
 
             // Factor Contract Upload
             if ($this->factorContract) {
                 $factorPath = $this->factorContract->storeAs('ReturnDocument', "factor_contract_{$this->contractId}.jpg", 'myimage');
                 if (!$factorPath) throw new \Exception('Error uploading factor contract.');
-                $pickupDocument->factor_contract = $factorPath;
+                $returnDocument->factor_contract = $factorPath;
                 $uploadedPaths[] = $factorPath;
             }
 
@@ -119,7 +123,7 @@ class RentalRequestReturnDocument extends Component
             if ($this->carDashboard) {
                 $carDashboardPath = $this->carDashboard->storeAs('ReturnDocument', "car_dashboard_{$this->contractId}.jpg", 'myimage');
                 if (!$carDashboardPath) throw new \Exception('Error uploading dashboard photo.');
-                $pickupDocument->car_dashboard = $carDashboardPath;
+                $returnDocument->car_dashboard = $carDashboardPath;
                 $uploadedPaths[] = $carDashboardPath;
             }
 
@@ -127,7 +131,7 @@ class RentalRequestReturnDocument extends Component
             if ($this->carVideoInside) {
                 $videoPath = $this->carVideoInside->storeAs('ReturnDocument', "car_video_inside_{$this->contractId}.mp4", 'myimage');
                 if (!$videoPath) throw new \Exception('Error uploading car inside video.');
-                $pickupDocument->car_inside_video = $videoPath;
+                $returnDocument->car_inside_video = $videoPath;
                 $uploadedPaths[] = $videoPath;
             }
 
@@ -135,11 +139,11 @@ class RentalRequestReturnDocument extends Component
             if ($this->carVideoOutside) {
                 $videoPath = $this->carVideoOutside->storeAs('ReturnDocument', "car_video_outside_{$this->contractId}.mp4", 'myimage');
                 if (!$videoPath) throw new \Exception('Error uploading car video.');
-                $pickupDocument->car_outside_video = $videoPath;
+                $returnDocument->car_outside_video = $videoPath;
                 $uploadedPaths[] = $videoPath;
             }
-            $pickupDocument->user_id = auth()->id();
-            $pickupDocument->save();
+            $returnDocument->user_id = auth()->id();
+            $returnDocument->save();
 
 
 

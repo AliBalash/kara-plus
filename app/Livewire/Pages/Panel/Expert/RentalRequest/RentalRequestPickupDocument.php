@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
+use App\Models\Payment;
 use App\Models\PickupDocument;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +24,10 @@ class RentalRequestPickupDocument extends Component
     public $carVideoInside;
     public $fuelLevel  = 50;
     public $mileage;
+    public $note;
     public $existingFiles = [];
+
+    public $remainingBalance = 0;
 
     public $contract;
 
@@ -40,6 +44,7 @@ class RentalRequestPickupDocument extends Component
         if (!empty($pickup)) {
             $this->fuelLevel = $pickup->fuelLevel;
             $this->mileage = $pickup->mileage;
+            $this->note = $pickup->note;
         }
         $this->existingFiles = [
             'tarsContract' => Storage::disk('myimage')->exists("PickupDocument/tars_contract_{$this->contractId}.jpg")
@@ -61,6 +66,13 @@ class RentalRequestPickupDocument extends Component
                 ? Storage::url("PickupDocument/car_video_inside_{$this->contractId}.mp4")
                 : null,
         ];
+
+        $totalPrice = $this->contract->total_price ?? 0;
+        $paid = Payment::where('contract_id', $contractId)
+            ->where('is_paid', true)
+            ->sum('amount');
+
+        $this->remainingBalance = $totalPrice - $paid;
     }
 
     public function uploadDocuments()
@@ -68,6 +80,7 @@ class RentalRequestPickupDocument extends Component
         $validationRules = [
             'fuelLevel' => 'required',
             'mileage' => 'required',
+            'note' => 'nullable|string|max:1000',
         ];
 
         // Tars Contract Validation
@@ -89,7 +102,7 @@ class RentalRequestPickupDocument extends Component
                 $validationRules['kardoContract'] = 'image|max:8048';
             }
         }
-        
+
 
         // Factor Contract Validation
         if ($this->factorContract) {
@@ -140,6 +153,7 @@ class RentalRequestPickupDocument extends Component
             );
             $pickupDocument->fuelLevel = $this->fuelLevel;
             $pickupDocument->mileage = $this->mileage;
+            $pickupDocument->note = $this->note;
 
             // Tars Contract Upload
             if ($this->tarsContract) {
