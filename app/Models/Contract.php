@@ -28,6 +28,9 @@ class Contract extends Model
         'current_status',
         'notes',
         'meta',
+        'payment_on_delivery',
+        'used_daily_rate',
+        'discount_note',
     ];
 
     /**
@@ -39,6 +42,8 @@ class Contract extends Model
         'pickup_date' => 'datetime',
         'return_date' => 'datetime',
         'total_price' => 'decimal:2',
+        'kardo_required' => 'boolean',
+        'payment_on_delivery' => 'boolean',
         'meta' => 'array',
     ];
 

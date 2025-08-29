@@ -20,6 +20,11 @@ class PickupDocument extends Model
         'car_outside_video',
         'fuelLevel',
         'mileage',
+        'tars_approved_at',
+        'tars_approved_by',
+        'kardo_approved_at',
+        'kardo_approved_by',
+        'note',
     ];
 
     public function contract()

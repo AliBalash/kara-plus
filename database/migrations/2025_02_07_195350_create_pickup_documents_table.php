@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('car_outside_video')->nullable();
             $table->string('fuelLevel')->nullable();
             $table->string('mileage')->nullable();
+            $table->text('note')->nullable();
 
             $table->timestamp('tars_approved_at')->nullable();
             $table->unsignedBigInteger('tars_approved_by')->nullable();
