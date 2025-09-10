@@ -63,7 +63,7 @@
                             <option value="">Select Payment Type</option>
                             <option value="rental_fee">Rental Fee</option>
                             <option value="Security_deposit">Security deposit</option>
-                            <option value="Salic">Salic</option>
+                            <option value="Salic">SaliK</option>
                             <option value="fine">Fine</option>
                             <option value="discount">Discount</option>
 
@@ -186,7 +186,7 @@
                 'icon' => 'bi-wallet2',
                 'color' => 'info',
             ],
-            ['key' => 'Salic', 'label' => 'Salic', 'value' => $tollPaid, 'icon' => 'bi-coin', 'color' => 'secondary'],
+            ['key' => 'Salic', 'label' => 'Salik', 'value' => $tollPaid, 'icon' => 'bi-coin', 'color' => 'secondary'],
             [
                 'key' => 'remaining',
                 'label' => 'Remaining',
@@ -274,7 +274,7 @@
                             @if ($payment->payment_type === 'prepaid_fine')
                                 Security_deposit
                             @elseif ($payment->payment_type === 'toll')
-                                Salic
+                                Salik
                             @else
                                 {{ ucfirst($payment->payment_type) }}
                             @endif
