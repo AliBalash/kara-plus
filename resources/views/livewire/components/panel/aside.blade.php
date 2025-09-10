@@ -149,32 +149,9 @@
             </li>
 
 
-
-
             <li class="menu-header small text-uppercase">
-                <span class="menu-header-text">Pages</span>
+                <span class="menu-header-text">RTA</span>
             </li>
-
-
-            <!-- Customer -->
-            <li class="menu-item {{ request()->routeIs('customer.*') ? 'open' : '' }}">
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons bx bx-body"></i>
-                    <div data-i18n="Layouts">Customer</div>
-                </a>
-
-                <ul class="menu-sub">
-
-                    <li class="menu-item {{ Request::routeIs('customer.list') ? 'active' : '' }}">
-                        <a href="{{ route('customer.list') }}" class="menu-link">
-                            <div data-i18n="Without menu">List</div>
-                        </a>
-                    </li>
-
-
-                </ul>
-            </li>
-
             <!-- Insurance -->
             <li class="menu-item {{ request()->routeIs('insurance.*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -196,6 +173,34 @@
                     </li>
                 </ul>
             </li>
+
+
+            <li class="menu-header small text-uppercase">
+                <span class="menu-header-text">Pages</span>
+            </li>
+
+
+
+            <!-- Customer -->
+            <li class="menu-item {{ request()->routeIs('customer.*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons bx bx-body"></i>
+                    <div data-i18n="Layouts">Customer</div>
+                </a>
+
+                <ul class="menu-sub">
+
+                    <li class="menu-item {{ Request::routeIs('customer.list') ? 'active' : '' }}">
+                        <a href="{{ route('customer.list') }}" class="menu-link">
+                            <div data-i18n="Without menu">List</div>
+                        </a>
+                    </li>
+
+
+                </ul>
+            </li>
+
+
 
 
             <li class="menu-item {{ Request::routeIs('discount.codes') ? 'active' : '' }}">
