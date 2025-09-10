@@ -148,10 +148,10 @@
                                             <i class="bx bx-user-check me-1"></i> Assign to Me
                                         </a>
                                     @endif
-                                    <a class="dropdown-item"
+                                    {{-- <a class="dropdown-item"
                                         href="{{ route('rental-requests.details', $contract->id) }}">
                                         <i class="bx bx-info-circle me-1"></i> Details
-                                    </a>
+                                    </a> --}}
                                     <a class="dropdown-item" href="{{ route('rental-requests.edit', $contract->id) }}">
                                         <i class="bx bx-edit-alt me-1"></i> Edit
                                     </a>

@@ -15,6 +15,7 @@ class Payment extends Model
         'user_id',
         'car_id',
         'amount',
+        'payment_method',
         'currency',
         'amount_in_aed',
         'payment_type',

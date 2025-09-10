@@ -39,6 +39,8 @@ class RentalRequestPayment extends Component
     public $security_note = '';
     public $contract;
     public $contractMeta = [];
+    public $payment_method = 'cash';
+
 
 
 
@@ -47,6 +49,7 @@ class RentalRequestPayment extends Component
         'currency' => 'required|in:IRR,USD,AED',
         'payment_type' => 'required|in:rental_fee,prepaid_fine,toll,fine,discount',
         'payment_date' => 'required|date',
+        'payment_method' => 'required|in:cash,transfer',
         'is_refundable' => 'required|boolean',
         'rate' => 'nullable|numeric|min:0.0001',
         'receipt' => 'nullable|image|max:2048', // optional receipt image
@@ -142,6 +145,7 @@ class RentalRequestPayment extends Component
                 'rate' => $this->currency !== 'AED' ? $this->rate : null,
                 'amount_in_aed' => $aedAmount,
                 'payment_type' => $this->payment_type,
+                'payment_method' => $this->payment_method, // 👈 اضافه شد
                 'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                 'is_paid' => false,
                 'is_refundable' => $this->is_refundable,
@@ -188,6 +192,7 @@ class RentalRequestPayment extends Component
         $this->currency = 'AED';
         $this->payment_type = '';
         $this->payment_date = '';
+        $this->payment_method = 'cash';
         $this->rate = '';
         $this->receipt = '';
         $this->is_refundable = false;
