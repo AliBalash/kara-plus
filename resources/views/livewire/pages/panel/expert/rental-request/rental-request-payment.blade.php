@@ -73,6 +73,18 @@
                         @enderror
                     </div>
 
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Payment Method</label>
+                        <select class="form-control" wire:model="payment_method">
+                            <option value="cash">Cash</option>
+                            <option value="transfer">Transfer</option>
+                        </select>
+                        @error('payment_method')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Payment Date</label>
                         <input type="date" class="form-control" wire:model="payment_date">
@@ -244,6 +256,7 @@
                     <th>Amount</th>
                     <th>Currency</th>
                     <th>Payment Type</th>
+                    <th>Method</th>
                     <th>Refundable</th>
                     <th>Created By</th>
                     <th>Payment Date</th>
@@ -266,6 +279,7 @@
                                 {{ ucfirst($payment->payment_type) }}
                             @endif
                         </td>
+                        <td>{{ ucfirst($payment->payment_method) }}</td>
                         <td>{{ $payment->is_refundable == true ? 'Yes' : 'No' }}</td>
                         <td>{{ $payment->user?->shortName() ?? '—' }}</td>
                         <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
