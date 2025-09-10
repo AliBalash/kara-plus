@@ -16,6 +16,8 @@ class ConfirmPayementList extends Component
     public $paymentTypeFilter = '';
     public $dateFrom;
     public $dateTo;
+    public $page;
+    public $openAccordions = [];
 
     protected $queryString = ['search', 'statusFilter', 'currencyFilter', 'paymentTypeFilter', 'dateFrom', 'dateTo'];
 
@@ -27,6 +29,15 @@ class ConfirmPayementList extends Component
     public function clearFilters()
     {
         $this->reset(['search', 'statusFilter', 'currencyFilter', 'paymentTypeFilter', 'dateFrom', 'dateTo']);
+    }
+
+    public function toggleAccordion($contractId)
+    {
+        if (in_array($contractId, $this->openAccordions)) {
+            $this->openAccordions = array_diff($this->openAccordions, [$contractId]);
+        } else {
+            $this->openAccordions[] = $contractId;
+        }
     }
 
     public function approve($paymentId)
@@ -49,32 +60,40 @@ class ConfirmPayementList extends Component
 
     public function render()
     {
-        $payments = Payment::query()
+        $query = Payment::query()
             ->with(['customer', 'contract', 'car'])
             ->when($this->search, function ($q) {
                 $search = $this->search;
 
                 if (is_numeric($search)) {
-                    // اگر عدد بود، روی شماره قرارداد سرچ کن
                     $q->whereHas('contract', function ($q2) use ($search) {
                         $q2->where('id', $search);
                     });
                 } else {
-                    // اگر رشته بود، روی last_name مشتری سرچ کن
                     $q->whereHas('customer', function ($q2) use ($search) {
                         $q2->where('last_name', 'like', '%' . $search . '%');
                     });
                 }
             })
-
             ->when($this->statusFilter !== '', fn($q) => $q->where('is_paid', $this->statusFilter))
             ->when($this->currencyFilter, fn($q) => $q->where('currency', $this->currencyFilter))
             ->when($this->paymentTypeFilter, fn($q) => $q->where('payment_type', $this->paymentTypeFilter))
             ->when($this->dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $this->dateFrom))
             ->when($this->dateTo, fn($q) => $q->whereDate('payment_date', '<=', $this->dateTo))
-            ->orderByDesc('id')
-            ->paginate(10);
+            ->orderByDesc('id');
 
-        return view('livewire.pages.panel.expert.payments.confirm-payement-list', compact('payments'));
+        // Group payments by contract_id
+        $groupedPayments = $query->get()->groupBy('contract_id');
+        $groupedPayments = new \Illuminate\Pagination\LengthAwarePaginator(
+            $groupedPayments->forPage($this->page, 10),
+            $groupedPayments->count(),
+            10,
+            $this->page,
+            ['path' => url()->current()]
+        );
+
+        return view('livewire.pages.panel.expert.payments.confirm-payement-list', [
+            'groupedPayments' => $groupedPayments
+        ]);
     }
 }

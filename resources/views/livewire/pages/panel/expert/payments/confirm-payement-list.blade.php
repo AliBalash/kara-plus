@@ -1,5 +1,5 @@
 <div class="card">
-    <h5 class="card-header">Payments</h5>
+    <h5 class="card-header">Payments (Grouped by Contract)</h5>
 
     <div class="row p-3">
         <!-- Search -->
@@ -10,7 +10,6 @@
                     wire:model.live.debounce.1000ms="search">
             </div>
         </div>
-
 
         <!-- Status Filter -->
         <div class="col-md-2 mb-2">
@@ -65,64 +64,84 @@
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
-    <!-- Table -->
-    <div class="table-responsive text-nowrap">
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Customer</th>
-                    <th>Contract</th>
-                    <th>Car</th>
-                    <th>Amount</th>
-                    <th>Currency</th>
-                    <th>Type</th>
-                    <th>Payment Date</th>
-                    <th>Status</th>
-                    <th>Receipt</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($payments as $payment)
-                    <tr>
-                        <td>{{ $payment->id }}</td>
-                        <td>{{ $payment->customer?->fullName() ?? '-' }}</td>
-                        <td>#{{ $payment->contract_id }}</td>
-                        <td>{{ $payment->contract?->car?->fullName() ?? '-' }}</td>
-                        <td>{{ number_format($payment->amount, 2) }}</td>
-                        <td>{{ $payment->currency }}</td>
-                        <td>{{ ucfirst($payment->payment_type) }}</td>
-                        <td>{{ $payment->payment_date }}</td>
-                        <td>
-                            @if ($payment->is_paid)
-                                <span class="badge bg-success">Approved</span>
-                            @else
-                                <span class="badge bg-warning">Pending</span>
-                            @endif
-                        </td>
-                        <td>
-                            @if ($payment->receipt)
-                                <a href="{{ asset('storage/' . $payment->receipt) }}" target="_blank">View</a>
-                            @else
-                                -
-                            @endif
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-success"
-                                wire:click="approve({{ $payment->id }})">Approve</button>
-                            <button class="btn btn-sm btn-danger"
-                                wire:click="reject({{ $payment->id }})">Reject</button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="11" class="text-center">No payments found.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+    <!-- Accordion for Grouped Payments -->
+    <div class="accordion" id="paymentAccordion">
+        @forelse($groupedPayments as $contractId => $paymentGroup)
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading{{ $contractId }}">
+                    <button
+                        class="accordion-button {{ in_array($contractId, $this->openAccordions) ? '' : 'collapsed' }}"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ $contractId }}"
+                        aria-expanded="{{ in_array($contractId, $this->openAccordions) ? 'true' : 'false' }}"
+                        aria-controls="collapse{{ $contractId }}" wire:click="toggleAccordion({{ $contractId }})">
+                        <strong>Contract #{{ $contractId }} - Customer:
+                            {{ $paymentGroup[0]->customer?->fullName() ?? 'Unknown' }}</strong>
+                        <span class="ms-3 badge bg-info">{{ count($paymentGroup) }} Payment(s)</span>
+                    </button>
+                </h2>
+                <div id="collapse{{ $contractId }}"
+                    class="accordion-collapse collapse {{ in_array($contractId, $this->openAccordions) ? 'show' : '' }}"
+                    aria-labelledby="heading{{ $contractId }}" data-bs-parent="#paymentAccordion">
+                    <div class="accordion-body">
+                        <div class="table-responsive text-nowrap">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Customer</th>
+                                        <th>Car</th>
+                                        <th>Amount</th>
+                                        <th>Currency</th>
+                                        <th>Type</th>
+                                        <th>Payment Date</th>
+                                        <th>Status</th>
+                                        <th>Receipt</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($paymentGroup as $payment)
+                                        <tr>
+                                            <td>{{ $payment->id }}</td>
+                                            <td>{{ $payment->customer?->fullName() ?? '-' }}</td>
+                                            <td>{{ $payment->contract?->car?->fullName() ?? '-' }}</td>
+                                            <td>{{ number_format($payment->amount, 2) }}</td>
+                                            <td>{{ $payment->currency }}</td>
+                                            <td>{{ ucfirst(str_replace('_', ' ', $payment->payment_type)) }}</td>
+                                            <td>{{ $payment->payment_date }}</td>
+                                            <td>
+                                                @if ($payment->is_paid)
+                                                    <span class="badge bg-success">Approved</span>
+                                                @else
+                                                    <span class="badge bg-warning">Pending</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($payment->receipt)
+                                                    <a href="{{ asset('storage/' . $payment->receipt) }}"
+                                                        target="_blank">View</a>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-success"
+                                                    wire:click="approve({{ $payment->id }})">Approve</button>
+                                                <button class="btn btn-sm btn-danger"
+                                                    wire:click="reject({{ $payment->id }})">Reject</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="text-center p-3">No payments found.</div>
+        @endforelse
     </div>
 
-    <div class="mt-3">{{ $payments->links() }}</div>
+    <div class="mt-3">{{ $groupedPayments->links() }}</div>
 </div>
