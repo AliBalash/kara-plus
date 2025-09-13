@@ -177,6 +177,22 @@
                             </div>
                         </div>
                     </div>
+
+                    @if ($contract->payment_on_delivery)
+                        @if ($remainingBalance > 0)
+                            <div class="alert alert-warning mt-3">
+                                <strong>Remaining Balance:</strong> {{ number_format($remainingBalance, 2) }}
+                                {{ $contract->currency }}
+                                <br>
+                                Please collect this amount from the customer upon delivery.
+                            </div>
+                        @else
+                            <div class="alert alert-success mt-3">
+                                All payments have been settled. ✅
+                            </div>
+                        @endif
+
+                    @endif
                 </div>
 
                 <button type="submit" class="btn btn-primary mt-3">Upload Documents</button>
