@@ -32,9 +32,9 @@ class RentalRequestPayment extends Component
 
     public $receipt;
     public $finePaid;
-    public $tollPaid;
+    public $salik;
     public $discounts;
-    public $prepaid;
+    public $security_deposit;
     public $rate;
     public $security_note = '';
     public $contract;
@@ -46,8 +46,8 @@ class RentalRequestPayment extends Component
 
     protected $rules = [
         'amount' => 'required|numeric|min:0',
-        'currency' => 'required|in:IRR,USD,AED',
-        'payment_type' => 'required|in:rental_fee,prepaid_fine,toll,fine,discount',
+        'currency' => 'required|in:IRR,USD,AED,EUR',
+        'payment_type' => 'required|in:rental_fee,security_deposit,salik,fine,discount,salik',
         'payment_date' => 'required|date',
         'payment_method' => 'required|in:cash,transfer',
         'is_refundable' => 'required|boolean',
@@ -92,21 +92,21 @@ class RentalRequestPayment extends Component
             ->where('payment_type', 'fine')
             ->sum('amount_in_aed');
 
-        $this->tollPaid = $this->existingPayments
-            ->where('payment_type', 'toll')
+        $this->salik = $this->existingPayments
+            ->where('payment_type', 'salik')
             ->sum('amount_in_aed');
 
         $this->discounts = $this->existingPayments
             ->where('payment_type', 'discount')
             ->sum('amount_in_aed');
 
-        $this->prepaid = $this->existingPayments
-            ->where('payment_type', 'prepaid_fine')
+        $this->security_deposit = $this->existingPayments
+            ->where('payment_type', 'security_deposit')
             ->sum('amount_in_aed');
 
         $this->remainingBalance = $this->totalPrice
-            - ($this->rentalPaid + $this->discounts + $this->prepaid)
-            + $this->finePaid + $this->tollPaid;
+            - ($this->rentalPaid + $this->discounts + $this->security_deposit)
+            + $this->finePaid + $this->salik;
     }
 
 
@@ -124,9 +124,12 @@ class RentalRequestPayment extends Component
             return;
         }
 
-        $aedAmount = $this->currency === 'AED'
-            ? $this->amount
-            : round($this->amount * $this->rate, 2);
+        $aedAmount = match ($this->currency) {
+            'AED' => $this->amount,
+            'IRR' => round($this->amount / $this->rate, 2), // ریال باید تقسیم بشه
+            default => round($this->amount * $this->rate, 2), // USD, EUR و سایر ارزها ضرب میشن
+        };
+
 
         try {
             $receiptPath = null;
