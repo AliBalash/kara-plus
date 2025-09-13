@@ -35,8 +35,8 @@
             <select class="form-select" wire:model.live="paymentTypeFilter">
                 <option value="">All Types</option>
                 <option value="rental_fee">Rental Fee</option>
-                <option value="prepaid_fine">Prepaid Fine</option>
-                <option value="toll">Toll</option>
+                <option value="security_deposit">Security deposit</option>
+                <option value="salik">Salik</option>
                 <option value="fine">Fine</option>
                 <option value="discount">Discount</option>
             </select>

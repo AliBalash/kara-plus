@@ -21,8 +21,8 @@ return new class extends Migration
             $table->decimal('amount', 20, 2); // مبلغ پرداختی
             $table->decimal('rate', 12, 4)->nullable(); // نرخ تبدیل ارز نسبت به ریال
             $table->decimal('amount_in_aed', 20, 2)->nullable(); // مبلغ معادل به درهم
-            $table->enum('currency', ['IRR', 'USD', 'AED'])->default('IRR');
-            $table->enum('payment_type', ['rental_fee', 'prepaid_fine', 'toll', 'fine', 'discount'])->default('rental_fee'); // نوع پرداخت
+            $table->enum('currency', ['IRR', 'USD', 'EUR', 'AED'])->default('IRR');
+            $table->enum('payment_type', ['rental_fee', 'security_deposit', 'salik', 'fine', 'discount'])->default('rental_fee'); // نوع پرداخت
             $table->enum('payment_method', ['cash', 'transfer'])->default('cash');
             $table->text('description')->nullable(); // توضیحات (در صورت نیاز)
             $table->date('payment_date'); // تاریخ پرداخت
