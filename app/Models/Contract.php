@@ -108,6 +108,23 @@ class Contract extends Model
     }
 
 
+    public function calculateRemainingBalance()
+    {
+        $payments = $this->payments()->get();
+
+        $rentalPaid = $payments->where('payment_type', 'rental_fee')->sum('amount_in_aed');
+        $discounts = $payments->where('payment_type', 'discount')->sum('amount_in_aed');
+        $securityDeposit = $payments->where('payment_type', 'security_deposit')->sum('amount_in_aed');
+        $finePaid = $payments->where('payment_type', 'fine')->sum('amount_in_aed');
+        $salik = $payments->where('payment_type', 'salik')->sum('amount_in_aed');
+
+        return $this->total_price
+            - ($rentalPaid + $discounts + $securityDeposit)
+            + $finePaid + $salik;
+    }
+
+
+
     // همه‌ی آیتم‌های قیمت
     public function charges()
     {

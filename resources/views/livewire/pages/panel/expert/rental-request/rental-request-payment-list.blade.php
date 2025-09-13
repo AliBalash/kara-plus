@@ -50,7 +50,7 @@
                         $rentalPaid = $payments->where('payment_type', 'rental_fee')->sum('amount_in_aed');
                         $fines = $payments->where('payment_type', 'fine')->sum('amount_in_aed');
                         $discounts = $payments->where('payment_type', 'discount')->sum('amount_in_aed');
-                        $prepaid = $payments->where('payment_type', 'prepaid_fine')->sum('amount_in_aed');
+                        $prepaid = $payments->where('payment_type', 'security_deposit')->sum('amount_in_aed');
 
                         $remaining = $contract->total_price - ($rentalPaid + $discounts) + $fines;
                     @endphp
