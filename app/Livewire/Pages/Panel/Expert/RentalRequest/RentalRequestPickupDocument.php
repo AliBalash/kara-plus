@@ -67,12 +67,7 @@ class RentalRequestPickupDocument extends Component
                 : null,
         ];
 
-        $totalPrice = $this->contract->total_price ?? 0;
-        $paid = Payment::where('contract_id', $contractId)
-            ->where('is_paid', true)
-            ->sum('amount');
-
-        $this->remainingBalance = $totalPrice - $paid;
+        $this->remainingBalance = $this->contract->calculateRemainingBalance();
     }
 
     public function uploadDocuments()
