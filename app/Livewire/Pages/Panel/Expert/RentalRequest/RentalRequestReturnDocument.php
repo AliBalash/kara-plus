@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
+use App\Models\Payment;
 use App\Models\ReturnDocument;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -24,10 +25,15 @@ class RentalRequestReturnDocument extends Component
     public $note;
     public $existingFiles = [];
 
+    public $remainingBalance;
+    public $contract;
 
 
     public function mount($contractId)
     {
+        $this->contractId = $contractId;
+        $this->contract = Contract::findOrFail($contractId);
+
         $this->contractId = $contractId;
         $return = ReturnDocument::where('contract_id', $contractId)->first();
         if (!empty($return)) {
@@ -49,6 +55,8 @@ class RentalRequestReturnDocument extends Component
                 ? Storage::url("ReturnDocument/car_video_inside_{$this->contractId}.mp4")
                 : null,
         ];
+
+        $this->remainingBalance = $this->contract->calculateRemainingBalance();
     }
 
     public function uploadDocuments()
