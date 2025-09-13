@@ -37,6 +37,7 @@
                             <option value="IRR">Rial</option>
                             <option value="USD">Dollar</option>
                             <option value="AED">Dirham</option>
+                            <option value="EUR">Euro</option>
                         </select>
                         @error('currency')
                             <span class="text-danger">{{ $message }}</span>
@@ -62,8 +63,8 @@
                         <select class="form-control" wire:model="payment_type">
                             <option value="">Select Payment Type</option>
                             <option value="rental_fee">Rental Fee</option>
-                            <option value="Security_deposit">Security deposit</option>
-                            <option value="Salic">SaliK</option>
+                            <option value="security_deposit">Security deposit</option>
+                            <option value="salik">Salik</option>
                             <option value="fine">Fine</option>
                             <option value="discount">Discount</option>
 
@@ -104,9 +105,15 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Receipt Upload (Optional)</label>
                         <input type="file" class="form-control" wire:model="receipt">
+
                         @error('receipt')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
+
+                        {{-- لودینگ برای آپلود فایل --}}
+                        <div wire:loading wire:target="receipt" class="text-primary mt-2">
+                            <i class="spinner-border spinner-border-sm"></i> Uploading...
+                        </div>
 
                         @if ($receipt)
                             <div class="mt-2">
@@ -117,7 +124,13 @@
                         @endif
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary mt-3">Submit Payment</button>
+
+                {{-- دکمه سابمیت --}}
+                <button type="submit" class="btn btn-primary mt-3" wire:loading.attr="disabled"
+                    wire:target="receipt,submitPayment">
+                    Submit Payment
+                </button>
+
             </form>
 
 
@@ -180,13 +193,13 @@
                 'color' => 'danger',
             ],
             [
-                'key' => 'Security_deposit',
+                'key' => 'security_deposit',
                 'label' => 'Security deposit',
-                'value' => $prepaid,
+                'value' => $security_deposit,
                 'icon' => 'bi-wallet2',
                 'color' => 'info',
             ],
-            ['key' => 'Salic', 'label' => 'Salik', 'value' => $tollPaid, 'icon' => 'bi-coin', 'color' => 'secondary'],
+            ['key' => 'salik', 'label' => 'Salik', 'value' => $salik, 'icon' => 'bi-coin', 'color' => 'secondary'],
             [
                 'key' => 'remaining',
                 'label' => 'Remaining',
@@ -218,10 +231,10 @@
                                             – (
                                             <span class="text-success">{{ number_format($rentalPaid, 2) }}</span> +
                                             <span class="text-warning">{{ number_format($discounts, 2) }}</span> +
-                                            <span class="text-info">{{ number_format($prepaid, 2) }}</span>
+                                            <span class="text-info">{{ number_format($security_deposit, 2) }}</span>
                                             )
                                             + <span class="text-danger">{{ number_format($finePaid, 2) }}</span>
-                                            + <span class="text-secondary">{{ number_format($tollPaid, 2) }}</span>
+                                            + <span class="text-secondary">{{ number_format($salik, 2) }}</span>
                                             <span class="fw-bold fs-3 mt-2">
                                                 = {{ number_format($remainingBalance, 2) }}
                                             </span>
@@ -253,6 +266,7 @@
         <table class="table table-bordered">
             <thead>
                 <tr>
+                    <th>#</th>
                     <th>Amount</th>
                     <th>Currency</th>
                     <th>Payment Type</th>
@@ -267,12 +281,13 @@
             <tbody>
                 @forelse ($existingPayments as $payment)
                     <tr>
+                        <td>{{ $payment->id }}</td>
                         <td>{{ number_format($payment->amount, 2) }}</td>
                         <td>{{ $payment->currency }}
                             {{ $payment->currency !== 'AED' ? '( ' . $payment->rate . ' )' : null }}</td>
                         <td>
-                            @if ($payment->payment_type === 'prepaid_fine')
-                                Security_deposit
+                            @if ($payment->payment_type === 'security_deposit')
+                                Security deposit
                             @elseif ($payment->payment_type === 'toll')
                                 Salik
                             @else
