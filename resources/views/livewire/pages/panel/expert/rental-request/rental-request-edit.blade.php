@@ -369,26 +369,9 @@
                                 wire:model.live="pickup_location" data-bs-toggle="tooltip"
                                 title="Select pickup location">
                                 <option value="">Pickup Location</option>
-                                <option value="UAE/Dubai/Clock Tower/Main Branch">UAE/Dubai/Clock Tower/Main Branch
-                                </option>
-                                <option value="UAE/Dubai/Dubai Airport/Terminal 1">UAE/Dubai/Dubai Airport/Terminal
-                                    1</option>
-                                <option value="UAE/Dubai/Dubai Airport/Terminal 2">UAE/Dubai/Dubai Airport/Terminal
-                                    2</option>
-                                <option value="UAE/Dubai/Dubai Airport/Terminal 3">UAE/Dubai/Dubai Airport/Terminal
-                                    3</option>
-                                <option value="UAE/Dubai/Downtown">UAE/Dubai/Downtown</option>
-                                <option value="UAE/Dubai/Jumeirah 1, 2, 3">UAE/Dubai/Jumeirah 1, 2, 3</option>
-                                <option value="UAE/Dubai/Palm">UAE/Dubai/Palm</option>
-                                <option value="UAE/Dubai/Damac Hills">UAE/Dubai/Damac Hills</option>
-                                <option value="UAE/Dubai/JVC">UAE/Dubai/JVC</option>
-                                <option value="UAE/Dubai/JLT">UAE/Dubai/JLT</option>
-                                <option value="UAE/Dubai/Marina">UAE/Dubai/Marina</option>
-                                <option value="UAE/Dubai/JBR">UAE/Dubai/JBR</option>
-                                <option value="UAE/Dubai/Jebel Ali – Ibn Battuta – Hatta & more">UAE/Dubai/Jebel
-                                    Ali – Ibn Battuta – Hatta & more</option>
-                                <option value="UAE/Sharjah Airport">UAE/Sharjah Airport</option>
-                                <option value="UAE/Abu Dhabi Airport">UAE/Abu Dhabi Airport</option>
+                                @foreach (array_keys($this->locationCosts) as $location)
+                                    <option value="{{ $location }}">{{ $location }}</option>
+                                @endforeach
                             </select>
                             @error('pickup_location')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
@@ -402,26 +385,9 @@
                                 wire:model.live="return_location" data-bs-toggle="tooltip"
                                 title="Select return location">
                                 <option value="">Return Location</option>
-                                <option value="UAE/Dubai/Clock Tower/Main Branch">UAE/Dubai/Clock Tower/Main Branch
-                                </option>
-                                <option value="UAE/Dubai/Dubai Airport/Terminal 1">UAE/Dubai/Dubai Airport/Terminal
-                                    1</option>
-                                <option value="UAE/Dubai/Dubai Airport/Terminal 2">UAE/Dubai/Dubai Airport/Terminal
-                                    2</option>
-                                <option value="UAE/Dubai/Dubai Airport/Terminal 3">UAE/Dubai/Dubai Airport/Terminal
-                                    3</option>
-                                <option value="UAE/Dubai/Downtown">UAE/Dubai/Downtown</option>
-                                <option value="UAE/Dubai/Jumeirah 1, 2, 3">UAE/Dubai/Jumeirah 1, 2, 3</option>
-                                <option value="UAE/Dubai/Palm">UAE/Dubai/Palm</option>
-                                <option value="UAE/Dubai/Damac Hills">UAE/Dubai/Damac Hills</option>
-                                <option value="UAE/Dubai/JVC">UAE/Dubai/JVC</option>
-                                <option value="UAE/Dubai/JLT">UAE/Dubai/JLT</option>
-                                <option value="UAE/Dubai/Marina">UAE/Dubai/Marina</option>
-                                <option value="UAE/Dubai/JBR">UAE/Dubai/JBR</option>
-                                <option value="UAE/Dubai/Jebel Ali – Ibn Battuta – Hatta & more">UAE/Dubai/Jebel
-                                    Ali – Ibn Battuta – Hatta & more</option>
-                                <option value="UAE/Sharjah Airport">UAE/Sharjah Airport</option>
-                                <option value="UAE/Abu Dhabi Airport">UAE/Abu Dhabi Airport</option>
+                                @foreach (array_keys($this->locationCosts) as $location)
+                                    <option value="{{ $location }}">{{ $location }}</option>
+                                @endforeach
                             </select>
                             @error('return_location')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
@@ -500,7 +466,7 @@
                             <div class="col-md-6">
                                 <h6 class="mb-2">Additional Services</h6>
                                 @foreach ($services as $key => $service)
-                                    @if (!in_array($key, ['basic_insurance', 'ldw_insurance', 'scdw_insurance']))
+                                    @if (!in_array($key, ['ldw_insurance', 'scdw_insurance']))
                                         <div class="form-check mb-2">
                                             <input class="form-check-input" type="checkbox"
                                                 wire:model.live="selected_services" value="{{ $key }}"
@@ -525,6 +491,26 @@
                             </div>
                             <div class="col-md-6">
                                 <h6 class="mb-2">Insurance</h6>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio"
+                                        wire:model.live="selected_insurance" value="basic_insurance"
+                                        id="insurance-basic" checked disabled data-bs-toggle="tooltip"
+                                        title="Basic Insurance (Included)">
+                                    <label class="form-check-label" for="insurance-basic">
+                                        <i class="fa fa-shield-alt me-2"></i>
+                                        Basic Insurance - Free
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio"
+                                        wire:model.live="selected_insurance" value="" id="insurance-none"
+                                        @if (is_null($selected_insurance)) checked @endif data-bs-toggle="tooltip"
+                                        title="No Additional Insurance">
+                                    <label class="form-check-label" for="insurance-none">
+                                        <i class="fa fa-ban me-2"></i>
+                                        No Additional Insurance - Free
+                                    </label>
+                                </div>
                                 <div class="form-check mb-2">
                                     <input class="form-check-input" type="radio"
                                         wire:model.live="selected_insurance" value="ldw_insurance" id="insurance-ldw"
@@ -567,7 +553,6 @@
             <h5 class="text-primary mb-3">Cost Breakdown</h5>
             <div class="table-responsive">
                 <table class="table table-bordered shadow-sm">
-
                     <tr>
                         <th>Daily Rate (after discount if applied)</th>
                         <td>{{ number_format($dailyRate) }} AED</td>

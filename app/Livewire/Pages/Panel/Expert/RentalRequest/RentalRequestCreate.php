@@ -36,7 +36,7 @@ class RentalRequestCreate extends Component
     public $nationality;
     public $license_number;
     public $selected_services = [];
-    public $selected_insurance = 'ldw_insurance';
+    public $selected_insurance = 'basic_insurance';
     public $services_total = 0;
     public $insurance_total = 0;
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
@@ -47,17 +47,15 @@ class RentalRequestCreate extends Component
     public $rental_days = 1;
     public $dailyRate;
     public $base_price;
-    public $brands; // لیست برندها
-    public $models = []; // لیست مدل‌های برند انتخاب شده
+    public $brands;
+    public $models = [];
     public $carsForModel = [];
     public $services = [];
     public $contract;
     public $kardo_required = true;
     public $payment_on_delivery = true;
-
     public $apply_discount = false;
     public $custom_daily_rate = null;
-
     public $ldw_daily_rate = 0;
     public $scdw_daily_rate = 0;
 
@@ -92,13 +90,8 @@ class RentalRequestCreate extends Component
             $contract->update([
                 'user_id' => auth()->id(),
             ]);
-
             $contract->changeStatus('assigned', auth()->id());
-
             session()->flash('success', 'Contract assigned to you successfully.');
-
-            $contract->changeStatus('assigned', auth()->id());
-
             $this->dispatch('refreshContracts');
         } else {
             session()->flash('error', 'This contract is already assigned to someone.');
@@ -108,11 +101,9 @@ class RentalRequestCreate extends Component
     public function updated($propertyName)
     {
         $this->validateOnly($propertyName);
-
         if ($this->isCostRelatedField($propertyName) || in_array($propertyName, ['apply_discount', 'custom_daily_rate'])) {
             $this->calculateCosts();
         }
-
         if ($propertyName === 'selectedModelId') {
             $this->loadCars();
         }
@@ -129,7 +120,6 @@ class RentalRequestCreate extends Component
             'selected_services',
             'selected_insurance',
         ];
-
         return in_array($propertyName, $costRelatedFields) ||
             Str::startsWith($propertyName, 'selected_services.');
     }
@@ -152,7 +142,6 @@ class RentalRequestCreate extends Component
     public function updatedSelectedCarId()
     {
         $this->calculateCosts();
-        // Reset custom rate when car changes
         $this->custom_daily_rate = null;
         $this->apply_discount = false;
     }
@@ -185,17 +174,12 @@ class RentalRequestCreate extends Component
         if ($this->pickup_date && $this->return_date) {
             $pickup = Carbon::parse($this->pickup_date);
             $return = Carbon::parse($this->return_date);
-
-            // اگر به هر دلیل زمان برگشت برابر یا قبل از تحویل بود، حداقل 1 روز قرار بده
             if ($return->lte($pickup)) {
                 $this->rental_days = 1;
                 return;
             }
-
-            // اختلاف زمان را بر حسب ثانیه بگیر و بر 86400 تقسیم کن و به بالا گرد کن
             $seconds = $return->getTimestamp() - $pickup->getTimestamp();
             $days = (int) ceil($seconds / 86400);
-
             $this->rental_days = max(1, $days);
         } else {
             $this->rental_days = 1;
@@ -264,15 +248,12 @@ class RentalRequestCreate extends Component
             }
         }
 
-        if ($this->selected_insurance && $this->selectedCarId) {
+        if ($this->selected_insurance && in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance']) && $this->selectedCarId) {
             $car = Car::find($this->selectedCarId);
             if ($car) {
-                $insuranceDaily = 0;
-                if ($this->selected_insurance === 'ldw_insurance') {
-                    $insuranceDaily = $this->getInsuranceDailyRate($car, 'ldw', $days);
-                } elseif ($this->selected_insurance === 'scdw_insurance') {
-                    $insuranceDaily = $this->getInsuranceDailyRate($car, 'scdw', $days);
-                }
+                $insuranceDaily = $this->selected_insurance === 'ldw_insurance'
+                    ? $this->getInsuranceDailyRate($car, 'ldw', $days)
+                    : $this->getInsuranceDailyRate($car, 'scdw', $days);
                 $insuranceTotal += $insuranceDaily * $days;
             }
         }
@@ -346,7 +327,7 @@ class RentalRequestCreate extends Component
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
             'nationality' => ['required', 'string', 'max:100'],
             'license_number' => ['nullable', 'string', 'max:50'],
-            'selected_insurance' => ['required', Rule::in(['ldw_insurance', 'scdw_insurance'])],
+            'selected_insurance' => ['nullable', Rule::in(['', 'basic_insurance', 'ldw_insurance', 'scdw_insurance'])],
             'kardo_required' => ['boolean'],
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
@@ -397,9 +378,8 @@ class RentalRequestCreate extends Component
         'nationality.max' => 'Nationality cannot be longer than 100 characters.',
         'license_number.string' => 'License Number must be a string.',
         'license_number.max' => 'License Number cannot be longer than 50 characters.',
-        'selected_insurance.required' => 'You must select an insurance option.',
         'selected_insurance.in' => 'The selected insurance option is invalid.',
-        'payment_on_delivery.boolean' => 'The payment on delivery field must be a boolean value.', // Message for new field
+        'payment_on_delivery.boolean' => 'The payment on delivery field must be a boolean value.',
     ];
 
     public function submit()
@@ -470,7 +450,6 @@ class RentalRequestCreate extends Component
             'description' => ((int)$this->rental_days) . " روز × " . number_format($this->dailyRate, 2) . " درهم" . ($this->apply_discount ? ' (with discount)' : ''),
         ]);
 
-
         if ($this->transfer_costs['pickup'] > 0) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
@@ -538,7 +517,6 @@ class RentalRequestCreate extends Component
     public function changeStatusToReserve($contractId)
     {
         $contract = Contract::findOrFail($contractId);
-
         if ($contract->current_status !== 'reserved') {
             $contract->changeStatus('reserved', auth()->id());
             session()->flash('success', 'Contract status changed to Reserved successfully.');
