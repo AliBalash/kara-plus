@@ -23,8 +23,12 @@ class EditCarForm extends Component
     public $price_per_day_short;
     public $price_per_day_mid;
     public $price_per_day_long;
-    public $ldw_price;
-    public $scdw_price;
+    public $ldw_price_short;
+    public $ldw_price_mid;
+    public $ldw_price_long;
+    public $scdw_price_short;
+    public $scdw_price_mid;
+    public $scdw_price_long;
     public $service_due_date;
     public $damage_report;
     public $manufacturing_year;
@@ -43,7 +47,6 @@ class EditCarForm extends Component
     public $existingImageUrl;
     public $is_featured = false;
 
-
     protected $rules = [
         'plate_number' => 'required|string|max:255',
         'status' => 'required|in:available,reserved,under_maintenance',
@@ -52,8 +55,12 @@ class EditCarForm extends Component
         'price_per_day_short' => 'required|numeric|min:0',
         'price_per_day_mid' => 'nullable|numeric|min:0',
         'price_per_day_long' => 'nullable|numeric|min:0',
-        'ldw_price' => 'nullable|numeric|min:0',
-        'scdw_price' => 'nullable|numeric|min:0',
+        'ldw_price_short' => 'nullable|numeric|min:0',
+        'ldw_price_mid' => 'nullable|numeric|min:0',
+        'ldw_price_long' => 'nullable|numeric|min:0',
+        'scdw_price_short' => 'nullable|numeric|min:0',
+        'scdw_price_mid' => 'nullable|numeric|min:0',
+        'scdw_price_long' => 'nullable|numeric|min:0',
         'service_due_date' => 'nullable|date',
         'damage_report' => 'nullable|string',
         'manufacturing_year' => 'required|numeric|min:1900',
@@ -84,8 +91,12 @@ class EditCarForm extends Component
         $this->price_per_day_short = $this->car->price_per_day_short;
         $this->price_per_day_mid = $this->car->price_per_day_mid;
         $this->price_per_day_long = $this->car->price_per_day_long;
-        $this->ldw_price = $this->car->ldw_price;
-        $this->scdw_price = $this->car->scdw_price;
+        $this->ldw_price_short = $this->car->ldw_price_short;
+        $this->ldw_price_mid = $this->car->ldw_price_mid;
+        $this->ldw_price_long = $this->car->ldw_price_long;
+        $this->scdw_price_short = $this->car->scdw_price_short;
+        $this->scdw_price_mid = $this->car->scdw_price_mid;
+        $this->scdw_price_long = $this->car->scdw_price_long;
         $this->service_due_date = $this->car->service_due_date;
         $this->damage_report = $this->car->damage_report;
         $this->manufacturing_year = $this->car->manufacturing_year;
@@ -134,8 +145,12 @@ class EditCarForm extends Component
             'price_per_day_short' => $this->price_per_day_short,
             'price_per_day_mid' => $this->price_per_day_mid,
             'price_per_day_long' => $this->price_per_day_long,
-            'ldw_price' => $this->ldw_price,
-            'scdw_price' => $this->scdw_price,
+            'ldw_price_short' => $this->ldw_price_short,
+            'ldw_price_mid' => $this->ldw_price_mid,
+            'ldw_price_long' => $this->ldw_price_long,
+            'scdw_price_short' => $this->scdw_price_short,
+            'scdw_price_mid' => $this->scdw_price_mid,
+            'scdw_price_long' => $this->scdw_price_long,
             'damage_report' => $this->damage_report,
             'manufacturing_year' => $this->manufacturing_year,
             'color' => $this->color,
@@ -152,8 +167,6 @@ class EditCarForm extends Component
             'registration_status' => $this->registration_status,
             'notes' => $this->notes,
         ]);
-
-
 
         // Update car options
         $this->car->options()->delete();
