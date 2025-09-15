@@ -193,7 +193,7 @@
                     <div class="card-body demo-vertical-spacing demo-only-element">
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-car"></i></span>
-                            <select class="form-control @error('selectedBrand') is-invalid @enderror"
+                            <select class="form-control text-uppercase @error('selectedBrand') is-invalid @enderror"
                                 wire:model.live="selectedBrand" required data-bs-toggle="tooltip"
                                 title="Select car brand">
                                 <option value="">Select Brand</option>
@@ -202,24 +202,26 @@
                                 @endforeach
                             </select>
                             @error('selectedBrand')
-                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
                         @if ($selectedBrand)
                             <div class="input-group mb-3">
                                 <span class="input-group-text"><i class="bx bx-car"></i></span>
-                                <select class="form-control @error('selectedModelId') is-invalid @enderror"
+                                <select
+                                    class="form-control text-uppercase @error('selectedModelId') is-invalid @enderror"
                                     wire:model.live="selectedModelId" required data-bs-toggle="tooltip"
                                     title="Select car model">
                                     <option value="">Select Model</option>
                                     @foreach ($models as $model)
-                                        <option value="{{ $model->id }}">{{ $model->model }}</option>
+                                        <option value="{{ $model->id }}">
+                                            {{ $model->model }}
+                                        </option>
                                     @endforeach
                                 </select>
                                 @error('selectedModelId')
-                                    <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
-                                    </div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         @endif
@@ -240,8 +242,7 @@
                                     @endforeach
                                 </select>
                                 @error('selectedCarId')
-                                    <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
-                                    </div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         @endif
@@ -491,8 +492,8 @@
                                     <label class="form-check-label" for="insurance-ldw">
                                         <i class="fa {{ $services['ldw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['ldw_insurance']['label_en'] }} -
-                                        @if ($selectedCarId && isset($services['ldw_insurance']['amount']) && $services['ldw_insurance']['amount'] > 0)
-                                            {{ number_format($services['ldw_insurance']['amount']) }} AED/day
+                                        @if ($selectedCarId && $ldw_daily_rate > 0)
+                                            {{ number_format($ldw_daily_rate) }} AED/day
                                         @else
                                             --
                                         @endif
@@ -506,8 +507,8 @@
                                     <label class="form-check-label" for="insurance-scdw">
                                         <i class="fa {{ $services['scdw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['scdw_insurance']['label_en'] }} -
-                                        @if ($selectedCarId && isset($services['scdw_insurance']['amount']) && $services['scdw_insurance']['amount'] > 0)
-                                            {{ number_format($services['scdw_insurance']['amount']) }} AED/day
+                                        @if ($selectedCarId && $scdw_daily_rate > 0)
+                                            {{ number_format($scdw_daily_rate) }} AED/day
                                         @else
                                             --
                                         @endif
