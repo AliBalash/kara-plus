@@ -42,7 +42,7 @@ class RentalRequestEdit extends Component
     public $customerDocumentsCompleted = false;
     public $paymentsExist = false;
     public $selected_services = [];
-    public $selected_insurance = 'ldw_insurance'; // پیش‌فرض روی LDW تنظیم می‌شه    public $selected_insurance = null;
+    public $selected_insurance = 'ldw_insurance'; // پیش‌فرض روی LDW تنظیم می‌شه
     public $services_total = 0;
     public $insurance_total = 0;
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
@@ -65,9 +65,10 @@ class RentalRequestEdit extends Component
     public $apply_discount = false;
     public $custom_daily_rate = null;
 
-
     public $carsForModel = [];
 
+    public $ldw_daily_rate = 0;
+    public $scdw_daily_rate = 0;
 
 
     private $locationCosts = [
@@ -257,9 +258,13 @@ class RentalRequestEdit extends Component
                 ? $this->custom_daily_rate
                 : ($this->contract->used_daily_rate ?? $standardRate);
             $this->base_price = round($this->dailyRate * $this->rental_days, 2);
+            $this->ldw_daily_rate = $this->getInsuranceDailyRate($car, 'ldw', $this->rental_days);
+            $this->scdw_daily_rate = $this->getInsuranceDailyRate($car, 'scdw', $this->rental_days);
         } else {
             $this->dailyRate = 0;
             $this->base_price = 0;
+            $this->ldw_daily_rate = 0;
+            $this->scdw_daily_rate = 0;
         }
     }
 
@@ -271,9 +276,17 @@ class RentalRequestEdit extends Component
 
     private function getCarDailyRate(Car $car, int $days): float
     {
-        if ($days >= 28) return $car->price_per_day_long;
-        if ($days >= 7) return $car->price_per_day_mid;
+        if ($days >= 28) return $car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short;
+        if ($days >= 7) return $car->price_per_day_mid ?? $car->price_per_day_short;
         return $car->price_per_day_short;
+    }
+
+    private function getInsuranceDailyRate(Car $car, string $type, int $days): float
+    {
+        $prefix = $type . '_price_';
+        if ($days >= 28) return $car->{$prefix . 'long'} ?? $car->{$prefix . 'mid'} ?? $car->{$prefix . 'short'} ?? 0;
+        if ($days >= 7) return $car->{$prefix . 'mid'} ?? $car->{$prefix . 'short'} ?? 0;
+        return $car->{$prefix . 'short'} ?? 0;
     }
 
     private function calculateTransferCosts()
@@ -311,11 +324,13 @@ class RentalRequestEdit extends Component
         if ($this->selected_insurance && $this->selectedCarId) {
             $car = Car::find($this->selectedCarId);
             if ($car) {
+                $insuranceDaily = 0;
                 if ($this->selected_insurance === 'ldw_insurance') {
-                    $insuranceTotal += ($car->ldw_price ?? 0) * $days;
+                    $insuranceDaily = $this->getInsuranceDailyRate($car, 'ldw', $days);
                 } elseif ($this->selected_insurance === 'scdw_insurance') {
-                    $insuranceTotal += ($car->scdw_price ?? 0) * $days;
+                    $insuranceDaily = $this->getInsuranceDailyRate($car, 'scdw', $days);
                 }
+                $insuranceTotal += $insuranceDaily * $days;
             }
         }
 
@@ -363,6 +378,7 @@ class RentalRequestEdit extends Component
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
             'nationality' => ['required', 'string', 'max:100'],
             'license_number' => ['nullable', 'string', 'max:50'],
+            'selected_insurance' => ['required', Rule::in(['ldw_insurance', 'scdw_insurance'])],
             'kardo_required' => ['boolean'],
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
@@ -542,11 +558,8 @@ class RentalRequestEdit extends Component
             $insuranceAmount = 0;
             $car = Car::find($this->selectedCarId);
 
-            if ($this->selected_insurance === 'ldw_insurance' && $car) {
-                $insuranceAmount = ($car->ldw_price ?? 0) * $this->rental_days;
-            } elseif ($this->selected_insurance === 'scdw_insurance' && $car) {
-                $insuranceAmount = ($car->scdw_price ?? 0) * $this->rental_days;
-            }
+            $insuranceDaily = $this->getInsuranceDailyRate($car, str_replace('_insurance', '', $this->selected_insurance), $this->rental_days);
+            $insuranceAmount = $insuranceDaily * $this->rental_days;
 
             if ($insuranceAmount > 0) {
                 ContractCharges::create([
@@ -710,16 +723,9 @@ class RentalRequestEdit extends Component
     public function updatedSelectedCarId()
     {
         $this->calculateCosts();
-        if ($this->selectedCarId) {
-            $car = Car::find($this->selectedCarId);
-            if ($car) {
-                $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
-                $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
-            }
-            // Reset custom rate when car changes
-            $this->custom_daily_rate = null;
-            $this->apply_discount = false;
-        }
+        // Reset custom rate when car changes
+        $this->custom_daily_rate = null;
+        $this->apply_discount = false;
     }
 
     public function render()
@@ -741,6 +747,8 @@ class RentalRequestEdit extends Component
         return view('livewire.pages.panel.expert.rental-request.rental-request-edit', [
             'brands' => $this->brands,
             'services' => $services,
+            'ldw_daily_rate' => $this->ldw_daily_rate,
+            'scdw_daily_rate' => $this->scdw_daily_rate,
         ]);
     }
 }
