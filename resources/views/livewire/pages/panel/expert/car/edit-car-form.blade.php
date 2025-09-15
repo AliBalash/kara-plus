@@ -108,22 +108,66 @@
                                 @enderror
                             </div>
 
-                            <!-- LDW Insurance Price -->
+                            <!-- LDW Insurance Short -->
                             <div class="input-group">
-                                <span class="input-group-text">LDW Insurance (per day)</span>
-                                <input type="number" class="form-control @error('ldw_price') is-invalid @enderror"
-                                    wire:model="ldw_price" placeholder="LDW insurance daily price">
-                                @error('ldw_price')
+                                <span class="input-group-text">LDW Insurance (1-6 days)</span>
+                                <input type="number"
+                                    class="form-control @error('ldw_price_short') is-invalid @enderror"
+                                    wire:model="ldw_price_short" placeholder="LDW short-term daily price">
+                                @error('ldw_price_short')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
 
-                            <!-- SCDW Insurance Price -->
+                            <!-- LDW Insurance Mid -->
                             <div class="input-group">
-                                <span class="input-group-text">SCDW Insurance (per day)</span>
-                                <input type="number" class="form-control @error('scdw_price') is-invalid @enderror"
-                                    wire:model="scdw_price" placeholder="SCDW insurance daily price">
-                                @error('scdw_price')
+                                <span class="input-group-text">LDW Insurance (7-28 days)</span>
+                                <input type="number" class="form-control @error('ldw_price_mid') is-invalid @enderror"
+                                    wire:model="ldw_price_mid" placeholder="LDW mid-term daily price">
+                                @error('ldw_price_mid')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- LDW Insurance Long -->
+                            <div class="input-group">
+                                <span class="input-group-text">LDW Insurance (28+ days)</span>
+                                <input type="number" class="form-control @error('ldw_price_long') is-invalid @enderror"
+                                    wire:model="ldw_price_long" placeholder="LDW long-term daily price">
+                                @error('ldw_price_long')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- SCDW Insurance Short -->
+                            <div class="input-group">
+                                <span class="input-group-text">SCDW Insurance (1-6 days)</span>
+                                <input type="number"
+                                    class="form-control @error('scdw_price_short') is-invalid @enderror"
+                                    wire:model="scdw_price_short" placeholder="SCDW short-term daily price">
+                                @error('scdw_price_short')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- SCDW Insurance Mid -->
+                            <div class="input-group">
+                                <span class="input-group-text">SCDW Insurance (7-28 days)</span>
+                                <input type="number"
+                                    class="form-control @error('scdw_price_mid') is-invalid @enderror"
+                                    wire:model="scdw_price_mid" placeholder="SCDW mid-term daily price">
+                                @error('scdw_price_mid')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- SCDW Insurance Long -->
+                            <div class="input-group">
+                                <span class="input-group-text">SCDW Insurance (28+ days)</span>
+                                <input type="number"
+                                    class="form-control @error('scdw_price_long') is-invalid @enderror"
+                                    wire:model="scdw_price_long" placeholder="SCDW long-term daily price">
+                                @error('scdw_price_long')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -414,7 +458,7 @@
                                 </select>
                             </div>
 
-                            
+
 
                             {{-- Unlimited Kilometers --}}
                             <div class="form-check form-switch mb-3">
@@ -433,7 +477,7 @@
                                 <label class="form-check-label" for="base_insurance">Base Insurance</label>
                             </div>
 
-                            
+
                         </div>
                     </div>
                 </div>
