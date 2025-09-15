@@ -47,8 +47,8 @@ class RentalRequestCreate extends Component
     public $rental_days = 1;
     public $dailyRate;
     public $base_price;
-    public $brands = [];
-    public $models = [];
+    public $brands; // لیست برندها
+    public $models = []; // لیست مدل‌های برند انتخاب شده
     public $carsForModel = [];
     public $services = [];
     public $contract;
@@ -57,6 +57,9 @@ class RentalRequestCreate extends Component
 
     public $apply_discount = false;
     public $custom_daily_rate = null;
+
+    public $ldw_daily_rate = 0;
+    public $scdw_daily_rate = 0;
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
@@ -93,6 +96,8 @@ class RentalRequestCreate extends Component
             $contract->changeStatus('assigned', auth()->id());
 
             session()->flash('success', 'Contract assigned to you successfully.');
+
+            $contract->changeStatus('assigned', auth()->id());
 
             $this->dispatch('refreshContracts');
         } else {
@@ -147,16 +152,9 @@ class RentalRequestCreate extends Component
     public function updatedSelectedCarId()
     {
         $this->calculateCosts();
-        if ($this->selectedCarId) {
-            $car = Car::find($this->selectedCarId);
-            if ($car) {
-                $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
-                $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
-            }
-            // Reset custom rate when car changes
-            $this->custom_daily_rate = null;
-            $this->apply_discount = false;
-        }
+        // Reset custom rate when car changes
+        $this->custom_daily_rate = null;
+        $this->apply_discount = false;
     }
 
     private function loadModels()
@@ -211,9 +209,13 @@ class RentalRequestCreate extends Component
             $standardRate = $this->getCarDailyRate($car, $this->rental_days);
             $this->dailyRate = ($this->apply_discount && $this->custom_daily_rate) ? $this->custom_daily_rate : $standardRate;
             $this->base_price = round($this->dailyRate * $this->rental_days, 2);
+            $this->ldw_daily_rate = $this->getInsuranceDailyRate($car, 'ldw', $this->rental_days);
+            $this->scdw_daily_rate = $this->getInsuranceDailyRate($car, 'scdw', $this->rental_days);
         } else {
             $this->dailyRate = 0;
             $this->base_price = 0;
+            $this->ldw_daily_rate = 0;
+            $this->scdw_daily_rate = 0;
         }
     }
 
@@ -222,6 +224,14 @@ class RentalRequestCreate extends Component
         if ($days >= 28) return $car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short;
         if ($days >= 7) return $car->price_per_day_mid ?? $car->price_per_day_short;
         return $car->price_per_day_short;
+    }
+
+    private function getInsuranceDailyRate(Car $car, string $type, int $days): float
+    {
+        $prefix = $type . '_price_';
+        if ($days >= 28) return $car->{$prefix . 'long'} ?? $car->{$prefix . 'mid'} ?? $car->{$prefix . 'short'} ?? 0;
+        if ($days >= 7) return $car->{$prefix . 'mid'} ?? $car->{$prefix . 'short'} ?? 0;
+        return $car->{$prefix . 'short'} ?? 0;
     }
 
     private function calculateTransferCosts()
@@ -257,11 +267,13 @@ class RentalRequestCreate extends Component
         if ($this->selected_insurance && $this->selectedCarId) {
             $car = Car::find($this->selectedCarId);
             if ($car) {
+                $insuranceDaily = 0;
                 if ($this->selected_insurance === 'ldw_insurance') {
-                    $insuranceTotal += ($car->ldw_price ?? 0) * $days;
+                    $insuranceDaily = $this->getInsuranceDailyRate($car, 'ldw', $days);
                 } elseif ($this->selected_insurance === 'scdw_insurance') {
-                    $insuranceTotal += ($car->scdw_price ?? 0) * $days;
+                    $insuranceDaily = $this->getInsuranceDailyRate($car, 'scdw', $days);
                 }
+                $insuranceTotal += $insuranceDaily * $days;
             }
         }
 
@@ -497,21 +509,18 @@ class RentalRequestCreate extends Component
             $insuranceAmount = 0;
             $car = Car::find($this->selectedCarId);
             if ($car) {
-                if ($this->selected_insurance === 'ldw_insurance') {
-                    $insuranceAmount = ($car->ldw_price ?? 0) * $this->rental_days;
-                } elseif ($this->selected_insurance === 'scdw_insurance') {
-                    $insuranceAmount = ($car->scdw_price ?? 0) * $this->rental_days;
-                }
+                $insuranceDaily = $this->getInsuranceDailyRate($car, str_replace('_insurance', '', $this->selected_insurance), $this->rental_days);
+                $insuranceAmount = $insuranceDaily * $this->rental_days;
+            }
 
-                if ($insuranceAmount > 0) {
-                    ContractCharges::create([
-                        'contract_id' => $contract->id,
-                        'title' => $this->selected_insurance,
-                        'amount' => $insuranceAmount,
-                        'type' => 'insurance',
-                        'description' => ((int)$this->rental_days) . " روز",
-                    ]);
-                }
+            if ($insuranceAmount > 0) {
+                ContractCharges::create([
+                    'contract_id' => $contract->id,
+                    'title' => $this->selected_insurance,
+                    'amount' => $insuranceAmount,
+                    'type' => 'insurance',
+                    'description' => ((int)$this->rental_days) . " روز",
+                ]);
             }
         }
 
@@ -541,14 +550,6 @@ class RentalRequestCreate extends Component
 
     public function render()
     {
-        if ($this->selectedCarId) {
-            $car = Car::find($this->selectedCarId);
-            if ($car) {
-                $this->services['ldw_insurance']['amount'] = $car->ldw_price ?? 0;
-                $this->services['scdw_insurance']['amount'] = $car->scdw_price ?? 0;
-            }
-        }
-
         $services = array_map(function ($service) {
             $service['label'] = $service['label_en'];
             return $service;
@@ -557,6 +558,8 @@ class RentalRequestCreate extends Component
         return view('livewire.pages.panel.expert.rental-request.rental-request-create', [
             'brands' => $this->brands,
             'services' => $services,
+            'ldw_daily_rate' => $this->ldw_daily_rate,
+            'scdw_daily_rate' => $this->scdw_daily_rate,
         ]);
     }
 }
