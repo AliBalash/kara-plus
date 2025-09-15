@@ -533,8 +533,8 @@
                                     <label class="form-check-label" for="insurance-ldw">
                                         <i class="fa {{ $services['ldw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['ldw_insurance']['label_en'] }} -
-                                        @if ($selectedCarId && isset($services['ldw_insurance']['amount']) && $services['ldw_insurance']['amount'] > 0)
-                                            {{ number_format($services['ldw_insurance']['amount']) }} AED/day
+                                        @if ($selectedCarId && $ldw_daily_rate > 0)
+                                            {{ number_format($ldw_daily_rate) }} AED/day
                                         @else
                                             --
                                         @endif
@@ -548,13 +548,12 @@
                                     <label class="form-check-label" for="insurance-scdw">
                                         <i class="fa {{ $services['scdw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['scdw_insurance']['label_en'] }} -
-                                        @if ($selectedCarId && isset($services['scdw_insurance']['amount']) && $services['scdw_insurance']['amount'] > 0)
-                                            {{ number_format($services['scdw_insurance']['amount']) }} AED/day
+                                        @if ($selectedCarId && $scdw_daily_rate > 0)
+                                            {{ number_format($scdw_daily_rate) }} AED/day
                                         @else
                                             --
                                         @endif
                                     </label>
-
                                 </div>
                             </div>
                         </div>
