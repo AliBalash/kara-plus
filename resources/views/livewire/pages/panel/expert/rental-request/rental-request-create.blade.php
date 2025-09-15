@@ -23,7 +23,6 @@
         @endif
     @endisset
 
-
     @if (session()->has('success'))
         <div class="alert alert-success animate__animated animate__fadeIn">
             {{ session('success') }}
@@ -447,7 +446,6 @@
                             @enderror
                         </div>
 
-
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-note"></i></span>
                             <textarea class="form-control" wire:model="notes" placeholder="Contract Notes" data-bs-toggle="tooltip"
@@ -484,6 +482,26 @@
                             </div>
                             <div class="col-md-6">
                                 <h6 class="mb-2">Insurance</h6>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio"
+                                        wire:model.live="selected_insurance" value="basic_insurance"
+                                        id="insurance-basic" checked disabled data-bs-toggle="tooltip"
+                                        title="Basic Insurance (Included)">
+                                    <label class="form-check-label" for="insurance-basic">
+                                        <i class="fa fa-shield-alt me-2"></i>
+                                        Basic Insurance - Free
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio"
+                                        wire:model.live="selected_insurance" value="" id="insurance-none"
+                                        @if (is_null($selected_insurance)) checked @endif data-bs-toggle="tooltip"
+                                        title="No Additional Insurance">
+                                    <label class="form-check-label" for="insurance-none">
+                                        <i class="fa fa-ban me-2"></i>
+                                        No Additional Insurance - Free
+                                    </label>
+                                </div>
                                 <div class="form-check mb-2">
                                     <input class="form-check-input" type="radio"
                                         wire:model.live="selected_insurance" value="ldw_insurance" id="insurance-ldw"
@@ -526,12 +544,10 @@
             <h5 class="text-primary mb-3">Cost Breakdown</h5>
             <div class="table-responsive">
                 <table class="table table-bordered shadow-sm">
-
                     <tr>
                         <th>Daily Rate (after discount if applied)</th>
                         <td>{{ number_format($dailyRate) }} AED</td>
                     </tr>
-
                     <tr>
                         <th>Base Rental Cost
                             @if ($rental_days)
