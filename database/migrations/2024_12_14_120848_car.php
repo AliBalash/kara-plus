@@ -21,8 +21,12 @@ return new class extends Migration
             $table->decimal('price_per_day_short', 10, 2); // 1 تا 6 روز
             $table->decimal('price_per_day_mid', 10, 2)->nullable(); // 7 تا 28 روز
             $table->decimal('price_per_day_long', 10, 2)->nullable(); // 28 روز به بالا            
-            $table->decimal('ldw_price', 10, 2)->default(0);
-            $table->decimal('scdw_price', 10, 2)->default(0);
+            $table->decimal('ldw_price_short', 10, 2)->default(0);
+            $table->decimal('ldw_price_mid', 10, 2)->default(0);
+            $table->decimal('ldw_price_long', 10, 2)->default(0);
+            $table->decimal('scdw_price_short', 10, 2)->default(0);
+            $table->decimal('scdw_price_mid', 10, 2)->default(0);
+            $table->decimal('scdw_price_long', 10, 2)->default(0);
             $table->date('service_due_date')->nullable(); // تاریخ موعد سرویس
             $table->text('damage_report')->nullable(); // گزارش خسارت
             $table->year('manufacturing_year'); // سال ساخت خودرو
