@@ -33,7 +33,8 @@
                             @if ($selectedBrand)
                                 <div class="input-group mt-3">
                                     <span class="input-group-text">Car Model</span>
-                                    <select class="form-control text-uppercase @error('selectedModelId') is-invalid @enderror"
+                                    <select
+                                        class="form-control text-uppercase @error('selectedModelId') is-invalid @enderror"
                                         wire:model.live="selectedModelId" required>
                                         <option value="">Select Model</option>
                                         @foreach ($models as $model)
@@ -104,7 +105,7 @@
                                     <span class="input-group-text">Price (1-6 days)</span>
                                     <input type="number"
                                         class="form-control @error('price_per_day_short') is-invalid @enderror"
-                                        wire:model="price_per_day_short" placeholder="Price for short-term (درهم)"
+                                        wire:model="price_per_day_short" placeholder="Price for short-term"
                                         required>
                                     @error('price_per_day_short')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -116,7 +117,7 @@
                                     <span class="input-group-text">Price (7-28 days)</span>
                                     <input type="number"
                                         class="form-control @error('price_per_day_mid') is-invalid @enderror"
-                                        wire:model="price_per_day_mid" placeholder="Price for mid-term (درهم)">
+                                        wire:model="price_per_day_mid" placeholder="Price for mid-term">
                                     @error('price_per_day_mid')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -127,29 +128,74 @@
                                     <span class="input-group-text">Price (28+ days)</span>
                                     <input type="number"
                                         class="form-control @error('price_per_day_long') is-invalid @enderror"
-                                        wire:model="price_per_day_long" placeholder="Price for long-term (درهم)">
+                                        wire:model="price_per_day_long" placeholder="Price for long-term">
                                     @error('price_per_day_long')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
 
-                                <!-- LDW Insurance Price -->
+                                <!-- LDW Insurance Short -->
                                 <div class="input-group">
-                                    <span class="input-group-text">LDW Insurance (per day)</span>
-                                    <input type="number" class="form-control @error('ldw_price') is-invalid @enderror"
-                                        wire:model="ldw_price" placeholder="LDW insurance daily price">
-                                    @error('ldw_price')
+                                    <span class="input-group-text">LDW Insurance (1-6 days)</span>
+                                    <input type="number"
+                                        class="form-control @error('ldw_price_short') is-invalid @enderror"
+                                        wire:model="ldw_price_short" placeholder="LDW short-term daily price">
+                                    @error('ldw_price_short')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
 
-                                <!-- SCDW Insurance Price -->
+                                <!-- LDW Insurance Mid -->
                                 <div class="input-group">
-                                    <span class="input-group-text">SCDW Insurance (per day)</span>
+                                    <span class="input-group-text">LDW Insurance (7-28 days)</span>
                                     <input type="number"
-                                        class="form-control @error('scdw_price') is-invalid @enderror"
-                                        wire:model="scdw_price" placeholder="SCDW insurance daily price">
-                                    @error('scdw_price')
+                                        class="form-control @error('ldw_price_mid') is-invalid @enderror"
+                                        wire:model="ldw_price_mid" placeholder="LDW mid-term daily price">
+                                    @error('ldw_price_mid')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- LDW Insurance Long -->
+                                <div class="input-group">
+                                    <span class="input-group-text">LDW Insurance (28+ days)</span>
+                                    <input type="number"
+                                        class="form-control @error('ldw_price_long') is-invalid @enderror"
+                                        wire:model="ldw_price_long" placeholder="LDW long-term daily price">
+                                    @error('ldw_price_long')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- SCDW Insurance Short -->
+                                <div class="input-group">
+                                    <span class="input-group-text">SCDW Insurance (1-6 days)</span>
+                                    <input type="number"
+                                        class="form-control @error('scdw_price_short') is-invalid @enderror"
+                                        wire:model="scdw_price_short" placeholder="SCDW short-term daily price">
+                                    @error('scdw_price_short')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- SCDW Insurance Mid -->
+                                <div class="input-group">
+                                    <span class="input-group-text">SCDW Insurance (7-28 days)</span>
+                                    <input type="number"
+                                        class="form-control @error('scdw_price_mid') is-invalid @enderror"
+                                        wire:model="scdw_price_mid" placeholder="SCDW mid-term daily price">
+                                    @error('scdw_price_mid')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <!-- SCDW Insurance Long -->
+                                <div class="input-group">
+                                    <span class="input-group-text">SCDW Insurance (28+ days)</span>
+                                    <input type="number"
+                                        class="form-control @error('scdw_price_long') is-invalid @enderror"
+                                        wire:model="scdw_price_long" placeholder="SCDW long-term daily price">
+                                    @error('scdw_price_long')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -159,7 +205,7 @@
                                     <span class="input-group-text" id="service-due-date-addon">Service Due Date</span>
                                     <input type="date"
                                         class="form-control @error('service_due_date') is-invalid @enderror"
-                                        name="service_due_date" wire:model="service_due_date" >
+                                        name="service_due_date" wire:model="service_due_date">
                                     @error('service_due_date')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -223,7 +269,6 @@
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
-
                             @endif
 
                         </div>
@@ -408,7 +453,7 @@
                                 </select>
                             </div>
 
-                            
+
 
 
                             {{-- Unlimited Kilometers --}}

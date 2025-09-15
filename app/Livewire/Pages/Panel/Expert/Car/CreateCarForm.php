@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Car;
 
-
 use App\Models\Car;
 use App\Models\CarModel;
 use Livewire\Component;
@@ -20,8 +19,12 @@ class CreateCarForm extends Component
     public $price_per_day_short;
     public $price_per_day_mid;
     public $price_per_day_long;
-    public $ldw_price;
-    public $scdw_price;
+    public $ldw_price_short;
+    public $ldw_price_mid;
+    public $ldw_price_long;
+    public $scdw_price_short;
+    public $scdw_price_mid;
+    public $scdw_price_long;
     public $service_due_date;
     public $damage_report;
     public $manufacturing_year;
@@ -44,7 +47,6 @@ class CreateCarForm extends Component
     public $selectedModelId = ''; // مدل انتخاب شده
     public $plate_number;
 
-
     protected $rules = [
         'selectedBrand' => 'required',
         'selectedModelId' => 'required|exists:car_models,id',
@@ -55,8 +57,12 @@ class CreateCarForm extends Component
         'price_per_day_short' => 'required|numeric|min:0',
         'price_per_day_mid' => 'nullable|numeric|min:0',
         'price_per_day_long' => 'nullable|numeric|min:0',
-        'ldw_price' => 'nullable|numeric|min:0',
-        'scdw_price' => 'nullable|numeric|min:0',
+        'ldw_price_short' => 'nullable|numeric|min:0',
+        'ldw_price_mid' => 'nullable|numeric|min:0',
+        'ldw_price_long' => 'nullable|numeric|min:0',
+        'scdw_price_short' => 'nullable|numeric|min:0',
+        'scdw_price_mid' => 'nullable|numeric|min:0',
+        'scdw_price_long' => 'nullable|numeric|min:0',
         'service_due_date' => 'date|nullable',
         'damage_report' => 'nullable|string',
         'manufacturing_year' => 'required|numeric|min:1900',
@@ -72,7 +78,6 @@ class CreateCarForm extends Component
         'passing_status' => 'nullable|in:done,pending,failed',
         'registration_status' => 'nullable|in:done,pending,failed',
     ];
-
 
     public function mount()
     {
@@ -109,8 +114,12 @@ class CreateCarForm extends Component
         $this->price_per_day_short = '';
         $this->price_per_day_mid = '';
         $this->price_per_day_long = '';
-        $this->ldw_price = '';
-        $this->scdw_price = '';
+        $this->ldw_price_short = '';
+        $this->ldw_price_mid = '';
+        $this->ldw_price_long = '';
+        $this->scdw_price_short = '';
+        $this->scdw_price_mid = '';
+        $this->scdw_price_long = '';
         $this->service_due_date = '';
         $this->availability = 'true';
         $this->damage_report = '';
@@ -157,8 +166,12 @@ class CreateCarForm extends Component
             'price_per_day_short' => $this->price_per_day_short,
             'price_per_day_mid' => $this->price_per_day_mid,
             'price_per_day_long' => $this->price_per_day_long,
-            'ldw_price' => $this->ldw_price,
-            'scdw_price' => $this->scdw_price,
+            'ldw_price_short' => $this->ldw_price_short,
+            'ldw_price_mid' => $this->ldw_price_mid,
+            'ldw_price_long' => $this->ldw_price_long,
+            'scdw_price_short' => $this->scdw_price_short,
+            'scdw_price_mid' => $this->scdw_price_mid,
+            'scdw_price_long' => $this->scdw_price_long,
             'damage_report' => $this->damage_report,
             'manufacturing_year' => $this->manufacturing_year,
             'color' => $this->color,
@@ -188,7 +201,6 @@ class CreateCarForm extends Component
         $carModel = CarModel::find($this->selectedModelId);
         $carModel->is_featured = $this->is_featured;
         $carModel->save();
-
 
         session()->flash('message', 'Car added successfully!');
         $this->resetCarData();
