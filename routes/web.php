@@ -72,7 +72,6 @@ Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/car/detail/{carId}', CarDetail::class)->name('car.detail');
 
 
-    // Route::get('/expert/car/form/{carId?}', CarForm::class)->name('car.form');
 
     Route::get('/expert/car/create', CreateCarForm::class)->name('car.create');
     Route::get('/expert/car/edit/{carId}', EditCarForm::class)->name('car.edit');
