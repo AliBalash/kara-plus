@@ -29,7 +29,7 @@ return new class extends Migration
             $table->decimal('scdw_price_long', 10, 2)->default(0);
             $table->date('service_due_date')->nullable(); // تاریخ موعد سرویس
             $table->text('damage_report')->nullable(); // گزارش خسارت
-            $table->year('manufacturing_year'); // سال ساخت خودرو
+            $table->unsignedBigInteger('manufacturing_year'); // سال ساخت خودرو
             $table->string('color')->nullable(); // رنگ خودرو
             $table->string('chassis_number')->unique(); // شماره شاسی
             $table->boolean('gps')->default(false); // وضعیت GPS
