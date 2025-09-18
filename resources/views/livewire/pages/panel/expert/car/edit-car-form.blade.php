@@ -46,7 +46,7 @@
                                     </option>
                                 </select>
                                 @error('status')
-                                    <span class="text-danger small">{{ $message }}</span>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
 
@@ -55,10 +55,10 @@
                                 <span class="input-group-text" id="availability-addon">Availability</span>
                                 <select class="form-select @error('availability') is-invalid @enderror"
                                     wire:model="availability" required>
-                                    <option value="true" {{ $availability == 'true' ? 'selected' : '' }}>Available
+                                    <option value="true" {{ $availability == true ? 'selected' : '' }}>Available
                                     </option>
-                                    <option value="false" {{ $availability == 'false' ? 'selected' : '' }}>Not
-                                        Available</option>
+                                    <option value="false" {{ $availability == false ? 'selected' : '' }}>Not Available
+                                    </option>
                                 </select>
                                 @error('availability')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -69,7 +69,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="mileage-addon">Mileage</span>
                                 <input type="number" class="form-control @error('mileage') is-invalid @enderror"
-                                    placeholder="Mileage" name="mileage" wire:model="mileage" required>
+                                    placeholder="Mileage" name="mileage" wire:model="mileage" min="0" required>
                                 @error('mileage')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -80,7 +80,8 @@
                                 <span class="input-group-text">Price (1-6 days)</span>
                                 <input type="number"
                                     class="form-control @error('price_per_day_short') is-invalid @enderror"
-                                    wire:model="price_per_day_short" placeholder="Price for short-term (درهم)" required>
+                                    wire:model="price_per_day_short" placeholder="Price for short-term (درهم)"
+                                    min="0" required>
                                 @error('price_per_day_short')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -91,7 +92,8 @@
                                 <span class="input-group-text">Price (7-28 days)</span>
                                 <input type="number"
                                     class="form-control @error('price_per_day_mid') is-invalid @enderror"
-                                    wire:model="price_per_day_mid" placeholder="Price for mid-term (درهم)">
+                                    wire:model="price_per_day_mid" placeholder="Price for mid-term (درهم)"
+                                    min="0" required>
                                 @error('price_per_day_mid')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -102,7 +104,8 @@
                                 <span class="input-group-text">Price (28+ days)</span>
                                 <input type="number"
                                     class="form-control @error('price_per_day_long') is-invalid @enderror"
-                                    wire:model="price_per_day_long" placeholder="Price for long-term (درهم)">
+                                    wire:model="price_per_day_long" placeholder="Price for long-term (درهم)"
+                                    min="0" required>
                                 @error('price_per_day_long')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -113,7 +116,8 @@
                                 <span class="input-group-text">LDW Insurance (1-6 days)</span>
                                 <input type="number"
                                     class="form-control @error('ldw_price_short') is-invalid @enderror"
-                                    wire:model="ldw_price_short" placeholder="LDW short-term daily price">
+                                    wire:model="ldw_price_short" placeholder="LDW short-term daily price" min="0"
+                                    required>
                                 @error('ldw_price_short')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -123,7 +127,8 @@
                             <div class="input-group">
                                 <span class="input-group-text">LDW Insurance (7-28 days)</span>
                                 <input type="number" class="form-control @error('ldw_price_mid') is-invalid @enderror"
-                                    wire:model="ldw_price_mid" placeholder="LDW mid-term daily price">
+                                    wire:model="ldw_price_mid" placeholder="LDW mid-term daily price" min="0"
+                                    required>
                                 @error('ldw_price_mid')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -133,7 +138,8 @@
                             <div class="input-group">
                                 <span class="input-group-text">LDW Insurance (28+ days)</span>
                                 <input type="number" class="form-control @error('ldw_price_long') is-invalid @enderror"
-                                    wire:model="ldw_price_long" placeholder="LDW long-term daily price">
+                                    wire:model="ldw_price_long" placeholder="LDW long-term daily price" min="0"
+                                    required>
                                 @error('ldw_price_long')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -144,7 +150,8 @@
                                 <span class="input-group-text">SCDW Insurance (1-6 days)</span>
                                 <input type="number"
                                     class="form-control @error('scdw_price_short') is-invalid @enderror"
-                                    wire:model="scdw_price_short" placeholder="SCDW short-term daily price">
+                                    wire:model="scdw_price_short" placeholder="SCDW short-term daily price"
+                                    min="0" required>
                                 @error('scdw_price_short')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -155,7 +162,8 @@
                                 <span class="input-group-text">SCDW Insurance (7-28 days)</span>
                                 <input type="number"
                                     class="form-control @error('scdw_price_mid') is-invalid @enderror"
-                                    wire:model="scdw_price_mid" placeholder="SCDW mid-term daily price">
+                                    wire:model="scdw_price_mid" placeholder="SCDW mid-term daily price"
+                                    min="0" required>
                                 @error('scdw_price_mid')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -166,7 +174,8 @@
                                 <span class="input-group-text">SCDW Insurance (28+ days)</span>
                                 <input type="number"
                                     class="form-control @error('scdw_price_long') is-invalid @enderror"
-                                    wire:model="scdw_price_long" placeholder="SCDW long-term daily price">
+                                    wire:model="scdw_price_long" placeholder="SCDW long-term daily price"
+                                    min="0" required>
                                 @error('scdw_price_long')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -199,7 +208,7 @@
                                 <input type="number"
                                     class="form-control @error('manufacturing_year') is-invalid @enderror"
                                     placeholder="Manufacturing Year" name="manufacturing_year"
-                                    wire:model="manufacturing_year" required>
+                                    wire:model="manufacturing_year" min="1900" max="2155" required>
                                 @error('manufacturing_year')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -209,7 +218,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="color-addon">Color</span>
                                 <input type="text" class="form-control @error('color') is-invalid @enderror"
-                                    placeholder="Color" name="color" wire:model="color">
+                                    placeholder="Color" name="color" wire:model="color" required>
                                 @error('color')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -233,8 +242,8 @@
                                 <select class="form-select @error('gps') is-invalid @enderror" name="gps"
                                     wire:model="gps">
                                     <option value="">Select</option>
-                                    <option value="1" {{ $gps == '1' ? 'selected' : '' }}>Yes</option>
-                                    <option value="0" {{ $gps == '0' ? 'selected' : '' }}>No</option>
+                                    <option value="1" {{ $gps ? 'selected' : '' }}>Yes</option>
+                                    <option value="0" {{ !$gps ? 'selected' : '' }}>No</option>
                                 </select>
                                 @error('gps')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -251,7 +260,6 @@
                                     <p class="text-muted">No image uploaded yet.</p>
                                 @endif
                             </div>
-
 
                         </div>
                     </div>
@@ -322,7 +330,7 @@
                                     Days</span>
                                 <input type="number"
                                     class="form-control @error('passing_valid_for_days') is-invalid @enderror"
-                                    name="passing_valid_for_days" wire:model="passing_valid_for_days">
+                                    name="passing_valid_for_days" wire:model="passing_valid_for_days" min="0">
                                 @error('passing_valid_for_days')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -353,7 +361,8 @@
                                     Days</span>
                                 <input type="number"
                                     class="form-control @error('registration_valid_for_days') is-invalid @enderror"
-                                    name="registration_valid_for_days" wire:model="registration_valid_for_days">
+                                    name="registration_valid_for_days" wire:model="registration_valid_for_days"
+                                    min="0">
                                 @error('registration_valid_for_days')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -394,10 +403,11 @@
                     <div class="card mb-4">
                         <h5 class="card-header">Car Options</h5>
                         <div class="card-body">
-                            {{-- Gear Type --}}
+                            <!-- Gear Type -->
                             <div class="mb-3">
                                 <label class="form-label">Gear Type</label>
-                                <select class="form-select" wire:model="car_options.gear">
+                                <select class="form-select @error('car_options.gear') is-invalid @enderror"
+                                    wire:model="car_options.gear">
                                     <option value="">Select</option>
                                     <option value="automatic"
                                         {{ isset($car_options['gear']) && $car_options['gear'] == 'automatic' ? 'selected' : '' }}>
@@ -406,42 +416,64 @@
                                         {{ isset($car_options['gear']) && $car_options['gear'] == 'manual' ? 'selected' : '' }}>
                                         Manual</option>
                                 </select>
+                                @error('car_options.gear')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            {{-- Number of Seats --}}
+                            <!-- Number of Seats -->
                             <div class="mb-3">
                                 <label class="form-label">Number of Seats</label>
-                                <input type="number" class="form-control" wire:model="car_options.seats"
-                                    min="1" placeholder="e.g., 5" value="{{ $car_options['seats'] ?? '' }}">
+                                <input type="number"
+                                    class="form-control @error('car_options.seats') is-invalid @enderror"
+                                    wire:model="car_options.seats" min="1" placeholder="e.g., 5"
+                                    value="{{ $car_options['seats'] ?? '' }}">
+                                @error('car_options.seats')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            {{-- Number of Doors --}}
+                            <!-- Number of Doors -->
                             <div class="mb-3">
                                 <label class="form-label">Number of Doors</label>
-                                <input type="number" class="form-control" wire:model="car_options.doors"
-                                    min="1" placeholder="e.g., 4" value="{{ $car_options['doors'] ?? '' }}">
+                                <input type="number"
+                                    class="form-control @error('car_options.doors') is-invalid @enderror"
+                                    wire:model="car_options.doors" min="1" placeholder="e.g., 4"
+                                    value="{{ $car_options['doors'] ?? '' }}">
+                                @error('car_options.doors')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            {{-- Number of Luggage --}}
+                            <!-- Number of Luggage -->
                             <div class="mb-3">
                                 <label class="form-label">Number of Luggage</label>
-                                <input type="number" class="form-control" wire:model="car_options.luggage"
-                                    min="0" placeholder="e.g., 3"
+                                <input type="number"
+                                    class="form-control @error('car_options.luggage') is-invalid @enderror"
+                                    wire:model="car_options.luggage" min="0" placeholder="e.g., 3"
                                     value="{{ $car_options['luggage'] ?? '' }}">
+                                @error('car_options.luggage')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            {{-- Minimum Rental Days --}}
+                            <!-- Minimum Rental Days -->
                             <div class="mb-3">
                                 <label class="form-label">Minimum Rental Days</label>
-                                <input type="number" class="form-control" wire:model="car_options.min_days"
-                                    min="1" placeholder="e.g., 2"
+                                <input type="number"
+                                    class="form-control @error('car_options.min_days') is-invalid @enderror"
+                                    wire:model="car_options.min_days" min="1" placeholder="e.g., 2"
                                     value="{{ $car_options['min_days'] ?? '' }}">
+                                @error('car_options.min_days')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            {{-- Fuel Type --}}
+                            <!-- Fuel Type -->
                             <div class="mb-3">
                                 <label class="form-label">Fuel Type</label>
-                                <select class="form-select" wire:model="car_options.fuel_type">
+                                <select class="form-select @error('car_options.fuel_type') is-invalid @enderror"
+                                    wire:model="car_options.fuel_type">
                                     <option value="">Select</option>
                                     <option value="petrol"
                                         {{ isset($car_options['fuel_type']) && $car_options['fuel_type'] == 'petrol' ? 'selected' : '' }}>
@@ -456,25 +488,32 @@
                                         {{ isset($car_options['fuel_type']) && $car_options['fuel_type'] == 'electric' ? 'selected' : '' }}>
                                         Electric</option>
                                 </select>
+                                @error('car_options.fuel_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
-
-
-                            {{-- Unlimited Kilometers --}}
+                            <!-- Unlimited Kilometers -->
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="unlimited_km"
-                                    wire:model="car_options.unlimited_km" value="1"
+                                    wire:model="car_options.unlimited_km"
                                     {{ isset($car_options['unlimited_km']) && $car_options['unlimited_km'] ? 'checked' : '' }}>
                                 <label class="form-check-label" for="unlimited_km">Unlimited
                                     Kilometers</label>
+                                @error('car_options.unlimited_km')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            {{-- Base Insurance --}}
+                            <!-- Base Insurance -->
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="base_insurance"
-                                    wire:model="car_options.base_insurance" value="1"
+                                    wire:model="car_options.base_insurance"
                                     {{ isset($car_options['base_insurance']) && $car_options['base_insurance'] ? 'checked' : '' }}>
                                 <label class="form-check-label" for="base_insurance">Base Insurance</label>
+                                @error('car_options.base_insurance')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
 
