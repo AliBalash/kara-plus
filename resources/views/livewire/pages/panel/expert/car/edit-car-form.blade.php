@@ -287,7 +287,7 @@
             </div>
 
             <!-- Additional Fields -->
-            <div class="col-md-6">
+            {{-- <div class="col-md-6">
                 <div class="col-md-12">
                     <div class="card mb-4">
                         <h5 class="card-header">Registration & Service Information</h5>
@@ -520,7 +520,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> --}}
         </div>
 
         <div class="mt-2">
