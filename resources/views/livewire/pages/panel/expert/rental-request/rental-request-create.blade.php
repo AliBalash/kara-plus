@@ -162,7 +162,7 @@
                             <div class="form-check form-check-inline mt-2 ms-2">
                                 <input type="checkbox" class="form-check-input" wire:model="kardo_required"
                                     id="kardo_required">
-                                <label class="form-check-label" for="kardo_required">KARDO Required</label>
+                                <label class="form-check-label" for="kardo_required">CARDO Required</label>
                             </div>
                             @error('kardo_required')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
@@ -440,6 +440,7 @@
                                 <option value="Mrs shams">Mrs shams</option>
                                 <option value="Mrs hashempour">Mrs hashempour</option>
                                 <option value="Sepris">Sepris</option>
+                                <option value="Javed">Javed</option>
                             </select>
                             @error('agent_sale')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
