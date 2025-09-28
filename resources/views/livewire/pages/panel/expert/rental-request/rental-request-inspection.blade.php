@@ -19,21 +19,21 @@
 
             <!-- KARDO Section -->
             <div class="col-md-6 mb-3">
-                <label class="form-label">KARDO Contract</label>
+                <label class="form-label">CARDO Contract</label>
                 @if ($contract->kardo_required)
                     @if (!empty($existingFiles['kardoContract']))
                         <img src="{{ $existingFiles['kardoContract'] }}" class="img-thumbnail" width="150">
                         @if (!$pickupDocument->kardo_approved_at)
-                            <button wire:click="approveKardo" class="btn btn-success mt-2">Approve KARDO</button>
+                            <button wire:click="approveKardo" class="btn btn-success mt-2">Approve CARDO</button>
                         @else
                             <span class="badge bg-success mt-2">Approved on
                                 {{ $pickupDocument->kardo_approved_at }}</span>
                         @endif
                     @else
-                        <p class="text-danger">KARDO not uploaded</p>
+                        <p class="text-danger">CARDO not uploaded</p>
                     @endif
                 @else
-                    <p class="text-info">KARDO not required</p>
+                    <p class="text-info">CARDO not required</p>
                 @endif
             </div>
 
