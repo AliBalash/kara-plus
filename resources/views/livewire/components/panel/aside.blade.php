@@ -89,6 +89,14 @@
                             <div data-i18n="Without menu">Me</div>
                         </a>
                     </li>
+
+                    <li class="menu-divider"></li>
+
+                    <li class="menu-item {{ Request::routeIs('cashier.dashboard') ? 'active' : '' }}">
+                        <a href="{{ route('cashier.dashboard') }}" class="menu-link">
+                            <div data-i18n="Without menu">Cashier</div>
+                        </a>
+                    </li>
                 </ul>
             </li>
         @endcannot
