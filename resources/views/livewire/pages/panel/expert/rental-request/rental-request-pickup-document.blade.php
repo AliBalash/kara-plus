@@ -125,7 +125,7 @@
                             <input type="file" class="form-control" disabled aria-disabled="true">
 
                             <div class="mt-2">
-                                <p class="text-info mb-0">KARDO inspection is not required for this contract.</p>
+                                <p class="text-info mb-0">CARDO inspection is not required for this contract.</p>
                             </div>
                         </div>
                     @endif
