@@ -17,6 +17,14 @@ class CustomerDocument extends Model
         'license',
         'hotel_name',
         'hotel_address',
+        'ticket',
+    ];
+
+    protected $casts = [
+        'visa' => 'array',
+        'passport' => 'array',
+        'license' => 'array',
+        'ticket' => 'array',
     ];
 
     // Relationship with Customer model

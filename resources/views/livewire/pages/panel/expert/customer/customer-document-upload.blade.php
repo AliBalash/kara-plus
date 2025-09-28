@@ -46,26 +46,30 @@
 
                     <!-- Visa -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Visa</label>
+                        <label class="form-label">Visa (Front / Back / Additional)</label>
                         @if (!empty($existingFiles['visa']))
-                        <div class="mb-2">
-                            @php
-                                $visaUrl = $existingFiles['visa'];
-                                $isPdf = Str::endsWith($visaUrl, '.pdf');
-                            @endphp
-
-                            @if ($isPdf)
-                                <iframe src="{{ $visaUrl }}" width="100%" height="400px"></iframe>
-                            @else
-                                <img src="{{ $visaUrl }}" class="img-thumbnail" width="150"
-                                    onclick="openModal('{{ $visaUrl }}')">
-                            @endif
-
-                            <button type="button" class="btn btn-warning mt-2"
-                                onclick="confirmDeletion('visa')">Remove</button>
-                        </div>
+                            @foreach ($existingFiles['visa'] as $file)
+                                <div class="border rounded p-2 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-semibold">{{ $file['label'] }}</span>
+                                        <button type="button" class="btn btn-sm btn-warning"
+                                            onclick="confirmDeletion('visa','{{ $file['raw_label'] }}')">Remove</button>
+                                    </div>
+                                    @if ($file['url'])
+                                        @if ($file['is_pdf'])
+                                            <iframe src="{{ $file['url'] }}" width="100%" height="320px"></iframe>
+                                        @else
+                                            <img src="{{ $file['url'] }}" class="img-thumbnail" width="150"
+                                                onclick="openModal('{{ $file['url'] }}')">
+                                        @endif
+                                    @else
+                                        <span class="text-muted">File missing from storage.</span>
+                                    @endif
+                                </div>
+                            @endforeach
                         @endif
-                        <input type="file" class="form-control" wire:model="visa">
+                        <input type="file" class="form-control" wire:model="visa" multiple>
+                        <small class="text-muted">You can upload up to 3 files total for this document.</small>
                         <div wire:loading wire:target="visa" class="progress mt-2">
                             <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                 style="width: 100%;">Uploading...</div>
@@ -73,30 +77,41 @@
                         @error('visa')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
+                        @if ($errors->has('visa.*'))
+                            @foreach ($errors->get('visa.*') as $messages)
+                                @foreach ($messages as $message)
+                                    <span class="text-danger d-block">{{ $message }}</span>
+                                @endforeach
+                            @endforeach
+                        @endif
                     </div>
 
                     <!-- Passport -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Passport / ID Card</label>
+                        <label class="form-label">Passport / ID Card (Front / Back / Additional)</label>
                         @if (!empty($existingFiles['passport']))
-                        <div class="mb-2">
-                            @php
-                                $passportUrl = $existingFiles['passport'];
-                                $isPdf = Str::endsWith($passportUrl, '.pdf');
-                            @endphp
-
-                            @if ($isPdf)
-                                <iframe src="{{ $passportUrl }}" width="100%" height="400px"></iframe>
-                            @else
-                                <img src="{{ $passportUrl }}" class="img-thumbnail" width="150"
-                                    onclick="openModal('{{ $passportUrl }}')">
-                            @endif
-
-                            <button type="button" class="btn btn-warning mt-2"
-                                onclick="confirmDeletion('passport')">Remove</button>
-                        </div>
+                            @foreach ($existingFiles['passport'] as $file)
+                                <div class="border rounded p-2 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-semibold">{{ $file['label'] }}</span>
+                                        <button type="button" class="btn btn-sm btn-warning"
+                                            onclick="confirmDeletion('passport','{{ $file['raw_label'] }}')">Remove</button>
+                                    </div>
+                                    @if ($file['url'])
+                                        @if ($file['is_pdf'])
+                                            <iframe src="{{ $file['url'] }}" width="100%" height="320px"></iframe>
+                                        @else
+                                            <img src="{{ $file['url'] }}" class="img-thumbnail" width="150"
+                                                onclick="openModal('{{ $file['url'] }}')">
+                                        @endif
+                                    @else
+                                        <span class="text-muted">File missing from storage.</span>
+                                    @endif
+                                </div>
+                            @endforeach
                         @endif
-                        <input type="file" class="form-control" wire:model="passport">
+                        <input type="file" class="form-control" wire:model="passport" multiple>
+                        <small class="text-muted">You can upload up to 3 files total for this document.</small>
                         <div wire:loading wire:target="passport" class="progress mt-2">
                             <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                 style="width: 100%;">Uploading...</div>
@@ -104,30 +119,41 @@
                         @error('passport')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
+                        @if ($errors->has('passport.*'))
+                            @foreach ($errors->get('passport.*') as $messages)
+                                @foreach ($messages as $message)
+                                    <span class="text-danger d-block">{{ $message }}</span>
+                                @endforeach
+                            @endforeach
+                        @endif
                     </div>
 
                     <!-- Driving License -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Driving License</label>
+                        <label class="form-label">Driving License (Front / Back / Additional)</label>
                         @if (!empty($existingFiles['license']))
-                            <div class="mb-2">
-                                @php
-                                    $licenseUrl = $existingFiles['license'];
-                                    $isPdf = Str::endsWith($licenseUrl, '.pdf');
-                                @endphp
-
-                                @if ($isPdf)
-                                    <iframe src="{{ $licenseUrl }}" width="100%" height="400px"></iframe>
-                                @else
-                                    <img src="{{ $licenseUrl }}" class="img-thumbnail" width="150"
-                                        onclick="openModal('{{ $licenseUrl }}')">
-                                @endif
-
-                                <button type="button" class="btn btn-warning mt-2"
-                                    onclick="confirmDeletion('license')">Remove</button>
-                            </div>
+                            @foreach ($existingFiles['license'] as $file)
+                                <div class="border rounded p-2 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-semibold">{{ $file['label'] }}</span>
+                                        <button type="button" class="btn btn-sm btn-warning"
+                                            onclick="confirmDeletion('license','{{ $file['raw_label'] }}')">Remove</button>
+                                    </div>
+                                    @if ($file['url'])
+                                        @if ($file['is_pdf'])
+                                            <iframe src="{{ $file['url'] }}" width="100%" height="320px"></iframe>
+                                        @else
+                                            <img src="{{ $file['url'] }}" class="img-thumbnail" width="150"
+                                                onclick="openModal('{{ $file['url'] }}')">
+                                        @endif
+                                    @else
+                                        <span class="text-muted">File missing from storage.</span>
+                                    @endif
+                                </div>
+                            @endforeach
                         @endif
-                        <input type="file" class="form-control" wire:model="license">
+                        <input type="file" class="form-control" wire:model="license" multiple>
+                        <small class="text-muted">You can upload up to 3 files total for this document.</small>
                         <div wire:loading wire:target="license" class="progress mt-2">
                             <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                 style="width: 100%;">Uploading...</div>
@@ -135,31 +161,42 @@
                         @error('license')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
+                        @if ($errors->has('license.*'))
+                            @foreach ($errors->get('license.*') as $messages)
+                                @foreach ($messages as $message)
+                                    <span class="text-danger d-block">{{ $message }}</span>
+                                @endforeach
+                            @endforeach
+                        @endif
                     </div>
 
                     <!-- Flight Ticket -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Flight Ticket</label>
+                        <label class="form-label">Flight Ticket (Front / Back / Additional)</label>
                         @if (!empty($existingFiles['ticket']))
-                            <div class="mb-2">
-                                @php
-                                    $ticketUrl = $existingFiles['ticket'];
-                                    $isPdf = Str::endsWith($ticketUrl, '.pdf');
-                                @endphp
-
-                                @if ($isPdf)
-                                    <iframe src="{{ $ticketUrl }}" width="100%" height="400px"></iframe>
-                                @else
-                                    <img src="{{ $ticketUrl }}" class="img-thumbnail" width="150"
-                                        onclick="openModal('{{ $ticketUrl }}')">
-                                @endif
-
-                                <button type="button" class="btn btn-warning mt-2"
-                                    onclick="confirmDeletion('ticket')">Remove</button>
-                            </div>
+                            @foreach ($existingFiles['ticket'] as $file)
+                                <div class="border rounded p-2 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-semibold">{{ $file['label'] }}</span>
+                                        <button type="button" class="btn btn-sm btn-warning"
+                                            onclick="confirmDeletion('ticket','{{ $file['raw_label'] }}')">Remove</button>
+                                    </div>
+                                    @if ($file['url'])
+                                        @if ($file['is_pdf'])
+                                            <iframe src="{{ $file['url'] }}" width="100%" height="320px"></iframe>
+                                        @else
+                                            <img src="{{ $file['url'] }}" class="img-thumbnail" width="150"
+                                                onclick="openModal('{{ $file['url'] }}')">
+                                        @endif
+                                    @else
+                                        <span class="text-muted">File missing from storage.</span>
+                                    @endif
+                                </div>
+                            @endforeach
                         @endif
 
-                        <input type="file" class="form-control" wire:model="ticket">
+                        <input type="file" class="form-control" wire:model="ticket" multiple>
+                        <small class="text-muted">You can upload up to 3 files total for this document.</small>
                         <div wire:loading wire:target="ticket" class="progress mt-2">
                             <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                 style="width: 100%;">Uploading...</div>
@@ -167,6 +204,13 @@
                         @error('ticket')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
+                        @if ($errors->has('ticket.*'))
+                            @foreach ($errors->get('ticket.*') as $messages)
+                                @foreach ($messages as $message)
+                                    <span class="text-danger d-block">{{ $message }}</span>
+                                @endforeach
+                            @endforeach
+                        @endif
                     </div>
 
 
@@ -200,9 +244,9 @@
 </div>
 @push('scripts')
     <script>
-        function confirmDeletion(fileType) {
+        function confirmDeletion(fileType, label) {
             if (confirm('Are you sure you want to delete this file?')) {
-                @this.call('removeFile', fileType);
+                @this.call('removeFile', fileType, label);
             }
         }
     </script>
