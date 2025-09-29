@@ -23,6 +23,7 @@ class RentalRequestReturnDocument extends Component
     public $fuelLevel  = 50;
     public $mileage;
     public $note;
+    public $driverNote;
     public $existingFiles = [];
 
     public $remainingBalance;
@@ -40,6 +41,7 @@ class RentalRequestReturnDocument extends Component
             $this->fuelLevel = $return->fuelLevel;
             $this->mileage = $return->mileage;
             $this->note = $return->note;
+            $this->driverNote = $return->driver_note;
         }
         $this->existingFiles = [
             'factorContract' => Storage::disk('myimage')->exists("ReturnDocument/factor_contract_{$this->contractId}.jpg")
@@ -65,6 +67,7 @@ class RentalRequestReturnDocument extends Component
             'fuelLevel' => 'required',
             'mileage' => 'required',
             'note' => 'nullable|string|max:1000',
+            'driverNote' => 'nullable|string|max:1000',
         ];
 
         // Factor Contract Validation
@@ -117,6 +120,7 @@ class RentalRequestReturnDocument extends Component
             $returnDocument->fuelLevel = $this->fuelLevel;
             $returnDocument->mileage = $this->mileage;
             $returnDocument->note = $this->note;
+            $returnDocument->driver_note = $this->driverNote;
 
             // Factor Contract Upload
             if ($this->factorContract) {

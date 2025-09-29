@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('fuelLevel')->nullable();
             $table->string('mileage')->nullable();
             $table->text('note')->nullable();
+            $table->text('driver_note')->nullable();
 
             $table->timestamp('tars_approved_at')->nullable();
             $table->unsignedBigInteger('tars_approved_by')->nullable();

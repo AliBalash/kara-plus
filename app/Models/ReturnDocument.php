@@ -21,6 +21,7 @@ class ReturnDocument extends Model
         'fuelLevel',
         'mileage',
         'note',
+        'driver_note',
     ];
 
     public function contract()

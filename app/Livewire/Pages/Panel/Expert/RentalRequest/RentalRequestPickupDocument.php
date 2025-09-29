@@ -25,6 +25,7 @@ class RentalRequestPickupDocument extends Component
     public $fuelLevel  = 50;
     public $mileage;
     public $note;
+    public $driverNote;
     public $existingFiles = [];
 
     public $remainingBalance = 0;
@@ -45,6 +46,7 @@ class RentalRequestPickupDocument extends Component
             $this->fuelLevel = $pickup->fuelLevel;
             $this->mileage = $pickup->mileage;
             $this->note = $pickup->note;
+            $this->driverNote = $pickup->driver_note;
         }
         $this->existingFiles = [
             'tarsContract' => Storage::disk('myimage')->exists("PickupDocument/tars_contract_{$this->contractId}.jpg")
@@ -76,6 +78,7 @@ class RentalRequestPickupDocument extends Component
             'fuelLevel' => 'required',
             'mileage' => 'required',
             'note' => 'nullable|string|max:1000',
+            'driverNote' => 'nullable|string|max:1000',
         ];
 
         // Tars Contract Validation
@@ -149,6 +152,7 @@ class RentalRequestPickupDocument extends Component
             $pickupDocument->fuelLevel = $this->fuelLevel;
             $pickupDocument->mileage = $this->mileage;
             $pickupDocument->note = $this->note;
+            $pickupDocument->driver_note = $this->driverNote;
 
             // Tars Contract Upload
             if ($this->tarsContract) {

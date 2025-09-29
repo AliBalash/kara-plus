@@ -245,6 +245,14 @@
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
+                    <!-- Driver Note -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Driver Note (Optional)</label>
+                        <textarea class="form-control" wire:model="driverNote" placeholder="Notes for the driver" rows="4"></textarea>
+                        @error('driverNote')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
 
 
                 </div>

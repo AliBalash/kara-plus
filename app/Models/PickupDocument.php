@@ -25,6 +25,7 @@ class PickupDocument extends Model
         'kardo_approved_at',
         'kardo_approved_by',
         'note',
+        'driver_note',
     ];
 
     public function contract()
