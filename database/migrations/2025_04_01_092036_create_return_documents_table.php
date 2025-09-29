@@ -23,6 +23,8 @@ return new class extends Migration
             $table->string('car_outside_video')->nullable();
             $table->string('fuelLevel')->nullable();
             $table->string('mileage')->nullable();
+            $table->text('note')->nullable();
+            $table->text('driver_note')->nullable();
             $table->timestamps();
 
             $table->foreign('contract_id')->references('id')->on('contracts')->onDelete('cascade');
