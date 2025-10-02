@@ -59,19 +59,7 @@ class RentalRequestPayment extends Component
     {
         $this->contractId = $contractId;
         $this->customerId = $customerId;
-        $this->contractMeta = Contract::find($this->contractId)?->meta ?? [];
-
-
-        // دریافت total_price از مدل Contract
-        $this->totalPrice = Contract::where('id', $this->contractId)->value('total_price') ?? 0;
-
-        // بررسی وجود اسناد مشتری
         $this->hasCustomerDocument = CustomerDocument::where('customer_id', $this->customerId)
-            ->where('contract_id', $this->contractId)
-            ->exists();
-
-        // بررسی وجود پرداخت‌ها
-        $this->hasPayments = Payment::where('customer_id', $this->customerId)
             ->where('contract_id', $this->contractId)
             ->exists();
 
@@ -80,9 +68,13 @@ class RentalRequestPayment extends Component
 
     public function loadData()
     {
-        $this->existingPayments = Payment::where('contract_id', $this->contractId)
-            ->where('customer_id', $this->customerId)
-            ->get();
+        $this->contract = Contract::with('payments')->findOrFail($this->contractId);
+        $this->contractMeta = $this->contract->meta ?? [];
+        $this->totalPrice = $this->contract->total_price ?? 0;
+
+        $allPayments = $this->contract->payments;
+        $this->existingPayments = $allPayments->where('customer_id', $this->customerId);
+        $this->hasPayments = $allPayments->isNotEmpty();
 
         $this->rentalPaid = $this->existingPayments
             ->where('payment_type', 'rental_fee')
@@ -104,9 +96,7 @@ class RentalRequestPayment extends Component
             ->where('payment_type', 'security_deposit')
             ->sum('amount_in_aed');
 
-        $this->remainingBalance = $this->totalPrice
-            - ($this->rentalPaid + $this->discounts + $this->security_deposit)
-            + $this->finePaid + $this->salik;
+        $this->remainingBalance = $this->contract->calculateRemainingBalance($allPayments);
     }
 
 
