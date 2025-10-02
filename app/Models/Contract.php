@@ -108,9 +108,13 @@ class Contract extends Model
     }
 
 
-    public function calculateRemainingBalance()
+    public function calculateRemainingBalance($payments = null)
     {
-        $payments = $this->payments()->get();
+        if (is_null($payments)) {
+            $payments = $this->relationLoaded('payments')
+                ? $this->payments
+                : $this->payments()->get();
+        }
 
         $rentalPaid = $payments->where('payment_type', 'rental_fee')->sum('amount_in_aed');
         $discounts = $payments->where('payment_type', 'discount')->sum('amount_in_aed');
