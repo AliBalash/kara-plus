@@ -1,21 +1,24 @@
 <nav class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme"
     id="layout-navbar">
     <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
-        <a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)">
+        <a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)" role="button"
+            aria-controls="layout-menu" aria-expanded="false" data-menu-toggle="layout-menu">
             <i class="bx bx-menu bx-sm"></i>
         </a>
     </div>
 
-    <div class="navbar-nav-right d-flex align-items-center w-100 justify-content-between" id="navbar-collapse">
+    <div class="navbar-nav-right d-flex align-items-center w-100 justify-content-end justify-content-lg-between flex-wrap gap-3 position-relative"
+        id="navbar-collapse">
 
         <!-- تاریخ - چپ -->
-        <div class="d-flex align-items-center">
+        <div class="d-none d-lg-flex align-items-center flex-shrink-0">
             <i class="bx bx-calendar fs-4 lh-0"></i>
             <span class="ms-2">{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}</span>
         </div>
 
         <!-- Search - Centered and Responsive -->
-        <div class="position-absolute start-50 translate-middle-x w-100 px-3" style="max-width: 600px;">
+        <div class="position-absolute start-50 translate-middle-x w-100 px-3 d-none d-xl-block"
+            style="max-width: 600px;">
             <div class="input-group shadow-sm rounded-3 overflow-hidden">
                 <span class="input-group-text bg-white border-0">
                     <i class="bx bx-search fs-4 lh-0"></i>
@@ -108,7 +111,7 @@
 
 
 
-        <ul class="navbar-nav flex-row align-items-center">
+        <ul class="navbar-nav flex-row align-items-center flex-shrink-0">
             <!-- Place this tag where you want the button to render. -->
             <!-- User -->
             <li class="nav-item navbar-dropdown dropdown-user dropdown">
@@ -179,3 +182,79 @@
         </ul>
     </div>
 </nav>
+
+@once
+    @push('scripts')
+        <script>
+            (() => {
+                const MENU_KEY = 'layout-menu';
+                const RESIZE_FLAG = '__panelMenuResizeBound';
+
+                const getToggles = () => document.querySelectorAll(`[data-menu-toggle="${MENU_KEY}"]`);
+                const getOverlay = () => document.querySelector('.layout-overlay.layout-menu-toggle');
+                const getMenu = () => document.getElementById(MENU_KEY);
+
+                const updateState = () => {
+                    const menu = getMenu();
+                    if (!menu) {
+                        return;
+                    }
+
+                    const expanded = document.documentElement.classList.contains('layout-menu-expanded');
+                    const isSmallScreen = window.matchMedia('(max-width: 1199.98px)').matches;
+                    const ariaExpanded = expanded ? 'true' : 'false';
+
+                    getToggles().forEach((toggle) => {
+                        toggle.setAttribute('aria-expanded', ariaExpanded);
+                    });
+
+                    if (isSmallScreen) {
+                        menu.setAttribute('aria-hidden', expanded ? 'false' : 'true');
+                    } else {
+                        menu.removeAttribute('aria-hidden');
+                    }
+                };
+
+                const scheduleUpdate = () => window.requestAnimationFrame(updateState);
+
+                const bind = () => {
+                    const toggles = getToggles();
+                    const overlay = getOverlay();
+
+                    if (!toggles.length) {
+                        return;
+                    }
+
+                    toggles.forEach((toggle) => {
+                        if (toggle.dataset.menuToggleBound === 'true') {
+                            return;
+                        }
+
+                        toggle.addEventListener('click', scheduleUpdate);
+                        toggle.dataset.menuToggleBound = 'true';
+                    });
+
+                    if (overlay && overlay.dataset.menuToggleBound !== 'true') {
+                        overlay.addEventListener('click', scheduleUpdate);
+                        overlay.dataset.menuToggleBound = 'true';
+                    }
+
+                    if (!window[RESIZE_FLAG]) {
+                        window.addEventListener('resize', scheduleUpdate);
+                        window[RESIZE_FLAG] = true;
+                    }
+
+                    updateState();
+                };
+
+                if (document.readyState !== 'loading') {
+                    bind();
+                } else {
+                    document.addEventListener('DOMContentLoaded', bind, { once: true });
+                }
+
+                window.addEventListener('livewire:navigated', bind);
+            })();
+        </script>
+    @endpush
+@endonce

@@ -1,5 +1,6 @@
-<aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
-    <div class="app-brand demo">
+<aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme" role="navigation"
+    aria-label="Main menu" tabindex="-1">
+    <div class="app-brand demo d-flex align-items-center">
         <a href="{{ route('expert.dashboard') }}" class="app-brand-link">
             <span class="app-brand-logo demo">
                 <img width="120" src="{{ asset('assets/panel/assets/img/logo/logo.png') }}" alt="logo">
@@ -7,8 +8,9 @@
             {{-- <span class="app-brand-text demo menu-text fw-bolder ms-2">Sneat</span> --}}
         </a>
 
-        <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">
-            <i class="bx bx-chevron-left bx-sm align-middle"></i>
+        <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-xl-none"
+            aria-label="Close menu" aria-controls="layout-menu" data-menu-toggle="layout-menu">
+            <i class="bx bx-x bx-sm align-middle"></i>
         </a>
     </div>
 
