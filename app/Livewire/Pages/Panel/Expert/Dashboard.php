@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Pages\Panel\Expert;
 
+use App\Models\Car;
 use App\Models\Contract;
 use App\Models\DiscountCode;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -31,6 +33,22 @@ class Dashboard extends Component
     public $topBrands;
     public $reservedCars;
     public $returnedCars;
+
+    public $revenueTrend;
+    public $currentMonthRevenue;
+    public $currentMonthContracts;
+    public $contractStatusTrend;
+    public $discountTrend;
+    public $fleetBreakdown;
+    public $fleetUtilization;
+    public $totalCars;
+    public $activeVehicles;
+    public $offlineVehicles;
+    public $averageRentalDuration;
+    public $upcomingReturns;
+    public $overdueContracts;
+    public $serviceAlerts;
+    public $topBrandsChart;
 
 
     public function mount()
@@ -73,12 +91,18 @@ class Dashboard extends Component
             ->get();
         // تبدیل لیست برای نمایش در ویو
         $this->topBrands = $topCars->map(function ($contract) {
+            $carName = optional(optional($contract->car)->carModel)->fullName();
 
             return [
-                'brand' => $contract->car->carModel->fullName(), // فرض اینکه فیلد brand در مدل Car وجود دارد
-                'total' => $contract->total
+                'brand' => $carName ?? 'Unknown',
+                'total' => (int) $contract->total,
             ];
-        });
+        })->values();
+
+        $this->topBrandsChart = [
+            'labels' => $this->topBrands->pluck('brand')->all(),
+            'series' => $this->topBrands->pluck('total')->all(),
+        ];
 
 
         $this->reservedCars = \App\Models\Contract::with(['car.carModel'])
@@ -90,6 +114,8 @@ class Dashboard extends Component
             ->where('current_status', 'awaiting_return')
             ->latest()
             ->get();
+
+        $this->buildAnalytics();
     }
 
 
@@ -108,5 +134,129 @@ class Dashboard extends Component
     public function decrement()
     {
         $this->count--;
+    }
+
+
+    protected function buildAnalytics(): void
+    {
+        $months = collect(range(0, 5))
+            ->map(fn ($i) => Carbon::now()->subMonths($i)->startOfMonth())
+            ->sort()
+            ->values();
+
+        $monthKeys = $months->map->format('Y-m');
+        $monthLabels = $months->map->format('M');
+
+        $revenueRaw = Contract::whereNotNull('pickup_date')
+            ->whereBetween('pickup_date', [$months->first(), $months->last()->copy()->endOfMonth()])
+            ->selectRaw('DATE_FORMAT(pickup_date, "%Y-%m") as month, SUM(total_price) as total')
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $contractRaw = Contract::whereBetween('created_at', [$months->first(), $months->last()->copy()->endOfMonth()])
+            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as total')
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $revenueSeries = $monthKeys->map(fn ($month) => round((float) ($revenueRaw[$month] ?? 0), 2));
+        $contractsSeries = $monthKeys->map(fn ($month) => (int) ($contractRaw[$month] ?? 0));
+
+        $this->revenueTrend = [
+            'labels' => $monthLabels->all(),
+            'revenue' => $revenueSeries->all(),
+            'contracts' => $contractsSeries->all(),
+        ];
+
+        $this->currentMonthRevenue = $revenueSeries->last() ?? 0;
+        $this->currentMonthContracts = $contractsSeries->last() ?? 0;
+
+        $statusGrouping = [
+            'Reserved' => ['reserved'],
+            'Active' => ['assigned', 'under_review', 'delivery'],
+            'Awaiting return' => ['awaiting_return'],
+            'Completed' => ['complete'],
+            'Cancelled' => ['cancelled'],
+        ];
+
+        $statusRaw = Contract::whereBetween('created_at', [$months->first(), $months->last()->copy()->endOfMonth()])
+            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, current_status, COUNT(*) as total')
+            ->groupBy('month', 'current_status')
+            ->get()
+            ->groupBy('month');
+
+        $this->contractStatusTrend = collect($statusGrouping)->map(function ($statuses, $label) use ($monthKeys, $statusRaw) {
+            $data = $monthKeys->map(function ($month) use ($statusRaw, $statuses) {
+                $monthBucket = $statusRaw[$month] ?? collect();
+                return (int) $monthBucket->whereIn('current_status', $statuses)->sum('total');
+            });
+
+            return [
+                'name' => $label,
+                'data' => $data->all(),
+            ];
+        })->values()->all();
+
+        $discountCreated = DiscountCode::whereBetween('created_at', [$months->first(), $months->last()->copy()->endOfMonth()])
+            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as total')
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $discountUsed = DiscountCode::where('contacted', true)
+            ->whereBetween('updated_at', [$months->first(), $months->last()->copy()->endOfMonth()])
+            ->selectRaw('DATE_FORMAT(updated_at, "%Y-%m") as month, COUNT(*) as total')
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $this->discountTrend = [
+            'labels' => $monthLabels->all(),
+            'created' => $monthKeys->map(fn ($month) => (int) ($discountCreated[$month] ?? 0))->all(),
+            'used' => $monthKeys->map(fn ($month) => (int) ($discountUsed[$month] ?? 0))->all(),
+        ];
+
+        $maintenanceStatuses = ['maintenance', 'repair', 'service'];
+
+        $this->totalCars = Car::count();
+        $this->offlineVehicles = Car::whereIn('status', $maintenanceStatuses)->count();
+
+        $activeVehicleIds = Contract::whereIn('current_status', ['reserved', 'assigned', 'under_review', 'delivery', 'awaiting_return'])
+            ->pluck('car_id')
+            ->filter()
+            ->unique();
+
+        $this->activeVehicles = $activeVehicleIds->count();
+
+        $this->fleetUtilization = $this->totalCars > 0
+            ? round(($this->activeVehicles / $this->totalCars) * 100)
+            : 0;
+
+        $availableVehicles = $this->totalCars - ($this->activeVehicles + $this->offlineVehicles);
+        if ($availableVehicles < 0) {
+            $availableVehicles = 0;
+        }
+
+        $this->fleetBreakdown = [
+            'labels' => ['Active', 'Available', 'Maintenance'],
+            'series' => [
+                $this->activeVehicles,
+                $availableVehicles,
+                $this->offlineVehicles,
+            ],
+        ];
+
+        $this->averageRentalDuration = (float) (Contract::whereNotNull('pickup_date')
+            ->selectRaw('AVG(DATEDIFF(COALESCE(return_date, CURRENT_DATE), pickup_date)) as avg_days')
+            ->value('avg_days') ?? 0);
+
+        $this->upcomingReturns = Contract::whereNotNull('return_date')
+            ->whereBetween('return_date', [Carbon::now(), Carbon::now()->addDays(7)])
+            ->whereIn('current_status', ['reserved', 'awaiting_return', 'delivery'])
+            ->count();
+
+        $this->overdueContracts = Contract::whereNotNull('return_date')
+            ->where('return_date', '<', Carbon::now())
+            ->whereIn('current_status', ['reserved', 'awaiting_return', 'delivery'])
+            ->count();
+
+        $this->serviceAlerts = Car::needsService()->count();
     }
 }
