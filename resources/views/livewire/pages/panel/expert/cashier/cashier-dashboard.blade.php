@@ -58,10 +58,17 @@
                 <div class="card-body">
                     <div class="row g-2 mb-3">
                         <div class="col-12 col-md-4">
-                            <div class="input-group">
+                            <form class="input-group" wire:submit.prevent="applySearch">
                                 <span class="input-group-text"><i class="bx bx-search"></i></span>
-                                <input type="text" class="form-control" placeholder="Search by customer, contract or note" wire:model.live.debounce.500ms="search">
-                            </div>
+                                <input type="search" class="form-control"
+                                    placeholder="Search by customer, contract or note"
+                                    wire:model.defer="searchInput">
+                                <button class="btn btn-primary" type="submit" wire:loading.attr="disabled"
+                                    wire:target="applySearch">
+                                    <span wire:loading.remove wire:target="applySearch">Search</span>
+                                    <span wire:loading wire:target="applySearch">...</span>
+                                </button>
+                            </form>
                         </div>
                         <div class="col-6 col-md-3">
                             <select class="form-select" wire:model.live="currencyFilter">

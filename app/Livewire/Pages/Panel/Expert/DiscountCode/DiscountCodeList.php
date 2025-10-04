@@ -10,22 +10,37 @@ class DiscountCodeList extends Component
 {
     use WithPagination;
 
-    public $search = ''; // Search input
+    public $search = '';
+    public $searchInput = '';
 
-    // Query string for search input
     protected $queryString = ['search'];
+
+    public function mount(): void
+    {
+        $this->searchInput = $this->search;
+    }
 
     public function render()
     {
-        // Fetching active discount codes that have a registery_at timestamp
-        $discountCodes = DiscountCode::whereNotNull('registery_at') // Only those with 'registery_at'
-            ->where(function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('phone', 'like', '%' . $this->search . '%');
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
+        $discountCodes = DiscountCode::whereNotNull('registery_at')
+            ->when($search !== '', function ($query) use ($likeSearch) {
+                $query->where(function ($scoped) use ($likeSearch) {
+                    $scoped->where('name', 'like', $likeSearch)
+                        ->orWhere('phone', 'like', $likeSearch);
+                });
             })
             ->orderBy('registery_at', 'desc') // Ordering by registration date
             ->paginate(10); // Paginated results
         return view('livewire.pages.panel.expert.discount-code.discount-code-list', compact('discountCodes'));
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
+        $this->resetPage();
     }
 
 

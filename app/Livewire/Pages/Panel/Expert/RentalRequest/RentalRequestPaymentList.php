@@ -8,7 +8,8 @@ use Livewire\Component;
 class RentalRequestPaymentList extends Component
 {
     public $paymentContracts;
-    public $search = '';  // متغیر جستجو
+    public $search = '';
+    public $searchInput = '';
 
     protected $listeners = [
         'refreshContracts' => '$refresh',
@@ -16,26 +17,7 @@ class RentalRequestPaymentList extends Component
 
     public function mount()
     {
-        // فقط قراردادهایی که در وضعیت 'payment' هستند و حداقل یک پرداخت مرتبط دارند
-        $this->paymentContracts = Contract::where('current_status', 'payment')
-            ->latest()
-            ->get();
-    }
-
-    public function updatedSearch()
-    {
-        $this->paymentContracts = Contract::query()
-            ->where('current_status', 'payment')
-            ->whereHas('payments') // فقط قراردادهایی که پرداختی دارند
-            ->where(function ($query) {
-                $query->whereHas('customer', function ($query) {
-                    $query->where('first_name', 'like', '%' . $this->search . '%')
-                        ->orWhere('last_name', 'like', '%' . $this->search . '%');
-                })
-                    ->orWhere('id', 'like', '%' . $this->search . '%');
-            })
-            ->latest() // Order by created_at DESC
-            ->get();
+        $this->searchInput = $this->search;
     }
 
     public function changeStatusToComplete($contractId)
@@ -49,14 +31,17 @@ class RentalRequestPaymentList extends Component
 
     public function render()
     {
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
         $this->paymentContracts = Contract::query()
             ->where('current_status', 'payment')
-            ->when($this->search, function ($query) {
-                $query->where(function ($q) {
-                    $q->whereHas('customer', function ($q) {
-                        $q->where('first_name', 'like', '%' . $this->search . '%')
-                            ->orWhere('last_name', 'like', '%' . $this->search . '%');
-                    })->orWhere('id', 'like', '%' . $this->search . '%');
+            ->when($search !== '', function ($query) use ($likeSearch) {
+                $query->where(function ($q) use ($likeSearch) {
+                    $q->whereHas('customer', function ($customerQuery) use ($likeSearch) {
+                        $customerQuery->where('first_name', 'like', $likeSearch)
+                            ->orWhere('last_name', 'like', $likeSearch);
+                    })->orWhere('contracts.id', 'like', $likeSearch);
                 });
             })
             ->with(['payments', 'customer', 'car']) // Eager load relationships
@@ -66,5 +51,10 @@ class RentalRequestPaymentList extends Component
         return view('livewire.pages.panel.expert.rental-request.rental-request-payment-list', [
             'contracts' => $this->paymentContracts
         ]);
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
     }
 }

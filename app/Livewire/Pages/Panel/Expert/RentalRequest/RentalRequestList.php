@@ -19,6 +19,7 @@ class RentalRequestList extends Component
     public $returnTo;
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
+    public $searchInput = '';
 
     protected $listeners = ['refreshContracts' => '$refresh'];
     protected $queryString = [
@@ -33,6 +34,11 @@ class RentalRequestList extends Component
         'sortDirection'
     ];
 
+    public function mount(): void
+    {
+        $this->searchInput = $this->search;
+    }
+
     public function sortBy($field)
     {
         if ($this->sortField === $field) {
@@ -46,6 +52,13 @@ class RentalRequestList extends Component
     public function clearFilters()
     {
         $this->reset(['search', 'statusFilter', 'userFilter', 'pickupFrom', 'pickupTo', 'returnFrom', 'returnTo']);
+        $this->searchInput = '';
+        $this->resetPage();
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
         $this->resetPage();
     }
 
@@ -64,13 +77,29 @@ class RentalRequestList extends Component
 
     public function render()
     {
-        $contracts = Contract::with(['customer', 'car', 'user'])
-            ->when($this->search, function ($q) {
-                $q->where('id', 'like', "%{$this->search}%")
-                    ->orWhereHas('customer', fn($q2) => $q2->where('first_name', 'like', "%{$this->search}%")
-                        ->orWhere('last_name', 'like', "%{$this->search}%"))
-                    ->orWhereHas('car', fn($q3) => $q3->where('brand', 'like', "%{$this->search}%")
-                        ->orWhere('model', 'like', "%{$this->search}%"));
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
+        $contracts = Contract::with(['customer', 'car.carModel', 'user'])
+            ->when($search !== '', function ($query) use ($search, $likeSearch) {
+                $query->where(function ($scopedQuery) use ($search, $likeSearch) {
+                    $scopedQuery
+                        ->where('contracts.id', 'like', $likeSearch)
+                        ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                            $customerQuery
+                                ->where('first_name', 'like', $likeSearch)
+                                ->orWhere('last_name', 'like', $likeSearch);
+                        })
+                        ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
+                            $carQuery
+                                ->where('plate_number', 'like', $likeSearch)
+                                ->orWhereHas('carModel', function ($modelQuery) use ($likeSearch) {
+                                    $modelQuery
+                                        ->where('brand', 'like', $likeSearch)
+                                        ->orWhere('model', 'like', $likeSearch);
+                                });
+                        });
+                });
             })
             ->when($this->statusFilter, fn($q) => $q->where('current_status', $this->statusFilter))
             ->when($this->userFilter === 'assigned', fn($q) => $q->whereNotNull('user_id'))

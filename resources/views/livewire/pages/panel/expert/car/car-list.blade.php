@@ -4,10 +4,16 @@
     <div class="row p-3">
         <!-- Search -->
         <div class="col-md-3 mb-2">
-            <div class="input-group">
+            <form class="input-group" wire:submit.prevent="applySearch">
                 <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="text" class="form-control" placeholder="Search..." wire:model.debounce.500ms="search">
-            </div>
+                <input type="search" class="form-control" placeholder="Search..."
+                    wire:model.defer="searchInput">
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
+                    wire:target="applySearch">
+                    <span wire:loading.remove wire:target="applySearch">Search</span>
+                    <span wire:loading wire:target="applySearch">...</span>
+                </button>
+            </form>
         </div>
 
         <!-- Brand Filter -->

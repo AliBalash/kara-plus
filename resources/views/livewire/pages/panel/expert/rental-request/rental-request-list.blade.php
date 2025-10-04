@@ -6,10 +6,15 @@
     <div class="row p-3 g-3">
         <!-- Search -->
         <div class="col-md-3">
-            <div class="input-group">
+            <form class="input-group" wire:submit.prevent="applySearch">
                 <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="text" class="form-control" placeholder="Search..." wire:model.debounce.500ms="search">
-            </div>
+                <input type="search" class="form-control" placeholder="Search..." wire:model.defer="searchInput">
+                <button class="btn btn-primary" type="submit" wire:loading.attr="disabled"
+                    wire:target="applySearch">
+                    <span wire:loading.remove wire:target="applySearch">Search</span>
+                    <span wire:loading wire:target="applySearch">...</span>
+                </button>
+            </form>
         </div>
 
         <!-- Status Filter -->

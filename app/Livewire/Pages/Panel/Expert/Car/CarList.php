@@ -13,6 +13,7 @@ class CarList extends Component
     use WithPagination;
 
     public $search = '';
+    public $searchInput = '';
     public $selectedBrand = '';
     public $statusFilter = '';
     public $pickupFrom;
@@ -23,6 +24,11 @@ class CarList extends Component
 
     protected $listeners = ['deletecar'];
     protected $queryString = ['search', 'selectedBrand', 'statusFilter', 'pickupFrom', 'pickupTo', 'sortField', 'sortDirection', 'onlyReserved'];
+
+    public function mount(): void
+    {
+        $this->searchInput = $this->search;
+    }
 
     public function sortBy($field)
     {
@@ -57,17 +63,22 @@ class CarList extends Component
     public function clearFilters()
     {
         $this->search = '';
+        $this->searchInput = '';
         $this->selectedBrand = '';
         $this->statusFilter = '';
         $this->pickupFrom = null;
         $this->pickupTo = null;
         $this->onlyReserved = false;
+        $this->resetPage();
     }
 
 
 
     public function render()
     {
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
         $brands = Car::query()
             ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
             ->select('car_models.brand')
@@ -75,10 +86,12 @@ class CarList extends Component
             ->pluck('brand');
 
         $carsQuery = Car::with(['carModel', 'currentContract'])
-            ->when($this->search, fn($q) => $q->where(function ($q) {
-                $q->where('plate_number', 'like', '%' . $this->search . '%')
-                    ->orWhereHas('carModel', fn($q2) => $q2->where('brand', 'like', '%' . $this->search . '%')
-                        ->orWhere('model', 'like', '%' . $this->search . '%'));
+            ->when($search !== '', fn($q) => $q->where(function ($q) use ($likeSearch) {
+                $q->where('plate_number', 'like', $likeSearch)
+                    ->orWhereHas('carModel', fn($q2) => $q2->where(function ($modelQuery) use ($likeSearch) {
+                        $modelQuery->where('brand', 'like', $likeSearch)
+                            ->orWhere('model', 'like', $likeSearch);
+                    }));
             }))
 
             ->when($this->selectedBrand, fn($q) => $q->whereHas('carModel', fn($q2) => $q2->where('brand', $this->selectedBrand)))
@@ -101,5 +114,11 @@ class CarList extends Component
         $cars = $carsQuery->paginate(10); // pagination سالم
 
         return view('livewire.pages.panel.expert.car.car-list', compact('cars', 'brands'));
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
+        $this->resetPage();
     }
 }

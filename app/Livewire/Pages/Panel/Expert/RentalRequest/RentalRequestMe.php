@@ -8,11 +8,15 @@ use Livewire\Component;
 class RentalRequestMe extends Component
 {
 
-    public $contracts;
+    public $contracts = [];
+    public $search = '';
+    public $searchInput = '';
 
-    public function mount()
+    protected $queryString = ['search'];
+
+    public function mount(): void
     {
-        // بارگذاری اولیه قراردادهای کاربر
+        $this->searchInput = $this->search;
         $this->loadContracts();
     }
     /**
@@ -20,30 +24,37 @@ class RentalRequestMe extends Component
      */
     public function loadContracts()
     {
-        $this->contracts = Contract::query()
-            ->where('user_id', auth()->id()) // فیلتر بر اساس کاربر لاگین شده
-            ->with(['customer', 'car', 'user']) // بارگذاری روابط مورد نیاز
-            ->get();
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
+        $query = Contract::query()
+            ->where('user_id', auth()->id())
+            ->with(['customer', 'car.carModel', 'user']);
+
+        if ($search !== '') {
+            $query->where(function ($scoped) use ($likeSearch) {
+                $scoped->where('contracts.id', 'like', $likeSearch)
+                    ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                        $customerQuery->where('first_name', 'like', $likeSearch)
+                            ->orWhere('last_name', 'like', $likeSearch);
+                    })
+                    ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
+                        $carQuery->where('plate_number', 'like', $likeSearch)
+                            ->orWhereHas('carModel', function ($modelQuery) use ($likeSearch) {
+                                $modelQuery->where('brand', 'like', $likeSearch)
+                                    ->orWhere('model', 'like', $likeSearch);
+                            });
+                    });
+            });
+        }
+
+        $this->contracts = $query->latest('pickup_date')->get();
     }
 
-
-    public $search = '';  // متغیر جستجو
-    // متد برای فیلتر کردن داده‌ها بر اساس جستجو
-    public function updatedSearch()
+    public function applySearch(): void
     {
-        if (!empty($this->search)) {
-
-            $this->contracts = Contract::query()
-                ->where('user_id', auth()->id()) // فقط قراردادهای کاربر لاگین شده
-                ->whereHas('customer', function ($query) {
-                    $query->where('first_name', 'like', '%' . $this->search . '%')
-                        ->orWhere('last_name', 'like', '%' . $this->search . '%');
-                })
-                ->orWhere('id', 'like', '%' . $this->search . '%')
-                ->get();
-        } else {
-            $this->loadContracts();
-        }
+        $this->search = trim($this->searchInput);
+        $this->loadContracts();
     }
     public function render()
     {
