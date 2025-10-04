@@ -10,12 +10,14 @@ class CustomerList extends Component
 {
     use WithPagination;
 
-    public $search = ''; // Search query
+    public $search = '';
+    public $searchInput = '';
 
-    // Reset pagination when the search query is updated
-    public function updatingSearch()
+    protected $queryString = ['search'];
+
+    public function mount(): void
     {
-        $this->resetPage();
+        $this->searchInput = $this->search;
     }
 
     public function deleteCustomer($customerId)
@@ -27,14 +29,25 @@ class CustomerList extends Component
 
     public function render()
     {
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
         $customers = Customer::query()
-            ->when($this->search, function ($query) {
-                $query->where('first_name', 'like', "%{$this->search}%")
-                    ->orWhere('last_name', 'like', "%{$this->search}%")
-                    ->orWhere('national_code', 'like', "%{$this->search}%");
+            ->when($search !== '', function ($query) use ($likeSearch) {
+                $query->where(function ($scoped) use ($likeSearch) {
+                    $scoped->where('first_name', 'like', $likeSearch)
+                        ->orWhere('last_name', 'like', $likeSearch)
+                        ->orWhere('national_code', 'like', $likeSearch);
+                });
             })
             ->paginate(10);
 
         return view('livewire.pages.panel.expert.customer.customer-list', compact('customers'));
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
+        $this->resetPage();
     }
 }

@@ -3,11 +3,16 @@
 
     <div class="row" style="padding: 0.5rem 1.5rem">
         <div class="">
-            <div class="nav-item d-flex align-items-center">
-                <i class="bx bx-search fs-4 lh-0"></i>
-                <input type="text" class="form-control border-0 shadow-none" placeholder="Search..."
-                    aria-label="Search..." wire:model.live.debounce.1000ms="search">
-            </div>
+            <form class="input-group" wire:submit.prevent="applySearch">
+                <span class="input-group-text"><i class="bx bx-search"></i></span>
+                <input type="search" class="form-control" placeholder="Search..." aria-label="Search"
+                    wire:model.defer="searchInput">
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
+                    wire:target="applySearch">
+                    <span wire:loading.remove wire:target="applySearch">Search</span>
+                    <span wire:loading wire:target="applySearch">...</span>
+                </button>
+            </form>
         </div>
         <!-- /Search -->
     </div>

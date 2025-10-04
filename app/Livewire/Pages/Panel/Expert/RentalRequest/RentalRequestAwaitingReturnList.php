@@ -11,6 +11,7 @@ class RentalRequestAwaitingReturnList extends Component
     use WithPagination;
 
     public $search = ''; // متغیر جستجو
+    public $searchInput = '';
     public $sortField = 'return_date'; // Default sort field
     public $sortDirection = 'asc'; // Default sort direction
 
@@ -18,25 +19,29 @@ class RentalRequestAwaitingReturnList extends Component
         'refreshContracts' => '$refresh',
     ];
 
+    public function mount(): void
+    {
+        $this->searchInput = $this->search;
+    }
+
     // Load contracts with sorting and search
     public function loadContracts()
     {
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
         return Contract::query()
             ->where('current_status', 'awaiting_return')
-            ->when($this->search, function ($query) {
-                $query->whereHas('customer', function ($q) {
-                    $q->where('first_name', 'like', '%' . $this->search . '%')
-                        ->orWhere('last_name', 'like', '%' . $this->search . '%');
-                })->orWhere('id', 'like', '%' . $this->search . '%');
+            ->when($search !== '', function ($query) use ($likeSearch) {
+                $query->where(function ($scoped) use ($likeSearch) {
+                    $scoped->whereHas('customer', function ($q) use ($likeSearch) {
+                        $q->where('first_name', 'like', $likeSearch)
+                            ->orWhere('last_name', 'like', $likeSearch);
+                    })->orWhere('contracts.id', 'like', $likeSearch);
+                });
             })
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate(10); // Paginate with 10 items per page
-    }
-
-    // Handle search updates
-    public function updatedSearch()
-    {
-        $this->resetPage(); // Reset to first page when search changes
     }
 
     // Toggle sort direction when clicking on the column header
@@ -52,6 +57,12 @@ class RentalRequestAwaitingReturnList extends Component
         }
 
         $this->resetPage(); // Reset to first page when sorting changes
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
+        $this->resetPage();
     }
 
     public function render()

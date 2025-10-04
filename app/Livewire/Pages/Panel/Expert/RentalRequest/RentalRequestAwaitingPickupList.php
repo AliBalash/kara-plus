@@ -11,6 +11,7 @@ class RentalRequestAwaitingPickupList extends Component
     use WithPagination;
 
     public $search = '';
+    public $searchInput = '';
     public $perPage = 10;
 
     protected $queryString = ['search', 'perPage'];
@@ -19,22 +20,34 @@ class RentalRequestAwaitingPickupList extends Component
         'refreshContracts' => '$refresh',
     ];
 
+    public function mount(): void
+    {
+        $this->searchInput = $this->search;
+    }
+
     // برگشت query برای لیست با پشتیبانی از جستجو و مرتب‌سازی ثابت بر اساس pickup_date
     public function loadContracts()
     {
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
         $query = Contract::query()
-            ->with(['customer', 'car', 'user', 'pickupDocument']) // eager load مورد نیاز
+            ->with(['customer', 'car.carModel', 'user', 'pickupDocument'])
             ->where('current_status', 'reserved'); // یا وضعیت مورد نظر شما
 
-        if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('id', 'like', '%' . $this->search . '%')
-                    ->orWhereHas('customer', function ($q2) {
-                        $q2->where('first_name', 'like', '%' . $this->search . '%')
-                            ->orWhere('last_name', 'like', '%' . $this->search . '%');
+        if ($search !== '') {
+            $query->where(function ($q) use ($likeSearch) {
+                $q->where('contracts.id', 'like', $likeSearch)
+                    ->orWhereHas('customer', function ($q2) use ($likeSearch) {
+                        $q2->where('first_name', 'like', $likeSearch)
+                            ->orWhere('last_name', 'like', $likeSearch);
                     })
-                    ->orWhereHas('car', function ($q3) {
-                        $q3->where('name', 'like', '%' . $this->search . '%');
+                    ->orWhereHas('car', function ($q3) use ($likeSearch) {
+                        $q3->where('plate_number', 'like', $likeSearch)
+                            ->orWhereHas('carModel', function ($modelQuery) use ($likeSearch) {
+                                $modelQuery->where('brand', 'like', $likeSearch)
+                                    ->orWhere('model', 'like', $likeSearch);
+                            });
                     });
             });
         }
@@ -43,15 +56,15 @@ class RentalRequestAwaitingPickupList extends Component
             ->paginate($this->perPage);
     }
 
-    // ریست شماره صفحه هنگام تغییر جستجو
-    public function updatedSearch()
+    // اگر بخوای تعداد آیتم در صفحه رو تغییر بدی
+    public function updatedPerPage()
     {
         $this->resetPage();
     }
 
-    // اگر بخوای تعداد آیتم در صفحه رو تغییر بدی
-    public function updatedPerPage()
+    public function applySearch(): void
     {
+        $this->search = trim($this->searchInput);
         $this->resetPage();
     }
 

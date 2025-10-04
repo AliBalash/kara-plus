@@ -15,6 +15,7 @@ class CashierDashboard extends Component
     use WithPagination;
 
     public $search = '';
+    public $searchInput = '';
     public $currencyFilter = '';
     public $dateFrom;
     public $dateTo;
@@ -22,10 +23,10 @@ class CashierDashboard extends Component
 
     protected $paginationTheme = 'bootstrap';
     protected $queryString = ['search', 'currencyFilter', 'dateFrom', 'dateTo'];
-
-    public function updatingSearch(): void
+    
+    public function mount(): void
     {
-        $this->resetPage();
+        $this->searchInput = $this->search;
     }
 
     public function updatingCurrencyFilter(): void
@@ -59,6 +60,13 @@ class CashierDashboard extends Component
     public function clearFilters(): void
     {
         $this->reset(['search', 'currencyFilter', 'dateFrom', 'dateTo']);
+        $this->searchInput = '';
+        $this->resetPage();
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
         $this->resetPage();
     }
 
@@ -90,32 +98,34 @@ class CashierDashboard extends Component
                 ->orderByDesc('total_aed')
                 ->get();
 
-            $filteredQuery = (clone $baseQuery)
-                ->when($this->search, function ($query) {
-                    $search = trim($this->search);
-                    $numericSearch = is_numeric($search) ? (int) $search : null;
+            $search = trim($this->search);
+            $numericSearch = $search !== '' && is_numeric($search) ? (int) $search : null;
+            $likeSearch = '%' . $search . '%';
 
-                    $query->where(function ($inner) use ($search, $numericSearch) {
+            $filteredQuery = (clone $baseQuery)
+                ->when($search !== '', function ($query) use ($search, $numericSearch, $likeSearch) {
+                    $query->where(function ($inner) use ($numericSearch, $likeSearch) {
                         if (!is_null($numericSearch)) {
+                            $numericLike = '%' . $numericSearch . '%';
                             $inner->orWhere('id', $numericSearch)
                                 ->orWhere('contract_id', $numericSearch)
-                                ->orWhere('amount', 'like', "%{$numericSearch}%")
-                                ->orWhere('amount_in_aed', 'like', "%{$numericSearch}%");
+                                ->orWhere('amount', 'like', $numericLike)
+                                ->orWhere('amount_in_aed', 'like', $numericLike);
                         }
 
-                        $inner->orWhereHas('contract', function ($contractQuery) use ($search, $numericSearch) {
+                        $inner->orWhereHas('contract', function ($contractQuery) use ($numericSearch, $likeSearch) {
                             if (!is_null($numericSearch)) {
                                 $contractQuery->where('id', $numericSearch);
                             } else {
-                                $contractQuery->where('id', 'like', "%{$search}%");
+                                $contractQuery->where('id', 'like', $likeSearch);
                             }
                         })
-                            ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                                $customerQuery->where('first_name', 'like', "%{$search}%")
-                                    ->orWhere('last_name', 'like', "%{$search}%")
-                                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                            ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                                $customerQuery->where('first_name', 'like', $likeSearch)
+                                    ->orWhere('last_name', 'like', $likeSearch)
+                                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$likeSearch]);
                             })
-                            ->orWhere('description', 'like', "%{$search}%");
+                            ->orWhere('description', 'like', $likeSearch);
                     });
                 })
                 ->when($this->currencyFilter, fn($query) => $query->where('currency', $this->currencyFilter))

@@ -9,6 +9,7 @@ use Livewire\WithPagination;
 class BrandList extends Component
 {
     public $search = '';
+    public $searchInput = '';
     public $fuelType = '';
     public $gearboxType = '';
 
@@ -18,13 +19,22 @@ class BrandList extends Component
 
     use WithPagination;
 
+    public function mount(): void
+    {
+        $this->searchInput = $this->search;
+    }
+
     public function render()
     {
-       
+        $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
+
         $brands = CarModel::query()
-            ->when($this->search, function ($query) {
-                $query->where('brand', 'like', '%' . $this->search . '%')
-                      ->orWhere('model', 'like', '%' . $this->search . '%');
+            ->when($search !== '', function ($query) use ($likeSearch) {
+                $query->where(function ($scoped) use ($likeSearch) {
+                    $scoped->where('brand', 'like', $likeSearch)
+                        ->orWhere('model', 'like', $likeSearch);
+                });
             })
             ->when($this->fuelType, function ($query) {
                 $query->where('fuel_type', $this->fuelType);
@@ -35,6 +45,12 @@ class BrandList extends Component
             ->paginate(10);
 
         return view('livewire.pages.panel.expert.brand.brand-list', compact('brands'));
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
+        $this->resetPage();
     }
 
     public function deleteBrand($id)

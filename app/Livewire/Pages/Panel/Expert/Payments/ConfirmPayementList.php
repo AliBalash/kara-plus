@@ -11,6 +11,7 @@ class ConfirmPayementList extends Component
     use WithPagination;
 
     public $search = '';
+    public $searchInput = '';
     public $statusFilter = '';
     public $currencyFilter = '';
     public $paymentTypeFilter = '';
@@ -20,15 +21,18 @@ class ConfirmPayementList extends Component
     public $openAccordions = [];
 
     protected $queryString = ['search', 'statusFilter', 'currencyFilter', 'paymentTypeFilter', 'dateFrom', 'dateTo'];
-
-    public function updatingSearch()
+    
+    public function mount(): void
     {
-        $this->resetPage();
+        $this->searchInput = $this->search;
+        $this->page = max(1, (int) ($this->page ?? 1));
     }
 
     public function clearFilters()
     {
         $this->reset(['search', 'statusFilter', 'currencyFilter', 'paymentTypeFilter', 'dateFrom', 'dateTo']);
+        $this->searchInput = '';
+        $this->page = 1;
     }
 
     public function toggleAccordion($contractId)
@@ -60,18 +64,22 @@ class ConfirmPayementList extends Component
 
     public function render()
     {
+        $search = trim($this->search);
+        $isNumericSearch = is_numeric($search);
+
         $query = Payment::query()
             ->with(['customer', 'contract', 'car'])
-            ->when($this->search, function ($q) {
-                $search = $this->search;
+            ->when($search !== '', function ($q) use ($search, $isNumericSearch) {
+                $likeSearch = '%' . $search . '%';
 
-                if (is_numeric($search)) {
-                    $q->whereHas('contract', function ($q2) use ($search) {
-                        $q2->where('id', $search);
+                if ($isNumericSearch) {
+                    $numeric = (int) $search;
+                    $q->whereHas('contract', function ($q2) use ($numeric) {
+                        $q2->where('id', $numeric);
                     });
                 } else {
-                    $q->whereHas('customer', function ($q2) use ($search) {
-                        $q2->where('last_name', 'like', '%' . $search . '%');
+                    $q->whereHas('customer', function ($q2) use ($likeSearch) {
+                        $q2->where('last_name', 'like', $likeSearch);
                     });
                 }
             })
@@ -84,16 +92,23 @@ class ConfirmPayementList extends Component
 
         // Group payments by contract_id
         $groupedPayments = $query->get()->groupBy('contract_id');
+        $currentPage = max(1, (int) ($this->page ?? 1));
         $groupedPayments = new \Illuminate\Pagination\LengthAwarePaginator(
-            $groupedPayments->forPage($this->page, 10),
+            $groupedPayments->forPage($currentPage, 10),
             $groupedPayments->count(),
             10,
-            $this->page,
+            $currentPage,
             ['path' => url()->current()]
         );
 
         return view('livewire.pages.panel.expert.payments.confirm-payement-list', [
             'groupedPayments' => $groupedPayments
         ]);
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
+        $this->page = 1;
     }
 }
