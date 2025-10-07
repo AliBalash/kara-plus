@@ -23,7 +23,7 @@ return new class extends Migration
             $table->decimal('amount_in_aed', 20, 2)->nullable(); // مبلغ معادل به درهم
             $table->enum('currency', ['IRR', 'USD', 'EUR', 'AED'])->default('IRR');
             $table->enum('payment_type', ['rental_fee', 'security_deposit', 'salik', 'fine', 'discount'])->default('rental_fee'); // نوع پرداخت
-            $table->enum('payment_method', ['cash', 'transfer'])->default('cash');
+            $table->enum('payment_method', ['cash', 'transfer' , 'ticket'])->default('cash');
             $table->text('description')->nullable(); // توضیحات (در صورت نیاز)
             $table->date('payment_date'); // تاریخ پرداخت
             $table->boolean('is_refundable')->default(false); // آیا این پرداخت بازگشت‌پذیر است؟ (برای پیش‌پرداخت خلافی)

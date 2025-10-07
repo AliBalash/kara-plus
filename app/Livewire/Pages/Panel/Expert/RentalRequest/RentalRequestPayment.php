@@ -49,7 +49,7 @@ class RentalRequestPayment extends Component
         'currency' => 'required|in:IRR,USD,AED,EUR',
         'payment_type' => 'required|in:rental_fee,security_deposit,salik,fine,discount,salik',
         'payment_date' => 'required|date',
-        'payment_method' => 'required|in:cash,transfer',
+        'payment_method' => 'required|in:cash,transfer,ticket',
         'is_refundable' => 'required|boolean',
         'rate' => 'nullable|numeric|min:0.0001',
         'receipt' => 'nullable|image|max:2048', // optional receipt image

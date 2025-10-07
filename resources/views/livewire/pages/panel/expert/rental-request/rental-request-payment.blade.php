@@ -79,6 +79,7 @@
                         <select class="form-control" wire:model="payment_method">
                             <option value="cash">Cash</option>
                             <option value="transfer">Transfer</option>
+                            <option value="ticket">Ticket</option>
                         </select>
                         @error('payment_method')
                             <span class="text-danger">{{ $message }}</span>
