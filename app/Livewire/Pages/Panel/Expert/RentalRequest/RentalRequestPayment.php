@@ -8,6 +8,7 @@ use App\Models\Contract;
 use App\Models\CustomerDocument;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\WithFileUploads;
 
 class RentalRequestPayment extends Component
@@ -200,6 +201,24 @@ class RentalRequestPayment extends Component
         $this->rate = '';
         $this->receipt = '';
         $this->is_refundable = false;
+    }
+
+    public function deletePayment($paymentId)
+    {
+        $payment = Payment::where('id', $paymentId)
+            ->where('contract_id', $this->contractId)
+            ->where('customer_id', $this->customerId)
+            ->firstOrFail();
+
+        if ($payment->receipt) {
+            Storage::disk('myimage')->delete($payment->receipt);
+        }
+
+        $payment->delete();
+
+        session()->flash('message', 'Payment deleted successfully.');
+        $this->loadData();
+        $this->dispatch('payment-updated');
     }
 
     public function render()
