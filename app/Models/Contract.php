@@ -121,10 +121,12 @@ class Contract extends Model
         $securityDeposit = $payments->where('payment_type', 'security_deposit')->sum('amount_in_aed');
         $finePaid = $payments->where('payment_type', 'fine')->sum('amount_in_aed');
         $salik = $payments->where('payment_type', 'salik')->sum('amount_in_aed');
+        $parking = $payments->where('payment_type', 'parking')->sum('amount_in_aed');
+        $damage = $payments->where('payment_type', 'damage')->sum('amount_in_aed');
 
         return $this->total_price
             - ($rentalPaid + $discounts + $securityDeposit)
-            + $finePaid + $salik;
+            + $finePaid + $salik + $parking + $damage;
     }
 
 

@@ -32,6 +32,8 @@ class RentalRequestPayment extends Component
 
     public $receipt;
     public $finePaid;
+    public $parkingPaid;
+    public $damagePaid;
     public $salik;
     public $discounts;
     public $security_deposit;
@@ -47,7 +49,7 @@ class RentalRequestPayment extends Component
     protected $rules = [
         'amount' => 'required|numeric|min:0',
         'currency' => 'required|in:IRR,USD,AED,EUR',
-        'payment_type' => 'required|in:rental_fee,security_deposit,salik,fine,discount,salik',
+        'payment_type' => 'required|in:rental_fee,security_deposit,salik,fine,parking,damage,discount',
         'payment_date' => 'required|date',
         'payment_method' => 'required|in:cash,transfer,ticket',
         'is_refundable' => 'required|boolean',
@@ -84,6 +86,14 @@ class RentalRequestPayment extends Component
             ->where('payment_type', 'fine')
             ->sum('amount_in_aed');
 
+        $this->parkingPaid = $this->existingPayments
+            ->where('payment_type', 'parking')
+            ->sum('amount_in_aed');
+
+        $this->damagePaid = $this->existingPayments
+            ->where('payment_type', 'damage')
+            ->sum('amount_in_aed');
+
         $this->salik = $this->existingPayments
             ->where('payment_type', 'salik')
             ->sum('amount_in_aed');
@@ -109,8 +119,8 @@ class RentalRequestPayment extends Component
             return;
         }
 
-        if (in_array($this->payment_type, ['fine']) && !$this->receipt) {
-            $this->addError('receipt', 'Receipt is required for fines.');
+        if (in_array($this->payment_type, ['fine', 'parking', 'damage']) && !$this->receipt) {
+            $this->addError('receipt', 'Receipt is required for fines, parking, or damage charges.');
             return;
         }
 

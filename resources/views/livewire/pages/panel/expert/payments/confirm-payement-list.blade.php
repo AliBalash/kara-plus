@@ -43,6 +43,8 @@
                 <option value="security_deposit">Security deposit</option>
                 <option value="salik">Salik</option>
                 <option value="fine">Fine</option>
+                <option value="parking">Parking</option>
+                <option value="damage">Damage</option>
                 <option value="discount">Discount</option>
             </select>
         </div>
