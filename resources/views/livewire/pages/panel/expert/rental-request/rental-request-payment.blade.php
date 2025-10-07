@@ -294,6 +294,7 @@
                     <th>Created By</th>
                     <th>Payment Date</th>
                     <th>Receipt</th>
+                    <th>Actions</th>
 
                 </tr>
             </thead>
@@ -324,10 +325,16 @@
                                 N/A
                             @endif
                         </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger"
+                                onclick="if(confirm('Delete this payment?')) { @this.deletePayment({{ $payment->id }}) }">
+                                Delete
+                            </button>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="text-center">No payments found</td>
+                        <td colspan="10" class="text-center">No payments found</td>
                     </tr>
                 @endforelse
             </tbody>

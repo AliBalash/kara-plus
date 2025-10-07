@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Payments;
 use Livewire\Component;
 use App\Models\Payment;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Storage;
 
 class ConfirmPayementList extends Component
 {
@@ -62,6 +63,19 @@ class ConfirmPayementList extends Component
         $payment->save();
 
         session()->flash('error', "Payment #{$paymentId} rejected.");
+    }
+
+    public function deletePayment($paymentId)
+    {
+        $payment = Payment::findOrFail($paymentId);
+
+        if ($payment->receipt) {
+            Storage::disk('myimage')->delete($payment->receipt);
+        }
+
+        $payment->delete();
+
+        session()->flash('success', "Payment #{$paymentId} deleted successfully.");
     }
 
     public function render()

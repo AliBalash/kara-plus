@@ -139,10 +139,15 @@
                                                     -
                                                 @endif
                                             </td>
-                                            <td>
+                                            <td class="d-flex flex-wrap gap-1">
+                                                <a href="{{ route('payments.edit', $payment->id) }}"
+                                                    class="btn btn-sm btn-outline-primary">Edit</a>
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                    wire:click="deletePayment({{ $payment->id }})"
+                                                    onclick="if(!confirm('Are you sure you want to delete this payment?')) { event.stopImmediatePropagation(); }">Delete</button>
                                                 <button class="btn btn-sm btn-success"
                                                     wire:click="approve({{ $payment->id }})">Approve</button>
-                                                <button class="btn btn-sm btn-danger"
+                                                <button class="btn btn-sm btn-warning text-dark"
                                                     wire:click="reject({{ $payment->id }})">Reject</button>
                                             </td>
                                         </tr>
