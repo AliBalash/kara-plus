@@ -36,6 +36,7 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPaymentList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPickupDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReserved;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReturnDocument;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCancelledList;
 
 Route::middleware(['auth.check'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
@@ -61,6 +62,7 @@ Route::middleware(['auth.check'])->group(function () {
 
     Route::get('/expert/rental-requests/awaiting-return', RentalRequestAwaitingReturnList::class)->name('rental-requests.awaiting.return');
     Route::get('/expert/rental-requests/payment-list', RentalRequestPaymentList::class)->name('rental-requests.payment.list');
+    Route::get('/expert/rental-requests/cancelled', RentalRequestCancelledList::class)->name('rental-requests.cancelled');
 
 
     Route::get('/expert/rental-requests/confirm-payment-list',ConfirmPayementList::class)->name('rental-requests.confirm-payment-list');

@@ -5,9 +5,11 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use Livewire\Component;
+use App\Livewire\Concerns\HandlesContractCancellation;
 
 class RentalRequestHistory extends Component
 {
+    use HandlesContractCancellation;
     public $contractId;
     public $contract;
     public $statuses;
@@ -28,5 +30,13 @@ class RentalRequestHistory extends Component
         return view('livewire.pages.panel.expert.rental-request.rental-request-history', [
             'statuses' => $this->statuses
         ]);
+    }
+
+    protected function afterContractCancelled(): void
+    {
+        $this->contract->refresh();
+        $this->statuses = ContractStatus::where('contract_id', $this->contractId)
+            ->orderByDesc('created_at')
+            ->get();
     }
 }

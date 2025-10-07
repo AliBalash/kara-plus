@@ -5,15 +5,18 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Livewire\Concerns\HandlesContractCancellation;
 
 class RentalRequestInspectionList extends Component
 {
     use WithPagination;
+    use HandlesContractCancellation;
 
     public $search = '';
     public $searchInput = '';
 
     protected $queryString = ['search'];
+    protected $listeners = ['refreshContracts' => '$refresh'];
 
     public function mount(): void
     {
