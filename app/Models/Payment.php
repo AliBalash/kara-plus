@@ -25,12 +25,14 @@ class Payment extends Model
         'is_paid',
         'rate',
         'receipt',
+        'approval_status',
     ];
 
     protected $casts = [
         'payment_date' => 'date',
         'is_refundable' => 'boolean',
         'is_paid' => 'boolean',
+        'approval_status' => 'string',
     ];
 
     /**

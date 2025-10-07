@@ -20,6 +20,8 @@ class PaymentSeeder extends Seeder
             'amount' => 700.00,
             'payment_type' => 'rental_fee',
             'payment_date' => now(),
+            'approval_status' => 'approved',
+            'is_paid' => true,
         ]);
     }
 }
