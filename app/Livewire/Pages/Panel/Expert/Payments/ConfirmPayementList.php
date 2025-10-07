@@ -48,6 +48,7 @@ class ConfirmPayementList extends Component
     {
         $payment = Payment::findOrFail($paymentId);
         $payment->is_paid = true;
+        $payment->approval_status = 'approved';
         $payment->save();
 
         session()->flash('success', "Payment #{$paymentId} approved successfully.");
@@ -57,6 +58,7 @@ class ConfirmPayementList extends Component
     {
         $payment = Payment::findOrFail($paymentId);
         $payment->is_paid = false;
+        $payment->approval_status = 'rejected';
         $payment->save();
 
         session()->flash('error', "Payment #{$paymentId} rejected.");
@@ -83,7 +85,7 @@ class ConfirmPayementList extends Component
                     });
                 }
             })
-            ->when($this->statusFilter !== '', fn($q) => $q->where('is_paid', $this->statusFilter))
+            ->when($this->statusFilter !== '', fn($q) => $q->where('approval_status', $this->statusFilter))
             ->when($this->currencyFilter, fn($q) => $q->where('currency', $this->currencyFilter))
             ->when($this->paymentTypeFilter, fn($q) => $q->where('payment_type', $this->paymentTypeFilter))
             ->when($this->dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $this->dateFrom))

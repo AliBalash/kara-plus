@@ -20,8 +20,9 @@
         <div class="col-md-2 mb-2">
             <select class="form-select" wire:model.live="statusFilter">
                 <option value="">All Status</option>
-                <option value="1">Approved</option>
-                <option value="0">Pending/Rejected</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
             </select>
         </div>
 
@@ -117,11 +118,18 @@
                                             <td>{{ ucfirst(str_replace('_', ' ', $payment->payment_type)) }}</td>
                                             <td>{{ $payment->payment_date }}</td>
                                             <td>
-                                                @if ($payment->is_paid)
-                                                    <span class="badge bg-success">Approved</span>
-                                                @else
-                                                    <span class="badge bg-warning">Pending</span>
-                                                @endif
+                                                @switch($payment->approval_status)
+                                                    @case('approved')
+                                                        <span class="badge bg-success">Approved</span>
+                                                    @break
+
+                                                    @case('rejected')
+                                                        <span class="badge bg-danger">Rejected</span>
+                                                    @break
+
+                                                    @default
+                                                        <span class="badge bg-warning text-dark">Pending</span>
+                                                @endswitch
                                             </td>
                                             <td>
                                                 @if ($payment->receipt)

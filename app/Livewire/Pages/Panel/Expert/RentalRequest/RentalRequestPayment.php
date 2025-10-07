@@ -153,6 +153,7 @@ class RentalRequestPayment extends Component
                 'is_paid' => false,
                 'is_refundable' => $this->is_refundable,
                 'receipt' => $receiptPath,
+                'approval_status' => 'pending',
             ]);
 
             session()->flash('message', 'Payment was successfully added!');
