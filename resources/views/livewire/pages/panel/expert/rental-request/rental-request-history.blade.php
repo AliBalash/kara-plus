@@ -75,6 +75,12 @@
 
                                             <!-- گزینه Delete -->
                                             @if ($status->contract->user_id === auth()->id())
+                                                @if ($status->contract->current_status !== 'cancelled')
+                                                    <a class="dropdown-item text-danger" href="javascript:void(0);"
+                                                        onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $status->contract->id }}) }">
+                                                        <i class="bx bx-block me-1"></i> Cancel
+                                                    </a>
+                                                @endif
                                                 <a class="dropdown-item" href="javascript:void(0);"
                                                     wire:click.prevent="deleteContract({{ $status->contract->id }})">
                                                     <i class="bx bx-trash me-1"></i> Delete

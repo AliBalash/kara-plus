@@ -4,9 +4,12 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
 use Livewire\Component;
+use App\Livewire\Concerns\HandlesContractCancellation;
 
 class RentalRequestPaymentList extends Component
 {
+    use HandlesContractCancellation;
+
     public $paymentContracts;
     public $search = '';
     public $searchInput = '';

@@ -2,38 +2,36 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\HandlesContractCancellation;
+use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Contract;
-use App\Livewire\Concerns\HandlesContractCancellation;
 
-class RentalRequestList extends Component
+class RentalRequestCancelledList extends Component
 {
     use WithPagination;
     use HandlesContractCancellation;
 
     public $search = '';
-    public $statusFilter = '';
+    public $searchInput = '';
     public $userFilter = '';
     public $pickupFrom;
     public $pickupTo;
     public $returnFrom;
     public $returnTo;
-    public $sortField = 'created_at';
+    public $sortField = 'updated_at';
     public $sortDirection = 'desc';
-    public $searchInput = '';
 
     protected $listeners = ['refreshContracts' => '$refresh'];
     protected $queryString = [
         'search',
-        'statusFilter',
         'userFilter',
         'pickupFrom',
         'pickupTo',
         'returnFrom',
         'returnTo',
         'sortField',
-        'sortDirection'
+        'sortDirection',
     ];
 
     public function mount(): void
@@ -41,20 +39,31 @@ class RentalRequestList extends Component
         $this->searchInput = $this->search;
     }
 
-    public function sortBy($field)
+    public function sortBy(string $field): void
     {
         if ($this->sortField === $field) {
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            $this->sortField = $field;
-            $this->sortDirection = 'asc';
+            return;
         }
+
+        $this->sortField = $field;
+        $this->sortDirection = 'asc';
     }
 
-    public function clearFilters()
+    public function clearFilters(): void
     {
-        $this->reset(['search', 'statusFilter', 'userFilter', 'pickupFrom', 'pickupTo', 'returnFrom', 'returnTo']);
+        $this->reset([
+            'search',
+            'userFilter',
+            'pickupFrom',
+            'pickupTo',
+            'returnFrom',
+            'returnTo',
+        ]);
+
         $this->searchInput = '';
+        $this->sortField = 'updated_at';
+        $this->sortDirection = 'desc';
         $this->resetPage();
     }
 
@@ -64,17 +73,9 @@ class RentalRequestList extends Component
         $this->resetPage();
     }
 
-    public function assignToMe($contractId)
+    protected function afterContractCancelled(): void
     {
-        $contract = Contract::findOrFail($contractId);
-        if (is_null($contract->user_id)) {
-            $contract->update(['user_id' => auth()->id()]);
-            $contract->changeStatus('assigned', auth()->id());
-            session()->flash('success', 'Contract assigned to you successfully.');
-            $this->dispatch('refreshContracts');
-        } else {
-            session()->flash('error', 'This contract is already assigned.');
-        }
+        $this->resetPage();
     }
 
     public function render()
@@ -83,8 +84,9 @@ class RentalRequestList extends Component
         $likeSearch = '%' . $search . '%';
 
         $contracts = Contract::with(['customer', 'car.carModel', 'user'])
-            ->when($search !== '', function ($query) use ($search, $likeSearch) {
-                $query->where(function ($scopedQuery) use ($search, $likeSearch) {
+            ->where('current_status', 'cancelled')
+            ->when($search !== '', function ($query) use ($likeSearch) {
+                $query->where(function ($scopedQuery) use ($likeSearch) {
                     $scopedQuery
                         ->where('contracts.id', 'like', $likeSearch)
                         ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
@@ -103,19 +105,17 @@ class RentalRequestList extends Component
                         });
                 });
             })
-            ->when($this->statusFilter, fn($q) => $q->where('current_status', $this->statusFilter))
-            ->when($this->userFilter === 'assigned', fn($q) => $q->whereNotNull('user_id'))
-            ->when($this->userFilter === 'unassigned', fn($q) => $q->whereNull('user_id'))
-            ->when($this->pickupFrom, fn($q) => $q->where('pickup_date', '>=', $this->pickupFrom))
-            ->when($this->pickupTo, fn($q) => $q->where('pickup_date', '<=', $this->pickupTo))
-            ->when($this->returnFrom, fn($q) => $q->where('return_date', '>=', $this->returnFrom))
-            ->when($this->returnTo, fn($q) => $q->where('return_date', '<=', $this->returnTo))
-            ->orderByRaw("FIELD(current_status, 'pending') DESC") // Pending همیشه بالا
-            ->when(!in_array($this->sortField, ['customer', 'car']), fn($q) => $q->orderBy($this->sortField, $this->sortDirection))
+            ->when($this->userFilter === 'assigned', fn($query) => $query->whereNotNull('user_id'))
+            ->when($this->userFilter === 'unassigned', fn($query) => $query->whereNull('user_id'))
+            ->when($this->pickupFrom, fn($query) => $query->whereDate('pickup_date', '>=', $this->pickupFrom))
+            ->when($this->pickupTo, fn($query) => $query->whereDate('pickup_date', '<=', $this->pickupTo))
+            ->when($this->returnFrom, fn($query) => $query->whereDate('return_date', '>=', $this->returnFrom))
+            ->when($this->returnTo, fn($query) => $query->whereDate('return_date', '<=', $this->returnTo))
+            ->orderBy($this->sortField, $this->sortDirection)
             ->paginate(10);
 
-        return view('livewire.pages.panel.expert.rental-request.rental-request-list', [
-            'contracts' => $contracts
+        return view('livewire.pages.panel.expert.rental-request.rental-request-cancelled-list', [
+            'contracts' => $contracts,
         ]);
     }
 }

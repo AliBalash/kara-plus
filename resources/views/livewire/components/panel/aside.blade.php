@@ -72,6 +72,12 @@
                         </a>
                     </li>
 
+                    <li class="menu-item {{ Request::routeIs('rental-requests.cancelled') ? 'active' : '' }}">
+                        <a href="{{ route('rental-requests.cancelled') }}" class="menu-link">
+                            <div data-i18n="Without menu">Cancelled</div>
+                        </a>
+                    </li>
+
 
                     <li class="menu-item {{ Request::routeIs('rental-requests.payment.list') ? 'active' : '' }}">
                         <a href="{{ route('rental-requests.payment.list') }}" class="menu-link">

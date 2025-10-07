@@ -4,10 +4,11 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
 use Livewire\Component;
+use App\Livewire\Concerns\HandlesContractCancellation;
 
 class RentalRequestMe extends Component
 {
-
+    use HandlesContractCancellation;
     public $contracts = [];
     public $search = '';
     public $searchInput = '';
@@ -54,6 +55,11 @@ class RentalRequestMe extends Component
     public function applySearch(): void
     {
         $this->search = trim($this->searchInput);
+        $this->loadContracts();
+    }
+
+    protected function afterContractCancelled(): void
+    {
         $this->loadContracts();
     }
     public function render()

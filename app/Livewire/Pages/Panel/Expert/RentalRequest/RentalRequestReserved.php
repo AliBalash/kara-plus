@@ -5,10 +5,12 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Livewire\Concerns\HandlesContractCancellation;
 
 class RentalRequestReserved extends Component
 {
     use WithPagination;
+    use HandlesContractCancellation;
 
     public $search = ''; // متغیر جستجو
     public $searchInput = '';

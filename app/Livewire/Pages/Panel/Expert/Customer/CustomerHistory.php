@@ -4,10 +4,11 @@ namespace App\Livewire\Pages\Panel\Expert\Customer;
 
 use App\Models\Contract;
 use Livewire\Component;
+use App\Livewire\Concerns\HandlesContractCancellation;
 
 class CustomerHistory extends Component
 {
-
+    use HandlesContractCancellation;
     public $customerId; // Holds the customer ID
     public $contracts; // Holds the contracts related to the customer
     
@@ -20,7 +21,14 @@ class CustomerHistory extends Component
             ->where('customer_id', $this->customerId) // فیلتر کردن بر اساس ID مشتری
             ->get();
     }
-    
+
+    protected function afterContractCancelled(): void
+    {
+        $this->contracts = Contract::with(['customer', 'car', 'user'])
+            ->where('customer_id', $this->customerId)
+            ->get();
+    }
+
 
     public function render()
     {
