@@ -66,6 +66,8 @@
                             <option value="security_deposit">Security deposit</option>
                             <option value="salik">Salik</option>
                             <option value="fine">Fine</option>
+                            <option value="parking">Parking</option>
+                            <option value="damage">Damage</option>
                             <option value="discount">Discount</option>
 
                         </select>
@@ -194,6 +196,20 @@
                 'color' => 'danger',
             ],
             [
+                'key' => 'parking',
+                'label' => 'Parking',
+                'value' => $parkingPaid,
+                'icon' => 'bi-cone-striped',
+                'color' => 'danger',
+            ],
+            [
+                'key' => 'damage',
+                'label' => 'Damage',
+                'value' => $damagePaid,
+                'icon' => 'bi-tools',
+                'color' => 'danger',
+            ],
+            [
                 'key' => 'security_deposit',
                 'label' => 'Security deposit',
                 'value' => $security_deposit,
@@ -236,6 +252,8 @@
                                             )
                                             + <span class="text-danger">{{ number_format($finePaid, 2) }}</span>
                                             + <span class="text-secondary">{{ number_format($salik, 2) }}</span>
+                                            + <span class="text-danger">{{ number_format($parkingPaid, 2) }}</span>
+                                            + <span class="text-danger">{{ number_format($damagePaid, 2) }}</span>
                                             <span class="fw-bold fs-3 mt-2">
                                                 = {{ number_format($remainingBalance, 2) }}
                                             </span>
