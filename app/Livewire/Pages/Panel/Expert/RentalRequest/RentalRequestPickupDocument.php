@@ -3,10 +3,10 @@
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
-use App\Models\Payment;
 use App\Models\PickupDocument;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -31,14 +31,24 @@ class RentalRequestPickupDocument extends Component
     public $remainingBalance = 0;
 
     public $contract;
+    public array $customerDocuments = [
+        'passport' => [],
+        'license' => [],
+    ];
+    public array $costBreakdown = [];
+    public array $costSummary = [
+        'subtotal' => 0,
+        'tax' => 0,
+        'total' => 0,
+        'remaining' => 0,
+    ];
 
 
 
     public function mount($contractId)
     {
-
         $this->contractId = $contractId;
-        $this->contract = Contract::findOrFail($contractId);
+        $this->contract = Contract::with(['customerDocument', 'charges', 'payments'])->findOrFail($contractId);
 
         $this->contractId = $contractId;
         $pickup = PickupDocument::where('contract_id', $contractId)->first();
@@ -69,7 +79,11 @@ class RentalRequestPickupDocument extends Component
                 : null,
         ];
 
-        $this->remainingBalance = $this->contract->calculateRemainingBalance();
+        $payments = $this->contract->relationLoaded('payments') ? $this->contract->payments : null;
+        $this->remainingBalance = $this->contract->calculateRemainingBalance($payments);
+
+        $this->prepareCustomerDocuments();
+        $this->prepareCostBreakdown();
     }
 
     public function uploadDocuments()
@@ -264,5 +278,144 @@ class RentalRequestPickupDocument extends Component
         $contract->changeStatus('delivery', auth()->id());
 
         session()->flash('message', 'Status changed to Delivery successfully.');
+    }
+
+    private function prepareCustomerDocuments(): void
+    {
+        $customerDocument = $this->contract->customerDocument;
+
+        if (!$customerDocument) {
+            $this->customerDocuments = [
+                'passport' => [],
+                'license' => [],
+            ];
+            return;
+        }
+
+        $this->customerDocuments = [
+            'passport' => $this->formatDocumentFiles($customerDocument->passport ?? []),
+            'license' => $this->formatDocumentFiles($customerDocument->license ?? []),
+        ];
+    }
+
+    private function formatDocumentFiles($value): array
+    {
+        $storedFiles = $this->normalizeDocumentFiles($value);
+
+        if (empty($storedFiles)) {
+            return [];
+        }
+
+        return collect($storedFiles)
+            ->map(function ($path, $label) {
+                $disk = Storage::disk('myimage');
+                $exists = $path && $disk->exists($path);
+
+                if (! $exists) {
+                    return null;
+                }
+
+                $normalizedPath = ltrim($path, '/');
+                if (Str::startsWith($normalizedPath, 'public/')) {
+                    $normalizedPath = Str::after($normalizedPath, 'public/');
+                }
+
+                $url = asset('storage/' . $normalizedPath);
+
+                return [
+                    'label' => $this->humanReadableLabel($label),
+                    'url' => $url,
+                    'is_pdf' => Str::endsWith(Str::lower($path), '.pdf'),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->toArray();
+    }
+
+    private function normalizeDocumentFiles($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return $decoded;
+            }
+
+            return ['front' => $value];
+        }
+
+        return [];
+    }
+
+    private function humanReadableLabel(string $label): string
+    {
+        return match (true) {
+            $label === 'front' => 'Front',
+            $label === 'back' => 'Back',
+            Str::startsWith($label, 'extra_') => 'Additional ' . Str::after($label, 'extra_'),
+            default => Str::of($label)->replace('_', ' ')->title(),
+        };
+    }
+
+    private function prepareCostBreakdown(): void
+    {
+        $charges = $this->contract->relationLoaded('charges')
+            ? $this->contract->charges
+            : $this->contract->charges()->get();
+
+        if ($charges->isEmpty()) {
+            $this->costBreakdown = [];
+            $this->costSummary = [
+                'subtotal' => (float) ($this->contract->total_price ?? 0),
+                'tax' => 0.0,
+                'total' => (float) ($this->contract->total_price ?? 0),
+                'remaining' => (float) $this->remainingBalance,
+            ];
+
+            return;
+        }
+
+        $chargeRows = $charges->reject(fn($charge) => $charge->type === 'tax');
+
+        $this->costBreakdown = $chargeRows->map(function ($charge) {
+            return [
+                'label' => $this->humanReadableChargeTitle($charge->title),
+                'description' => $charge->description,
+                'amount' => (float) $charge->amount,
+            ];
+        })->toArray();
+
+        $tax = (float) $charges->where('type', 'tax')->sum('amount');
+        $total = (float) $charges->sum('amount');
+        $subtotal = $total - $tax;
+
+        $this->costSummary = [
+            'subtotal' => $subtotal,
+            'tax' => $tax,
+            'total' => $total,
+            'remaining' => (float) $this->remainingBalance,
+        ];
+    }
+
+    private function humanReadableChargeTitle(string $title): string
+    {
+        $labels = [
+            'base_rental' => 'Base Rental',
+            'pickup_transfer' => 'Pickup Transfer',
+            'return_transfer' => 'Return Transfer',
+            'ldw_insurance' => 'LDW Insurance',
+            'scdw_insurance' => 'SCDW Insurance',
+            'tax' => 'Tax (5%)',
+        ];
+
+        if (array_key_exists($title, $labels)) {
+            return $labels[$title];
+        }
+
+        return Str::of($title)->replace('_', ' ')->title();
     }
 }

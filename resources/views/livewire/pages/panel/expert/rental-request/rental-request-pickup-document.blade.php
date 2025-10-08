@@ -7,8 +7,7 @@
         </div>
         @if (!empty($contractId))
             <div class="col-lg-6 text-lg-end">
-                <a class="btn btn-danger fw-semibold shadow-sm"
-                    href="javascript:void(0);"
+                <a class="btn btn-danger fw-semibold shadow-sm" href="javascript:void(0);"
                     onclick="if(confirm('Are you sure you want to set this contract to Delivery?')) { @this.changeStatusToDelivery({{ $contractId }}) }">
                     Set to Delivery (permission :for rider)
                     <i class="bx bxs-log-in-circle ms-1"></i>
@@ -56,7 +55,8 @@
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title" id="imageModalLabel">View Image</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
                             </div>
                             <div class="modal-body text-center">
                                 <img id="modalImage" src="" class="img-fluid rounded" alt="Preview">
@@ -78,7 +78,8 @@
                             @if (!empty($existingFiles['tarsContract']))
                                 <div class="preview-wrapper mb-3">
                                     <img src="{{ $existingFiles['tarsContract'] }}" class="img-fluid preview-clickable"
-                                        alt="Tars Contract" onclick="openModal('{{ $existingFiles['tarsContract'] }}')">
+                                        alt="Tars Contract"
+                                        onclick="openModal('{{ $existingFiles['tarsContract'] }}')">
                                 </div>
                             @endif
                             <input type="file" class="form-control" wire:model="tarsContract"
@@ -106,8 +107,9 @@
                                 </div>
                                 @if (!empty($existingFiles['kardoContract']))
                                     <div class="preview-wrapper mb-3">
-                                        <img src="{{ $existingFiles['kardoContract'] }}" class="img-fluid preview-clickable"
-                                            alt="Cardo Contract" onclick="openModal('{{ $existingFiles['kardoContract'] }}')">
+                                        <img src="{{ $existingFiles['kardoContract'] }}"
+                                            class="img-fluid preview-clickable" alt="Cardo Contract"
+                                            onclick="openModal('{{ $existingFiles['kardoContract'] }}')">
                                     </div>
                                 @endif
                                 <input type="file" class="form-control" wire:model="kardoContract"
@@ -124,16 +126,19 @@
                         </div>
                     @else
                         <div class="col-12 col-lg-6 col-xl-4">
-                            <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-light d-flex flex-column align-items-center justify-content-center text-center">
+                            <div
+                                class="document-card border rounded-3 p-3 h-100 shadow-sm bg-light d-flex flex-column align-items-center justify-content-center text-center">
                                 <span class="fw-semibold mb-2">Cardo Contract</span>
-                                <p class="text-muted small mb-0">CARDO inspection is not required for this contract.</p>
+                                <p class="text-muted small mb-0">CARDO inspection is not required for this contract.
+                                </p>
                             </div>
                         </div>
                     @endif
 
                     <div class="col-12 col-lg-6 col-xl-4">
                         @php $paymentOnDelivery = (bool) ($contract->payment_on_delivery ?? false); @endphp
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm {{ $paymentOnDelivery ? 'bg-white' : 'bg-light opacity-75' }}">
+                        <div
+                            class="document-card border rounded-3 p-3 h-100 shadow-sm {{ $paymentOnDelivery ? 'bg-white' : 'bg-light opacity-75' }}">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label fw-semibold mb-0">Watcher's Receipt</label>
                                 @if (!empty($existingFiles['factorContract']))
@@ -143,12 +148,13 @@
                             </div>
                             @if (!empty($existingFiles['factorContract']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['factorContract'] }}" class="img-fluid preview-clickable"
-                                        alt="Watcher's Receipt" onclick="openModal('{{ $existingFiles['factorContract'] }}')">
+                                    <img src="{{ $existingFiles['factorContract'] }}"
+                                        class="img-fluid preview-clickable" alt="Watcher's Receipt"
+                                        onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 </div>
                             @endif
                             <input type="file" class="form-control" wire:model="factorContract"
-                                @if (! $paymentOnDelivery) disabled @endif
+                                @if (!$paymentOnDelivery) disabled @endif
                                 @if ($paymentOnDelivery && empty($existingFiles['factorContract'])) required @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             @unless ($paymentOnDelivery)
@@ -175,8 +181,9 @@
                             </div>
                             @if (!empty($existingFiles['carDashboard']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['carDashboard'] }}" class="img-fluid preview-clickable"
-                                        alt="Dashboard Photo" onclick="openModal('{{ $existingFiles['carDashboard'] }}')">
+                                    <img src="{{ $existingFiles['carDashboard'] }}"
+                                        class="img-fluid preview-clickable" alt="Dashboard Photo"
+                                        onclick="openModal('{{ $existingFiles['carDashboard'] }}')">
                                 </div>
                             @endif
                             <input type="file" class="form-control" wire:model="carDashboard"
@@ -255,7 +262,8 @@
                     <div class="col-12 col-lg-6 col-xl-4">
                         <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
                             <label class="form-label fw-semibold">Mileage</label>
-                            <input type="text" class="form-control" wire:model="mileage" placeholder="Km on pickup">
+                            <input type="text" class="form-control" wire:model="mileage"
+                                placeholder="Km on pickup">
                             <small class="text-muted d-block mt-2">Current odometer at pickup</small>
                             @error('mileage')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
@@ -266,7 +274,8 @@
                     <div class="col-12 col-xl-6">
                         <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
                             <label class="form-label fw-semibold">Note (Optional)</label>
-                            <textarea class="form-control" wire:model="note" rows="4" placeholder="Internal note for the team"></textarea>
+                            <textarea class="form-control" wire:model="note" rows="4"
+                                placeholder="Internal note for the team"></textarea>
                             @error('note')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
                             @enderror
@@ -276,7 +285,8 @@
                     <div class="col-12 col-xl-6">
                         <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
                             <label class="form-label fw-semibold">Driver Note (Optional)</label>
-                            <textarea class="form-control" wire:model="driverNote" rows="4" placeholder="Message for the driver"></textarea>
+                            <textarea class="form-control" wire:model="driverNote" rows="4"
+                                placeholder="Message for the driver"></textarea>
                             @error('driverNote')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
                             @enderror
@@ -284,27 +294,111 @@
                     </div>
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="card shadow-sm h-100">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>Fuel Level</span>
-                                <span class="badge bg-primary">{{ $fuelLevel }}%</span>
-                            </div>
-                            <div class="card-body">
-                                <label for="fuelRange" class="form-label">Select fuel level (%)</label>
-                                <input type="range" class="form-range" min="0" max="100" step="10" id="fuelRange"
-                                    wire:model.live="fuelLevel">
-                                <div class="d-flex justify-content-between small text-muted">
-                                    <span>0%</span>
-                                    <span>50%</span>
-                                    <span>100%</span>
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span>Fuel Level</span>
+                                    <span class="badge bg-primary">{{ $fuelLevel }}%</span>
+                                </div>
+                                <div class="card-body">
+                                    <label for="fuelRange" class="form-label">Select fuel level (%)</label>
+                                    <input type="range" class="form-range" min="0" max="100" step="10"
+                                        id="fuelRange" wire:model.live="fuelLevel">
+                                    <div class="d-flex justify-content-between small text-muted">
+                                        <span>0%</span>
+                                        <span>50%</span>
+                                        <span>100%</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
                     </div>
 
-                    @if ($contract->payment_on_delivery)
+                    @if (!empty($costBreakdown))
+                        <div class="col-12 col-xl-6">
+                            <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="fw-semibold mb-0">Cost Breakdown</h6>
+                                        <span class="text-muted small">View pricing details</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#costBreakdownCollapse" aria-expanded="false"
+                                        aria-controls="costBreakdownCollapse">
+                                        Toggle
+                                    </button>
+                                </div>
+                                <div class="collapse mt-3" id="costBreakdownCollapse">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-borderless align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Item</th>
+                                                    <th class="d-none d-md-table-cell">Details</th>
+                                                    <th class="text-end">Amount (AED)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($costBreakdown as $item)
+                                                    <tr>
+                                                        <td class="fw-semibold">{{ $item['label'] }}</td>
+                                                        <td class="text-muted small d-none d-md-table-cell">
+                                                            {{ $item['description'] ?? '—' }}
+                                                        </td>
+                                                        <td class="text-end fw-semibold">
+                                                            {{ number_format($item['amount'], 2) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                                <tr class="table-light">
+                                                    <td class="fw-semibold">Subtotal</td>
+                                                    <td class="d-none d-md-table-cell"></td>
+                                                    <td class="text-end fw-semibold">
+                                                        {{ number_format($costSummary['subtotal'], 2) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-semibold">Tax</td>
+                                                    <td class="text-muted small d-none d-md-table-cell">5% VAT</td>
+                                                    <td class="text-end fw-semibold">
+                                                        {{ number_format($costSummary['tax'], 2) }}</td>
+                                                </tr>
+                                                <tr class="table-primary">
+                                                    <td class="fw-semibold">Total Amount</td>
+                                                    <td class="d-none d-md-table-cell"></td>
+                                                    <td class="text-end fw-bold">
+                                                        {{ number_format($costSummary['total'], 2) }}</td>
+                                                </tr>
+                                                <tr class="table-warning">
+                                                    <td class="fw-semibold">Remaining Balance</td>
+                                                    <td class="text-muted small d-none d-md-table-cell">After recorded
+                                                        payments</td>
+                                                    <td class="text-end fw-bold text-warning">
+                                                        {{ number_format($costSummary['remaining'], 2) }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if ($contract->payment_on_delivery)
+                                <div
+                                    class="card shadow-sm border-{{ $remainingBalance > 0 ? 'warning' : 'success' }} mt-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title fw-semibold mb-3">Payment on Delivery</h6>
+                                        @if ($remainingBalance > 0)
+                                            <p class="mb-1 text-muted">Remaining balance to collect:</p>
+                                            <p class="fw-bold text-warning mb-0">
+                                                {{ number_format($remainingBalance, 2) }} {{ $contract->currency }}
+                                            </p>
+                                        @else
+                                            <p class="mb-0 text-success fw-semibold">All payments are completed. ✅</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @elseif ($contract->payment_on_delivery)
                         <div class="col-12 col-lg-6 col-xl-4">
-                            <div class="card shadow-sm h-100 border-{{ $remainingBalance > 0 ? 'warning' : 'success' }}">
+                            <div
+                                class="card shadow-sm h-100 border-{{ $remainingBalance > 0 ? 'warning' : 'success' }}">
                                 <div class="card-body">
                                     <h6 class="card-title fw-semibold mb-3">Payment on Delivery</h6>
                                     @if ($remainingBalance > 0)
@@ -329,6 +423,44 @@
             </form>
         </div>
     </div>
+
+    @if (!empty($customerDocuments['passport']) || !empty($customerDocuments['license']))
+        <div class="card shadow-sm border-0 rounded-4 mt-4">
+            <div class="card-header bg-white border-0 rounded-top-4 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Customer Identity Documents</h5>
+                <span class="badge bg-label-primary">Available</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    @php $docSections = ['passport' => 'Passport', 'license' => 'Driver License']; @endphp
+                    @foreach ($docSections as $docKey => $docLabel)
+                        @if (!empty($customerDocuments[$docKey]))
+                            <div class="col-12 col-lg-6">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <h6 class="text-muted text-uppercase small mb-3">{{ $docLabel }}</h6>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        @foreach ($customerDocuments[$docKey] as $file)
+                                            <div class="border rounded-3 p-2 text-center flex-grow-1" style="min-width: 160px;">
+                                                <div class="fw-semibold small mb-2">{{ $file['label'] }}</div>
+                                                @if ($file['is_pdf'])
+                                                    <a href="{{ $file['url'] }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                                        <i class="bx bxs-file-pdf me-1"></i> View PDF
+                                                    </a>
+                                                @else
+                                                    <img src="{{ $file['url'] }}" class="img-fluid rounded preview-clickable"
+                                                        alt="{{ $docLabel }} {{ $file['label'] }}" onclick="openModal('{{ $file['url'] }}')">
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 @push('styles')
