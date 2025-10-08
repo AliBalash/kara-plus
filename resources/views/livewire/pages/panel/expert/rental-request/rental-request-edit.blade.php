@@ -15,8 +15,8 @@
             <div class="col-lg-6 text-end">
                 <a class="btn btn-danger fw-bold transition-all duration-300 hover:bg-danger-dark"
                     href="javascript:void(0);"
-                    onclick="if(confirm('Are you sure you want to set this contract to Reserved?')) { @this.changeStatusToReserve({{ $contract->id }}) }">
-                    <i class="bx bxs-log-in-circle me-2"></i> Set to Reserved
+                    onclick="if(confirm('Are you sure you want to set this contract to Booking?')) { @this.changeStatusToReserve({{ $contract->id }}) }">
+                    <i class="bx bxs-log-in-circle me-2"></i> Set to Booking
                 </a>
             </div>
         @endif
@@ -336,7 +336,7 @@
                                                                 <td>
                                                                     @if ($isCurrent)
                                                                         <span class="badge bg-danger">Currently
-                                                                            Reserved</span>
+                                                                            Booking</span>
                                                                     @else
                                                                         <span class="badge bg-warning">Future
                                                                             Reservation</span>

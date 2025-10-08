@@ -31,15 +31,15 @@
             <select class="form-select" wire:model.live="statusFilter">
                 <option value="">All Status</option>
                 <option value="available">Available</option>
-                <option value="reserved">Reserved</option>
+                <option value="reserved">Booking</option>
                 <option value="under_maintenance">Under Maintenance</option>
             </select>
         </div>
 
-        <!-- Only Reserved -->
+        <!-- Only Booking -->
         <div class="col-md-3 mb-2 d-flex align-items-center">
             <input type="checkbox" class="form-check-input me-1" id="onlyReserved" wire:model.live="onlyReserved">
-            <label class="form-check-label" for="onlyReserved">Show only reserved</label>
+            <label class="form-check-label" for="onlyReserved">Show only booking</label>
         </div>
 
         <!-- Date Filters -->

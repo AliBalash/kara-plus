@@ -68,7 +68,7 @@
                                         name="status" wire:model="status" required>
                                         <option value="available" {{ $status == 'available' ? 'selected' : '' }}>
                                             Available</option>
-                                        <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Reserved
+                                        <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Booking
                                         </option>
                                         <option value="under_maintenance"
                                             {{ $status == 'under_maintenance' ? 'selected' : '' }}>Under Maintenance
