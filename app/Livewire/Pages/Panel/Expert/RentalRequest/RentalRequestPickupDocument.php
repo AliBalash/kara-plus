@@ -82,55 +82,45 @@ class RentalRequestPickupDocument extends Component
         ];
 
         // Tars Contract Validation
-        if ($this->tarsContract) {
+        if ($this->tarsContract || empty($this->existingFiles['tarsContract'])) {
             $validationRules['tarsContract'] = 'required|image|max:8048';
-        } elseif (!$this->tarsContract && empty($this->existingFiles['tarsContract'])) {
-            $validationRules['tarsContract'] = 'image|max:8048';
         }
 
         // Kardo Contract Validation
         if ($this->contract->kardo_required) {
-            if ($this->kardoContract) {
-                $validationRules['kardoContract'] = 'required|image|max:8048';
-            } elseif (!$this->kardoContract && empty($this->existingFiles['kardoContract'])) {
+            if ($this->kardoContract || empty($this->existingFiles['kardoContract'])) {
                 $validationRules['kardoContract'] = 'required|image|max:8048';
             }
-        } else {
-            if ($this->kardoContract) {
-                $validationRules['kardoContract'] = 'image|max:8048';
-            }
+        } elseif ($this->kardoContract) {
+            $validationRules['kardoContract'] = 'image|max:8048';
         }
 
 
         // Factor Contract Validation
-        if ($this->factorContract) {
-            $validationRules['factorContract'] = 'required|image|max:8048';
-        } elseif (!$this->factorContract && empty($this->existingFiles['factorContract'])) {
-            $validationRules['factorContract'] = 'image|max:8048';
+        if ($this->contract->payment_on_delivery) {
+            if ($this->factorContract || empty($this->existingFiles['factorContract'])) {
+                $validationRules['factorContract'] = 'required|image|max:8048';
+            }
+        } else {
+            $this->factorContract = null;
         }
 
 
 
-        // Car Dashboard  Validation
-        if ($this->carDashboard) {
+        // Car Dashboard Validation
+        if ($this->carDashboard || empty($this->existingFiles['carDashboard'])) {
             $validationRules['carDashboard'] = 'required|image|max:8048';
-        } elseif (!$this->carDashboard && empty($this->existingFiles['carDashboard'])) {
-            $validationRules['carDashboard'] = 'image|max:8048';
         }
 
 
         // Car Video Inside Validation
-        if ($this->carVideoInside) {
+        if ($this->carVideoInside || empty($this->existingFiles['carVideoInside'])) {
             $validationRules['carVideoInside'] = 'required|max:20240';
-        } elseif (!$this->carVideoInside && empty($this->existingFiles['carVideoInside'])) {
-            $validationRules['carVideoInside'] = 'max:10240';
         }
 
         // Car Video Outside Validation
-        if ($this->carVideoOutside) {
+        if ($this->carVideoOutside || empty($this->existingFiles['carVideoOutside'])) {
             $validationRules['carVideoOutside'] = 'required|max:20240';
-        } elseif (!$this->carVideoOutside && empty($this->existingFiles['carVideoOutside'])) {
-            $validationRules['carVideoOutside'] = 'max:10240';
         }
 
 
@@ -171,7 +161,7 @@ class RentalRequestPickupDocument extends Component
             }
 
             // Factor Contract Upload
-            if ($this->factorContract) {
+            if ($this->contract->payment_on_delivery && $this->factorContract) {
                 $factorPath = $this->factorContract->storeAs('PickupDocument', "factor_contract_{$this->contractId}.jpg", 'myimage');
                 if (!$factorPath) throw new \Exception('Error uploading factor contract.');
                 $pickupDocument->factor_contract = $factorPath;
