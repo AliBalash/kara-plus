@@ -81,7 +81,8 @@
                                         alt="Tars Contract" onclick="openModal('{{ $existingFiles['tarsContract'] }}')">
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="tarsContract">
+                            <input type="file" class="form-control" wire:model="tarsContract"
+                                @if (empty($existingFiles['tarsContract'])) required @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             <div wire:loading wire:target="tarsContract" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
@@ -109,7 +110,8 @@
                                             alt="Cardo Contract" onclick="openModal('{{ $existingFiles['kardoContract'] }}')">
                                     </div>
                                 @endif
-                                <input type="file" class="form-control" wire:model="kardoContract">
+                                <input type="file" class="form-control" wire:model="kardoContract"
+                                    @if (empty($existingFiles['kardoContract'])) required @endif>
                                 <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                                 <div wire:loading wire:target="kardoContract" class="progress mt-3">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
@@ -130,7 +132,8 @@
                     @endif
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                        @php $paymentOnDelivery = (bool) ($contract->payment_on_delivery ?? false); @endphp
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm {{ $paymentOnDelivery ? 'bg-white' : 'bg-light opacity-75' }}">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label fw-semibold mb-0">Watcher's Receipt</label>
                                 @if (!empty($existingFiles['factorContract']))
@@ -144,8 +147,13 @@
                                         alt="Watcher's Receipt" onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="factorContract">
+                            <input type="file" class="form-control" wire:model="factorContract"
+                                @if (! $paymentOnDelivery) disabled @endif
+                                @if ($paymentOnDelivery && empty($existingFiles['factorContract'])) required @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
+                            @unless ($paymentOnDelivery)
+                                <small class="text-muted d-block">Not needed when Payment on Delivery is disabled.</small>
+                            @endunless
                             <div wire:loading wire:target="factorContract" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                     style="width: 100%;">Uploading...</div>
@@ -171,7 +179,8 @@
                                         alt="Dashboard Photo" onclick="openModal('{{ $existingFiles['carDashboard'] }}')">
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="carDashboard">
+                            <input type="file" class="form-control" wire:model="carDashboard"
+                                @if (empty($existingFiles['carDashboard'])) required @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             <div wire:loading wire:target="carDashboard" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
@@ -200,7 +209,8 @@
                                     </video>
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="carVideoInside">
+                            <input type="file" class="form-control" wire:model="carVideoInside"
+                                @if (empty($existingFiles['carVideoInside'])) required @endif>
                             <small class="text-muted d-block mt-2">MP4 up to 20MB</small>
                             <div wire:loading wire:target="carVideoInside" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
@@ -229,7 +239,8 @@
                                     </video>
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="carVideoOutside">
+                            <input type="file" class="form-control" wire:model="carVideoOutside"
+                                @if (empty($existingFiles['carVideoOutside'])) required @endif>
                             <small class="text-muted d-block mt-2">MP4 up to 20MB</small>
                             <div wire:loading wire:target="carVideoOutside" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
