@@ -378,7 +378,7 @@
                                 </div>
                             </div>
 
-                            @if ($contract->payment_on_delivery)
+                            {{-- @if ($contract->payment_on_delivery)
                                 <div
                                     class="card shadow-sm border-{{ $remainingBalance > 0 ? 'warning' : 'success' }} mt-3">
                                     <div class="card-body">
@@ -393,7 +393,7 @@
                                         @endif
                                     </div>
                                 </div>
-                            @endif
+                            @endif --}}
                         </div>
                     @elseif ($contract->payment_on_delivery)
                         <div class="col-12 col-lg-6 col-xl-4">
