@@ -326,6 +326,10 @@
                             @endif
                         </td>
                         <td>
+                            <a class="btn btn-sm btn-outline-primary me-2"
+                                href="{{ route('payments.edit', $payment->id) }}">
+                                Edit
+                            </a>
                             <button class="btn btn-sm btn-outline-danger"
                                 onclick="if(confirm('Delete this payment?')) { @this.deletePayment({{ $payment->id }}) }">
                                 Delete
