@@ -2,28 +2,122 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Models\Contract;
 use Livewire\Component;
-use App\Livewire\Concerns\HandlesContractCancellation;
+use Livewire\WithPagination;
 
 class RentalRequestMe extends Component
 {
     use HandlesContractCancellation;
-    public $contracts = [];
+    use WithPagination;
+
     public $search = '';
     public $searchInput = '';
+    public $statusFilter = '';
+    public $pickupFrom;
+    public $pickupTo;
+    public $returnFrom;
+    public $returnTo;
+    public $sortField = 'pickup_date';
+    public $sortDirection = 'desc';
 
-    protected $queryString = ['search'];
+    protected $listeners = ['refreshContracts' => '$refresh'];
+
+    protected array $allowedSortFields = [
+        'id',
+        'pickup_date',
+        'return_date',
+        'current_status',
+        'created_at',
+    ];
+
+    protected $queryString = [
+        'search',
+        'statusFilter',
+        'pickupFrom',
+        'pickupTo',
+        'returnFrom',
+        'returnTo',
+        'sortField',
+        'sortDirection',
+    ];
 
     public function mount(): void
     {
         $this->searchInput = $this->search;
-        $this->loadContracts();
     }
-    /**
-     * بارگذاری قراردادهای کاربر
-     */
-    public function loadContracts()
+
+    public function sortBy(string $field): void
+    {
+        if (! in_array($field, $this->allowedSortFields, true)) {
+            return;
+        }
+
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = 'asc';
+        }
+
+        $this->resetPage();
+    }
+
+    public function clearFilters(): void
+    {
+        $this->reset([
+            'search',
+            'searchInput',
+            'statusFilter',
+            'pickupFrom',
+            'pickupTo',
+            'returnFrom',
+            'returnTo',
+        ]);
+
+        $this->sortField = 'pickup_date';
+        $this->sortDirection = 'desc';
+        $this->resetPage();
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
+        $this->resetPage();
+    }
+
+    public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPickupFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPickupTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedReturnFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedReturnTo(): void
+    {
+        $this->resetPage();
+    }
+
+    protected function afterContractCancelled(): void
+    {
+        $this->resetPage();
+    }
+
+    public function render()
     {
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
@@ -49,23 +143,25 @@ class RentalRequestMe extends Component
             });
         }
 
-        $this->contracts = $query->latest('pickup_date')->get();
-    }
+        $query
+            ->when($this->statusFilter, fn($builder) => $builder->where('current_status', $this->statusFilter))
+            ->when($this->pickupFrom, fn($builder) => $builder->whereDate('pickup_date', '>=', $this->pickupFrom))
+            ->when($this->pickupTo, fn($builder) => $builder->whereDate('pickup_date', '<=', $this->pickupTo))
+            ->when($this->returnFrom, fn($builder) => $builder->whereDate('return_date', '>=', $this->returnFrom))
+            ->when($this->returnTo, fn($builder) => $builder->whereDate('return_date', '<=', $this->returnTo));
 
-    public function applySearch(): void
-    {
-        $this->search = trim($this->searchInput);
-        $this->loadContracts();
-    }
+        $sortField = in_array($this->sortField, $this->allowedSortFields, true)
+            ? $this->sortField
+            : 'pickup_date';
 
-    protected function afterContractCancelled(): void
-    {
-        $this->loadContracts();
-    }
-    public function render()
-    {
+        $contracts = $query
+            ->orderByRaw("FIELD(current_status, 'pending') DESC")
+            ->orderBy($sortField, $this->sortDirection)
+            ->paginate(10);
+
         return view('livewire.pages.panel.expert.rental-request.rental-request-me', [
-            'contracts' => $this->contracts,
+            'contracts' => $contracts,
         ]);
     }
 }
+
