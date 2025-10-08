@@ -43,19 +43,19 @@
                     </li>
                     <li class="menu-item {{ Request::routeIs('rental-requests.list') ? 'active' : '' }}">
                         <a href="{{ route('rental-requests.list') }}" class="menu-link">
-                            <div data-i18n="Without menu">List</div>
+                            <div data-i18n="Without menu">Reserve</div>
                         </a>
                     </li>
 
                     <li class="menu-item {{ Request::routeIs('rental-requests.reserved') ? 'active' : '' }}">
                         <a href="{{ route('rental-requests.reserved') }}" class="menu-link">
-                            <div data-i18n="Without menu">Reserved</div>
+                            <div data-i18n="Without menu">Booking</div>
                         </a>
                     </li>
 
                     <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.pickup') ? 'active' : '' }}">
                         <a href="{{ route('rental-requests.awaiting.pickup') }}" class="menu-link">
-                            <div data-i18n="Without menu">Awaiting Pickup</div>
+                            <div data-i18n="Without menu">Delivery</div>
                         </a>
                     </li>
 
@@ -68,7 +68,7 @@
 
                     <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.return') ? 'active' : '' }}">
                         <a href="{{ route('rental-requests.awaiting.return') }}" class="menu-link">
-                            <div data-i18n="Without menu">Awaiting Return</div>
+                            <div data-i18n="Without menu">Return</div>
                         </a>
                     </li>
 

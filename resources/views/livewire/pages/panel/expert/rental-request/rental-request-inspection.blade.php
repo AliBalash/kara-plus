@@ -54,7 +54,7 @@
         @if ($pickupDocument->tars_approved_at && (!$contract->kardo_required || $pickupDocument->kardo_approved_at))
             <button wire:click="completeInspection"
                 wire:confirm="Are you sure you want to complete the inspection and set the status to awaiting_return?"
-                class="btn btn-danger mt-3">Complete Inspection and Set to Awaiting Return</button>
+                class="btn btn-danger mt-3">Complete Inspection and Set to Return</button>
         @else
             <p class="text-warning mt-3">Please complete all required approvals first.</p>
         @endif

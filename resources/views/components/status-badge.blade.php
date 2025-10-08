@@ -13,8 +13,16 @@
         case 'rejected': $badgeClass = 'bg-label-danger'; break;
         default: $badgeClass = 'bg-label-secondary';
     }
+
+    $labelMap = [
+        'reserved' => 'Booking',
+        'delivery' => 'Delivery',
+        'awaiting_return' => 'Return',
+    ];
+
+    $displayLabel = $labelMap[$status] ?? ucwords(str_replace('_', ' ', $status));
 @endphp
 
 <span class="badge {{ $badgeClass }}">
-    {{ ucfirst($status) }}
+    {{ $displayLabel }}
 </span>

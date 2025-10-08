@@ -146,7 +146,7 @@
                     <div class="card-header border-0 bg-transparent pt-4 px-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h5 class="fw-bold mb-1"><i class="bi bi-car-front-fill text-warning me-2"></i>Reserved Cars</h5>
+                                <h5 class="fw-bold mb-1"><i class="bi bi-car-front-fill text-warning me-2"></i>Booking Cars</h5>
                                 <span class="text-muted small">{{ $reservedCars->count() }} active reservations</span>
                             </div>
                             <span class="badge bg-warning text-dark">Live</span>
@@ -166,7 +166,7 @@
                                     <div class="flex-grow-1">
                                         <div class="d-flex justify-content-between align-items-start">
                                             <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
-                                            <span class="badge bg-warning text-dark">Reserved</span>
+                                            <span class="badge bg-warning text-dark">Booking</span>
                                         </div>
                                         <div class="text-muted small mt-2">
                                             <span class="d-block"><i class="bi bi-calendar me-1"></i>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M') }} - {{ \Carbon\Carbon::parse($contract->return_date)->format('d M') }}</span>
@@ -191,7 +191,7 @@
                     <div class="card-header border-0 bg-transparent pt-4 px-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h5 class="fw-bold mb-1"><i class="bi bi-arrow-counterclockwise text-success me-2"></i>Awaiting Return</h5>
+                                <h5 class="fw-bold mb-1"><i class="bi bi-arrow-counterclockwise text-success me-2"></i>Return</h5>
                                 <span class="text-muted small">{{ $returnedCars->count() }} pending drop-offs</span>
                             </div>
                             <span class="badge bg-success bg-opacity-10 text-success">Action</span>
