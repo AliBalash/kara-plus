@@ -1,3 +1,267 @@
+@php
+    $isDriver = auth()->user()?->hasRole('driver');
+@endphp
+
+@if ($isDriver)
+    <div class="container-xl py-4 driver-dashboard">
+        <div class="row g-3 align-items-center mb-4">
+            <div class="col-12 col-xl-8">
+                <div class="d-flex flex-column gap-1">
+                    <span class="text-muted text-uppercase small">Welcome back</span>
+                    <h2 class="fw-bold mb-0">{{ Auth::user()->name ?? 'Rider' }}</h2>
+                    <p class="text-muted mb-0">Review your upcoming pickups and returns for today.</p>
+                </div>
+            </div>
+            <div class="col-12 col-xl-4">
+                <div class="next-task-card h-100">
+                    @if ($driverNextTask)
+                        @php
+                            $taskContract = $driverNextTask['contract'];
+                            $taskMoment = $driverNextTask['datetime'];
+                            $isPickupTask = $driverNextTask['type'] === 'pickup';
+                        @endphp
+                        <span class="next-task-label {{ $isPickupTask ? 'next-task-label--pickup' : 'next-task-label--return' }}">
+                            Next {{ $isPickupTask ? 'Pickup' : 'Return' }}
+                        </span>
+                        <h5 class="mt-2 mb-1">{{ optional(optional($taskContract->car)->carModel)->fullName() ?? 'Vehicle' }}</h5>
+                        <div class="text-muted small mb-1"><i class="bx bx-user-circle me-1"></i>{{ optional($taskContract->customer)->fullName() ?? 'Customer TBD' }}</div>
+                        <div class="text-muted small mb-1"><i class="bx bx-time me-1"></i>{{ $taskMoment->format('d M Y · H:i') }}</div>
+                        <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $isPickupTask ? ($taskContract->pickup_location ?? 'Pickup location TBD') : ($taskContract->return_location ?? 'Return location TBD') }}</div>
+                    @else
+                        <span class="next-task-label next-task-label--idle">No upcoming tasks</span>
+                        <h5 class="mt-2 mb-1">You're all caught up!</h5>
+                        <p class="text-muted small mb-0">Dispatch will add new jobs here as soon as they are scheduled.</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        @php
+            $driverSummaryCards = [
+                [
+                    'label' => 'Pickups today',
+                    'value' => $driverStats['pickupsToday'] ?? 0,
+                    'icon' => 'bx bx-log-in',
+                    'accent' => 'accent-pickup',
+                ],
+                [
+                    'label' => 'Returns today',
+                    'value' => $driverStats['returnsToday'] ?? 0,
+                    'icon' => 'bx bx-log-out',
+                    'accent' => 'accent-return',
+                ],
+                [
+                    'label' => 'Active assignments',
+                    'value' => $driverStats['activeAssignments'] ?? 0,
+                    'icon' => 'bx bx-task',
+                    'accent' => 'accent-active',
+                ],
+                [
+                    'label' => 'Overdue returns',
+                    'value' => $driverStats['overdueReturns'] ?? 0,
+                    'icon' => 'bx bx-error',
+                    'accent' => 'accent-warning',
+                ],
+            ];
+        @endphp
+
+        <div class="row g-3 mb-4">
+            @foreach ($driverSummaryCards as $card)
+                <div class="col-6 col-md-3">
+                    <div class="driver-stat-card {{ $card['accent'] }}">
+                        <span class="stat-icon"><i class="{{ $card['icon'] }}"></i></span>
+                        <div class="stat-meta">
+                            <span class="stat-value">{{ $card['value'] }}</span>
+                            <span class="stat-label">{{ $card['label'] }}</span>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="row g-4">
+            <div class="col-12 col-xl-6">
+                <div class="driver-task-card card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="fw-bold mb-1">Upcoming Pickups</h5>
+                            <span class="text-muted small">Stay ahead of today’s handovers</span>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary">{{ $driverPickups->count() }}</span>
+                    </div>
+                    <div class="card-body pt-0">
+                        @forelse ($driverPickups as $pickup)
+                            <div class="task-item d-flex align-items-start justify-content-between">
+                                <div class="task-info">
+                                    <h6 class="mb-1">{{ optional(optional($pickup->car)->carModel)->fullName() ?? 'Vehicle' }}</h6>
+                                    <div class="text-muted small"><i class="bx bx-user-circle me-1"></i>{{ optional($pickup->customer)->fullName() ?? 'Customer TBD' }}</div>
+                                    <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($pickup->pickup_date)->format('d M · H:i') }}</div>
+                                    <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $pickup->pickup_location ?? 'Pickup location TBD' }}</div>
+                                </div>
+                                <a href="{{ route('rental-requests.pickup-document', [$pickup->id]) }}" class="btn btn-sm btn-outline-primary">Open</a>
+                            </div>
+                        @empty
+                            <div class="text-center text-muted py-4 small">No pickups scheduled yet.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-6">
+                <div class="driver-task-card card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="fw-bold mb-1">Upcoming Returns</h5>
+                            <span class="text-muted small">Plan for drop-offs and inspections</span>
+                        </div>
+                        <span class="badge bg-success-subtle text-success">{{ $driverReturns->count() }}</span>
+                    </div>
+                    <div class="card-body pt-0">
+                        @forelse ($driverReturns as $returnContract)
+                            <div class="task-item d-flex align-items-start justify-content-between">
+                                <div class="task-info">
+                                    <h6 class="mb-1">{{ optional(optional($returnContract->car)->carModel)->fullName() ?? 'Vehicle' }}</h6>
+                                    <div class="text-muted small"><i class="bx bx-user-circle me-1"></i>{{ optional($returnContract->customer)->fullName() ?? 'Customer TBD' }}</div>
+                                    <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($returnContract->return_date)->format('d M · H:i') }}</div>
+                                    <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $returnContract->return_location ?? 'Return location TBD' }}</div>
+                                </div>
+                                <a href="{{ route('rental-requests.return-document', [$returnContract->id]) }}" class="btn btn-sm btn-outline-success">Open</a>
+                            </div>
+                        @empty
+                            <div class="text-center text-muted py-4 small">No returns scheduled yet.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @once
+        @push('styles')
+            <style>
+                .driver-dashboard .next-task-card {
+                    border: 1px solid #e0e6ef;
+                    border-radius: 1rem;
+                    background: #f7f9fc;
+                    padding: 1.1rem 1.25rem;
+                    box-shadow: 0 10px 24px rgba(32, 56, 90, 0.12);
+                    min-height: 170px;
+                }
+
+                .next-task-label {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    padding: 0.25rem 0.7rem;
+                    border-radius: 999px;
+                    font-size: 0.7rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                }
+
+                .next-task-label--pickup {
+                    background: rgba(58, 134, 255, 0.15);
+                    color: #1f57d6;
+                }
+
+                .next-task-label--return {
+                    background: rgba(46, 204, 113, 0.2);
+                    color: #1f8a49;
+                }
+
+                .next-task-label--idle {
+                    background: rgba(133, 146, 163, 0.18);
+                    color: #5c6b7a;
+                }
+
+                .driver-stat-card {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    border-radius: 1rem;
+                    padding: 0.85rem 1rem;
+                    border: 1px solid rgba(224, 230, 239, 0.7);
+                    background: #fff;
+                    box-shadow: 0 8px 20px rgba(32, 56, 90, 0.06);
+                    min-height: 92px;
+                }
+
+                .driver-stat-card .stat-icon {
+                    width: 2.4rem;
+                    height: 2.4rem;
+                    border-radius: 50%;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.2rem;
+                    color: inherit;
+                    background: rgba(33, 56, 90, 0.08);
+                }
+
+                .driver-stat-card .stat-meta {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.2rem;
+                }
+
+                .driver-stat-card .stat-value {
+                    font-weight: 700;
+                    font-size: 1.2rem;
+                }
+
+                .driver-stat-card .stat-label {
+                    font-size: 0.78rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.06em;
+                    color: #6f7f92;
+                }
+
+                .driver-stat-card.accent-pickup {
+                    border-color: rgba(58, 134, 255, 0.25);
+                    color: #1f57d6;
+                }
+
+                .driver-stat-card.accent-return {
+                    border-color: rgba(46, 204, 113, 0.3);
+                    color: #1f8a49;
+                }
+
+                .driver-stat-card.accent-active {
+                    border-color: rgba(17, 138, 178, 0.28);
+                    color: #107dac;
+                }
+
+                .driver-stat-card.accent-warning {
+                    border-color: rgba(255, 152, 0, 0.28);
+                    color: #c17200;
+                }
+
+                .driver-task-card .task-item {
+                    padding: 0.9rem 0;
+                    border-bottom: 1px dashed rgba(224, 230, 239, 0.8);
+                }
+
+                .driver-task-card .task-item:last-child {
+                    border-bottom: none;
+                }
+
+                .driver-task-card .task-info h6 {
+                    font-weight: 600;
+                }
+
+                @media (max-width: 575.98px) {
+                    .driver-stat-card {
+                        padding: 0.75rem 0.9rem;
+                    }
+
+                    .driver-dashboard .next-task-card {
+                        min-height: 150px;
+                    }
+                }
+            </style>
+        @endpush
+    @endonce
+@else
 <div class="container-xl py-4">
     @cannot('car')
         @php
@@ -523,6 +787,8 @@
         <script type="application/json" id="dashboard-metrics-data">{!! json_encode($dashboardMetrics, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
     @endcannot
 </div>
+
+@endif
 
 @push('scripts')
 <script>
