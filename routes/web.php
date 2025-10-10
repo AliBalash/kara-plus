@@ -38,8 +38,9 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReserved;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReturnDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCancelledList;
 use App\Livewire\Pages\Panel\Expert\Payments\PaymentEdit;
+use App\Livewire\Pages\Panel\Expert\User\ManageUserRoles;
 
-Route::middleware(['auth.check'])->group(function () {
+Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
 
 
@@ -100,6 +101,8 @@ Route::middleware(['auth.check'])->group(function () {
 
 
     Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
+
+    Route::get('/expert/users/roles', ManageUserRoles::class)->name('users.roles');
 
 
     Route::get('/my-profile', Profile::class)->name('profile.me');
