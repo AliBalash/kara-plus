@@ -22,7 +22,7 @@
                 <div class="col-md-6">
                     <div class="input-group">
                         <span class="input-group-text"><i class="bx bx-search"></i></span>
-                        <input type="search" class="form-control" placeholder="Search name, email or phone" wire:model.debounce.400ms="search">
+                        <input type="search" class="form-control" placeholder="Search name, email or phone" wire:model.live.debounce.400ms="search" autocomplete="off" enterkeyhint="search">
                     </div>
                 </div>
             </div>
