@@ -458,7 +458,7 @@
                                 <h5 class="fw-bold mb-1"><i class="bi bi-arrow-counterclockwise text-success me-2"></i>Return</h5>
                                 <span class="text-muted small">{{ $returnedCars->count() }} pending drop-offs</span>
                             </div>
-                            <span class="badge bg-success bg-opacity-10 text-success">Action</span>
+                            <span class="badge bg-success bg-opacity-10 text-white">Live</span>
                         </div>
                     </div>
                     <div class="card-body pt-0 pb-4 px-4" style="max-height: 420px; overflow-y: auto;" data-simplebar>
