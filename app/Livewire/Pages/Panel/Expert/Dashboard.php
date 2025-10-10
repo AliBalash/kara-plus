@@ -50,9 +50,22 @@ class Dashboard extends Component
     public $serviceAlerts;
     public $topBrandsChart;
 
+    public $isDriver = false;
+    public $driverPickups;
+    public $driverReturns;
+    public $driverStats = [];
+    public $driverNextTask = null;
+
 
     public function mount()
     {
+        $this->isDriver = Auth::user()?->hasRole('driver');
+
+        if ($this->isDriver) {
+            $this->prepareDriverDashboard();
+            return;
+        }
+
         $this->discountCodesCount = DiscountCode::count();
         $this->usedDiscountCodes = DiscountCode::where('contacted', true)->count();
         $this->usageRate = $this->discountCodesCount > 0 ? round(($this->usedDiscountCodes / $this->discountCodesCount) * 100, 2) : 0;
@@ -258,5 +271,80 @@ class Dashboard extends Component
             ->count();
 
         $this->serviceAlerts = Car::needsService()->count();
+    }
+
+    protected function prepareDriverDashboard(): void
+    {
+        $userId = Auth::id();
+        $now = Carbon::now();
+
+        $this->driverPickups = Contract::with(['car.carModel', 'customer'])
+            ->where('user_id', $userId)
+            ->whereIn('current_status', ['reserved', 'delivery', 'assigned'])
+            ->whereNotNull('pickup_date')
+            ->where('pickup_date', '>=', $now->copy()->startOfDay())
+            ->orderBy('pickup_date')
+            ->take(6)
+            ->get();
+
+        $this->driverReturns = Contract::with(['car.carModel', 'customer'])
+            ->where('user_id', $userId)
+            ->whereIn('current_status', ['awaiting_return', 'delivery'])
+            ->whereNotNull('return_date')
+            ->where('return_date', '>=', $now->copy()->startOfDay())
+            ->orderBy('return_date')
+            ->take(6)
+            ->get();
+
+        $assignedStatuses = ['reserved', 'delivery', 'awaiting_return', 'assigned'];
+
+        $this->driverStats = [
+            'pickupsToday' => Contract::where('user_id', $userId)
+                ->whereIn('current_status', ['reserved', 'delivery', 'assigned'])
+                ->whereDate('pickup_date', $now->toDateString())
+                ->count(),
+            'returnsToday' => Contract::where('user_id', $userId)
+                ->whereIn('current_status', ['awaiting_return', 'delivery'])
+                ->whereDate('return_date', $now->toDateString())
+                ->count(),
+            'activeAssignments' => Contract::where('user_id', $userId)
+                ->whereIn('current_status', $assignedStatuses)
+                ->count(),
+            'overdueReturns' => Contract::where('user_id', $userId)
+                ->where('current_status', 'awaiting_return')
+                ->where('return_date', '<', $now)
+                ->count(),
+        ];
+
+        $nextPickup = Contract::with(['car.carModel', 'customer'])
+            ->where('user_id', $userId)
+            ->whereIn('current_status', ['reserved', 'delivery', 'assigned'])
+            ->whereNotNull('pickup_date')
+            ->where('pickup_date', '>=', $now)
+            ->orderBy('pickup_date')
+            ->first();
+
+        $nextReturn = Contract::with(['car.carModel', 'customer'])
+            ->where('user_id', $userId)
+            ->whereIn('current_status', ['awaiting_return', 'delivery'])
+            ->whereNotNull('return_date')
+            ->where('return_date', '>=', $now)
+            ->orderBy('return_date')
+            ->first();
+
+        $nextTasks = collect([
+            $nextPickup ? [
+                'type' => 'pickup',
+                'contract' => $nextPickup,
+                'datetime' => Carbon::parse($nextPickup->pickup_date),
+            ] : null,
+            $nextReturn ? [
+                'type' => 'return',
+                'contract' => $nextReturn,
+                'datetime' => Carbon::parse($nextReturn->return_date),
+            ] : null,
+        ])->filter()->sortBy('datetime');
+
+        $this->driverNextTask = $nextTasks->first();
     }
 }
