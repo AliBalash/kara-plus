@@ -6,12 +6,20 @@
             </h4>
         </div>
         @if (!empty($contractId))
-            <div class="col-lg-6 text-lg-end">
-                <a class="btn btn-danger fw-semibold shadow-sm" href="javascript:void(0);"
-                    onclick="if(confirm('Are you sure you want to set this contract to Delivery?')) { @this.changeStatusToDelivery({{ $contractId }}) }">
-                    Set to Delivery (permission :for rider)
-                    <i class="bx bxs-log-in-circle ms-1"></i>
-                </a>
+            <div class="col-lg-6">
+                <div class="status-toolbar d-flex flex-column flex-sm-row align-items-sm-center justify-content-lg-end gap-3">
+                    <div class="status-pill text-sm-start text-lg-end">
+                        <span class="pill-label">Current status</span>
+                        <span class="pill-value">
+                            {{ \Illuminate\Support\Str::headline($contract->current_status ?? 'draft') }}
+                        </span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-gradient-danger status-action"
+                        onclick="window.confirm('Set this contract to Delivery for the rider?') && @this.changeStatusToDelivery({{ $contractId }})">
+                        <i class="bx bx-send me-1"></i>
+                        <span>Move to Delivery</span>
+                    </button>
+                </div>
             </div>
         @endif
     </div>
@@ -531,6 +539,72 @@
 
 @push('styles')
     <style>
+        .status-toolbar {
+            background: #fff;
+            border: 1px solid #e0e6ef;
+            border-radius: 1rem;
+            padding: 0.85rem 1rem;
+            box-shadow: 0 6px 16px rgba(33, 56, 86, 0.06);
+        }
+
+        .status-pill {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .pill-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #8a96aa;
+            font-weight: 600;
+        }
+
+        .pill-value {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-weight: 600;
+            background: rgba(40, 167, 69, 0.12);
+            color: #1f7a3f;
+        }
+
+        .status-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 1.1rem;
+            border-radius: 999px;
+            border: none;
+            color: #fff;
+            background: linear-gradient(135deg, #ff6f61, #ff3b3b);
+            box-shadow: 0 12px 24px rgba(255, 68, 41, 0.25);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .status-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(255, 68, 41, 0.3);
+        }
+
+        .status-action:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 575.98px) {
+            .status-toolbar {
+                gap: 0.75rem;
+            }
+
+            .status-action {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
         .document-card .preview-wrapper {
             background: #f1f3f5;
             border-radius: 0.75rem;
