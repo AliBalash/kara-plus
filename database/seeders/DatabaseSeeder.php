@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Database\Seeders\UserSeeder;
+use Database\Seeders\RoleSeeder;
 use Database\Seeders\CarSeeder;
 use Database\Seeders\ContractSeeder;
 use Database\Seeders\FineSeeder; // برای جریمه‌ها
@@ -21,6 +22,7 @@ class DatabaseSeeder extends Seeder
     {
         // فراخوانی Seederهای مختلف
         $this->call([
+            RoleSeeder::class,
             UserSeeder::class,       // Seeder مربوط به کاربران
             // CarModelSeeder::class,    // Seeder مربوط به مدل‌های خودرو
             // CarSeeder::class,        // Seeder مربوط به خودروها
