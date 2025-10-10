@@ -19,8 +19,8 @@ return new class extends Migration
             $table->string('kardo_contract')->nullable();
             $table->string('factor_contract')->nullable();
             $table->string('car_dashboard')->nullable();
-            $table->string('car_inside_video')->nullable();
-            $table->string('car_outside_video')->nullable();
+            $table->json('car_inside_photos')->nullable();
+            $table->json('car_outside_photos')->nullable();
             $table->string('fuelLevel')->nullable();
             $table->string('mileage')->nullable();
             $table->text('note')->nullable();
