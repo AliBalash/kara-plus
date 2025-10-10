@@ -7,7 +7,9 @@ use App\Models\PickupDocument;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 class RentalRequestPickupDocument extends Component
@@ -20,8 +22,12 @@ class RentalRequestPickupDocument extends Component
     public $kardoContract;
     public $factorContract;
     public $carDashboard;
-    public $carVideoOutside;
-    public $carVideoInside;
+    public array $carInsidePhotos = [];
+    public array $carOutsidePhotos = [];
+    public array $existingGalleries = [
+        'inside' => [],
+        'outside' => [],
+    ];
     public $fuelLevel  = 50;
     public $mileage;
     public $note;
@@ -71,13 +77,15 @@ class RentalRequestPickupDocument extends Component
             'carDashboard' => Storage::disk('myimage')->exists("PickupDocument/car_dashboard_{$this->contractId}.jpg")
                 ? Storage::url("PickupDocument/car_dashboard_{$this->contractId}.jpg")
                 : null,
-            'carVideoOutside' => Storage::disk('myimage')->exists("PickupDocument/car_video_outside_{$this->contractId}.mp4")
-                ? Storage::url("PickupDocument/car_video_outside_{$this->contractId}.mp4")
-                : null,
-            'carVideoInside' => Storage::disk('myimage')->exists("PickupDocument/car_video_inside_{$this->contractId}.mp4")
-                ? Storage::url("PickupDocument/car_video_inside_{$this->contractId}.mp4")
-                : null,
         ];
+
+        $this->existingGalleries = [
+            'inside' => $this->mapGalleryMedia($pickup?->car_inside_photos ?? []),
+            'outside' => $this->mapGalleryMedia($pickup?->car_outside_photos ?? []),
+        ];
+
+        $this->carInsidePhotos = [];
+        $this->carOutsidePhotos = [];
 
         $payments = $this->contract->relationLoaded('payments') ? $this->contract->payments : null;
         $this->remainingBalance = $this->contract->calculateRemainingBalance($payments);
@@ -127,14 +135,45 @@ class RentalRequestPickupDocument extends Component
         }
 
 
-        // Car Video Inside Validation
-        if ($this->carVideoInside || empty($this->existingFiles['carVideoInside'])) {
-            $validationRules['carVideoInside'] = 'required|max:20240';
+        $insideHasExisting = ! empty($this->existingGalleries['inside']);
+        $outsideHasExisting = ! empty($this->existingGalleries['outside']);
+
+        $maxGalleryItems = 12;
+
+        $insideUploadCount = is_array($this->carInsidePhotos) ? count($this->carInsidePhotos) : 0;
+        $insideRemainingSlots = max($maxGalleryItems - count($this->existingGalleries['inside']), 0);
+        if ($insideRemainingSlots === 0 && $insideUploadCount > 0) {
+            throw ValidationException::withMessages([
+                'carInsidePhotos' => 'You have reached the maximum number of inside photos.',
+            ]);
         }
 
-        // Car Video Outside Validation
-        if ($this->carVideoOutside || empty($this->existingFiles['carVideoOutside'])) {
-            $validationRules['carVideoOutside'] = 'required|max:20240';
+        if (! $insideHasExisting && $insideUploadCount === 0) {
+            $validationRules['carInsidePhotos'] = 'required|array|min:1|max:' . $maxGalleryItems;
+        } elseif ($insideUploadCount > 0) {
+            $validationRules['carInsidePhotos'] = 'array|min:1|max:' . $insideRemainingSlots;
+        }
+
+        if (array_key_exists('carInsidePhotos', $validationRules)) {
+            $validationRules['carInsidePhotos.*'] = 'image|mimes:jpeg,jpg,png,webp|max:8048';
+        }
+
+        $outsideUploadCount = is_array($this->carOutsidePhotos) ? count($this->carOutsidePhotos) : 0;
+        $outsideRemainingSlots = max($maxGalleryItems - count($this->existingGalleries['outside']), 0);
+        if ($outsideRemainingSlots === 0 && $outsideUploadCount > 0) {
+            throw ValidationException::withMessages([
+                'carOutsidePhotos' => 'You have reached the maximum number of outside photos.',
+            ]);
+        }
+
+        if (! $outsideHasExisting && $outsideUploadCount === 0) {
+            $validationRules['carOutsidePhotos'] = 'required|array|min:1|max:' . $maxGalleryItems;
+        } elseif ($outsideUploadCount > 0) {
+            $validationRules['carOutsidePhotos'] = 'array|min:1|max:' . $outsideRemainingSlots;
+        }
+
+        if (array_key_exists('carOutsidePhotos', $validationRules)) {
+            $validationRules['carOutsidePhotos.*'] = 'image|mimes:jpeg,jpg,png,webp|max:8048';
         }
 
 
@@ -191,20 +230,38 @@ class RentalRequestPickupDocument extends Component
                 $uploadedPaths[] = $carDashboardPath;
             }
 
-            // Car Video Inside Upload
-            if ($this->carVideoInside) {
-                $videoPath = $this->carVideoInside->storeAs('PickupDocument', "car_video_inside_{$this->contractId}.mp4", 'myimage');
-                if (!$videoPath) throw new \Exception('Error uploading car inside video.');
-                $pickupDocument->car_inside_video = $videoPath;
-                $uploadedPaths[] = $videoPath;
+            if ($insideUploadCount > 0) {
+                $existingInside = is_array($pickupDocument->car_inside_photos)
+                    ? $pickupDocument->car_inside_photos
+                    : ($pickupDocument->car_inside_photos ? json_decode($pickupDocument->car_inside_photos, true) : []);
+
+                foreach ($this->carInsidePhotos as $photo) {
+                    $storedPath = $this->storeGalleryPhoto($photo, 'inside');
+                    if (!$storedPath) {
+                        throw new \Exception('Error uploading inside cabin photo.');
+                    }
+                    $existingInside[] = $storedPath;
+                    $uploadedPaths[] = $storedPath;
+                }
+
+                $pickupDocument->car_inside_photos = $this->sanitizeGalleryArray($existingInside);
             }
 
-            // Car Video Outside Upload
-            if ($this->carVideoOutside) {
-                $videoPath = $this->carVideoOutside->storeAs('PickupDocument', "car_video_outside_{$this->contractId}.mp4", 'myimage');
-                if (!$videoPath) throw new \Exception('Error uploading car video.');
-                $pickupDocument->car_outside_video = $videoPath;
-                $uploadedPaths[] = $videoPath;
+            if ($outsideUploadCount > 0) {
+                $existingOutside = is_array($pickupDocument->car_outside_photos)
+                    ? $pickupDocument->car_outside_photos
+                    : ($pickupDocument->car_outside_photos ? json_decode($pickupDocument->car_outside_photos, true) : []);
+
+                foreach ($this->carOutsidePhotos as $photo) {
+                    $storedPath = $this->storeGalleryPhoto($photo, 'outside');
+                    if (!$storedPath) {
+                        throw new \Exception('Error uploading exterior photo.');
+                    }
+                    $existingOutside[] = $storedPath;
+                    $uploadedPaths[] = $storedPath;
+                }
+
+                $pickupDocument->car_outside_photos = $this->sanitizeGalleryArray($existingOutside);
             }
             $pickupDocument->user_id = auth()->id();
             $pickupDocument->save();
@@ -236,8 +293,6 @@ class RentalRequestPickupDocument extends Component
             'kardo_contract' => ['db_field' => 'kardo_contract', 'extension' => 'jpg'],
             'factor_contract' => ['db_field' => 'factor_contract', 'extension' => 'jpg'],
             'car_dashboard' => ['db_field' => 'car_dashboard', 'extension' => 'jpg'],
-            'car_video_outside' => ['db_field' => 'car_outside_video', 'extension' => 'mp4'],
-            'car_video_inside' => ['db_field' => 'car_inside_video', 'extension' => 'mp4'],
         ];
 
         if (!array_key_exists($fileType, $mapping)) {
@@ -265,6 +320,48 @@ class RentalRequestPickupDocument extends Component
         $this->mount($this->contractId);
     }
 
+    public function removeGalleryItem(string $section, string $path): void
+    {
+        if (! in_array($section, ['inside', 'outside'], true)) {
+            session()->flash('error', 'The requested gallery section is not valid.');
+            return;
+        }
+
+        $column = $section === 'inside' ? 'car_inside_photos' : 'car_outside_photos';
+
+        $pickupDocument = PickupDocument::where('contract_id', $this->contractId)->first();
+        if (! $pickupDocument) {
+            session()->flash('error', 'Pickup document not found.');
+            return;
+        }
+
+        $gallery = is_array($pickupDocument->$column)
+            ? $pickupDocument->$column
+            : ($pickupDocument->$column ? json_decode($pickupDocument->$column, true) : []);
+
+        if (! is_array($gallery) || empty($gallery)) {
+            session()->flash('error', 'No photos available to remove.');
+            return;
+        }
+
+        $filteredGallery = array_values(array_filter($gallery, fn ($storedPath) => $storedPath !== $path));
+
+        if (count($filteredGallery) === count($gallery)) {
+            session()->flash('error', 'The selected photo was not found.');
+            return;
+        }
+
+        if (Storage::disk('myimage')->exists($path)) {
+            Storage::disk('myimage')->delete($path);
+        }
+
+        $pickupDocument->$column = $filteredGallery;
+        $pickupDocument->save();
+
+        session()->flash('message', 'Photo removed successfully.');
+        $this->mount($this->contractId);
+    }
+
     public function render()
     {
         return view('livewire.pages.panel.expert.rental-request.rental-request-pickup-document');
@@ -278,6 +375,78 @@ class RentalRequestPickupDocument extends Component
         $contract->changeStatus('delivery', auth()->id());
 
         session()->flash('message', 'Status changed to Delivery successfully.');
+    }
+
+    private function storeGalleryPhoto(TemporaryUploadedFile $photo, string $section): string
+    {
+        $extension = Str::lower($photo->getClientOriginalExtension() ?: $photo->guessExtension() ?: 'jpg');
+        if (! in_array($extension, ['jpeg', 'jpg', 'png', 'webp'])) {
+            $extension = 'jpg';
+        }
+
+        $filename = sprintf(
+            '%s_%s_%s.%s',
+            $section,
+            $this->contractId,
+            Str::uuid(),
+            $extension
+        );
+
+        return $photo->storeAs(
+            "PickupDocument/{$section}/{$this->contractId}",
+            $filename,
+            'myimage'
+        );
+    }
+
+    private function sanitizeGalleryArray($items): array
+    {
+        if (is_string($items)) {
+            $decoded = json_decode($items, true);
+            $items = json_last_error() === JSON_ERROR_NONE ? $decoded : [$items];
+        }
+
+        if (! is_array($items)) {
+            return [];
+        }
+
+        return collect($items)
+            ->filter(fn ($path) => is_string($path) && trim($path) !== '')
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+    private function mapGalleryMedia($items): array
+    {
+        if (empty($items)) {
+            return [];
+        }
+
+        if (is_string($items)) {
+            $decoded = json_decode($items, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $items = $decoded;
+            } else {
+                $items = [$items];
+            }
+        }
+
+        if (! is_array($items)) {
+            return [];
+        }
+
+        return collect($items)
+            ->filter(fn ($path) => is_string($path) && Storage::disk('myimage')->exists($path))
+            ->map(function ($path) {
+                return [
+                    'path' => $path,
+                    'url' => Storage::url($path),
+                    'name' => basename($path),
+                ];
+            })
+            ->values()
+            ->toArray();
     }
 
     private function prepareCustomerDocuments(): void

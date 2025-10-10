@@ -202,28 +202,61 @@
                     <div class="col-12 col-lg-6 col-xl-4">
                         <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="form-label fw-semibold mb-0">Inside Car Video</label>
-                                @if (!empty($existingFiles['carVideoInside']))
-                                    <button type="button" class="btn btn-outline-danger btn-sm"
-                                        onclick="confirmDeletion('car_video_inside')">Remove</button>
-                                @endif
+                                <label class="form-label fw-semibold mb-0">Inside Car Photos</label>
+                                <span class="badge bg-primary-subtle text-primary">Max 12</span>
                             </div>
-                            @if (!empty($existingFiles['carVideoInside']))
-                                <div class="preview-wrapper ratio ratio-4x3 mb-3">
-                                    <video class="w-100 h-100" controls>
-                                        <source src="{{ $existingFiles['carVideoInside'] }}" type="video/mp4">
-                                        Your browser does not support the video tag.
-                                    </video>
+
+                            @if (!empty($existingGalleries['inside']))
+                                <div class="gallery-grid mb-3">
+                                    @foreach ($existingGalleries['inside'] as $photo)
+                                        <div class="gallery-thumb position-relative" wire:key="inside-existing-{{ md5($photo['path']) }}">
+                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img"
+                                                alt="Inside car photo" onclick="openModal('{{ $photo['url'] }}')">
+                                            <button type="button" class="btn btn-sm btn-danger rounded-circle gallery-remove"
+                                                onclick="confirmGalleryRemoval('inside', '{{ addslashes($photo['path']) }}')">
+                                                <i class="bx bx-x"></i>
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="empty-placeholder text-center py-4 mb-3 border rounded-3">
+                                    <i class="bx bx-image-alt fs-1 text-muted mb-2 d-block"></i>
+                                    <span class="text-muted small d-block">No inside photos uploaded yet.</span>
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="carVideoInside"
-                                @if (empty($existingFiles['carVideoInside'])) required @endif>
-                            <small class="text-muted d-block mt-2">MP4 up to 20MB</small>
-                            <div wire:loading wire:target="carVideoInside" class="progress mt-3">
+
+                            @if (!empty($carInsidePhotos))
+                                <div class="mb-3">
+                                    <div class="small fw-semibold text-muted mb-2">Ready to upload</div>
+                                    <div class="gallery-grid">
+                                        @foreach ($carInsidePhotos as $index => $photo)
+                                            <div class="gallery-thumb" wire:key="inside-temp-{{ $index }}">
+                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img"
+                                                    alt="Inside preview">
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div>
+                                <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
+                                <input type="file" class="form-control" wire:model="carInsidePhotos" accept="image/*"
+                                    multiple>
+                                <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12 photos
+                                    in gallery.</small>
+                            </div>
+
+                            <div wire:loading wire:target="carInsidePhotos" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                     style="width: 100%;">Uploading...</div>
                             </div>
-                            @error('carVideoInside')
+
+                            @error('carInsidePhotos')
+                                <span class="text-danger small d-block mt-2">{{ $message }}</span>
+                            @enderror
+                            @error('carInsidePhotos.*')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
                             @enderror
                         </div>
@@ -232,28 +265,61 @@
                     <div class="col-12 col-lg-6 col-xl-4">
                         <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="form-label fw-semibold mb-0">Outside Car Video</label>
-                                @if (!empty($existingFiles['carVideoOutside']))
-                                    <button type="button" class="btn btn-outline-danger btn-sm"
-                                        onclick="confirmDeletion('car_video_outside')">Remove</button>
-                                @endif
+                                <label class="form-label fw-semibold mb-0">Outside Car Photos</label>
+                                <span class="badge bg-success-subtle text-success">Max 12</span>
                             </div>
-                            @if (!empty($existingFiles['carVideoOutside']))
-                                <div class="preview-wrapper ratio ratio-4x3 mb-3">
-                                    <video class="w-100 h-100" controls>
-                                        <source src="{{ $existingFiles['carVideoOutside'] }}" type="video/mp4">
-                                        Your browser does not support the video tag.
-                                    </video>
+
+                            @if (!empty($existingGalleries['outside']))
+                                <div class="gallery-grid mb-3">
+                                    @foreach ($existingGalleries['outside'] as $photo)
+                                        <div class="gallery-thumb position-relative" wire:key="outside-existing-{{ md5($photo['path']) }}">
+                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img"
+                                                alt="Outside car photo" onclick="openModal('{{ $photo['url'] }}')">
+                                            <button type="button" class="btn btn-sm btn-danger rounded-circle gallery-remove"
+                                                onclick="confirmGalleryRemoval('outside', '{{ addslashes($photo['path']) }}')">
+                                                <i class="bx bx-x"></i>
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="empty-placeholder text-center py-4 mb-3 border rounded-3">
+                                    <i class="bx bx-image fs-1 text-muted mb-2 d-block"></i>
+                                    <span class="text-muted small d-block">No outside photos uploaded yet.</span>
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="carVideoOutside"
-                                @if (empty($existingFiles['carVideoOutside'])) required @endif>
-                            <small class="text-muted d-block mt-2">MP4 up to 20MB</small>
-                            <div wire:loading wire:target="carVideoOutside" class="progress mt-3">
+
+                            @if (!empty($carOutsidePhotos))
+                                <div class="mb-3">
+                                    <div class="small fw-semibold text-muted mb-2">Ready to upload</div>
+                                    <div class="gallery-grid">
+                                        @foreach ($carOutsidePhotos as $index => $photo)
+                                            <div class="gallery-thumb" wire:key="outside-temp-{{ $index }}">
+                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img"
+                                                    alt="Outside preview">
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div>
+                                <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
+                                <input type="file" class="form-control" wire:model="carOutsidePhotos" accept="image/*"
+                                    multiple>
+                                <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12 photos
+                                    in gallery.</small>
+                            </div>
+
+                            <div wire:loading wire:target="carOutsidePhotos" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                     style="width: 100%;">Uploading...</div>
                             </div>
-                            @error('carVideoOutside')
+
+                            @error('carOutsidePhotos')
+                                <span class="text-danger small d-block mt-2">{{ $message }}</span>
+                            @enderror
+                            @error('carOutsidePhotos.*')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
                             @enderror
                         </div>
@@ -476,6 +542,43 @@
             object-fit: cover;
         }
 
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .gallery-thumb {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem;
+            background: #f1f3f5;
+        }
+
+        .gallery-thumb img,
+        .gallery-thumb video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gallery-remove {
+            position: absolute;
+            top: 0.35rem;
+            right: 0.35rem;
+            width: 1.75rem;
+            height: 1.75rem;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.2);
+        }
+
+        .empty-placeholder {
+            border: 1px dashed #ced4da;
+            background: #f8f9fa;
+        }
+
         .preview-clickable {
             cursor: zoom-in;
         }
@@ -493,6 +596,12 @@
         function confirmDeletion(fileType) {
             if (confirm('Are you sure you want to delete this file?')) {
                 @this.call('removeFile', fileType);
+            }
+        }
+
+        function confirmGalleryRemoval(section, path) {
+            if (confirm('Are you sure you want to delete this photo?')) {
+                @this.call('removeGalleryItem', section, path);
             }
         }
     </script>
