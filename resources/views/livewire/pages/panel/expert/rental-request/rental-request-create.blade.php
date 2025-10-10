@@ -441,6 +441,7 @@
                                 <option value="Mrs hashempour">Mrs hashempour</option>
                                 <option value="Sepris">Sepris</option>
                                 <option value="Javed">Javed</option>
+                                <option value="Arkarsh">Arkarsh</option>
                             </select>
                             @error('agent_sale')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
