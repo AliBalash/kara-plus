@@ -9,19 +9,24 @@ class ReturnDocument extends Model
 {
     use HasFactory;
 
-   protected $fillable = [
+    protected $fillable = [
         'contract_id',
         'user_id',
         'tars_contract',
         'kardo_contract',
         'factor_contract',
         'car_dashboard',
-        'car_inside_video',
-        'car_outside_video',
+        'car_inside_photos',
+        'car_outside_photos',
         'fuelLevel',
         'mileage',
         'note',
         'driver_note',
+    ];
+
+    protected $casts = [
+        'car_inside_photos' => 'array',
+        'car_outside_photos' => 'array',
     ];
 
     public function contract()
