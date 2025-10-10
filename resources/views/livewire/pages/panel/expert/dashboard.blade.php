@@ -176,7 +176,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mt-3">
                                     <span class="fw-bold text-success">${{ number_format($contract->total_price, 2) }}</span>
-                                    <a href="{{ route('rental-requests.edit', $contract->id) }}" class="btn btn-sm btn-outline-dark"><i class="bi bi-eye"></i></a>
+                                    <a href="{{ route('rental-requests.edit', $contract->id) }}" class="btn btn-sm btn-outline-dark"><i class="bx bx-show"></i></a>
                                 </div>
                             </div>
                         @empty
@@ -221,7 +221,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mt-3">
                                     <span class="fw-bold text-success">${{ number_format($contract->total_price, 2) }} <small class="text-muted">AED</small></span>
-                                    <a href="{{ route('rental-requests.edit', $contract->id) }}" class="btn btn-sm btn-outline-success"><i class="bi bi-arrow-right"></i></a>
+                                    <a href="{{ route('rental-requests.edit', $contract->id) }}" class="btn btn-sm btn-outline-success"><i class="bx bx-right-arrow-alt"></i></a>
                                 </div>
                             </div>
                         @empty
