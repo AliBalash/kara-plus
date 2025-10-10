@@ -1,5 +1,5 @@
-<aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme" role="navigation"
-    aria-label="Main menu" tabindex="-1">
+<aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme" role="navigation" aria-label="Main menu"
+    tabindex="-1">
     <div class="app-brand demo d-flex align-items-center">
         <a href="{{ route('expert.dashboard') }}" class="app-brand-link">
             <span class="app-brand-logo demo">
@@ -107,7 +107,8 @@
                             </a>
                         </li>
 
-                        <li class="menu-item {{ Request::routeIs('rental-requests.confirm-payment-list') ? 'active' : '' }}">
+                        <li
+                            class="menu-item {{ Request::routeIs('rental-requests.confirm-payment-list') ? 'active' : '' }}">
                             <a href="{{ route('rental-requests.confirm-payment-list') }}" class="menu-link">
                                 <div data-i18n="Without menu">Confirm Payments</div>
                             </a>
@@ -231,12 +232,14 @@
                     </a>
                 </li>
 
-                <li class="menu-item {{ Request::routeIs('users.roles') ? 'active' : '' }}">
-                    <a href="{{ route('users.roles') }}" class="menu-link">
-                        <i class="menu-icon tf-icons bx bx-user-check"></i>
-                        <div data-i18n="Analytics">Users &amp; Roles</div>
-                    </a>
-                </li>
+                @role('super-admin')
+                    <li class="menu-item {{ Request::routeIs('users.roles') ? 'active' : '' }}">
+                        <a href="{{ route('users.roles') }}" class="menu-link">
+                            <i class="menu-icon tf-icons bx bx-user-check"></i>
+                            <div data-i18n="Analytics">Users &amp; Roles</div>
+                        </a>
+                    </li>
+                @endrole
             @endcannot
         @endif
     </ul>

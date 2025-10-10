@@ -111,4 +111,13 @@ class User extends Authenticatable
 
         return $short . '.' . $last;
     }
+
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->hasRole('super-admin')) {
+            return true;
+        }
+
+        return null; // see the note above in Gate::before about why null must be returned here.
+    }
 }
