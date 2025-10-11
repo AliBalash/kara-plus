@@ -64,24 +64,7 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <span
-                                                    class="badge 
-                                                    @switch($contract->current_status)
-                                                        @case('pending') bg-label-warning @break
-                                                        @case('assigned') bg-label-info @break
-                                                        @case('under_review') bg-label-secondary @break
-                                                        @case('reserved') bg-label-primary @break
-                                                        @case('delivery') bg-label-dark @break
-                                                        @case('agreement_inspection') bg-label-light @break
-                                                        @case('awaiting_return') bg-label-warning @break
-                                                        @case('returned') bg-label-success @break
-                                                        @case('complete') bg-label-success @break
-                                                        @case('cancelled') bg-label-danger @break
-                                                        @case('rejected') bg-label-danger @break
-                                                        @default bg-label-secondary
-                                                    @endswitch">
-                                                    {{ ucfirst(str_replace('_', ' ', $contract->current_status)) }}
-                                                </span>
+                                                <x-status-badge :status="$contract->current_status" />
                                             </td>
                                             <td>
                                                 <div class="dropdown">

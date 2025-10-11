@@ -713,7 +713,7 @@
                                             <span class="text-muted small"><i class="bi bi-calendar-event me-1"></i>{{ $contract->created_at->format('d M Y') }}</span>
                                         </div>
                                         <div class="d-flex align-items-center gap-3">
-                                            <span class="badge bg-secondary">{{ ucfirst($contract->current_status) }}</span>
+                                            <x-status-badge :status="$contract->current_status" />
                                             <span class="fw-bold text-success">${{ number_format($contract->total_price, 2) }}</span>
                                             <a href="{{ route('rental-requests.edit', $contract->id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                                         </div>
