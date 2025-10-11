@@ -35,6 +35,7 @@ return new class extends Migration
                 'delivery',
                 'agreement_inspection',
                 'awaiting_return',
+                'payment',
                 'returned',
                 'complete',
                 'cancelled',

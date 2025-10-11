@@ -18,6 +18,7 @@ class CustomerFactory extends Factory
             'gender' => $this->faker->randomElement(['male', 'female', 'other']),
             'email' => $this->faker->unique()->safeEmail,
             'phone' => $this->faker->phoneNumber,
+            'messenger_phone' => $this->faker->phoneNumber,
             'address' => $this->faker->address,
             'passport_number' => $this->faker->unique()->bothify('???#####'),
             'passport_expiry_date' => $this->faker->date('Y-m-d', '+5 years'),
