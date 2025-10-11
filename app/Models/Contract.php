@@ -140,9 +140,9 @@ class Contract extends Model
     /**
      * متد برای محاسبه قیمت نهایی قرارداد با توجه به روزهای اجاره.
      *
-     * @return decimal
+     * @return float
      */
-    public function calculateTotalPrice(): decimal
+    public function calculateTotalPrice(): float
     {
         $days = $this->pickup_date->diffInDays($this->return_date ?? now());
         return $days * $this->car->price_per_day;
