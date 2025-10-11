@@ -96,8 +96,8 @@
                     <th wire:click="sortBy('return_date')">
                         Return Date <i class="bx bx-sort-alt-2"></i>
                     </th>
-                    <th wire:click="sortBy('current_status')">
-                        Status <i class="bx bx-sort-alt-2"></i>
+                    <th>
+                        Status
                     </th>
                     <th>Agent Sale</th>
                     <th>Expert</th>
@@ -114,24 +114,7 @@
                         <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}</td>
                         <td>
-                            <span
-                                class="badge 
-                                @switch($contract->current_status)
-                                    @case('pending') bg-warning @break
-                                    @case('assigned') bg-primary @break
-                                    @case('under_review') bg-info @break
-                                    @case('reserved') bg-secondary @break
-                                    @case('delivery') bg-dark @break
-                                    @case('agreement_inspection') bg-success @break
-                                    @case('awaiting_return') bg-light text-dark @break
-                                    @case('returned') bg-success @break
-                                    @case('complete') bg-success @break
-                                    @case('cancelled') bg-danger @break
-                                    @case('rejected') bg-danger @break
-                                    @default bg-secondary
-                                @endswitch">
-                                {{ ucfirst(str_replace('_', ' ', $contract->current_status)) }}
-                            </span>
+                            <x-status-badge :status="$contract->current_status" />
                         </td>
                         <td>{{ $contract->agent_sale }}</td>
                         <td>
