@@ -162,8 +162,7 @@
                                 </div>
                             @endif
                             <input type="file" class="form-control" wire:model="factorContract"
-                                @if (!$paymentOnDelivery) disabled @endif
-                                @if ($paymentOnDelivery && empty($existingFiles['factorContract'])) required @endif>
+                                @if (!$paymentOnDelivery) disabled @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             @unless ($paymentOnDelivery)
                                 <small class="text-muted d-block">Not needed when Payment on Delivery is disabled.</small>
