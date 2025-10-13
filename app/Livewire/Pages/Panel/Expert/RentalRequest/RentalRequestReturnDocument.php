@@ -80,8 +80,6 @@ class RentalRequestReturnDocument extends Component
 
         // Factor Contract Validation
         if ($this->factorContract) {
-            $validationRules['factorContract'] = 'required|image|max:8048';
-        } elseif (!$this->factorContract && empty($this->existingFiles['factorContract'])) {
             $validationRules['factorContract'] = 'image|max:8048';
         }
 

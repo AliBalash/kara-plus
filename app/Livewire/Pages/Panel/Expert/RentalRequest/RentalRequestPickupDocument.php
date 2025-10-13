@@ -120,8 +120,8 @@ class RentalRequestPickupDocument extends Component
 
         // Factor Contract Validation
         if ($this->contract->payment_on_delivery) {
-            if ($this->factorContract || empty($this->existingFiles['factorContract'])) {
-                $validationRules['factorContract'] = 'required|image|max:8048';
+            if ($this->factorContract) {
+                $validationRules['factorContract'] = 'image|max:8048';
             }
         } else {
             $this->factorContract = null;
