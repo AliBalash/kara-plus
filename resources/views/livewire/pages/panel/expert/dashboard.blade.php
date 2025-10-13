@@ -23,7 +23,7 @@
                         <span class="next-task-label {{ $isPickupTask ? 'next-task-label--pickup' : 'next-task-label--return' }}">
                             Next {{ $isPickupTask ? 'Pickup' : 'Return' }}
                         </span>
-                        <h5 class="mt-2 mb-1">{{ optional(optional($taskContract->car)->carModel)->fullName() ?? 'Vehicle' }}</h5>
+                        <h5 class="mt-2 mb-1">{{ optional($taskContract->car)->fullName() ?? 'Vehicle' }}</h5>
                         <div class="text-muted small mb-1"><i class="bx bx-user-circle me-1"></i>{{ optional($taskContract->customer)->fullName() ?? 'Customer TBD' }}</div>
                         <div class="text-muted small mb-1"><i class="bx bx-time me-1"></i>{{ $taskMoment->format('d M Y · H:i') }}</div>
                         <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $isPickupTask ? ($taskContract->pickup_location ?? 'Pickup location TBD') : ($taskContract->return_location ?? 'Return location TBD') }}</div>
@@ -93,7 +93,7 @@
                         @forelse ($driverPickups as $pickup)
                             <div class="task-item d-flex align-items-start justify-content-between">
                                 <div class="task-info">
-                                    <h6 class="mb-1">{{ optional(optional($pickup->car)->carModel)->fullName() ?? 'Vehicle' }}</h6>
+                                    <h6 class="mb-1">{{ optional($pickup->car)->fullName() ?? 'Vehicle' }}</h6>
                                     <div class="text-muted small"><i class="bx bx-user-circle me-1"></i>{{ optional($pickup->customer)->fullName() ?? 'Customer TBD' }}</div>
                                     <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($pickup->pickup_date)->format('d M · H:i') }}</div>
                                     <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $pickup->pickup_location ?? 'Pickup location TBD' }}</div>
@@ -119,7 +119,7 @@
                         @forelse ($driverReturns as $returnContract)
                             <div class="task-item d-flex align-items-start justify-content-between">
                                 <div class="task-info">
-                                    <h6 class="mb-1">{{ optional(optional($returnContract->car)->carModel)->fullName() ?? 'Vehicle' }}</h6>
+                                    <h6 class="mb-1">{{ optional($returnContract->car)->fullName() ?? 'Vehicle' }}</h6>
                                     <div class="text-muted small"><i class="bx bx-user-circle me-1"></i>{{ optional($returnContract->customer)->fullName() ?? 'Customer TBD' }}</div>
                                     <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($returnContract->return_date)->format('d M · H:i') }}</div>
                                     <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $returnContract->return_location ?? 'Return location TBD' }}</div>

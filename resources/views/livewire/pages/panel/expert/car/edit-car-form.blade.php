@@ -18,7 +18,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="car-brand-addon">Car Brand</span>
                                 <select class="form-control" disabled>
-                                    <option>{{ $car->carModel->fullname() }}</option>
+                                    <option>{{ $car->fullName() }}</option>
                                 </select>
                             </div>
 
