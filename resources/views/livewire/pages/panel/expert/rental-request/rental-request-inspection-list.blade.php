@@ -54,6 +54,15 @@
                                 ? 'Approved'
                                 : 'Pending')
                             : 'Not Required';
+
+                        $statusBadgeClasses = [
+                            'Approved' => 'bg-success',
+                            'Pending' => 'bg-warning text-dark',
+                            'Not Required' => 'bg-secondary',
+                        ];
+
+                        $tarsBadgeClass = $statusBadgeClasses[$tarsStatus] ?? 'bg-secondary';
+                        $kardoBadgeClass = $statusBadgeClasses[$kardoStatus] ?? 'bg-secondary';
                     @endphp
                     <tr>
                         <td>{{ $contract->id }}</td>
@@ -94,8 +103,8 @@
                             </div>
                         </td>
                         <td>
-                            <span class="badge bg-info">TARS: {{ $tarsStatus }}</span>
-                            <span class="badge bg-info mt-1">CARDO: {{ $kardoStatus }}</span>
+                            <span class="badge {{ $tarsBadgeClass }}">TARS: {{ $tarsStatus }}</span>
+                            <span class="badge {{ $kardoBadgeClass }} mt-1">CARDO: {{ $kardoStatus }}</span>
                         </td>
                     </tr>
                 @endforeach
