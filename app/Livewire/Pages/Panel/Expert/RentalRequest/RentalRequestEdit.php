@@ -605,15 +605,13 @@ class RentalRequestEdit extends Component
     public function changeStatusToReserve($contractId)
     {
         $contract = Contract::findOrFail($contractId);
-        if ($contract->user_id === auth()->id()) {
-            $contract->changeStatus('reserved', auth()->id());
-            if ($contract->car) {
-                $contract->car->update(['status' => 'reserved']);
-            }
-            session()->flash('success', 'Status changed to Reserved successfully.');
-        } else {
-            session()->flash('error', 'You are not authorized to perform this action.');
+        $contract->changeStatus('reserved', auth()->id());
+
+        if ($contract->car) {
+            $contract->car->update(['status' => 'reserved']);
         }
+
+        session()->flash('success', 'Status changed to Reserved successfully.');
     }
 
     public function updatedSelectedModelId()

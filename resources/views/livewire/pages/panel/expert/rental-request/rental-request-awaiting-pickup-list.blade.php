@@ -67,23 +67,21 @@
                                         <i class="bx bx-file me-1"></i> Pickup Document
                                     </a>
 
-                                    @if ($contract->user_id === auth()->id())
-                                        <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $contract->id) }}">
-                                            <i class="bx bx-info-circle me-1"></i> Details
-                                        </a>
-                                        @if ($contract->current_status !== 'cancelled')
-                                            <a class="dropdown-item text-danger" href="javascript:void(0);"
-                                                onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $contract->id }}) }">
-                                                <i class="bx bx-block me-1"></i> Cancel
-                                            </a>
-                                        @endif
-
-                                        <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="deleteContract({{ $contract->id }})">
-                                            <i class="bx bx-trash me-1"></i> Delete
+                                    <a class="dropdown-item"
+                                        href="{{ route('rental-requests.details', $contract->id) }}">
+                                        <i class="bx bx-info-circle me-1"></i> Details
+                                    </a>
+                                    @if ($contract->current_status !== 'cancelled')
+                                        <a class="dropdown-item text-danger" href="javascript:void(0);"
+                                            onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $contract->id }}) }">
+                                            <i class="bx bx-block me-1"></i> Cancel
                                         </a>
                                     @endif
+
+                                    <a class="dropdown-item" href="javascript:void(0);"
+                                        wire:click.prevent="deleteContract({{ $contract->id }})">
+                                        <i class="bx bx-trash me-1"></i> Delete
+                                    </a>
                                 </div>
                             </div>
                         </td>

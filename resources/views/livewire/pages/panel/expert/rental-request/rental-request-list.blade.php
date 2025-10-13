@@ -143,7 +143,7 @@
                                     <a class="dropdown-item" href="{{ route('rental-requests.edit', $contract->id) }}">
                                         <i class="bx bx-edit-alt me-1"></i> Edit
                                     </a>
-                                    @if ($contract->current_status !== 'cancelled' && (is_null($contract->user_id) || $contract->user_id === auth()->id()))
+                                    @if ($contract->current_status !== 'cancelled')
                                         <a class="dropdown-item text-danger" href="javascript:void(0);"
                                             onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $contract->id }}) }">
                                             <i class="bx bx-block me-1"></i> Cancel
