@@ -75,7 +75,7 @@
     $tabs = array_filter($tabs, fn($tab) => $isDriver ? ($tab['driver'] ?? false) : ($tab['staff'] ?? true));
 @endphp
 
-<div class="rental-steps" wire:ignore role="tablist">
+<div class="rental-steps my-2" role="tablist">
     @foreach ($tabs as $tab)
         @php
             $isActive = isset($tab['routes']) && request()->routeIs(...$tab['routes']);

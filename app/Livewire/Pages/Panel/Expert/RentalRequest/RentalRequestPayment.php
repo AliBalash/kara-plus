@@ -9,6 +9,7 @@ use App\Models\CustomerDocument;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\WithFileUploads;
 
 class RentalRequestPayment extends Component
@@ -47,16 +48,21 @@ class RentalRequestPayment extends Component
 
 
 
-    protected $rules = [
-        'amount' => 'required|numeric|min:0',
-        'currency' => 'required|in:IRR,USD,AED,EUR',
-        'payment_type' => 'required|in:rental_fee,security_deposit,salik,fine,parking,damage,discount',
-        'payment_date' => 'required|date',
-        'payment_method' => 'required|in:cash,transfer,ticket',
-        'is_refundable' => 'required|boolean',
-        'rate' => 'nullable|numeric|min:0.0001',
-        'receipt' => 'nullable|image|max:2048', // optional receipt image
-    ];
+    private const PAYMENT_METHODS = ['cash', 'transfer', 'ticket'];
+
+    protected function rules(): array
+    {
+        return [
+            'amount' => ['required', 'numeric', 'min:0'],
+            'currency' => ['required', Rule::in(['IRR', 'USD', 'AED', 'EUR'])],
+            'payment_type' => ['required', Rule::in(['rental_fee', 'security_deposit', 'salik', 'fine', 'parking', 'damage', 'discount'])],
+            'payment_date' => ['required', 'date'],
+            'payment_method' => ['required', Rule::in(self::PAYMENT_METHODS)],
+            'is_refundable' => ['required', 'boolean'],
+            'rate' => ['nullable', 'numeric', 'min:0.0001'],
+            'receipt' => ['nullable', 'image', 'max:2048'], // optional receipt image
+        ];
+    }
 
     public function mount($contractId, $customerId)
     {
@@ -114,6 +120,14 @@ class RentalRequestPayment extends Component
 
     public function submitPayment()
     {
+        if (is_string($this->payment_method)) {
+            $this->payment_method = strtolower(trim($this->payment_method));
+        }
+
+        if (! in_array($this->payment_method, self::PAYMENT_METHODS, true)) {
+            $this->payment_method = self::PAYMENT_METHODS[0];
+        }
+
         $this->validate();
         if ($this->currency !== 'AED' && empty($this->rate)) {
             $this->addError('rate', 'Exchange rate is required for non-AED currencies.');
@@ -149,7 +163,7 @@ class RentalRequestPayment extends Component
                 'rate' => $this->currency !== 'AED' ? $this->rate : null,
                 'amount_in_aed' => $aedAmount,
                 'payment_type' => $this->payment_type,
-                'payment_method' => $this->payment_method, // 👈 اضافه شد
+                'payment_method' => $this->payment_method,
                 'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                 'is_paid' => false,
                 'is_refundable' => $this->is_refundable,
