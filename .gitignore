@@ -39,6 +39,7 @@ Thumbs.db
 
 # Ignore testing related files
 *.phpunit.*
+.phpunit.result.cache
 
 # Ignore other temporary files
 *.bak
