@@ -104,7 +104,7 @@ class Dashboard extends Component
             ->get();
         // تبدیل لیست برای نمایش در ویو
         $this->topBrands = $topCars->map(function ($contract) {
-            $carName = optional(optional($contract->car)->carModel)->fullName();
+            $carName = optional($contract->car)->fullName();
 
             return [
                 'brand' => $carName ?? 'Unknown',
