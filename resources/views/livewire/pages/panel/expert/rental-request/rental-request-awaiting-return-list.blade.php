@@ -77,17 +77,15 @@
                                         href="{{ route('rental-requests.return-document', $awaitContract->id) }}">
                                         <i class="bx bx-file me-1"></i> Return Document
                                     </a>
-                                    @if ($awaitContract->user_id === auth()->id())
-                                        <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $awaitContract->id) }}">
-                                            <i class="bx bx-info-circle me-1"></i> Details
+                                    <a class="dropdown-item"
+                                        href="{{ route('rental-requests.details', $awaitContract->id) }}">
+                                        <i class="bx bx-info-circle me-1"></i> Details
+                                    </a>
+                                    @if ($awaitContract->current_status !== 'cancelled')
+                                        <a class="dropdown-item text-danger" href="javascript:void(0);"
+                                            onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $awaitContract->id }}) }">
+                                            <i class="bx bx-block me-1"></i> Cancel
                                         </a>
-                                        @if ($awaitContract->current_status !== 'cancelled')
-                                            <a class="dropdown-item text-danger" href="javascript:void(0);"
-                                                onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $awaitContract->id }}) }">
-                                                <i class="bx bx-block me-1"></i> Cancel
-                                            </a>
-                                        @endif
                                     @endif
                                 </div>
                             </div>

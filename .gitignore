@@ -38,7 +38,7 @@ Thumbs.db
 /public/mix-manifest.json
 
 # Ignore testing related files
-phpunit.result.cache
+*.phpunit.*
 
 # Ignore other temporary files
 *.bak

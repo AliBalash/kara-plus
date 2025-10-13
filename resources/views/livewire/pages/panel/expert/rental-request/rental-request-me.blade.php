@@ -120,33 +120,29 @@
                                             <i class="bx bx-user-check me-1"></i> Assign to Me
                                         </a>
                                     @endif
-                                    @if ($contract->user_id === auth()->id())
-                                        <!-- گزینه Details -->
-                                        <a class="dropdown-item"
-                                            href="{{ route('rental-requests.details', $contract->id) }}">
-                                            <i class="bx bx-info-circle me-1"></i> Details
-                                        </a>
+                                    <!-- گزینه Details -->
+                                    <a class="dropdown-item"
+                                        href="{{ route('rental-requests.details', $contract->id) }}">
+                                        <i class="bx bx-info-circle me-1"></i> Details
+                                    </a>
 
-                                        <!-- گزینه Edit -->
-                                        <a class="dropdown-item"
-                                            href="{{ route('rental-requests.edit', $contract->id) }}">
-                                            <i class="bx bx-edit-alt me-1"></i> Edit
+                                    <!-- گزینه Edit -->
+                                    <a class="dropdown-item"
+                                        href="{{ route('rental-requests.edit', $contract->id) }}">
+                                        <i class="bx bx-edit-alt me-1"></i> Edit
+                                    </a>
+                                    @if ($contract->current_status !== 'cancelled')
+                                        <a class="dropdown-item text-danger" href="javascript:void(0);"
+                                            onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $contract->id }}) }">
+                                            <i class="bx bx-block me-1"></i> Cancel
                                         </a>
-                                        @if ($contract->current_status !== 'cancelled')
-                                            <a class="dropdown-item text-danger" href="javascript:void(0);"
-                                                onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $contract->id }}) }">
-                                                <i class="bx bx-block me-1"></i> Cancel
-                                            </a>
-                                        @endif
                                     @endif
 
                                     <!-- گزینه Delete -->
-                                    @if ($contract->user_id === auth()->id())
-                                        <a class="dropdown-item" href="javascript:void(0);"
-                                            wire:click.prevent="deleteContract({{ $contract->id }})">
-                                            <i class="bx bx-trash me-1"></i> Delete
-                                        </a>
-                                    @endif
+                                    <a class="dropdown-item" href="javascript:void(0);"
+                                        wire:click.prevent="deleteContract({{ $contract->id }})">
+                                        <i class="bx bx-trash me-1"></i> Delete
+                                    </a>
                                 </div>
                             </div>
 
