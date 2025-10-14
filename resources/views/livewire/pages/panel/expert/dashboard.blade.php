@@ -532,7 +532,7 @@
             @endforeach
         </div>
 
-        <div class="row g-4 mb-4">
+        {{-- <div class="row g-4 mb-4">
             <div class="col-12 col-xxl-8">
                 <div class="card shadow-lg border-0 rounded-4 h-100">
                     <div class="card-header border-0 bg-transparent pt-4 px-4">
@@ -589,9 +589,9 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
-        <div class="row g-4 mb-4">
+        {{-- <div class="row g-4 mb-4">
             <div class="col-12 col-xxl-8">
                 <div class="card shadow-lg border-0 rounded-4 h-100">
                     <div class="card-header border-0 bg-transparent pt-4 px-4">
@@ -667,7 +667,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
         <div class="row g-4 mb-4">
             <div class="col-12 col-xxl-5">
