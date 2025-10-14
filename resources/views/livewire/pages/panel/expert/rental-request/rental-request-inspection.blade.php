@@ -23,8 +23,8 @@
                 @if ($contract->kardo_required)
                     @if (!empty($existingFiles['kardoContract']))
                         <img src="{{ $existingFiles['kardoContract'] }}" class="img-thumbnail" width="150">
-                        @if (!empty($pickupDocument->kardo_contract_number))
-                            <p class="text-muted mt-2 mb-0">Contract #: {{ $pickupDocument->kardo_contract_number }}</p>
+                        @if (!empty($pickupDocument->agreement_number))
+                            <p class="text-muted mt-2 mb-0">Agreement #: {{ $pickupDocument->agreement_number }}</p>
                         @endif
                         @if (!$pickupDocument->kardo_approved_at)
                             <button wire:click="approveKardo" class="btn btn-success mt-2">Approve CARDO</button>
@@ -34,8 +34,8 @@
                         @endif
                     @else
                         <p class="text-danger">CARDO not uploaded</p>
-                        @if (!empty($pickupDocument->kardo_contract_number))
-                            <p class="text-muted">Provided contract #: {{ $pickupDocument->kardo_contract_number }}</p>
+                        @if (!empty($pickupDocument->agreement_number))
+                            <p class="text-muted">Provided agreement #: {{ $pickupDocument->agreement_number }}</p>
                         @endif
                     @endif
                 @else

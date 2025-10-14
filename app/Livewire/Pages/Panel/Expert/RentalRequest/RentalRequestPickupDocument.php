@@ -20,7 +20,7 @@ class RentalRequestPickupDocument extends Component
     public $contractId;
     public $tarsContract;
     public $kardoContract;
-    public $kardo_contract_number;
+    public $agreement_number;
     public $factorContract;
     public $carDashboard;
     public array $carInsidePhotos = [];
@@ -64,10 +64,10 @@ class RentalRequestPickupDocument extends Component
             $this->mileage = $pickup->mileage;
             $this->note = $pickup->note;
             $this->driverNote = $pickup->driver_note;
-            $this->kardo_contract_number = $pickup->kardo_contract_number;
+            $this->agreement_number = $pickup->agreement_number;
         }
         if (empty($pickup)) {
-            $this->kardo_contract_number = null;
+            $this->agreement_number = null;
         }
         $this->existingFiles = [
             'tarsContract' => Storage::disk('myimage')->exists("PickupDocument/tars_contract_{$this->contractId}.jpg")
@@ -108,8 +108,8 @@ class RentalRequestPickupDocument extends Component
             'driverNote' => 'nullable|string|max:1000',
         ];
 
-        $this->kardo_contract_number = $this->kardo_contract_number !== null
-            ? trim((string) $this->kardo_contract_number)
+        $this->agreement_number = $this->agreement_number !== null
+            ? trim((string) $this->agreement_number)
             : null;
 
         // Tars Contract Validation
@@ -122,15 +122,15 @@ class RentalRequestPickupDocument extends Component
             if ($this->kardoContract || empty($this->existingFiles['kardoContract'])) {
                 $validationRules['kardoContract'] = 'required|image|max:8048';
             }
-            $validationRules['kardo_contract_number'] = ['required', 'regex:/^\d{1,30}$/'];
+            $validationRules['agreement_number'] = ['required', 'regex:/^\d{1,30}$/'];
         } elseif ($this->kardoContract) {
             $validationRules['kardoContract'] = 'image|max:8048';
-            if (! empty($this->kardo_contract_number)) {
-                $validationRules['kardo_contract_number'] = ['nullable', 'regex:/^\d{1,30}$/'];
+            if (! empty($this->agreement_number)) {
+                $validationRules['agreement_number'] = ['nullable', 'regex:/^\d{1,30}$/'];
             }
         }
-        if (! $this->contract->kardo_required && empty($validationRules['kardo_contract_number'])) {
-            $this->kardo_contract_number = null;
+        if (! $this->contract->kardo_required && empty($validationRules['agreement_number'])) {
+            $this->agreement_number = null;
         }
 
 
@@ -212,8 +212,8 @@ class RentalRequestPickupDocument extends Component
             $pickupDocument->mileage = $this->mileage;
             $pickupDocument->note = $this->note;
             $pickupDocument->driver_note = $this->driverNote;
-            $pickupDocument->kardo_contract_number = $this->contract->kardo_required
-                ? $this->kardo_contract_number
+            $pickupDocument->agreement_number = $this->contract->kardo_required
+                ? $this->agreement_number
                 : null;
 
             // Tars Contract Upload

@@ -14,7 +14,7 @@ class PickupDocument extends Model
         'user_id',
         'tars_contract',
         'kardo_contract',
-        'kardo_contract_number',
+        'agreement_number',
         'factor_contract',
         'car_dashboard',
         'car_inside_photos',
