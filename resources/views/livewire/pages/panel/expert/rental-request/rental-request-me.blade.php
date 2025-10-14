@@ -68,21 +68,38 @@
         <table class="table table-hover">
             <thead>
                 <tr>
-                    <th class="cursor-pointer" wire:click="sortBy('id')">
-                        # <i class="bx bx-sort-alt-2"></i>
+                    <th wire:click="sortBy('id')" role="button" class="sortable">
+                        #
+                        <i
+                            class="bx {{ $sortField === 'id' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        </i>
                     </th>
                     <th>Customer</th>
                     <th>Car</th>
-                    <th class="cursor-pointer" wire:click="sortBy('pickup_date')">
-                        Pickup Date <i class="bx bx-sort-alt-2"></i>
+                    <th wire:click="sortBy('pickup_date')" role="button" class="sortable">
+                        Pickup Date
+                        <i
+                            class="bx {{ $sortField === 'pickup_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        </i>
                     </th>
-                    <th class="cursor-pointer" wire:click="sortBy('return_date')">
-                        Return Date <i class="bx bx-sort-alt-2"></i>
+                    <th wire:click="sortBy('return_date')" role="button" class="sortable">
+                        Return Date
+                        <i
+                            class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        </i>
                     </th>
-                    <th>Agent Sale</th>
+                    <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
+                        Agent Sale
+                        <i
+                            class="bx {{ $sortField === 'agent_sale' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        </i>
+                    </th>
                     <th>Expert</th>
-                    <th class="cursor-pointer" wire:click="sortBy('current_status')">
-                        Status <i class="bx bx-sort-alt-2"></i>
+                    <th wire:click="sortBy('current_status')" role="button" class="sortable">
+                        Status
+                        <i
+                            class="bx {{ $sortField === 'current_status' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        </i>
                     </th>
                     <th>Actions</th>
                 </tr>
@@ -160,3 +177,22 @@
         {{ $contracts->links() }}
     </div>
 </div>
+
+@once
+    @push('styles')
+        <style>
+            th.sortable {
+                cursor: pointer;
+                user-select: none;
+            }
+
+            th.sortable i {
+                margin-left: 0.35rem;
+            }
+
+            th.sortable:hover {
+                color: #007bff;
+            }
+        </style>
+    @endpush
+@endonce
