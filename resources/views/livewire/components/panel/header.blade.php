@@ -108,121 +108,166 @@
     </nav>
 
     @if ($showSearch)
-        <div class="offcanvas offcanvas-end search-offcanvas" tabindex="-1" id="quickSearchOffcanvas" wire:ignore.self
-            aria-labelledby="quickSearchLabel" data-bs-scroll="true">
-            <div class="offcanvas-header border-bottom">
-                <div>
-                    <h5 class="offcanvas-title mb-1" id="quickSearchLabel">Quick Vehicle Search</h5>
+        {{-- Modern Quick Vehicle Search Offcanvas --}}
+        <div class="offcanvas offcanvas-end search-offcanvas-modern" tabindex="-1" id="quickSearchOffcanvas"
+            wire:ignore.self aria-labelledby="quickSearchLabel" data-bs-scroll="true" data-bs-backdrop="true">
+            <div class="offcanvas-header border-bottom align-items-start gap-2">
+                <div class="d-flex flex-column">
+                    <h5 class="offcanvas-title mb-1 fw-semibold" id="quickSearchLabel">Quick Vehicle Search</h5>
                     <p class="text-muted small mb-0">Search by plate, vehicle details or assigned customer.</p>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="shortcut-hint text-muted" title="Open with ⌘/Ctrl + K">
+                        <kbd class="kbd">⌘</kbd><span class="mx-1">/</span><kbd class="kbd">Ctrl</kbd><span
+                            class="mx-1">+</span><kbd class="kbd">K</kbd>
+                    </span>
+                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                </div>
             </div>
-            <div class="offcanvas-body d-flex flex-column gap-3">
-                @php
-                    $queryLength = \Illuminate\Support\Str::length($query ?? '');
-                @endphp
-                <div @class(['search-input-wrapper', 'has-query' => $queryLength]) role="search">
+
+            @php($queryLength = \Illuminate\Support\Str::length($query ?? ''))
+
+            <div class="offcanvas-body d-flex flex-column gap-3 position-relative">
+                <div class="search-input-wrapper-modern @if ($queryLength) has-query @endif"
+                    role="search">
                     <i class="bx bx-search" aria-hidden="true"></i>
                     <label class="visually-hidden" for="quickSearchInput">Search vehicles</label>
-                    <input type="search" wire:model.live.debounce.400ms="query" class="form-control"
+                    <input type="search" wire:model.live.debounce.350ms="query" class="form-control search-input"
                         placeholder="Start typing to search the fleet" aria-label="Search vehicles" autocomplete="off"
                         spellcheck="false" enterkeyhint="search" id="quickSearchInput">
                     @if ($queryLength > 1)
-                        <button type="button" class="btn btn-sm btn-link text-muted" wire:click="$set('query', '')">
+                        <button type="button" class="btn btn-sm btn-link text-muted px-2 ms-1 clear-btn"
+                            wire:click="$set('query', '')" title="Clear">
                             Clear
                         </button>
                     @endif
                 </div>
 
-                <div @class(['search-results', 'flex-grow-1', 'position-relative']) role="list"
+                <div class="search-results-modern flex-grow-1 position-relative" role="list"
                     wire:loading.class="is-loading" wire:target="query" aria-live="polite"
                     wire:loading.attr="aria-busy" data-testid="quick-search-results">
-                    <div class="search-loading" wire:loading.flex wire:target="query" aria-hidden="true">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading…</span>
+
+                    {{-- Loading State (skeletons) --}}
+                    <div class="search-loading d-none" wire:loading.class.remove="d-none" wire:target="query"
+                        aria-hidden="true">
+                        <div class="skeleton-list">
+                            @for ($i = 0; $i < 6; $i++)
+                                <div class="skeleton-card">
+                                    <div class="skeleton-line w-50"></div>
+                                    <div class="skeleton-line w-25"></div>
+                                    <div class="skeleton-meta">
+                                        <span class="skeleton-dot"></span>
+                                        <span class="skeleton-dot"></span>
+                                        <span class="skeleton-dot large"></span>
+                                    </div>
+                                </div>
+                            @endfor
                         </div>
                     </div>
+
+                    {{-- Placeholder before typing --}}
                     @if ($queryLength <= 1)
-                        <div class="search-placeholder text-center text-muted py-4" role="status">
+                        <div class="search-placeholder text-center text-muted py-5" role="status">
                             <i class="bx bx-search-alt-2 display-6 d-block mb-2"></i>
-                            <p class="mb-0">Enter at least 2 characters to search vehicles.</p>
+                            <p class="mb-1">Enter at least <strong>2</strong> characters to search vehicles.</p>
+                            <p class="small mb-0">Tip: Press <kbd class="kbd">⌘</kbd>/<kbd
+                                    class="kbd">Ctrl</kbd>+<kbd class="kbd">K</kbd> to open this panel.</p>
                         </div>
                     @else
-                        @forelse ($cars as $car)
-                            @php
-                                $status = $car->status ?? 'unknown';
-                                $statusColor = match ($status) {
-                                    'available' => 'success',
-                                    'reserved' => 'warning',
-                                    'unavailable', 'sold', 'maintenance' => 'danger',
-                                    default => 'secondary',
-                                };
-                                $contract = $car->currentContract ?? null;
-                            @endphp
-                            <a href="{{ route('car.edit', $car->id) }}" class="result-card" role="listitem"
-                                wire:key="search-result-{{ $car->id }}">
-                                <div class="result-card-header">
-                                    <div class="result-card-title">
-                                        <span class="result-card-name">{{ $car->fullname() }}</span>
-                                        <span class="result-card-sub text-muted">{{ optional($car->carModel)->brand }}
-                                            {{ optional($car->carModel)->model }}</span>
-                                    </div>
-                                    <span class="status-chip bg-{{ $statusColor }}">{{ ucfirst($status) }}</span>
-                                </div>
-
-                                <div class="result-card-meta">
-                                    <span><i class="bx bx-id-card"></i>{{ $car->plate_number ?? 'Plate TBD' }}</span>
-                                    <span><i
-                                            class="bx bx-calendar"></i>{{ $car->manufacturing_year ?? 'Year —' }}</span>
-                                    <span><i class="bx bx-gas-pump"></i>{{ number_format($car->mileage ?? 0) }}
-                                        km</span>
-                                    <span><i class="bx bx-dollar-circle"></i>{{ number_format($car->price_per_day) }}
-                                        AED/day</span>
-                                </div>
-
-                                @if ($status === 'reserved' && $contract)
-                                    <div class="result-card-timeline">
-                                        <div class="timeline-node">
-                                            <div class="timeline-title">Pickup</div>
-                                            <div class="timeline-value">
-                                                {{ optional($contract->pickup_date)->format('d M Y · H:i') ?? '-' }}
+                        {{-- Results --}}
+                        <ul class="results-list list-unstyled m-0" id="quickSearchResultsList">
+                            @forelse ($cars as $car)
+                                @php
+                                    $status = $car->status ?? 'unknown';
+                                    $statusColor = match ($status) {
+                                        'available' => 'success',
+                                        'reserved' => 'warning',
+                                        'unavailable', 'sold', 'maintenance' => 'danger',
+                                        default => 'secondary',
+                                    };
+                                    $contract = $car->currentContract ?? null;
+                                @endphp
+                                <li role="listitem" class="result-li">
+                                    <a href="{{ route('car.edit', $car->id) }}" class="result-card-modern"
+                                        wire:key="search-result-{{ $car->id }}"
+                                        data-name="{{ $car->fullname() }}" data-plate="{{ $car->plate_number ?? '' }}"
+                                        data-brand="{{ optional($car->carModel)->brand }}"
+                                        data-model="{{ optional($car->carModel)->model }}">
+                                        <div class="result-card-header">
+                                            <div class="result-card-title">
+                                                <span
+                                                    class="result-card-name text-truncate">{{ $car->fullname() }}</span>
+                                                <span
+                                                    class="result-card-sub text-muted text-truncate">{{ optional($car->carModel)->brand }}
+                                                    {{ optional($car->carModel)->model }}</span>
                                             </div>
-                                            <div class="timeline-sub text-muted">
-                                                {{ $contract->pickup_location ?? 'Location TBD' }}</div>
+                                            <span
+                                                class="status-chip badge bg-{{ $statusColor }} text-wrap">{{ ucfirst($status) }}</span>
                                         </div>
-                                        <div class="timeline-node">
-                                            <div class="timeline-title">Return</div>
-                                            <div class="timeline-value">
-                                                {{ optional($contract->return_date)->format('d M Y · H:i') ?? '-' }}
-                                            </div>
-                                            <div class="timeline-sub text-muted">
-                                                {{ $contract->return_location ?? 'Location TBD' }}</div>
+                                        <div class="result-card-meta">
+                                            <span title="Plate"><i
+                                                    class="bx bx-id-card"></i>{{ $car->plate_number ?? 'Plate TBD' }}</span>
+                                            <span title="Year"><i
+                                                    class="bx bx-calendar"></i>{{ $car->manufacturing_year ?? 'Year —' }}</span>
+                                            <span title="Mileage"><i
+                                                    class="bx bx-gas-pump"></i>{{ number_format($car->mileage ?? 0) }}
+                                                km</span>
+                                            <span title="Rate"><i
+                                                    class="bx bx-dollar-circle"></i>{{ number_format($car->price_per_day) }}
+                                                AED/day</span>
                                         </div>
-                                        <div class="timeline-node">
-                                            <div class="timeline-title">Customer</div>
-                                            <div class="timeline-value">
-                                                {{ optional($contract->customer)->fullName() ?? 'Customer TBD' }}</div>
-                                            <div class="timeline-sub text-muted">
-                                                {{ optional($contract->customer)->phone ?? '—' }}</div>
-                                        </div>
-                                    </div>
-                                @endif
 
-                                <div class="result-card-footer">
-                                    <span><i
-                                            class="bx bx-user-pin me-1"></i>{{ optional($car->user)->shortName() ?? 'Unassigned' }}</span>
-                                    <span><i class="bx bx-time-five me-1"></i>Updated
-                                        {{ $car->updated_at?->diffForHumans() ?? '—' }}</span>
-                                    <span class="result-card-arrow"><i class="bx bx-chevron-right"></i></span>
+                                        @if ($status === 'reserved' && $contract)
+                                            <div class="result-card-timeline">
+                                                <div class="timeline-node">
+                                                    <div class="timeline-title">Pickup</div>
+                                                    <div class="timeline-value">
+                                                        {{ optional($contract->pickup_date)->format('d M Y · H:i') ?? '-' }}
+                                                    </div>
+                                                    <div class="timeline-sub text-muted">
+                                                        {{ $contract->pickup_location ?? 'Location TBD' }}</div>
+                                                </div>
+                                                <div class="timeline-node">
+                                                    <div class="timeline-title">Return</div>
+                                                    <div class="timeline-value">
+                                                        {{ optional($contract->return_date)->format('d M Y · H:i') ?? '-' }}
+                                                    </div>
+                                                    <div class="timeline-sub text-muted">
+                                                        {{ $contract->return_location ?? 'Location TBD' }}</div>
+                                                </div>
+                                                <div class="timeline-node">
+                                                    <div class="timeline-title">Customer</div>
+                                                    <div class="timeline-value">
+                                                        {{ optional($contract->customer)->fullName() ?? 'Customer TBD' }}
+                                                    </div>
+                                                    <div class="timeline-sub text-muted">
+                                                        {{ optional($contract->customer)->phone ?? '—' }}</div>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        <div class="result-card-footer">
+                                            <span><i
+                                                    class="bx bx-user-pin me-1"></i>{{ optional($car->user)->shortName() ?? 'Unassigned' }}</span>
+                                            <span class="text-muted small"><i class="bx bx-time-five me-1"></i>Updated
+                                                {{ $car->updated_at?->diffForHumans() ?? '—' }}</span>
+                                            <span class="result-card-arrow" aria-hidden="true"><i
+                                                    class="bx bx-chevron-right"></i></span>
+                                        </div>
+                                    </a>
+                                </li>
+                            @empty
+                                <div class="search-placeholder text-center text-muted py-5" role="status">
+                                    <i class="bx bx-search display-6 d-block mb-2"></i>
+                                    <p class="mb-1">No vehicles matched "{{ $query }}"</p>
+                                    <div class="mt-3">
+                                        <a class="btn btn-outline-secondary btn-sm" href="{{ route('car.create') }}">
+                                            Add new vehicle
+                                        </a>
+                                    </div>
                                 </div>
-                            </a>
-                            <hr>
-                        @empty
-                            <div class="search-placeholder text-center text-muted py-4" role="status">
-                                <i class="bx bx-search display-6 d-block mb-2"></i>
-                                <p class="mb-0">No vehicles matched "{{ $query }}"</p>
-                            </div>
-                        @endforelse
+                            @endforelse
+                        </ul>
                     @endif
                 </div>
             </div>
@@ -232,6 +277,363 @@
 </div>
 
 @once
+
+    {{-- Styles: modern, accessible, dark-mode friendly --}}
+    @push('styles')
+        <style>
+            :root {
+                --qs-radius: 16px;
+                --qs-shadow: 0 10px 30px rgba(20, 20, 20, .12);
+                --qs-border: 1px solid rgba(120, 120, 120, .15);
+                --qs-muted: #6b7280;
+                /* gray-500 */
+                --qs-card-bg: rgba(255, 255, 255, .7);
+                --qs-blur: saturate(1.4) blur(6px);
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --qs-card-bg: rgba(17, 24, 39, 0.6);
+                    --qs-border: 1px solid rgba(255, 255, 255, .08);
+                    --qs-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+                }
+            }
+
+            .search-offcanvas-modern {
+                width: min(760px, 100vw);
+            }
+
+            .search-input-wrapper-modern {
+                position: relative;
+                display: flex;
+                align-items: center;
+                gap: .5rem;
+                background: var(--qs-card-bg);
+                backdrop-filter: var(--qs-blur);
+                border: var(--qs-border);
+                border-radius: var(--qs-radius);
+                padding: .5rem .75rem;
+                box-shadow: var(--qs-shadow);
+            }
+
+            .search-input-wrapper-modern i.bx {
+                font-size: 1.25rem;
+                color: var(--qs-muted);
+            }
+
+            .search-input-wrapper-modern .search-input {
+                border: 0;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .search-input-wrapper-modern .search-input:focus {
+                outline: none;
+                box-shadow: none;
+            }
+
+            .search-input-wrapper-modern .clear-btn {
+                text-decoration: none;
+            }
+
+            .search-results-modern {
+                min-height: 320px;
+            }
+
+            .results-list {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: .5rem;
+            }
+
+            .result-li {
+                list-style: none;
+            }
+
+            .result-card-modern {
+                display: block;
+                text-decoration: none;
+                color: inherit;
+                padding: .9rem;
+                border-radius: var(--qs-radius);
+                background: var(--qs-card-bg);
+                border: var(--qs-border);
+                box-shadow: var(--qs-shadow);
+                transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+            }
+
+            .result-card-modern:focus-visible,
+            .result-card-modern:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 14px 34px rgba(0, 0, 0, .14);
+                background: rgba(255, 255, 255, .9);
+            }
+
+            @media (prefers-color-scheme: dark) {
+                .result-card-modern:hover {
+                    background: rgba(31, 41, 55, .8);
+                }
+            }
+
+            .result-card-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: .75rem;
+            }
+
+            .result-card-title {
+                min-width: 0;
+                display: grid;
+            }
+
+            .result-card-name {
+                font-weight: 600;
+            }
+
+            .result-card-sub {
+                font-size: .875rem;
+            }
+
+            .status-chip {
+                white-space: nowrap;
+                align-self: start;
+            }
+
+            .result-card-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: .75rem;
+                margin-top: .5rem;
+                font-size: .9rem;
+            }
+
+            .result-card-meta span {
+                display: inline-flex;
+                align-items: center;
+                gap: .35rem;
+                color: var(--qs-muted);
+            }
+
+            .result-card-timeline {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: .75rem;
+                margin-top: .75rem;
+                padding: .75rem;
+                border-radius: 12px;
+                background: rgba(148, 163, 184, .12);
+            }
+
+            .timeline-title {
+                font-size: .75rem;
+                color: var(--qs-muted);
+            }
+
+            .timeline-value {
+                font-weight: 600;
+            }
+
+            .timeline-sub {
+                font-size: .8rem;
+            }
+
+            .result-card-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: .75rem;
+                margin-top: .6rem;
+            }
+
+            .result-card-arrow {
+                opacity: .5;
+            }
+
+            /* Keyboard-focused state */
+            .result-card-modern.is-active {
+                outline: 2px solid var(--bs-primary);
+                outline-offset: 2px;
+            }
+
+            /* Skeletons */
+            .skeleton-list {
+                display: grid;
+                gap: .5rem;
+            }
+
+            .skeleton-card {
+                padding: .9rem;
+                border-radius: var(--qs-radius);
+                border: var(--qs-border);
+                background: var(--qs-card-bg);
+            }
+
+            .skeleton-line {
+                height: .8rem;
+                background: linear-gradient(90deg, rgba(0, 0, 0, .06), rgba(0, 0, 0, .12), rgba(0, 0, 0, .06));
+                border-radius: 6px;
+                animation: shimmer 1.4s infinite;
+            }
+
+            .skeleton-line+.skeleton-line {
+                margin-top: .5rem;
+            }
+
+            .skeleton-meta {
+                display: flex;
+                gap: .5rem;
+                margin-top: .7rem;
+            }
+
+            .skeleton-dot {
+                width: 60px;
+                height: .8rem;
+                background: rgba(0, 0, 0, .08);
+                border-radius: 999px;
+            }
+
+            .skeleton-dot.large {
+                width: 100px;
+            }
+
+            @keyframes shimmer {
+                0% {
+                    background-position: -100px 0;
+                }
+
+                100% {
+                    background-position: 100px 0;
+                }
+            }
+
+            /* Minor RTL support */
+            [dir="rtl"] .result-card-arrow i {
+                transform: scaleX(-1);
+            }
+
+            .kbd {
+                border: 1px solid rgba(0, 0, 0, .2);
+                border-bottom-width: 2px;
+                padding: 2px 6px;
+                border-radius: 6px;
+                font-size: .75rem;
+            }
+        </style>
+    @endpush
+
+    {{-- Scripts: shortcuts, keyboard navigation, client-side highlighting --}}
+    @push('scripts')
+        <script>
+            (function() {
+                const offcanvasId = 'quickSearchOffcanvas';
+                let activeIndex = -1;
+
+                function getCards() {
+                    return Array.from(document.querySelectorAll('#' + offcanvasId + ' .result-card-modern'));
+                }
+
+                function focusCard(idx) {
+                    const cards = getCards();
+                    cards.forEach(c => c.classList.remove('is-active'));
+                    if (idx >= 0 && idx < cards.length) {
+                        cards[idx].classList.add('is-active');
+                        cards[idx].scrollIntoView({
+                            block: 'nearest'
+                        });
+                    }
+                }
+
+                function openOffcanvas() {
+                    const el = document.getElementById(offcanvasId);
+                    if (!el) return;
+                    const bs = bootstrap.Offcanvas.getOrCreateInstance(el);
+                    bs.show();
+                    setTimeout(() => document.getElementById('quickSearchInput')?.focus(), 150);
+                }
+
+                // Global shortcut ⌘/Ctrl + K to open
+                document.addEventListener('keydown', (e) => {
+                    const mod = e.metaKey || e.ctrlKey;
+                    if (mod && (e.key === 'k' || e.key === 'K')) {
+                        e.preventDefault();
+                        openOffcanvas();
+                    }
+                });
+
+                // Keyboard navigation within offcanvas
+                document.addEventListener('keydown', (e) => {
+                    const canvasEl = document.getElementById(offcanvasId);
+                    if (!canvasEl?.classList.contains('show')) return;
+
+                    if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) {
+                        const cards = getCards();
+                        if (!cards.length) return;
+                    }
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        activeIndex = Math.min(activeIndex + 1, getCards().length - 1);
+                        focusCard(activeIndex);
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        activeIndex = Math.max(activeIndex - 1, 0);
+                        focusCard(activeIndex);
+                    } else if (e.key === 'Enter') {
+                        const cards = getCards();
+                        if (activeIndex >= 0 && cards[activeIndex]) {
+                            e.preventDefault();
+                            window.location.href = cards[activeIndex].getAttribute('href');
+                        }
+                    } else if (e.key === 'Escape') {
+                        const bs = bootstrap.Offcanvas.getInstance(canvasEl);
+                        bs?.hide();
+                    }
+                });
+
+                // Lightweight highlighter for matches (name/brand/model/plate)
+                function highlightMatches() {
+                    const q = (document.getElementById('quickSearchInput')?.value || '').trim();
+                    const norm = (s) => s?.toString().toLowerCase() || '';
+                    const qn = norm(q);
+                    document.querySelectorAll('#' + offcanvasId + ' .result-card-modern .result-card-title, #' +
+                            offcanvasId + ' .result-card-modern .result-card-meta')
+                        .forEach(section => {
+                            section.querySelectorAll('mark.qs').forEach(m => {
+                                const parent = m.parentNode;
+                                if (!parent) return;
+                                parent.replaceChild(document.createTextNode(m.textContent), m);
+                            });
+                        });
+                    if (!q || q.length < 2) return;
+                    document.querySelectorAll('#' + offcanvasId + ' .result-card-modern').forEach(card => {
+                        ['.result-card-name', '.result-card-sub', '.result-card-meta span']
+                        .forEach(sel => {
+                            card.querySelectorAll(sel).forEach(node => {
+                                const text = node.textContent;
+                                const idx = norm(text).indexOf(qn);
+                                if (idx >= 0) {
+                                    const before = text.slice(0, idx);
+                                    const match = text.slice(idx, idx + q.length);
+                                    const after = text.slice(idx + q.length);
+                                    node.innerHTML =
+                                        `${before}<mark class="qs">${match}</mark>${after}`;
+                                }
+                            });
+                        });
+                    });
+                }
+
+                document.addEventListener('input', (e) => {
+                    if ((e.target || {}).id === 'quickSearchInput') highlightMatches();
+                });
+                document.addEventListener('livewire:update', highlightMatches);
+                document.addEventListener('shown.bs.offcanvas', highlightMatches);
+            })
+            ();
+        </script>
+    @endpush
+
+
     @push('styles')
         <style>
             .search-offcanvas {
@@ -521,6 +923,7 @@
             }
 
             @media (prefers-reduced-motion: reduce) {
+
                 .search-input-wrapper,
                 .search-results,
                 .result-card,
@@ -605,7 +1008,8 @@
                 }
 
                 window.addEventListener('livewire:navigated', bind);
-            })();
+            })
+            ();
 
             document.addEventListener('shown.bs.offcanvas', (event) => {
                 if (event.target && event.target.id === 'quickSearchOffcanvas') {

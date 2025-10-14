@@ -107,7 +107,7 @@
                         <div class="col-12 col-lg-6 col-xl-4">
                             <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <label class="form-label fw-semibold mb-0">Cardo Contract</label>
+                                    <label class="form-label fw-semibold mb-0">KARDO Contract</label>
                                     @if (!empty($existingFiles['kardoContract']))
                                         <button type="button" class="btn btn-outline-danger btn-sm"
                                             onclick="confirmDeletion('kardo_contract')">Remove</button>
@@ -116,7 +116,7 @@
                                 @if (!empty($existingFiles['kardoContract']))
                                     <div class="preview-wrapper mb-3">
                                         <img src="{{ $existingFiles['kardoContract'] }}"
-                                            class="img-fluid preview-clickable" alt="Cardo Contract"
+                                            class="img-fluid preview-clickable" alt="Kardo Contract"
                                             onclick="openModal('{{ $existingFiles['kardoContract'] }}')">
                                     </div>
                                 @endif
@@ -130,14 +130,24 @@
                                 @error('kardoContract')
                                     <span class="text-danger small d-block mt-2">{{ $message }}</span>
                                 @enderror
+                                <div class="mt-3">
+                                    <label class="form-label mb-1">KARDO Contract Number</label>
+                                    <input type="text" class="form-control" placeholder="Enter KARDO contract number"
+                                        wire:model.lazy="kardo_contract_number" inputmode="numeric"
+                                        pattern="[0-9]*">
+                                    <small class="text-muted d-block">Digits only, up to 30 characters.</small>
+                                    @error('kardo_contract_number')
+                                        <span class="text-danger small d-block">{{ $message }}</span>
+                                    @enderror
+                                </div>
                             </div>
                         </div>
                     @else
                         <div class="col-12 col-lg-6 col-xl-4">
                             <div
                                 class="document-card border rounded-3 p-3 h-100 shadow-sm bg-light d-flex flex-column align-items-center justify-content-center text-center">
-                                <span class="fw-semibold mb-2">Cardo Contract</span>
-                                <p class="text-muted small mb-0">CARDO inspection is not required for this contract.
+                                <span class="fw-semibold mb-2">KARDO Contract</span>
+                                <p class="text-muted small mb-0">KARDO inspection is not required for this contract.
                                 </p>
                             </div>
                         </div>
