@@ -15,8 +15,45 @@ class RentalRequestAwaitingPickupList extends Component
     public $search = '';
     public $searchInput = '';
     public $perPage = 10;
+    public $sortField = 'pickup_date';
+    public $sortDirection = 'asc';
+    public $statusFilter = 'reserved';
+    public $userFilter = '';
+    public $pickupFrom;
+    public $pickupTo;
+    public $returnFrom;
+    public $returnTo;
 
-    protected $queryString = ['search', 'perPage'];
+    protected array $allowedSortFields = [
+        'id',
+        'pickup_date',
+        'return_date',
+        'agent_sale',
+        'created_at',
+    ];
+
+    protected array $statusScope = [
+        'reserved',
+        'delivery',
+        'agreement_inspection',
+        'awaiting_return',
+        'returned',
+        'complete',
+        'cancelled',
+    ];
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'perPage' => ['except' => 10],
+        'sortField' => ['except' => 'pickup_date'],
+        'sortDirection' => ['except' => 'asc'],
+        'statusFilter' => ['except' => 'reserved'],
+        'userFilter' => ['except' => ''],
+        'pickupFrom' => ['except' => null],
+        'pickupTo' => ['except' => null],
+        'returnFrom' => ['except' => null],
+        'returnTo' => ['except' => null],
+    ];
 
     protected $listeners = [
         'refreshContracts' => '$refresh',
@@ -27,39 +64,52 @@ class RentalRequestAwaitingPickupList extends Component
         $this->searchInput = $this->search;
     }
 
-    // برگشت query برای لیست با پشتیبانی از جستجو و مرتب‌سازی ثابت بر اساس pickup_date
     public function loadContracts()
     {
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
 
+        $statuses = $this->statusFilter === 'all'
+            ? $this->statusScope
+            : [$this->resolveStatus($this->statusFilter)];
+
         $query = Contract::query()
             ->with(['customer', 'car.carModel', 'user', 'pickupDocument'])
-            ->where('current_status', 'reserved'); // یا وضعیت مورد نظر شما
+            ->whereIn('current_status', $statuses)
+            ->when($search !== '', function ($q) use ($likeSearch) {
+                $q->where(function ($scoped) use ($likeSearch) {
+                    $scoped->where('contracts.id', 'like', $likeSearch)
+                        ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                            $customerQuery->where('first_name', 'like', $likeSearch)
+                                ->orWhere('last_name', 'like', $likeSearch);
+                        })
+                        ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
+                            $carQuery->where('plate_number', 'like', $likeSearch)
+                                ->orWhereHas('carModel', function ($modelQuery) use ($likeSearch) {
+                                    $modelQuery->where('brand', 'like', $likeSearch)
+                                        ->orWhere('model', 'like', $likeSearch);
+                                });
+                        });
+                });
+            })
+            ->when($this->userFilter === 'assigned', fn($q) => $q->whereNotNull('user_id'))
+            ->when($this->userFilter === 'unassigned', fn($q) => $q->whereNull('user_id'))
+            ->when($this->pickupFrom, fn($q) => $q->where('pickup_date', '>=', $this->pickupFrom))
+            ->when($this->pickupTo, fn($q) => $q->where('pickup_date', '<=', $this->pickupTo))
+            ->when($this->returnFrom, fn($q) => $q->where('return_date', '>=', $this->returnFrom))
+            ->when($this->returnTo, fn($q) => $q->where('return_date', '<=', $this->returnTo));
 
-        if ($search !== '') {
-            $query->where(function ($q) use ($likeSearch) {
-                $q->where('contracts.id', 'like', $likeSearch)
-                    ->orWhereHas('customer', function ($q2) use ($likeSearch) {
-                        $q2->where('first_name', 'like', $likeSearch)
-                            ->orWhere('last_name', 'like', $likeSearch);
-                    })
-                    ->orWhereHas('car', function ($q3) use ($likeSearch) {
-                        $q3->where('plate_number', 'like', $likeSearch)
-                            ->orWhereHas('carModel', function ($modelQuery) use ($likeSearch) {
-                                $modelQuery->where('brand', 'like', $likeSearch)
-                                    ->orWhere('model', 'like', $likeSearch);
-                            });
-                    });
-            });
-        }
+        $sortField = in_array($this->sortField, $this->allowedSortFields, true)
+            ? $this->sortField
+            : 'pickup_date';
 
-        return $query->orderBy('pickup_date', 'asc') // مرتب‌سازی ثابت بر اساس نزدیک‌ترین تاریخ pickup
+        $sortDirection = $this->sortDirection === 'desc' ? 'desc' : 'asc';
+
+        return $query->orderBy($sortField, $sortDirection)
             ->paginate($this->perPage);
     }
 
-    // اگر بخوای تعداد آیتم در صفحه رو تغییر بدی
-    public function updatedPerPage()
+    public function updatedPerPage(): void
     {
         $this->resetPage();
     }
@@ -70,10 +120,53 @@ class RentalRequestAwaitingPickupList extends Component
         $this->resetPage();
     }
 
+    public function clearFilters(): void
+    {
+        $this->reset([
+            'search',
+            'searchInput',
+            'sortField',
+            'sortDirection',
+            'statusFilter',
+            'userFilter',
+            'pickupFrom',
+            'pickupTo',
+            'returnFrom',
+            'returnTo',
+        ]);
+
+        $this->resetPage();
+    }
+
+    public function sortBy(string $field): void
+    {
+        if (! in_array($field, $this->allowedSortFields, true)) {
+            return;
+        }
+
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = 'asc';
+        }
+
+        $this->resetPage();
+    }
+
     public function render()
     {
         return view('livewire.pages.panel.expert.rental-request.rental-request-awaiting-pickup-list', [
             'contracts' => $this->loadContracts(),
         ]);
+    }
+
+    private function resolveStatus(?string $status): string
+    {
+        if (! $status || ! in_array($status, $this->statusScope, true)) {
+            return 'reserved';
+        }
+
+        return $status;
     }
 }
