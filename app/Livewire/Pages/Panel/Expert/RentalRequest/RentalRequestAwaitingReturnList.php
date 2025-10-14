@@ -12,13 +12,45 @@ class RentalRequestAwaitingReturnList extends Component
     use WithPagination;
     use HandlesContractCancellation;
 
-    public $search = ''; // متغیر جستجو
+    public $search = '';
     public $searchInput = '';
-    public $sortField = 'return_date'; // Default sort field
-    public $sortDirection = 'asc'; // Default sort direction
+    public $sortField = 'return_date';
+    public $sortDirection = 'asc';
+    public $statusFilter = 'awaiting_return';
+    public $userFilter = '';
+    public $pickupFrom;
+    public $pickupTo;
+    public $returnFrom;
+    public $returnTo;
+
+    protected array $allowedSortFields = [
+        'id',
+        'return_date',
+        'agent_sale',
+        'created_at',
+    ];
+
+    protected array $statusScope = [
+        'awaiting_return',
+        'returned',
+        'complete',
+        'cancelled',
+    ];
 
     protected $listeners = [
         'refreshContracts' => '$refresh',
+    ];
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'statusFilter' => ['except' => 'awaiting_return'],
+        'userFilter' => ['except' => ''],
+        'pickupFrom' => ['except' => null],
+        'pickupTo' => ['except' => null],
+        'returnFrom' => ['except' => null],
+        'returnTo' => ['except' => null],
+        'sortField' => ['except' => 'return_date'],
+        'sortDirection' => ['except' => 'asc'],
     ];
 
     public function mount(): void
@@ -26,39 +58,82 @@ class RentalRequestAwaitingReturnList extends Component
         $this->searchInput = $this->search;
     }
 
-    // Load contracts with sorting and search
+    public function clearFilters(): void
+    {
+        $this->reset([
+            'search',
+            'searchInput',
+            'statusFilter',
+            'userFilter',
+            'pickupFrom',
+            'pickupTo',
+            'returnFrom',
+            'returnTo',
+            'sortField',
+            'sortDirection',
+        ]);
+
+        $this->resetPage();
+    }
+
     public function loadContracts()
     {
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
 
+        $sortField = in_array($this->sortField, $this->allowedSortFields, true)
+            ? $this->sortField
+            : 'return_date';
+
+        $sortDirection = $this->sortDirection === 'desc' ? 'desc' : 'asc';
+
+        $statuses = $this->statusFilter === 'all'
+            ? $this->statusScope
+            : [$this->resolveStatus($this->statusFilter)];
+
         return Contract::query()
-            ->where('current_status', 'awaiting_return')
+            ->with(['customer', 'car.carModel', 'user'])
+            ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($scoped) use ($likeSearch) {
                     $scoped->whereHas('customer', function ($q) use ($likeSearch) {
                         $q->where('first_name', 'like', $likeSearch)
                             ->orWhere('last_name', 'like', $likeSearch);
-                    })->orWhere('contracts.id', 'like', $likeSearch);
+                    })
+                        ->orWhere('contracts.id', 'like', $likeSearch)
+                        ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
+                            $carQuery->where('plate_number', 'like', $likeSearch)
+                                ->orWhereHas('carModel', function ($modelQuery) use ($likeSearch) {
+                                    $modelQuery->where('brand', 'like', $likeSearch)
+                                        ->orWhere('model', 'like', $likeSearch);
+                                });
+                        });
                 });
             })
-            ->orderBy($this->sortField, $this->sortDirection)
-            ->paginate(10); // Paginate with 10 items per page
+            ->when($this->userFilter === 'assigned', fn($query) => $query->whereNotNull('user_id'))
+            ->when($this->userFilter === 'unassigned', fn($query) => $query->whereNull('user_id'))
+            ->when($this->pickupFrom, fn($query) => $query->where('pickup_date', '>=', $this->pickupFrom))
+            ->when($this->pickupTo, fn($query) => $query->where('pickup_date', '<=', $this->pickupTo))
+            ->when($this->returnFrom, fn($query) => $query->where('return_date', '>=', $this->returnFrom))
+            ->when($this->returnTo, fn($query) => $query->where('return_date', '<=', $this->returnTo))
+            ->orderBy($sortField, $sortDirection)
+            ->paginate(10);
     }
 
-    // Toggle sort direction when clicking on the column header
     public function sortBy($field)
     {
+        if (! in_array($field, $this->allowedSortFields, true)) {
+            return;
+        }
+
         if ($this->sortField === $field) {
-            // Toggle direction if the same field is clicked
             $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
-            // Set new sort field and default to ascending
             $this->sortField = $field;
             $this->sortDirection = 'asc';
         }
 
-        $this->resetPage(); // Reset to first page when sorting changes
+        $this->resetPage();
     }
 
     public function applySearch(): void
@@ -72,8 +147,17 @@ class RentalRequestAwaitingReturnList extends Component
         return view(
             'livewire.pages.panel.expert.rental-request.rental-request-awaiting-return-list',
             [
-                'awaitContracts' => $this->loadContracts()
+                'awaitContracts' => $this->loadContracts(),
             ]
         );
+    }
+
+    private function resolveStatus(?string $status): string
+    {
+        if (! $status || ! in_array($status, $this->statusScope, true)) {
+            return 'awaiting_return';
+        }
+
+        return $status;
     }
 }

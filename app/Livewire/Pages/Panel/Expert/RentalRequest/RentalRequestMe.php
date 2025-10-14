@@ -28,6 +28,7 @@ class RentalRequestMe extends Component
         'id',
         'pickup_date',
         'return_date',
+        'agent_sale',
         'current_status',
         'created_at',
     ];
@@ -164,4 +165,3 @@ class RentalRequestMe extends Component
         ]);
     }
 }
-
