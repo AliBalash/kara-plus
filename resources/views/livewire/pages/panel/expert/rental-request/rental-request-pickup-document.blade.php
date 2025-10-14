@@ -100,6 +100,15 @@
                             @error('tarsContract')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
                             @enderror
+                            <div class="mt-3">
+                                <label class="form-label mb-1">Agreement Number</label>
+                                <input type="text" class="form-control" placeholder="Enter agreement number"
+                                    wire:model.lazy="agreement_number" inputmode="numeric" pattern="[0-9]*">
+                                <small class="text-muted d-block">Digits only, up to 30 characters.</small>
+                                @error('agreement_number')
+                                    <span class="text-danger small d-block">{{ $message }}</span>
+                                @enderror
+                            </div>
                         </div>
                     </div>
 
@@ -130,16 +139,6 @@
                                 @error('kardoContract')
                                     <span class="text-danger small d-block mt-2">{{ $message }}</span>
                                 @enderror
-                                <div class="mt-3">
-                                    <label class="form-label mb-1">KARDO Contract Number</label>
-                                    <input type="text" class="form-control" placeholder="Enter KARDO contract number"
-                                        wire:model.lazy="kardo_contract_number" inputmode="numeric"
-                                        pattern="[0-9]*">
-                                    <small class="text-muted d-block">Digits only, up to 30 characters.</small>
-                                    @error('kardo_contract_number')
-                                        <span class="text-danger small d-block">{{ $message }}</span>
-                                    @enderror
-                                </div>
                             </div>
                         </div>
                     @else

@@ -18,7 +18,7 @@ class PickupDocumentFactory extends Factory
             'user_id' => User::factory(),
             'tars_contract' => 'PickupDocument/tars_contract_sample.jpg',
             'kardo_contract' => 'PickupDocument/kardo_contract_sample.jpg',
-            'kardo_contract_number' => $this->faker->numerify('########'),
+            'agreement_number' => $this->faker->numerify('########'),
             'factor_contract' => null,
             'car_dashboard' => null,
             'car_inside_photos' => [],

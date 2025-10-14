@@ -26,7 +26,7 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->text('driver_note')->nullable();
 
-            $table->string('kardo_contract_number')->nullable()->after('kardo_contract');
+            $table->string('agreement_number')->nullable()->after('kardo_contract');
 
             $table->timestamp('tars_approved_at')->nullable();
             $table->unsignedBigInteger('tars_approved_by')->nullable();
