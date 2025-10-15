@@ -39,6 +39,10 @@ class RentalRequestPayment extends Component
     public $salik;
     public $discounts;
     public $security_deposit;
+    public $payment_back;
+    public $carwash;
+    public $fuel;
+    public $effectivePaid;
     public $rate;
     public $security_note = '';
     public $contract;
@@ -49,13 +53,25 @@ class RentalRequestPayment extends Component
 
 
     private const PAYMENT_METHODS = ['cash', 'transfer', 'ticket'];
+    private const PAYMENT_TYPES = [
+        'rental_fee',
+        'security_deposit',
+        'salik',
+        'fine',
+        'parking',
+        'damage',
+        'discount',
+        'payment_back',
+        'carwash',
+        'fuel',
+    ];
 
     protected function rules(): array
     {
         return [
             'amount' => ['required', 'numeric', 'min:0'],
             'currency' => ['required', Rule::in(['IRR', 'USD', 'AED', 'EUR'])],
-            'payment_type' => ['required', Rule::in(['rental_fee', 'security_deposit', 'salik', 'fine', 'parking', 'damage', 'discount'])],
+            'payment_type' => ['required', Rule::in(self::PAYMENT_TYPES)],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['required', Rule::in(self::PAYMENT_METHODS)],
             'is_refundable' => ['required', 'boolean'],
@@ -113,7 +129,37 @@ class RentalRequestPayment extends Component
             ->where('payment_type', 'security_deposit')
             ->sum('amount_in_aed');
 
+        $this->payment_back = $this->existingPayments
+            ->where('payment_type', 'payment_back')
+            ->sum('amount_in_aed');
+
+        $this->carwash = $this->existingPayments
+            ->where('payment_type', 'carwash')
+            ->sum('amount_in_aed');
+
+        $this->fuel = $this->existingPayments
+            ->where('payment_type', 'fuel')
+            ->sum('amount_in_aed');
+
+        $this->effectivePaid = $this->rentalPaid - $this->payment_back;
+
         $this->remainingBalance = $this->contract->calculateRemainingBalance($allPayments);
+    }
+
+    public function getPaymentTypeOptionsProperty(): array
+    {
+        return [
+            'rental_fee' => 'Rental Fee',
+            'security_deposit' => 'Security Deposit',
+            'salik' => 'Salik',
+            'fine' => 'Fine',
+            'parking' => 'Parking',
+            'damage' => 'Damage',
+            'discount' => 'Discount',
+            'payment_back' => 'Payment Back',
+            'carwash' => 'Carwash',
+            'fuel' => 'Fuel',
+        ];
     }
 
 

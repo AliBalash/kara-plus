@@ -28,16 +28,34 @@ class PaymentEdit extends Component
     public $receipt;
     public $existingReceipt;
 
-    protected $rules = [
-        'amount' => 'required|numeric|min:0',
-        'currency' => 'required|in:IRR,USD,AED,EUR',
-        'payment_type' => 'required|in:rental_fee,security_deposit,salik,fine,parking,damage,discount',
-        'payment_method' => 'required|in:cash,transfer,ticket',
-        'payment_date' => 'required|date',
-        'is_refundable' => 'required|boolean',
-        'rate' => 'nullable|numeric|min:0.0001',
-        'receipt' => 'nullable|image|max:2048',
+    private const PAYMENT_TYPES = [
+        'rental_fee',
+        'security_deposit',
+        'salik',
+        'fine',
+        'parking',
+        'damage',
+        'discount',
+        'payment_back',
+        'carwash',
+        'fuel',
     ];
+
+    protected function rules(): array
+    {
+        $types = implode(',', self::PAYMENT_TYPES);
+
+        return [
+            'amount' => 'required|numeric|min:0',
+            'currency' => 'required|in:IRR,USD,AED,EUR',
+            'payment_type' => 'required|in:' . $types,
+            'payment_method' => 'required|in:cash,transfer,ticket',
+            'payment_date' => 'required|date',
+            'is_refundable' => 'required|boolean',
+            'rate' => 'nullable|numeric|min:0.0001',
+            'receipt' => 'nullable|image|max:2048',
+        ];
+    }
 
     public function mount($paymentId)
     {
@@ -73,6 +91,22 @@ class PaymentEdit extends Component
         if ($value === 'AED') {
             $this->rate = null;
         }
+    }
+
+    public function getPaymentTypeOptionsProperty(): array
+    {
+        return [
+            'rental_fee' => 'Rental Fee',
+            'security_deposit' => 'Security Deposit',
+            'salik' => 'Salik',
+            'fine' => 'Fine',
+            'parking' => 'Parking',
+            'damage' => 'Damage',
+            'discount' => 'Discount',
+            'payment_back' => 'Payment Back',
+            'carwash' => 'Carwash',
+            'fuel' => 'Fuel',
+        ];
     }
 
     public function updatePayment()
