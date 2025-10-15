@@ -43,6 +43,9 @@ class ContractTest extends TestCase
             ['payment_type' => 'salik', 'amount_in_aed' => 50],
             ['payment_type' => 'parking', 'amount_in_aed' => 30],
             ['payment_type' => 'damage', 'amount_in_aed' => 70],
+            ['payment_type' => 'payment_back', 'amount_in_aed' => 50],
+            ['payment_type' => 'carwash', 'amount_in_aed' => 25],
+            ['payment_type' => 'fuel', 'amount_in_aed' => 40],
         ]);
 
         $payments->each(function (array $attributes) use ($contract, $customer, $car, $user) {
@@ -57,7 +60,9 @@ class ContractTest extends TestCase
                 ]));
         });
 
-        $expectedBalance = 1500 - (600 + 100 + 200) + (150 + 50 + 30 + 70);
+        $effectivePaid = 600 - 50;
+        $expectedBalance = 1500 - ($effectivePaid + 100 + 200)
+            + (150 + 50 + 25 + 40 + 30 + 70);
 
         $this->assertEquals($expectedBalance, $contract->fresh()->calculateRemainingBalance());
 

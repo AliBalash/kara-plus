@@ -47,6 +47,9 @@
                 <option value="parking">Parking</option>
                 <option value="damage">Damage</option>
                 <option value="discount">Discount</option>
+                <option value="payment_back">Payment Back</option>
+                <option value="carwash">Carwash</option>
+                <option value="fuel">Fuel</option>
             </select>
         </div>
 
@@ -115,7 +118,7 @@
                                             <td>{{ $payment->contract?->car?->fullName() ?? '-' }}</td>
                                             <td>{{ number_format($payment->amount, 2) }}</td>
                                             <td>{{ $payment->currency }}</td>
-                                            <td>{{ ucfirst(str_replace('_', ' ', $payment->payment_type)) }}</td>
+                                            <td>{{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}</td>
                                             <td>{{ $payment->payment_date }}</td>
                                             <td>
                                                 @switch($payment->approval_status)

@@ -49,13 +49,9 @@
                     <div class="col-md-4">
                         <label class="form-label">Payment Type</label>
                         <select class="form-select" wire:model="payment_type">
-                            <option value="rental_fee">Rental Fee</option>
-                            <option value="security_deposit">Security deposit</option>
-                            <option value="salik">Salik</option>
-                            <option value="fine">Fine</option>
-                            <option value="parking">Parking</option>
-                            <option value="damage">Damage</option>
-                            <option value="discount">Discount</option>
+                            @foreach ($this->paymentTypeOptions as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
                         </select>
                         @error('payment_type') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>

@@ -62,14 +62,9 @@
                         <label class="form-label">Payment Type</label>
                         <select class="form-control" wire:model="payment_type">
                             <option value="">Select Payment Type</option>
-                            <option value="rental_fee">Rental Fee</option>
-                            <option value="security_deposit">Security deposit</option>
-                            <option value="salik">Salik</option>
-                            <option value="fine">Fine</option>
-                            <option value="parking">Parking</option>
-                            <option value="damage">Damage</option>
-                            <option value="discount">Discount</option>
-
+                            @foreach ($this->paymentTypeOptions as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
                         </select>
                         @error('payment_type')
                             <span class="text-danger">{{ $message }}</span>
@@ -166,109 +161,187 @@
 
     <!-- Payment Overview -->
     @php
-        $metrics = [
+        $summaryMetrics = [
             [
                 'key' => 'total',
                 'label' => 'Total Price',
                 'value' => $totalPrice,
                 'icon' => 'bi-currency-exchange',
-                'color' => 'primary',
+                'accent' => 'bg-primary text-white',
+                'value_class' => 'text-primary',
             ],
             [
                 'key' => 'paid',
-                'label' => 'Paid',
-                'value' => $rentalPaid,
+                'label' => 'Paid (after refunds)',
+                'value' => $effectivePaid,
                 'icon' => 'bi-cash-stack',
-                'color' => 'success',
+                'accent' => 'bg-success text-white',
+                'value_class' => 'text-success',
             ],
             [
-                'key' => 'discount',
-                'label' => 'Discounts',
-                'value' => $discounts,
-                'icon' => 'bi-percent',
-                'color' => 'warning',
+                'key' => 'payment_back',
+                'label' => 'Payment Back',
+                'value' => $payment_back,
+                'icon' => 'bi-arrow-counterclockwise',
+                'accent' => 'bg-warning text-dark',
+                'value_class' => 'text-warning',
             ],
-            [
-                'key' => 'fine',
-                'label' => 'Fines',
-                'value' => $finePaid,
-                'icon' => 'bi-exclamation-triangle-fill',
-                'color' => 'danger',
-            ],
-            [
-                'key' => 'parking',
-                'label' => 'Parking',
-                'value' => $parkingPaid,
-                'icon' => 'bi-cone-striped',
-                'color' => 'danger',
-            ],
-            [
-                'key' => 'damage',
-                'label' => 'Damage',
-                'value' => $damagePaid,
-                'icon' => 'bi-tools',
-                'color' => 'danger',
-            ],
-            [
-                'key' => 'security_deposit',
-                'label' => 'Security deposit',
-                'value' => $security_deposit,
-                'icon' => 'bi-wallet2',
-                'color' => 'info',
-            ],
-            ['key' => 'salik', 'label' => 'Salik', 'value' => $salik, 'icon' => 'bi-coin', 'color' => 'secondary'],
             [
                 'key' => 'remaining',
-                'label' => 'Remaining',
+                'label' => 'Remaining Balance',
                 'value' => $remainingBalance,
-                'icon' => 'bi-hourglass-split',
-                'color' => 'dark',
+                'icon' => 'bi-graph-down',
+                'accent' => 'bg-dark text-white',
+                'value_class' => $remainingBalance <= 0 ? 'text-success' : 'text-danger',
             ],
+        ];
+
+        $subtractItems = [
+            [
+                'label' => 'Paid (after refunds)',
+                'value' => $effectivePaid,
+                'detail' => [
+                    'collected' => $rentalPaid,
+                    'payment_back' => $payment_back,
+                ],
+            ],
+            [
+                'label' => 'Discounts',
+                'value' => $discounts,
+            ],
+            [
+                'label' => 'Security Deposit',
+                'value' => $security_deposit,
+            ],
+        ];
+
+        $additionItems = [
+            ['label' => 'Fines', 'value' => $finePaid],
+            ['label' => 'Salik', 'value' => $salik],
+            ['label' => 'Carwash', 'value' => $carwash],
+            ['label' => 'Fuel', 'value' => $fuel],
+            ['label' => 'Parking', 'value' => $parkingPaid],
+            ['label' => 'Damage', 'value' => $damagePaid],
         ];
     @endphp
 
-    <div class="row g-3 mt-1 mb-4">
-        @foreach ($metrics as $m)
-            @php
-                // کارت remaining بزرگ‌تر باشد
-                $colClass = $m['key'] === 'remaining' ? 'col-12 col-md-6 col-lg-12' : 'col-6 col-md-4 col-lg-2';
-            @endphp
-
-            <div class="{{ $colClass }}">
-                <div class="card shadow-sm border-0 text-{{ $m['color'] }} h-100">
-                    <div class="card-body d-flex flex-column justify-content-center align-items-start">
-                        <div class="d-flex align-items-center mb-2 w-100">
-                            <i class="bi {{ $m['icon'] }} fs-2 me-3"></i>
+    <div class="row g-3 mt-1">
+        @foreach ($summaryMetrics as $metric)
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100 position-relative overflow-hidden transform">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <div class="h5 mb-1">{{ $m['label'] }}</div>
-                                @if ($m['key'] === 'remaining')
-                                    <div class="fs-5 lh-sm">
-                                        <div>
-                                            <span class="text-primary">{{ number_format($totalPrice, 2) }}</span>
-                                            – (
-                                            <span class="text-success">{{ number_format($rentalPaid, 2) }}</span> +
-                                            <span class="text-warning">{{ number_format($discounts, 2) }}</span> +
-                                            <span class="text-info">{{ number_format($security_deposit, 2) }}</span>
-                                            )
-                                            + <span class="text-danger">{{ number_format($finePaid, 2) }}</span>
-                                            + <span class="text-secondary">{{ number_format($salik, 2) }}</span>
-                                            + <span class="text-danger">{{ number_format($parkingPaid, 2) }}</span>
-                                            + <span class="text-danger">{{ number_format($damagePaid, 2) }}</span>
-                                            <span class="fw-bold fs-3 mt-2">
-                                                = {{ number_format($remainingBalance, 2) }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                @else
-                                    {{-- مقدار ساده --}}
-                                    <div class="fs-4 fw-bold">{{ number_format($m['value'], 2) }}</div>
-                                @endif
+                                <div class="text-muted text-uppercase small fw-semibold">{{ $metric['label'] }}</div>
+                                <div class="fs-3 fw-bold mt-2 {{ $metric['value_class'] }}">
+                                    {{ number_format($metric['value'], 2) }}
+                                </div>
                             </div>
+                            <span
+                                class="rounded-circle d-inline-flex align-items-center justify-content-center {{ $metric['accent'] }} shadow-sm"
+                                style="width: 48px; height: 48px;">
+                                <i class="bi {{ $metric['icon'] }} fs-4"></i>
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
         @endforeach
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4 formula-card">
+        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-calculator fs-5 text-primary"></i>
+                <h6 class="mb-0">Remaining Balance Formula</h6>
+            </div>
+            <span class="badge bg-dark text-white px-3 py-2 fs-6">Remaining: {{ number_format($remainingBalance, 2) }} AED</span>
+        </div>
+        <div class="card-body">
+            <div class="formula-expression mb-4">
+                <span class="formula-equal">Remaining</span>
+                <span class="formula-operator">=</span>
+                <span class="formula-term term-total">
+                    <span class="formula-label">Total Price</span>
+                    <span class="formula-value">{{ number_format($totalPrice, 2) }}</span>
+                </span>
+                <span class="formula-operator">−</span>
+                <span class="formula-brace formula-brace-open">(</span>
+                <span class="formula-group">
+                    @foreach ($subtractItems as $item)
+                        <span class="formula-term term-subtract">
+                            <span class="formula-label">{{ $item['label'] }}</span>
+                            <span class="formula-value">{{ number_format($item['value'], 2) }}</span>
+                            @if (!empty($item['detail']))
+                                <span class="formula-subtext">Collected {{ number_format($item['detail']['collected'], 2) }} − Payment Back {{ number_format($item['detail']['payment_back'], 2) }}</span>
+                            @endif
+                        </span>
+                        @if (! $loop->last)
+                            <span class="formula-operator">+</span>
+                        @endif
+                    @endforeach
+                </span>
+                <span class="formula-brace formula-brace-close">)</span>
+                <span class="formula-operator">+</span>
+                <span class="formula-brace formula-brace-open">{</span>
+                <span class="formula-group">
+                    @foreach ($additionItems as $item)
+                        <span class="formula-term term-add">
+                            <span class="formula-label">{{ $item['label'] }}</span>
+                            <span class="formula-value">{{ number_format($item['value'], 2) }}</span>
+                        </span>
+                        @if (! $loop->last)
+                            <span class="formula-operator">+</span>
+                        @endif
+                    @endforeach
+                </span>
+                <span class="formula-brace formula-brace-close">}</span>
+                <span class="formula-operator">=</span>
+                <span class="formula-term term-result">
+                    <span class="formula-label">Balance</span>
+                    <span class="formula-value">{{ number_format($remainingBalance, 2) }}</span>
+                </span>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="formula-panel negative">
+                        <div class="formula-panel-title text-danger">
+                            <i class="bi bi-dash-circle"></i>
+                            Subtractions from Total
+                        </div>
+                        @foreach ($subtractItems as $item)
+                            <div class="formula-panel-item">
+                                <div>
+                                    <div class="fw-semibold">{{ $item['label'] }}</div>
+                                    @if (!empty($item['detail']))
+                                        <div class="formula-panel-detail">
+                                            <span class="text-success me-3">Collected: {{ number_format($item['detail']['collected'], 2) }}</span>
+                                            <span class="text-warning">Payment Back: {{ number_format($item['detail']['payment_back'], 2) }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                                <span class="formula-panel-value text-danger">−{{ number_format($item['value'], 2) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="formula-panel positive">
+                        <div class="formula-panel-title text-success">
+                            <i class="bi bi-plus-circle"></i>
+                            Additions to Total
+                        </div>
+                        @foreach ($additionItems as $item)
+                            <div class="formula-panel-item">
+                                <div class="fw-semibold">{{ $item['label'] }}</div>
+                                <span class="formula-panel-value text-success">+{{ number_format($item['value'], 2) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 
@@ -280,8 +353,8 @@
 
 
     <!-- Existing Payments -->
-    <h5>Existing Payments</h5>
-    <div class="table-responsive">
+    <div class="table-responsive my-3">
+        <h5>Existing Payments</h5>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -311,7 +384,7 @@
                             @elseif ($payment->payment_type === 'toll')
                                 Salik
                             @else
-                                {{ ucfirst($payment->payment_type) }}
+                                {{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}
                             @endif
                         </td>
                         <td>{{ ucfirst($payment->payment_method) }}</td>
@@ -348,9 +421,145 @@
 
 @push('styles')
     <style>
-        .card:hover {
+        .transform:hover {
             transform: translateY(-4px);
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .formula-expression {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.65rem;
+            font-size: 1.05rem;
+        }
+
+        .formula-term {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 0.65rem 0.9rem;
+            border-radius: 0.85rem;
+            min-width: 150px;
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+            background: #f8f9fa;
+        }
+
+        .formula-term.term-total {
+            background: linear-gradient(135deg, #4c6ef5, #845ef7);
+            color: #fff;
+            box-shadow: 0 0.65rem 1.2rem rgba(76, 110, 245, 0.25);
+        }
+
+        .formula-term.term-subtract {
+            background: #fff3cd;
+            border: 1px solid #ffe69c;
+        }
+
+        .formula-term.term-add {
+            background: #e6fcf5;
+            border: 1px solid #c3fae8;
+        }
+
+        .formula-term.term-result {
+            background: #212529;
+            color: #fff;
+        }
+
+        .formula-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .formula-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .formula-subtext {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+
+        .formula-operator {
+            font-weight: 600;
+            font-size: 1.35rem;
+            color: #495057;
+        }
+
+        .formula-brace {
+            font-size: 2.4rem;
+            line-height: 1;
+            color: #adb5bd;
+        }
+
+        .formula-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .formula-panel {
+            background: #f8f9fa;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            height: 100%;
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+        }
+
+        .formula-panel.negative {
+            background: #fff7e6;
+            border-left: 4px solid #f59f00;
+        }
+
+        .formula-panel.positive {
+            background: #ecf9f1;
+            border-left: 4px solid #12b886;
+        }
+
+        .formula-panel-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-size: 0.78rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .formula-panel-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .formula-panel-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .formula-panel-value {
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .formula-panel-detail {
+            font-size: 0.78rem;
+            margin-top: 0.4rem;
+        }
+
+        @media (max-width: 576px) {
+            .formula-term {
+                min-width: 140px;
+            }
+
+            .formula-panel {
+                padding: 1.1rem;
+            }
         }
     </style>
 @endpush
