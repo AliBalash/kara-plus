@@ -131,7 +131,7 @@
                                             <td>{{ number_format($payment->amount, 2) }}</td>
                                             <td>{{ $payment->currency }}</td>
                                             <td>{{ number_format($payment->amount_in_aed, 2) }}</td>
-                                            <td>{{ ucfirst(str_replace('_', ' ', $payment->payment_type)) }}</td>
+                                            <td>{{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}</td>
                                             <td>{{ $payment->payment_date ? \Illuminate\Support\Carbon::parse($payment->payment_date)->format('d M Y') : '-' }}</td>
                                             <td>
                                                 @if ($payment->receipt)
