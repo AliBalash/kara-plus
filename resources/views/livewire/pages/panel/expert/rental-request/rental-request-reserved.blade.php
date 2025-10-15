@@ -18,7 +18,7 @@
         <div class="col-md-2">
             <select class="form-select" wire:model.live="statusFilter">
                 <option value="reserved">Reserved</option>
-                <option value="delivery">Delivery</option>
+                <option value="delivery">Awaiting Delivery</option>
                 <option value="agreement_inspection">Agreement Inspection</option>
                 <option value="awaiting_return">Awaiting Return</option>
                 <option value="returned">Returned</option>

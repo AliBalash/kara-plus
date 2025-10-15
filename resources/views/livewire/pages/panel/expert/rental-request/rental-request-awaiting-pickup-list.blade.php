@@ -1,5 +1,5 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Delivery</h4>
+    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Awaiting Delivery</h4>
 
     <div class="row p-3 g-3">
         <div class="col-md-3">
@@ -18,7 +18,7 @@
         <div class="col-md-2">
             <select class="form-select" wire:model.live="statusFilter">
                 <option value="reserved">Reserved</option>
-                <option value="delivery">Delivery</option>
+                <option value="delivery">Awaiting Delivery</option>
                 <option value="agreement_inspection">Agreement Inspection</option>
                 <option value="awaiting_return">Awaiting Return</option>
                 <option value="returned">Returned</option>

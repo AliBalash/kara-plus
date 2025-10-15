@@ -79,7 +79,7 @@
 
                         <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.pickup') ? 'active' : '' }}">
                             <a href="{{ route('rental-requests.awaiting.pickup') }}" class="menu-link">
-                                <div data-i18n="Without menu">Delivery</div>
+                                <div data-i18n="Without menu">Awaiting Delivery</div>
                             </a>
                         </li>
 
@@ -91,7 +91,7 @@
 
                         <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.return') ? 'active' : '' }}">
                             <a href="{{ route('rental-requests.awaiting.return') }}" class="menu-link">
-                                <div data-i18n="Without menu">Return</div>
+                                <div data-i18n="Without menu">Awaiting Return</div>
                             </a>
                         </li>
 
