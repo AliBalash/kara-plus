@@ -1,5 +1,5 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Return</h4>
+    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Awaiting Return</h4>
 
     <div class="row p-3 g-3">
         <div class="col-md-3">

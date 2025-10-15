@@ -22,9 +22,9 @@
                 <option value="assigned">Assigned</option>
                 <option value="under_review">Under Review</option>
                 <option value="reserved">Booking</option>
-                <option value="delivery">Delivery</option>
+                <option value="delivery">Awaiting Delivery</option>
                 <option value="agreement_inspection">Agreement Inspection</option>
-                <option value="awaiting_return">Return</option>
+                <option value="awaiting_return">Awaiting Return</option>
                 <option value="returned">Returned</option>
                 <option value="complete">Complete</option>
                 <option value="cancelled">Cancelled</option>
