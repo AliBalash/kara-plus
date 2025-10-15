@@ -135,11 +135,13 @@
                         <td>{{ $awaitContract->agent_sale }}</td>
 
                         <td>
-                            @if ($awaitContract->user)
-                                <span class="badge bg-primary">{{ $awaitContract->user->shortName() }}</span>
-                            @else
-                                <span class="badge bg-secondary">No User</span>
-                            @endif
+                            @php
+                                $showAgent = $awaitContract->user && !in_array($awaitContract->current_status, ['pending', 'assigned']);
+                                $badgeClass = $showAgent ? 'badge bg-primary' : 'badge bg-warning text-dark';
+                                $badgeTitle = $showAgent ? 'Assigned agent' : 'Submitted by';
+                                $badgeLabel = $showAgent ? $awaitContract->user->shortName() : ($awaitContract->submitted_by_name ?? 'Website');
+                            @endphp
+                            <span class="{{ $badgeClass }}" title="{{ $badgeTitle }}">{{ $badgeLabel }}</span>
                         </td>
                         <td>
                             @if ($awaitContract->customerDocument()->exists())

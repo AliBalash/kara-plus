@@ -56,12 +56,13 @@
                                             <td>{{ $contract->agent_sale }}</td>
 
                                             <td>
-                                                @if ($contract->user)
-                                                    <span
-                                                        class="badge bg-primary">{{ $contract->user->shortName() }}</span>
-                                                @else
-                                                    <span class="badge bg-secondary">No User</span>
-                                                @endif
+                                                @php
+                                                    $showAgent = $contract->user && !in_array($contract->current_status, ['pending', 'assigned']);
+                                                    $badgeClass = $showAgent ? 'badge bg-primary' : 'badge bg-warning text-dark';
+                                                    $badgeTitle = $showAgent ? 'Assigned agent' : 'Submitted by';
+                                                    $badgeLabel = $showAgent ? $contract->user->shortName() : ($contract->submitted_by_name ?? 'Website');
+                                                @endphp
+                                                <span class="{{ $badgeClass }}" title="{{ $badgeTitle }}">{{ $badgeLabel }}</span>
                                             </td>
                                             <td>
                                                 <x-status-badge :status="$contract->current_status" />

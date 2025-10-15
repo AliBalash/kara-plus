@@ -28,7 +28,7 @@
         ],
         [
             'key' => 'pickup',
-            'label' => 'Pickup Document',
+            'label' => 'Delivery Document',
             'icon' => 'bx-upload',
             'routes' => ['rental-requests.pickup-document'],
             'route' => 'rental-requests.pickup-document',

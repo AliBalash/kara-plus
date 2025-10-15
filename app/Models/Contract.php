@@ -19,6 +19,7 @@ class Contract extends Model
         'customer_id',
         'car_id',
         'agent_sale',
+        'submitted_by_name',
         'pickup_date',
         'pickup_location',
         'return_location',

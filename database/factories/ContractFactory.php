@@ -22,6 +22,7 @@ class ContractFactory extends Factory
             'customer_id' => Customer::factory(),
             'car_id' => Car::factory(),
             'agent_sale' => $this->faker->name,
+            'submitted_by_name' => $this->faker->name,
             'pickup_date' => $pickup,
             'pickup_location' => $this->faker->city,
             'return_location' => $this->faker->city,
@@ -47,4 +48,3 @@ class ContractFactory extends Factory
         return $this->state(fn () => ['pickup_date' => null]);
     }
 }
-

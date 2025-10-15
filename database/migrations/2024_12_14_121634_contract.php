@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id'); // ارجاع به جدول مشتریان
             $table->unsignedBigInteger('car_id'); // ارجاع به جدول خودروها
             $table->string('agent_sale')->nullable(); // نام نماینده‌ی فروش
+            $table->string('submitted_by_name')->nullable()->default('Website')->after('agent_sale');
             $table->dateTime('pickup_date'); // تاریخ و ساعت تحویل
             $table->dateTime('return_date'); // تاریخ و ساعت بازگشت
             $table->string('pickup_location'); // مکان تحویل خودرو

@@ -24,6 +24,7 @@ class RentalRequestCreate extends Component
     public $return_date;
     public $notes;
     public $agent_sale = 'Website';
+    public $submitted_by_name;
     public $first_name;
     public $last_name;
     public $email;
@@ -84,6 +85,7 @@ class RentalRequestCreate extends Component
     {
         $this->services = config('carservices');
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
+        $this->submitted_by_name = $this->determineDefaultSubmitterName();
     }
 
     public function assignToMe($contractId)
@@ -416,6 +418,7 @@ class RentalRequestCreate extends Component
                 'car_id' => $this->selectedCarId,
                 'total_price' => $this->final_total,
                 'agent_sale' => $this->agent_sale,
+                'submitted_by_name' => $this->submitted_by_name ?: $this->determineDefaultSubmitterName(),
                 'pickup_location' => $this->pickup_location,
                 'return_location' => $this->return_location,
                 'pickup_date' => $this->pickup_date,
@@ -439,6 +442,19 @@ class RentalRequestCreate extends Component
             DB::rollBack();
             session()->flash('error', 'An error occurred: ' . $e->getMessage());
         }
+    }
+
+    private function determineDefaultSubmitterName(): string
+    {
+        $user = auth()->user();
+        if ($user) {
+            $fullName = method_exists($user, 'fullName') ? trim($user->fullName()) : trim($user->name ?? '');
+            if ($fullName !== '') {
+                return $fullName;
+            }
+        }
+
+        return 'Website';
     }
 
     private function storeContractCharges(Contract $contract)
