@@ -55,7 +55,14 @@ class RentalRequestPickupDocument extends Component
     public function mount($contractId)
     {
         $this->contractId = $contractId;
-        $this->contract = Contract::with(['customerDocument', 'charges', 'payments'])->findOrFail($contractId);
+        $this->contract = Contract::with([
+            'customer',
+            'car.carModel',
+            'customerDocument',
+            'charges',
+            'payments',
+            'pickupDocument',
+        ])->findOrFail($contractId);
 
         $this->contractId = $contractId;
         $pickup = PickupDocument::where('contract_id', $contractId)->first();

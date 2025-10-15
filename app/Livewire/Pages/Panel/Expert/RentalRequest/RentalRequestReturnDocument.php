@@ -34,12 +34,17 @@ class RentalRequestReturnDocument extends Component
 
     public $remainingBalance;
     public $contract;
+    public $agreementNumber;
 
 
     public function mount($contractId)
     {
         $this->contractId = $contractId;
-        $this->contract = Contract::findOrFail($contractId);
+        $this->contract = Contract::with([
+            'customer',
+            'car.carModel',
+            'pickupDocument',
+        ])->findOrFail($contractId);
 
         $this->contractId = $contractId;
         $return = ReturnDocument::where('contract_id', $contractId)->first();
@@ -67,6 +72,7 @@ class RentalRequestReturnDocument extends Component
         $this->carOutsidePhotos = [];
 
         $this->remainingBalance = $this->contract->calculateRemainingBalance();
+        $this->agreementNumber = optional($this->contract->pickupDocument)->agreement_number;
     }
 
     public function uploadDocuments()
