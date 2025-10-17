@@ -63,6 +63,8 @@ class RentalRequestEditTest extends TestCase
                 'notes' => 'Original notes',
                 'total_price' => 1000,
                 'kardo_required' => true,
+                'payment_on_delivery' => true,
+                'meta' => ['driver_note' => 'Initial driver note'],
             ]);
 
         $contract->charges()->create([
@@ -99,6 +101,7 @@ class RentalRequestEditTest extends TestCase
         $component->passport_expiry_date = $customer->passport_expiry_date;
         $component->nationality = 'IR';
         $component->license_number = $customer->license_number;
+        $component->driver_note = 'Collect balance in cash at pickup';
 
         $validated = [
             'plate_number' => $contract->car->plate_number,
@@ -152,6 +155,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertEquals('UAE/Dubai/JBR', $contract->pickup_location);
         $this->assertEquals('Updated notes', $contract->notes);
         $this->assertFalse((bool) $contract->kardo_required);
+        $this->assertEquals('Collect balance in cash at pickup', $contract->meta['driver_note'] ?? null);
 
         $charges = $contract->charges()->pluck('amount', 'title');
         $this->assertArrayHasKey('base_rental', $charges->toArray());

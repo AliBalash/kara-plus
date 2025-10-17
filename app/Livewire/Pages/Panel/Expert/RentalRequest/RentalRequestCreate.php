@@ -23,6 +23,7 @@ class RentalRequestCreate extends Component
     public $pickup_date;
     public $return_date;
     public $notes;
+    public $driver_note;
     public $agent_sale = 'Website';
     public $submitted_by_name;
     public $first_name;
@@ -337,6 +338,7 @@ class RentalRequestCreate extends Component
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
+            'driver_note' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
@@ -430,6 +432,7 @@ class RentalRequestCreate extends Component
                 'used_daily_rate' => $this->dailyRate,
                 'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
                 'payment_on_delivery' => $this->payment_on_delivery ?? true,
+                'meta' => $this->prepareContractMeta(),
             ]);
 
             $contract->changeStatus('pending', auth()->id());
@@ -442,6 +445,21 @@ class RentalRequestCreate extends Component
             DB::rollBack();
             session()->flash('error', 'An error occurred: ' . $e->getMessage());
         }
+    }
+
+    private function prepareContractMeta(): ?array
+    {
+        if (!$this->payment_on_delivery) {
+            return null;
+        }
+
+        $meta = [];
+
+        if (!is_null($this->driver_note) && trim((string) $this->driver_note) !== '') {
+            $meta['driver_note'] = $this->driver_note;
+        }
+
+        return !empty($meta) ? $meta : null;
     }
 
     private function determineDefaultSubmitterName(): string

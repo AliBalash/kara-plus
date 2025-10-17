@@ -27,6 +27,7 @@ class RentalRequestEdit extends Component
     public $return_date;
     public $pickup_date;
     public $notes;
+    public $driver_note;
     public $first_name;
     public $last_name;
     public $email;
@@ -142,6 +143,7 @@ class RentalRequestEdit extends Component
         $this->notes = $this->contract->notes;
         $this->kardo_required = $this->contract->kardo_required;
         $this->payment_on_delivery = $this->contract->payment_on_delivery;
+        $this->driver_note = $this->contract->meta['driver_note'] ?? null;
 
         // Customer data
         $customer = $this->contract->customer()->firstOrFail();
@@ -322,6 +324,7 @@ class RentalRequestEdit extends Component
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
+            'driver_note' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
@@ -520,6 +523,15 @@ class RentalRequestEdit extends Component
 
     private function updateContract()
     {
+        $meta = $this->contract->meta ?? [];
+        $driverNote = $this->payment_on_delivery ? $this->driver_note : null;
+
+        if (!is_null($driverNote) && trim((string) $driverNote) !== '') {
+            $meta['driver_note'] = $driverNote;
+        } else {
+            unset($meta['driver_note']);
+        }
+
         $contractData = [
             'car_id' => $this->selectedCarId,
             'total_price' => $this->final_total,
@@ -535,8 +547,10 @@ class RentalRequestEdit extends Component
             'used_daily_rate' => $this->dailyRate,
             'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
             'payment_on_delivery' => $this->payment_on_delivery ?? true,
+            'meta' => !empty($meta) ? $meta : null,
         ];
         $this->contract->update($contractData);
+        $this->contract->meta = $contractData['meta'];
     }
 
     public function updatedSelectedBrand()

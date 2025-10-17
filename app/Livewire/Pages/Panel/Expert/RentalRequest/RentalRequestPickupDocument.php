@@ -66,15 +66,17 @@ class RentalRequestPickupDocument extends Component
 
         $this->contractId = $contractId;
         $pickup = PickupDocument::where('contract_id', $contractId)->first();
+        $contractMeta = $this->contract->meta ?? [];
         if (!empty($pickup)) {
             $this->fuelLevel = $pickup->fuelLevel;
             $this->mileage = $pickup->mileage;
             $this->note = $pickup->note;
-            $this->driverNote = $pickup->driver_note;
+            $this->driverNote = $pickup->driver_note ?? ($contractMeta['driver_note'] ?? null);
             $this->agreement_number = $pickup->agreement_number;
         }
         if (empty($pickup)) {
             $this->agreement_number = null;
+            $this->driverNote = $contractMeta['driver_note'] ?? null;
         }
         $this->existingFiles = [
             'tarsContract' => Storage::disk('myimage')->exists("PickupDocument/tars_contract_{$this->contractId}.jpg")
@@ -291,6 +293,7 @@ class RentalRequestPickupDocument extends Component
             }
             $pickupDocument->user_id = auth()->id();
             $pickupDocument->save();
+            $this->syncContractDriverNote();
 
 
 
@@ -344,6 +347,20 @@ class RentalRequestPickupDocument extends Component
 
         session()->flash('message', 'File deleted successfully.');
         $this->mount($this->contractId);
+    }
+
+    private function syncContractDriverNote(): void
+    {
+        $meta = $this->contract->meta ?? [];
+
+        if (!is_null($this->driverNote) && trim((string) $this->driverNote) !== '') {
+            $meta['driver_note'] = $this->driverNote;
+        } else {
+            unset($meta['driver_note']);
+        }
+
+        $this->contract->meta = !empty($meta) ? $meta : null;
+        $this->contract->save();
     }
 
     public function removeGalleryItem(string $section, string $path): void
