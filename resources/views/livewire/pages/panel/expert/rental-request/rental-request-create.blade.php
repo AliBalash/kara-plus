@@ -180,6 +180,18 @@
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        @if ($payment_on_delivery)
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i class="bx bx-chat"></i></span>
+                                <textarea class="form-control @error('driver_note') is-invalid @enderror" rows="2"
+                                    wire:model="driver_note" placeholder="Driver Note for Pickup" data-bs-toggle="tooltip"
+                                    title="Note shown to the driver on pickup document"></textarea>
+                                @error('driver_note')
+                                    <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

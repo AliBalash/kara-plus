@@ -65,6 +65,7 @@ class RentalRequestCreateTest extends TestCase
         $component->kardo_required = true;
         $component->payment_on_delivery = true;
         $component->apply_discount = false;
+        $component->driver_note = 'Collect payment from customer at pickup';
         $component->first_name = 'Sara';
         $component->last_name = 'Nazari';
         $component->email = 'sara.nazari@example.com';
@@ -102,6 +103,7 @@ class RentalRequestCreateTest extends TestCase
             'apply_discount' => false,
             'custom_daily_rate' => null,
             'selected_services' => ['child_seat'],
+            'driver_note' => 'Collect payment from customer at pickup',
         ];
 
         $component->shouldReceive('validate')->once()->andReturn($validated);
@@ -116,6 +118,7 @@ class RentalRequestCreateTest extends TestCase
 
         $this->assertEquals('pending', $contract->current_status);
         $this->assertEquals($car->id, $contract->car_id);
+        $this->assertEquals('Collect payment from customer at pickup', $contract->meta['driver_note'] ?? null);
 
         $status = ContractStatus::where('contract_id', $contract->id)->latest('id')->first();
         $this->assertNotNull($status);
