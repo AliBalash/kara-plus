@@ -32,6 +32,7 @@ class Contract extends Model
         'payment_on_delivery',
         'used_daily_rate',
         'discount_note',
+        'driver_id',
     ];
 
     /**
@@ -86,6 +87,11 @@ class Contract extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(User::class, 'driver_id');
     }
 
     /**

@@ -23,6 +23,7 @@ class ContractFactory extends Factory
             'car_id' => Car::factory(),
             'agent_sale' => $this->faker->name,
             'submitted_by_name' => $this->faker->name,
+            'driver_id' => null,
             'pickup_date' => $pickup,
             'pickup_location' => $this->faker->city,
             'return_location' => $this->faker->city,

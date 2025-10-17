@@ -92,6 +92,7 @@
                             class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
+                    <th>Driver</th>
                     <th>Actions</th>
                     <th>Status</th>
                     <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
@@ -113,6 +114,31 @@
                         <td>{{ $contract->return_date?->format('d M Y H:i') ?? '-' }}</td>
 
                         <td>
+                            @php
+                                $assignedToCurrentDriver = $isDriver && $contract->driver_id === $driverId;
+                                $driverName = $contract->driver?->shortName() ?? $contract->driver?->fullName() ?? null;
+                            @endphp
+
+                            @if ($assignedToCurrentDriver)
+                                <span class="badge bg-success">Assigned to you</span>
+                            @elseif ($driverName)
+                                <span class="badge bg-info text-dark" title="Assigned driver">{{ $driverName }}</span>
+                            @else
+                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
+                            @endif
+
+                            @if ($isDriver && is_null($contract->driver_id))
+                                <button class="btn btn-sm btn-outline-primary mt-2"
+                                    wire:click="assignToDriver({{ $contract->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="assignToDriver({{ $contract->id }})">
+                                    <span wire:loading.remove wire:target="assignToDriver({{ $contract->id }})">Assign to me</span>
+                                    <span wire:loading wire:target="assignToDriver({{ $contract->id }})">Assigning...</span>
+                                </button>
+                            @endif
+                        </td>
+
+                        <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
                                     data-bs-toggle="dropdown">
@@ -128,17 +154,18 @@
                                         href="{{ route('rental-requests.details', $contract->id) }}">
                                         <i class="bx bx-info-circle me-1"></i> Details
                                     </a>
-                                    @if ($contract->current_status !== 'cancelled')
+                                    @if (!$isDriver && $contract->current_status !== 'cancelled')
                                         <a class="dropdown-item text-danger" href="javascript:void(0);"
                                             onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $contract->id }}) }">
                                             <i class="bx bx-block me-1"></i> Cancel
                                         </a>
                                     @endif
-
-                                    <a class="dropdown-item" href="javascript:void(0);"
-                                        wire:click.prevent="deleteContract({{ $contract->id }})">
-                                        <i class="bx bx-trash me-1"></i> Delete
-                                    </a>
+                                    @if (!$isDriver)
+                                        <a class="dropdown-item" href="javascript:void(0);"
+                                            wire:click.prevent="deleteContract({{ $contract->id }})">
+                                            <i class="bx bx-trash me-1"></i> Delete
+                                        </a>
+                                    @endif
                                 </div>
                             </div>
                         </td>
@@ -160,7 +187,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted">No contracts found.</td>
+                        <td colspan="10" class="text-center text-muted">No contracts found.</td>
                     </tr>
                 @endforelse
             </tbody>

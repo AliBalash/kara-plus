@@ -15,7 +15,7 @@ class RentalRequestDetail extends Component
 
     public function mount($contractId)
     {
-        $this->contract = Contract::with(['car', 'customer'])->findOrFail($contractId);
+        $this->contract = Contract::with(['car', 'customer', 'user', 'driver'])->findOrFail($contractId);
 
         // Document & Payment Status Flags
         $this->customerDocumentsCompleted = !is_null($this->contract->customerDocument);

@@ -57,6 +57,11 @@
                                 <span class="form-control">{{ $contract->statusLabel() }}</span>
                             </div>
 
+                            <div class="input-group">
+                                <span class="input-group-text">Assigned Driver</span>
+                                <span class="form-control">{{ $contract->driver?->fullName() ?? 'Unassigned' }}</span>
+                            </div>
+
                             <!-- Notes -->
                             <div class="input-group">
                                 <span class="input-group-text">Note</span>
@@ -178,7 +183,7 @@
                         </div>
                         <div class="input-group">
                             <span class="input-group-text">Agent</span>
-                            <span class="form-control">{{ $contract->user->name }}</span>
+                            <span class="form-control">{{ $contract->user?->fullName() ?? $contract->user?->name ?? ($contract->submitted_by_name ?? '—') }}</span>
                         </div>
 
                         @if ($contract->customerDocument)

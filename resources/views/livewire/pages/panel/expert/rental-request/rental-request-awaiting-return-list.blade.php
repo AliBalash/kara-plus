@@ -85,6 +85,7 @@
                         </i>
                     </th>
                     <th>Return Location</th>
+                    <th>Driver</th>
                     <th>Actions</th>
                     <th>Status</th>
                     <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
@@ -98,13 +99,27 @@
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
-                @foreach ($awaitContracts as $awaitContract)
+                @forelse ($awaitContracts as $awaitContract)
                     <tr>
                         <td>{{ $awaitContract->id }}</td>
                         <td>{{ $awaitContract->customer->fullName() }}</td>
                         <td>{{ $awaitContract->car->fullName() }}</td>
                         <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y H:i') }}</td>
                         <td>{{ $awaitContract->return_location }}</td>
+                        <td>
+                            @php
+                                $assignedToCurrentDriver = $isDriver && $awaitContract->driver_id === $driverId;
+                                $driverName = $awaitContract->driver?->shortName() ?? $awaitContract->driver?->fullName() ?? null;
+                            @endphp
+
+                            @if ($assignedToCurrentDriver)
+                                <span class="badge bg-success">Assigned to you</span>
+                            @elseif ($driverName)
+                                <span class="badge bg-info text-dark" title="Assigned driver">{{ $driverName }}</span>
+                            @else
+                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
+                            @endif
+                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
@@ -120,7 +135,7 @@
                                         href="{{ route('rental-requests.details', $awaitContract->id) }}">
                                         <i class="bx bx-info-circle me-1"></i> Details
                                     </a>
-                                    @if ($awaitContract->current_status !== 'cancelled')
+                                    @if (!$isDriver && $awaitContract->current_status !== 'cancelled')
                                         <a class="dropdown-item text-danger" href="javascript:void(0);"
                                             onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $awaitContract->id }}) }">
                                             <i class="bx bx-block me-1"></i> Cancel
@@ -155,7 +170,11 @@
                             @endif
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="11" class="text-center text-muted">No contracts found.</td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
 
