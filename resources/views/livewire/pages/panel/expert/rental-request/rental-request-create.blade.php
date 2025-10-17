@@ -162,7 +162,7 @@
                             <div class="form-check form-check-inline mt-2 ms-2">
                                 <input type="checkbox" class="form-check-input" wire:model="kardo_required"
                                     id="kardo_required">
-                                <label class="form-check-label" for="kardo_required">CARDO Required</label>
+                                <label class="form-check-label" for="kardo_required">KARDO Required</label>
                             </div>
                             @error('kardo_required')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
