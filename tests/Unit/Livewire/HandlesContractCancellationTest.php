@@ -69,7 +69,7 @@ class HandlesContractCancellationTest extends TestCase
         $contract = Contract::factory()
             ->for($user)
             ->for(Customer::factory())
-            ->for(Car::factory()->create(['status' => 'reserved']))
+            ->for(Car::factory()->create(['status' => 'reserved', 'availability' => false]))
             ->status('reserved')
             ->create();
 
@@ -81,6 +81,7 @@ class HandlesContractCancellationTest extends TestCase
 
         $this->assertEquals('cancelled', $contract->current_status);
         $this->assertEquals('available', $contract->car->fresh()->status);
+        $this->assertTrue($contract->car->fresh()->availability);
         $this->assertTrue($component->afterHookCalled);
         $this->assertTrue($component->resetCalled);
         $this->assertContains('refreshContracts', array_column($component->events, 0));
@@ -91,7 +92,7 @@ class HandlesContractCancellationTest extends TestCase
     public function test_cancel_contract_keeps_car_reserved_when_other_active_contract_exists(): void
     {
         $user = User::factory()->create();
-        $car = Car::factory()->create(['status' => 'reserved']);
+        $car = Car::factory()->create(['status' => 'reserved', 'availability' => false]);
         $targetContract = Contract::factory()
             ->for($user)
             ->for(Customer::factory())
@@ -113,6 +114,7 @@ class HandlesContractCancellationTest extends TestCase
 
         $this->assertEquals('cancelled', $targetContract->refresh()->current_status);
         $this->assertEquals('reserved', $car->fresh()->status);
+        $this->assertFalse($car->fresh()->availability);
     }
 
     public function test_cancel_contract_exits_early_when_contract_already_cancelled(): void
@@ -134,4 +136,3 @@ class HandlesContractCancellationTest extends TestCase
         $this->assertEquals(0, $contract->statuses()->count());
     }
 }
-

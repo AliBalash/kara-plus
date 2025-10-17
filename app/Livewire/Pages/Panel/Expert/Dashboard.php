@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert;
 
 use App\Models\Car;
+use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\DiscountCode;
 use Carbon\Carbon;
@@ -55,6 +56,9 @@ class Dashboard extends Component
     public $driverReturns;
     public $driverStats = [];
     public $driverNextTask = null;
+
+    public $availableBrand = 'all';
+    public array $availableBrands = [];
 
 
     public function mount()
@@ -129,12 +133,22 @@ class Dashboard extends Component
             ->get();
 
         $this->buildAnalytics();
+        $this->prepareAvailableBrands();
     }
 
 
     public function render()
     {
-        return view('livewire.pages.panel.expert.dashboard')->with(['title' => $this->title]);
+        $data = ['title' => $this->title];
+
+        if (! $this->isDriver) {
+            $this->prepareAvailableBrands();
+            $data['availableCars'] = $this->availableCars;
+            $data['availableBrands'] = $this->availableBrands;
+            $data['availableCarsTotal'] = $this->availableCarsTotal;
+        }
+
+        return view('livewire.pages.panel.expert.dashboard', $data);
     }
 
     public $count = 1;
@@ -346,5 +360,59 @@ class Dashboard extends Component
         ])->filter()->sortBy('datetime');
 
         $this->driverNextTask = $nextTasks->first();
+    }
+
+    protected function prepareAvailableBrands(): void
+    {
+        $brands = CarModel::query()
+            ->whereHas('cars', function ($query) {
+                $query->where('status', 'available')->where('availability', true);
+            })
+            ->orderBy('brand')
+            ->pluck('brand')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->availableBrands = $brands;
+
+        if ($this->availableBrand !== 'all' && ! in_array($this->availableBrand, $this->availableBrands, true)) {
+            $this->availableBrand = 'all';
+        }
+    }
+
+    public function getAvailableCarsProperty()
+    {
+        $query = Car::with(['carModel'])
+            ->where('status', 'available')
+            ->where('availability', true);
+
+        if ($this->availableBrand !== 'all') {
+            $query->whereHas('carModel', function ($builder) {
+                $builder->where('brand', $this->availableBrand);
+            });
+        }
+
+        return $query
+            ->orderByDesc('updated_at')
+            ->orderByDesc('manufacturing_year')
+            ->limit(12)
+            ->get();
+    }
+
+    public function getAvailableCarsTotalProperty()
+    {
+        $query = Car::query()
+            ->where('status', 'available')
+            ->where('availability', true);
+
+        if ($this->availableBrand !== 'all') {
+            $query->whereHas('carModel', function ($builder) {
+                $builder->where('brand', $this->availableBrand);
+            });
+        }
+
+        return $query->count();
     }
 }

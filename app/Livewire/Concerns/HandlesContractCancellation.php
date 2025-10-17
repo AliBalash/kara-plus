@@ -40,7 +40,10 @@ trait HandlesContractCancellation
                         ->exists();
 
                     if (! $hasActiveContracts) {
-                        $contract->car->update(['status' => 'available']);
+                        $contract->car->update([
+                            'status' => 'available',
+                            'availability' => true,
+                        ]);
                     }
                 }
             });
