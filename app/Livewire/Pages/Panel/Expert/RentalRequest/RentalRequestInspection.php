@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use App\Models\Contract;
 use App\Models\PickupDocument;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class RentalRequestInspection extends Component
@@ -13,6 +14,7 @@ class RentalRequestInspection extends Component
     public $contract;
     public $pickupDocument;
     public $existingFiles = [];
+    public array $customerDocuments = [];
 
     public function mount($contractId)
     {
@@ -37,6 +39,8 @@ class RentalRequestInspection extends Component
                 ? Storage::url("PickupDocument/car_dashboard_{$contractId}.jpg")
                 : null,
         ];
+
+        $this->prepareCustomerDocuments();
     }
 
     public function approveTars()
@@ -88,5 +92,108 @@ class RentalRequestInspection extends Component
     public function render()
     {
         return view('livewire.pages.panel.expert.rental-request.rental-request-inspection');
+    }
+
+    private function prepareCustomerDocuments(): void
+    {
+        $this->customerDocuments = [
+            'passport' => [],
+            'license' => [],
+            'visa' => [],
+            'ticket' => [],
+        ];
+
+        $customerDocument = $this->contract->customerDocument;
+
+        if (!$customerDocument) {
+            return;
+        }
+
+        $types = [
+            'passport' => 'Passport',
+            'license' => 'Driver License',
+            'visa' => 'Visa',
+            'ticket' => 'Ticket',
+        ];
+
+        foreach ($types as $key => $label) {
+            $value = $customerDocument->{$key} ?? [];
+            $this->customerDocuments[$key] = $this->formatDocumentFiles($value, $label);
+        }
+    }
+
+    private function formatDocumentFiles($value, string $categoryLabel): array
+    {
+        $storedFiles = $this->normalizeDocumentFiles($value);
+
+        if (empty($storedFiles)) {
+            return [];
+        }
+
+        $disk = Storage::disk('myimage');
+
+        return collect($storedFiles)
+            ->map(function ($path, $variant) use ($disk, $categoryLabel) {
+                if (!is_string($path) || $path === '') {
+                    return null;
+                }
+
+                if (!$disk->exists($path)) {
+                    return null;
+                }
+
+                $normalizedPath = ltrim($path, '/');
+                if (Str::startsWith($normalizedPath, 'public/')) {
+                    $normalizedPath = Str::after($normalizedPath, 'public/');
+                }
+
+                $url = asset('storage/' . $normalizedPath);
+                $extension = Str::lower(pathinfo($path, PATHINFO_EXTENSION));
+                $isPdf = $extension === 'pdf';
+
+                return [
+                    'label' => $this->humanReadableDocumentLabel($variant, $categoryLabel),
+                    'url' => $url,
+                    'is_pdf' => $isPdf,
+                    'filename' => basename($path),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->toArray();
+    }
+
+    private function normalizeDocumentFiles($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return $decoded;
+            }
+
+            return ['file_1' => $value];
+        }
+
+        return [];
+    }
+
+    private function humanReadableDocumentLabel($variant, string $categoryLabel): string
+    {
+        if (is_numeric($variant)) {
+            return $categoryLabel . ' ' . (((int) $variant) + 1);
+        }
+
+        $variant = (string) $variant;
+
+        return match (true) {
+            $variant === 'front' => $categoryLabel . ' Front',
+            $variant === 'back' => $categoryLabel . ' Back',
+            Str::startsWith($variant, 'extra_') => $categoryLabel . ' ' . Str::after($variant, 'extra_'),
+            default => $categoryLabel . ' ' . Str::of($variant)->replace('_', ' ')->title(),
+        };
     }
 }

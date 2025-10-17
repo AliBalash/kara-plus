@@ -156,7 +156,7 @@
                         </td>
                         <td>
                             <span class="badge {{ $tarsBadgeClass }}">TARS: {{ $tarsStatus }}</span>
-                            <span class="badge {{ $kardoBadgeClass }} mt-1">CARDO: {{ $kardoStatus }}</span>
+                            <span class="badge {{ $kardoBadgeClass }} mt-1">KARDO: {{ $kardoStatus }}</span>
                         </td>
                     </tr>
                 @endforeach
