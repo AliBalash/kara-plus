@@ -18,11 +18,24 @@ class RentalRequestInspection extends Component
     {
         $this->contractId = $contractId;
         $this->contract = Contract::findOrFail($contractId);
-        $this->pickupDocument = PickupDocument::where('contract_id', $contractId)->firstOrFail();
+        $this->pickupDocument = PickupDocument::firstOrNew([
+            'contract_id' => $contractId,
+        ]);
 
+        $storage = Storage::disk('myimage');
         $this->existingFiles = [
-            'tarsContract' => Storage::disk('myimage')->exists("PickupDocument/tars_contract_{$contractId}.jpg") ? Storage::url("PickupDocument/tars_contract_{$contractId}.jpg") : null,
-            'kardoContract' => Storage::disk('myimage')->exists("PickupDocument/kardo_contract_{$contractId}.jpg") ? Storage::url("PickupDocument/kardo_contract_{$contractId}.jpg") : null,
+            'tarsContract' => $storage->exists("PickupDocument/tars_contract_{$contractId}.jpg")
+                ? Storage::url("PickupDocument/tars_contract_{$contractId}.jpg")
+                : null,
+            'kardoContract' => $storage->exists("PickupDocument/kardo_contract_{$contractId}.jpg")
+                ? Storage::url("PickupDocument/kardo_contract_{$contractId}.jpg")
+                : null,
+            'factorContract' => $storage->exists("PickupDocument/factor_contract_{$contractId}.jpg")
+                ? Storage::url("PickupDocument/factor_contract_{$contractId}.jpg")
+                : null,
+            'carDashboard' => $storage->exists("PickupDocument/car_dashboard_{$contractId}.jpg")
+                ? Storage::url("PickupDocument/car_dashboard_{$contractId}.jpg")
+                : null,
         ];
     }
 
