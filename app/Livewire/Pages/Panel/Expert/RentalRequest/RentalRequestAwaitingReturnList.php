@@ -6,6 +6,7 @@ use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Livewire\Concerns\HandlesContractCancellation;
+use Illuminate\Support\Facades\Auth;
 
 class RentalRequestAwaitingReturnList extends Component
 {
@@ -22,6 +23,8 @@ class RentalRequestAwaitingReturnList extends Component
     public $pickupTo;
     public $returnFrom;
     public $returnTo;
+    public bool $isDriver = false;
+    public ?int $driverId = null;
 
     protected array $allowedSortFields = [
         'id',
@@ -56,6 +59,10 @@ class RentalRequestAwaitingReturnList extends Component
     public function mount(): void
     {
         $this->searchInput = $this->search;
+
+        $user = Auth::user();
+        $this->isDriver = $user?->hasRole('driver') ?? false;
+        $this->driverId = $this->isDriver ? $user?->id : null;
     }
 
     public function clearFilters(): void
@@ -72,6 +79,12 @@ class RentalRequestAwaitingReturnList extends Component
             'sortField',
             'sortDirection',
         ]);
+
+        if ($this->isDriver) {
+            $this->statusFilter = 'awaiting_return';
+        }
+
+        $this->searchInput = $this->search;
 
         $this->resetPage();
     }
@@ -92,7 +105,7 @@ class RentalRequestAwaitingReturnList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         return Contract::query()
-            ->with(['customer', 'car.carModel', 'user'])
+            ->with(['customer', 'car.carModel', 'user', 'driver'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($scoped) use ($likeSearch) {
@@ -116,6 +129,12 @@ class RentalRequestAwaitingReturnList extends Component
             ->when($this->pickupTo, fn($query) => $query->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($query) => $query->where('return_date', '>=', $this->returnFrom))
             ->when($this->returnTo, fn($query) => $query->where('return_date', '<=', $this->returnTo))
+            ->when($this->isDriver, function ($query) {
+                $query->orderByRaw(
+                    'CASE WHEN contracts.driver_id = ? THEN 0 WHEN contracts.driver_id IS NULL THEN 1 ELSE 2 END',
+                    [$this->driverId ?? 0]
+                );
+            })
             ->orderBy($sortField, $sortDirection)
             ->paginate(10);
     }

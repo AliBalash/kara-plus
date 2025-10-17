@@ -6,6 +6,7 @@ use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Livewire\Concerns\HandlesContractCancellation;
+use Illuminate\Support\Facades\Auth;
 
 class RentalRequestAwaitingPickupList extends Component
 {
@@ -23,6 +24,8 @@ class RentalRequestAwaitingPickupList extends Component
     public $pickupTo;
     public $returnFrom;
     public $returnTo;
+    public bool $isDriver = false;
+    public ?int $driverId = null;
 
     protected array $allowedSortFields = [
         'id',
@@ -62,6 +65,14 @@ class RentalRequestAwaitingPickupList extends Component
     public function mount(): void
     {
         $this->searchInput = $this->search;
+
+        $user = Auth::user();
+        $this->isDriver = $user?->hasRole('driver') ?? false;
+        $this->driverId = $this->isDriver ? $user?->id : null;
+
+        if ($this->isDriver) {
+            $this->statusFilter = 'delivery';
+        }
     }
 
     public function loadContracts()
@@ -74,7 +85,7 @@ class RentalRequestAwaitingPickupList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         $query = Contract::query()
-            ->with(['customer', 'car.carModel', 'user', 'pickupDocument'])
+            ->with(['customer', 'car.carModel', 'user', 'pickupDocument', 'driver'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($q) use ($likeSearch) {
                 $q->where(function ($scoped) use ($likeSearch) {
@@ -105,6 +116,13 @@ class RentalRequestAwaitingPickupList extends Component
 
         $sortDirection = $this->sortDirection === 'desc' ? 'desc' : 'asc';
 
+        if ($this->isDriver) {
+            $query->orderByRaw(
+                'CASE WHEN contracts.driver_id = ? THEN 0 WHEN contracts.driver_id IS NULL THEN 1 ELSE 2 END',
+                [$this->driverId ?? 0]
+            );
+        }
+
         return $query->orderBy($sortField, $sortDirection)
             ->paginate($this->perPage);
     }
@@ -134,6 +152,12 @@ class RentalRequestAwaitingPickupList extends Component
             'returnFrom',
             'returnTo',
         ]);
+
+        if ($this->isDriver) {
+            $this->statusFilter = 'delivery';
+        }
+
+        $this->searchInput = $this->search;
 
         $this->resetPage();
     }
@@ -168,5 +192,35 @@ class RentalRequestAwaitingPickupList extends Component
         }
 
         return $status;
+    }
+
+    public function assignToDriver(int $contractId): void
+    {
+        $user = Auth::user();
+
+        if (! $user || ! $user->hasRole('driver')) {
+            session()->flash('error', 'Only drivers can claim delivery tasks.');
+            return;
+        }
+
+        $contract = Contract::query()->whereKey($contractId)->first();
+
+        if (! $contract) {
+            session()->flash('error', 'The selected contract could not be found.');
+            return;
+        }
+
+        if ($contract->driver_id && $contract->driver_id !== $user->id) {
+            session()->flash('error', 'This delivery is already assigned to another driver.');
+            return;
+        }
+
+        $contract->driver_id = $user->id;
+        $contract->save();
+
+        $this->driverId = $user->id;
+
+        session()->flash('success', 'Delivery assigned to you successfully.');
+        $this->dispatch('refreshContracts');
     }
 }

@@ -32,14 +32,14 @@
             <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.pickup') ? 'active' : '' }}">
                 <a href="{{ route('rental-requests.awaiting.pickup') }}" class="menu-link">
                     <i class="menu-icon tf-icons bx bx-log-in"></i>
-                    <div data-i18n="Analytics">Delivery</div>
+                    <div data-i18n="Analytics">Awaiting Delivery</div>
                 </a>
             </li>
 
             <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.return') ? 'active' : '' }}">
                 <a href="{{ route('rental-requests.awaiting.return') }}" class="menu-link">
                     <i class="menu-icon tf-icons bx bx-log-out"></i>
-                    <div data-i18n="Analytics">Return</div>
+                    <div data-i18n="Analytics">Awaiting Return</div>
                 </a>
             </li>
         @else
