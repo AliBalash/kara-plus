@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Car;
 
 class Contract extends Model
 {
@@ -226,5 +227,62 @@ class Contract extends Model
     public function ReturnDocument()
     {
         return $this->hasOne(ReturnDocument::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (Contract $contract) {
+            $contract->syncCarAvailabilityForCar($contract->car_id);
+        });
+
+        static::updated(function (Contract $contract) {
+            if ($contract->wasChanged('car_id')) {
+                $contract->syncCarAvailabilityForCar($contract->getOriginal('car_id'));
+            }
+
+            $contract->syncCarAvailabilityForCar($contract->car_id);
+        });
+
+        static::deleted(function (Contract $contract) {
+            $contract->syncCarAvailabilityForCar($contract->car_id);
+        });
+    }
+
+    private function syncCarAvailabilityForCar(?int $carId): void
+    {
+        if (!$carId) {
+            return;
+        }
+
+        $car = Car::find($carId);
+
+        if (!$car) {
+            return;
+        }
+
+        $inactiveStatuses = ['complete', 'cancelled', 'rejected'];
+
+        $hasActiveContracts = self::where('car_id', $carId)
+            ->whereNotIn('current_status', $inactiveStatuses)
+            ->exists();
+
+        if ($hasActiveContracts) {
+            $update = ['availability' => false];
+
+            if ($car->status !== 'under_maintenance') {
+                $update['status'] = 'reserved';
+            }
+
+            $car->update($update);
+            return;
+        }
+
+        $update = ['availability' => true];
+
+        if ($car->status === 'reserved') {
+            $update['status'] = 'available';
+        }
+
+        $car->update($update);
     }
 }

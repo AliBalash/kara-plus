@@ -496,6 +496,73 @@
             </div>
         </div>
 
+        <div class="card shadow-lg border-0 rounded-4 mb-4">
+            <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex flex-wrap gap-3 justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-ev-front text-primary me-2"></i>Available Fleet</h5>
+                    <span class="text-muted small">{{ $availableCarsTotal }} vehicle{{ $availableCarsTotal === 1 ? '' : 's' }} ready for the next assignment</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <div class="input-group input-group-sm" style="width: 220px;">
+                        <span class="input-group-text bg-light border-0"><i class="bi bi-funnel"></i></span>
+                        <select class="form-select border-0" wire:model.live="availableBrand">
+                            <option value="all">All brands</option>
+                            @foreach ($availableBrands as $brand)
+                                <option value="{{ $brand }}">{{ $brand }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <a href="{{ route('car.list') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-card-checklist me-1"></i>Manage Cars
+                    </a>
+                </div>
+            </div>
+            <div class="card-body pt-0 px-0 pb-4">
+                @if ($availableCars->isEmpty())
+                    <div class="text-center text-muted py-5">No vehicles are currently marked as available.</div>
+                @else
+                    <div class="table-responsive" style="max-height: 360px;" data-simplebar>
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col">Vehicle</th>
+                                    <th scope="col">Plate</th>
+                                    <th scope="col">Year</th>
+                                    <th scope="col">Last Service</th>
+                                    <th scope="col" class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($availableCars as $car)
+                                    @php
+                                        $brand = optional($car->carModel)->brand;
+                                        $model = optional($car->carModel)->model;
+                                        $serviceDue = $car->service_due_date ? \Carbon\Carbon::parse($car->service_due_date)->format('d M Y') : 'N/A';
+                                    @endphp
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">{{ trim(($brand ? $brand . ' ' : '') . ($model ?? 'Vehicle')) }}</div>
+                                            <div class="text-muted small">{{ ucfirst($car->color ?? '—') }}</div>
+                                        </td>
+                                        <td>{{ $car->plate_number ?? '—' }}</td>
+                                        <td>{{ $car->manufacturing_year ?? '—' }}</td>
+                                        <td>
+                                            <span class="badge bg-primary-subtle text-primary">{{ $serviceDue }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="{{ route('car.edit', $car->id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bx bx-edit"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-xl-4 mb-4">
             @foreach ($stats as $stat)
                 <div class="col">
