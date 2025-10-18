@@ -3,53 +3,82 @@
 
     <div class="row p-3 g-3">
         <div class="col-md-3">
-            <form class="input-group" wire:submit.prevent="applySearch">
-                <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="search" class="form-control" placeholder="Search..." aria-label="Search"
-                    wire:model.defer="searchInput">
-                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
-                    wire:target="applySearch">
-                    <span wire:loading.remove wire:target="applySearch">Search</span>
-                    <span wire:loading wire:target="applySearch">...</span>
-                </button>
-            </form>
+            <div class="filter-field">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label class="filter-label" for="awaitReturnSearch">Search</label>
+                    <span class="filter-hint">Customer, plate, ID</span>
+                </div>
+                <form class="input-group" wire:submit.prevent="applySearch">
+                    <span class="input-group-text"><i class="bx bx-search"></i></span>
+                    <input id="awaitReturnSearch" type="search" class="form-control" placeholder="Start typing…"
+                        wire:model.defer="searchInput">
+                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
+                        wire:target="applySearch">
+                        <span wire:loading.remove wire:target="applySearch">Apply</span>
+                        <span wire:loading wire:target="applySearch">…</span>
+                    </button>
+                </form>
+            </div>
         </div>
 
         <div class="col-md-2">
-            <select class="form-select" wire:model.live="statusFilter">
-                <option value="awaiting_return">Awaiting Return</option>
-                <option value="returned">Returned</option>
-                <option value="complete">Complete</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="all">All Statuses</option>
-            </select>
+            <div class="filter-field">
+                <label class="filter-label" for="awaitReturnStatus">Status</label>
+                <select id="awaitReturnStatus" class="form-select" wire:model.live="statusFilter">
+                    <option value="awaiting_return">Awaiting Return</option>
+                    <option value="returned">Returned</option>
+                    <option value="complete">Complete</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="all">All Statuses</option>
+                </select>
+            </div>
         </div>
 
         <div class="col-md-2">
-            <select class="form-select" wire:model.live="userFilter">
-                <option value="">All Contracts</option>
-                <option value="assigned">Assigned</option>
-                <option value="unassigned">Unassigned</option>
-            </select>
+            <div class="filter-field">
+                <label class="filter-label" for="awaitReturnAssignment">Assignment</label>
+                <select id="awaitReturnAssignment" class="form-select" wire:model.live="userFilter">
+                    <option value="">All Contracts</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="unassigned">Unassigned</option>
+                </select>
+            </div>
         </div>
 
         <div class="col-md-2">
-            <input type="date" class="form-control" placeholder="Pickup From" wire:model.live="pickupFrom">
+            <div class="filter-field">
+                <label class="filter-label" for="awaitReturnPickupFrom">Pickup From</label>
+                <input id="awaitReturnPickupFrom" type="date" class="form-control" wire:model.live="pickupFrom">
+            </div>
         </div>
         <div class="col-md-2">
-            <input type="date" class="form-control" placeholder="Pickup To" wire:model.live="pickupTo">
+            <div class="filter-field">
+                <label class="filter-label" for="awaitReturnPickupTo">Pickup To</label>
+                <input id="awaitReturnPickupTo" type="date" class="form-control" wire:model.live="pickupTo">
+            </div>
         </div>
         <div class="col-md-2">
-            <input type="date" class="form-control" placeholder="Return From" wire:model.live="returnFrom">
+            <div class="filter-field">
+                <label class="filter-label" for="awaitReturnReturnFrom">Return From</label>
+                <input id="awaitReturnReturnFrom" type="date" class="form-control" wire:model.live="returnFrom">
+            </div>
         </div>
         <div class="col-md-2">
-            <input type="date" class="form-control" placeholder="Return To" wire:model.live="returnTo">
+            <div class="filter-field">
+                <label class="filter-label" for="awaitReturnReturnTo">Return To</label>
+                <input id="awaitReturnReturnTo" type="date" class="form-control" wire:model.live="returnTo">
+            </div>
         </div>
 
         <div class="col-md-2">
-            <button class="btn btn-secondary w-100" type="button" wire:click="clearFilters">Clear Filters</button>
+            <div class="filter-field h-100">
+                <label class="filter-label">Reset</label>
+                <button class="btn btn-outline-secondary" type="button" wire:click="clearFilters">Clear Filters</button>
+            </div>
         </div>
     </div>
+
+    @include('livewire.pages.panel.expert.rental-request.partials.filter-styles')
 
 
     <!-- نمایش پیام‌ها -->
@@ -72,30 +101,28 @@
                 <tr>
                     <th wire:click="sortBy('id')" role="button" class="sortable">
                         #
-                        <i
-                            class="bx {{ $sortField === 'id' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        <i class="bx {{ $sortField === 'id' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
                     <th>Customer</th>
                     <th>Car</th>
                     <th wire:click="sortBy('return_date')" role="button" class="sortable">
                         Return Date
-                        <i
-                            class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        <i class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
                     <th>Return Location</th>
                     <th>Driver</th>
-                    <th>Actions</th>
                     <th>Status</th>
                     <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
-                        Agent Sale
-                        <i
-                            class="bx {{ $sortField === 'agent_sale' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        Sales Agent
+                        <i class="bx {{ $sortField === 'agent_sale' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
-                    <th>Expert</th>
-                    <th>Document</th>
+                    <th>Submitted By</th>
+                    <th>Assigned Expert</th>
+                    <th>Actions</th>
+                    <th>Documents</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
@@ -121,6 +148,27 @@
                             @endif
                         </td>
                         <td>
+                            <x-status-badge :status="$awaitContract->current_status" />
+                        </td>
+                        <td>
+                            <span class="badge {{ $awaitContract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $awaitContract->agent_sale ?? '—' }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-info text-dark">{{ $awaitContract->submitted_by_name ?? 'Website' }}</span>
+                        </td>
+
+                        <td>
+                            @if ($awaitContract->user)
+                                <span class="badge bg-success">{{ $awaitContract->user->shortName() }}</span>
+                            @else
+                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
+                            @endif
+                        </td>
+
+                        <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
                                     data-bs-toggle="dropdown">
@@ -145,20 +193,6 @@
                             </div>
                         </td>
                         <td>
-                            <x-status-badge :status="$awaitContract->current_status" />
-                        </td>
-                        <td>{{ $awaitContract->agent_sale }}</td>
-
-                        <td>
-                            @php
-                                $showAgent = $awaitContract->user && !in_array($awaitContract->current_status, ['pending', 'assigned']);
-                                $badgeClass = $showAgent ? 'badge bg-primary' : 'badge bg-warning text-dark';
-                                $badgeTitle = $showAgent ? 'Assigned agent' : 'Submitted by';
-                                $badgeLabel = $showAgent ? $awaitContract->user->shortName() : ($awaitContract->submitted_by_name ?? 'Website');
-                            @endphp
-                            <span class="{{ $badgeClass }}" title="{{ $badgeTitle }}">{{ $badgeLabel }}</span>
-                        </td>
-                        <td>
                             @if ($awaitContract->customerDocument()->exists())
                                 <span class="badge bg-warning">📄 Customer</span>
                             @endif
@@ -172,7 +206,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center text-muted">No contracts found.</td>
+                        <td colspan="12" class="text-center text-muted">No contracts found.</td>
                     </tr>
                 @endforelse
             </tbody>
