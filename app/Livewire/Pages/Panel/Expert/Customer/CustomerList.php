@@ -4,11 +4,13 @@ namespace App\Livewire\Pages\Panel\Expert\Customer;
 
 use Livewire\Component;
 use App\Models\Customer;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Livewire\WithPagination;
 
 class CustomerList extends Component
 {
     use WithPagination;
+    use InteractsWithToasts;
 
     public $search = '';
     public $searchInput = '';
@@ -24,7 +26,7 @@ class CustomerList extends Component
     {
         $customer = Customer::findOrFail($customerId);
         $customer->delete();
-        session()->flash('message', 'Customer deleted successfully.');
+        $this->toast('success', 'Customer deleted successfully.');
     }
 
     public function render()

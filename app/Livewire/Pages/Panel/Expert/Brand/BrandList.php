@@ -3,11 +3,13 @@
 namespace App\Livewire\Pages\Panel\Expert\Brand;
 
 use App\Models\CarModel;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class BrandList extends Component
 {
+    use InteractsWithToasts;
     public $search = '';
     public $searchInput = '';
     public $fuelType = '';
@@ -59,7 +61,6 @@ class BrandList extends Component
         // Delete the car record
         $brand->delete();
 
-        // Flash success message to session
-        session()->flash('success', 'Car has been deleted successfully.');
+        $this->toast('success', 'Car has been deleted successfully.');
     }
 }

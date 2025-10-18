@@ -70,6 +70,7 @@
                     <div class="container-xxl flex-grow-1 container-p-y">
                         {{ $slot }}
                     </div>
+                    <x-panel.toast-manager :validation-errors="$errors" />
                     <!-- / Content -->
 
                     <!-- Footer -->

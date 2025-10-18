@@ -6,6 +6,7 @@ use App\Models\Contract;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Services\Media\OptimizedUploadService;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,7 @@ class RentalRequestPayment extends Component
 {
 
     use WithFileUploads;
+    use InteractsWithToasts;
     public $contractId;
     public $customerId;
     public $amount;
@@ -229,12 +231,12 @@ class RentalRequestPayment extends Component
                 'approval_status' => 'pending',
             ]);
 
-            session()->flash('message', 'Payment was successfully added!');
+            $this->toast('success', 'Payment was successfully added!');
             $this->resetForm();
             $this->loadData();
             $this->dispatch('payment-updated');
         } catch (\Exception $e) {
-            session()->flash('error', 'Error adding payment: ' . $e->getMessage());
+            $this->toast('error', 'Error adding payment: ' . $e->getMessage(), false);
         }
     }
 
@@ -243,7 +245,7 @@ class RentalRequestPayment extends Component
         if (!empty($this->security_note)) {
             $contract = Contract::find($this->contractId);
             if (!$contract) {
-                session()->flash('error', 'Contract not found.');
+                $this->toast('error', 'Contract not found.', false);
                 return;
             }
 
@@ -256,7 +258,7 @@ class RentalRequestPayment extends Component
             // هم در دیتابیس ذخیره شد، هم برای ویو آپدیت شد
             $this->contractMeta = $meta;
 
-            session()->flash('message', 'Security deposit information was successfully saved.');
+            $this->toast('success', 'Security deposit information was successfully saved.');
             $this->security_note = '';
         }
     }
@@ -288,7 +290,7 @@ class RentalRequestPayment extends Component
 
         $payment->delete();
 
-        session()->flash('message', 'Payment deleted successfully.');
+        $this->toast('success', 'Payment deleted successfully.');
         $this->loadData();
         $this->dispatch('payment-updated');
     }

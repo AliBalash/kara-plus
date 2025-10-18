@@ -67,16 +67,6 @@
 
     @include('livewire.pages.panel.expert.rental-request.partials.filter-styles')
 
-    @if (session('success'))
-        <div class="alert alert-success mt-2">{{ session('success') }}</div>
-    @endif
-    @if (session('info'))
-        <div class="alert alert-info mt-2">{{ session('info') }}</div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-danger mt-2">{{ session('error') }}</div>
-    @endif
-
     <div class="table-responsive mt-3">
         <table class="table table-hover">
             <thead>

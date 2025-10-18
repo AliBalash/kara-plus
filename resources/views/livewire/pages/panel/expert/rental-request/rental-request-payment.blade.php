@@ -2,20 +2,6 @@
     <h4 class="fw-bold py-3 mb-4">
         <span class="text-muted fw-light">Rental Request /</span> Payment Information
     </h4>
-
-    @if (session()->has('message'))
-        <div class="alert alert-success">{{ session('message') }}</div>
-    @endif
-
-    @if (session()->has('info'))
-        <div class="alert alert-info">{{ session('info') }}</div>
-    @endif
-
-    @if (session()->has('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
-
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
 
@@ -130,14 +116,6 @@
                 </button>
 
             </form>
-
-
-            @if (session()->has('message-deposite'))
-                <div class="alert alert-success mt-3">
-                    {{ session('message') }}
-                </div>
-            @endif
-
             <form class="my-5" wire:submit.prevent="submitDeposit">
 
                 <div class="col-md-12 mb-3">
@@ -145,11 +123,10 @@
                     <textarea class="form-control" wire:model.defer="security_note" rows="3"
                         placeholder="E.g., Deposit of 1000 AED, refundable after inspection"></textarea>
                 </div>
-
                 @if (!empty($contractMeta['security_deposit_note']))
-                    <div class="alert alert-secondary mt-4">
-                        <strong>Security Deposit:</strong><br>
-                        {{ $contractMeta['security_deposit_note'] }}
+                    <div class="bg-light border rounded-3 p-3 mt-4">
+                        <strong class="d-block mb-1">Security Deposit</strong>
+                        <p class="mb-0 text-muted">{{ $contractMeta['security_deposit_note'] }}</p>
                     </div>
                 @endif
                 <button type="submit" class="btn btn-dark mt-3">Submit Security Deposit</button>

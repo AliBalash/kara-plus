@@ -8,14 +8,6 @@
             <i class="bx bx-id-card me-1"></i> Drivers: {{ $driverCount }}
         </div>
     </div>
-
-    @if (session()->has('message'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('message') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white border-0 py-3">
             <div class="row g-3 align-items-center">

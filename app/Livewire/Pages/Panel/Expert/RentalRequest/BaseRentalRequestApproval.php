@@ -4,12 +4,15 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
 use App\Models\PickupDocument;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Component;
 
 abstract class BaseRentalRequestApproval extends Component
 {
+    use InteractsWithToasts;
+
     public $contractId;
     public Contract $contract;
     public PickupDocument $pickupDocument;

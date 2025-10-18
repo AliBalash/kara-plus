@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\Car;
 
 use App\Models\Car;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 class CarList extends Component
 {
     use WithPagination;
+    use InteractsWithToasts;
 
     public $search = '';
     public $searchInput = '';
@@ -57,7 +59,7 @@ class CarList extends Component
         }
 
         $car->delete();
-        session()->flash('success', 'Car has been deleted successfully.');
+        $this->toast('success', 'Car has been deleted successfully.');
     }
 
     public function clearFilters()

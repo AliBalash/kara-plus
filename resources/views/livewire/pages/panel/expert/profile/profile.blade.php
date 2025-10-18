@@ -99,10 +99,4 @@
             </div>
         </div>
     </div>
-
-    @if (session()->has('message'))
-        <div class="alert alert-success mt-3">
-            {{ session('message') }}
-        </div>
-    @endif
 </div>

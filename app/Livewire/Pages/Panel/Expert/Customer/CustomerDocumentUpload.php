@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Customer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Services\Media\OptimizedUploadService;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -15,6 +16,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 class CustomerDocumentUpload extends Component
 {
     use WithFileUploads;
+    use InteractsWithToasts;
 
     public $customerId;
     public $contractId;
@@ -116,7 +118,7 @@ class CustomerDocumentUpload extends Component
 
         $customerDocument->save();
 
-        session()->flash('message', 'Documents uploaded successfully.');
+        $this->toast('success', 'Documents uploaded successfully.');
         $this->loadExistingFiles($customerDocument);
 
         foreach ($this->documentTypes as $type) {
@@ -159,7 +161,7 @@ class CustomerDocumentUpload extends Component
 
         $this->loadExistingFiles($customerDocument);
 
-        session()->flash('message', ucfirst($fileType) . ' file removed.');
+        $this->toast('success', ucfirst($fileType) . ' file removed.');
     }
 
     public function render()

@@ -3,12 +3,14 @@
 namespace App\Livewire\Pages\Panel\Expert\DiscountCode;
 
 use App\Models\DiscountCode;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class DiscountCodeList extends Component
 {
     use WithPagination;
+    use InteractsWithToasts;
 
     public $search = '';
     public $searchInput = '';
@@ -50,7 +52,7 @@ class DiscountCodeList extends Component
         if ($discountCode) {
             $discountCode->contacted = true;
             $discountCode->save();
-            session()->flash('success', "Discount code marked as contacted.");
+            $this->toast('success', 'Discount code marked as contacted.');
         }
     }
 
@@ -60,7 +62,7 @@ class DiscountCodeList extends Component
         if ($discountCode) {
             $discountCode->contacted = false;
             $discountCode->save();
-            session()->flash('success', "Discount code marked as not contacted.");
+            $this->toast('success', 'Discount code marked as not contacted.');
         }
     }
 
@@ -69,6 +71,6 @@ class DiscountCodeList extends Component
     public function callDiscountCode($id)
     {
         // Action for calling the discount code
-        session()->flash('success', "Calling discount code with ID: $id"); // You can replace this with the actual call logic
+        $this->toast('info', "Calling discount code with ID: $id");
     }
 }

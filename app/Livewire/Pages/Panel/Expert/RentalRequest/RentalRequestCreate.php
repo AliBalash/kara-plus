@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Illuminate\Support\Str;
+use App\Livewire\Concerns\InteractsWithToasts;
 
 class RentalRequestCreate extends Component
 {
+    use InteractsWithToasts;
     public $selectedBrand;
     public $selectedModelId;
     public $selectedCarId;
@@ -97,10 +99,10 @@ class RentalRequestCreate extends Component
                 'user_id' => auth()->id(),
             ]);
             $contract->changeStatus('assigned', auth()->id());
-            session()->flash('success', 'Contract assigned to you successfully.');
+            $this->toast('success', 'Contract assigned to you successfully.');
             $this->dispatch('refreshContracts');
         } else {
-            session()->flash('error', 'This contract is already assigned to someone.');
+            $this->toast('error', 'This contract is already assigned to someone.', false);
         }
     }
 
@@ -440,10 +442,10 @@ class RentalRequestCreate extends Component
             $this->storeContractCharges($contract);
 
             DB::commit();
-            session()->flash('success', 'Contract created successfully!');
+            $this->toast('success', 'Contract created successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'An error occurred: ' . $e->getMessage());
+            $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
         }
     }
 
@@ -556,10 +558,10 @@ class RentalRequestCreate extends Component
         $contract = Contract::findOrFail($contractId);
         if ($contract->current_status !== 'reserved') {
             $contract->changeStatus('reserved', auth()->id());
-            session()->flash('success', 'Contract status changed to Reserved successfully.');
+            $this->toast('success', 'Contract status changed to Reserved successfully.');
             $this->dispatch('refreshContracts');
         } else {
-            session()->flash('info', 'This contract is already Reserved.');
+            $this->toast('info', 'This contract is already Reserved.', false);
         }
     }
 

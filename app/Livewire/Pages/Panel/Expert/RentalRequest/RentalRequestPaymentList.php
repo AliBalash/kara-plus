@@ -6,11 +6,13 @@ use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Livewire\Concerns\HandlesContractCancellation;
+use App\Livewire\Concerns\InteractsWithToasts;
 
 class RentalRequestPaymentList extends Component
 {
     use WithPagination;
     use HandlesContractCancellation;
+    use InteractsWithToasts;
 
     public $search = '';
     public $searchInput = '';
@@ -64,7 +66,7 @@ class RentalRequestPaymentList extends Component
         $contract = Contract::findOrFail($contractId);
 
         $contract->changeStatus('complete', auth()->id());
-        session()->flash('success', 'Status changed to complete successfully.');
+        $this->toast('success', 'Status changed to complete successfully.');
     }
 
     public function clearFilters(): void

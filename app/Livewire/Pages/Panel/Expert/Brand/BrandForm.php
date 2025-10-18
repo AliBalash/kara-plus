@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Brand;
 
 use App\Models\CarModel;
 use App\Services\Media\OptimizedUploadService;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -13,6 +14,7 @@ use Livewire\Features\SupportFileUploads\WithFileUploads;
 class BrandForm extends Component
 {
     use WithFileUploads;
+    use InteractsWithToasts;
 
     public $brandId;
     public $brand;
@@ -108,7 +110,7 @@ class BrandForm extends Component
         }
 
 
-        session()->flash('success', $this->brandId
+        $this->toast('success', $this->brandId
             ? 'The car model has been successfully updated!'
             : 'A new car model has been successfully added!');
 

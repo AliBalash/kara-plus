@@ -12,11 +12,13 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use App\Livewire\Concerns\InteractsWithToasts;
 
 class RentalRequestPickupDocument extends Component
 {
 
     use WithFileUploads;
+    use InteractsWithToasts;
 
     public $contractId;
     public $tarsContract;
@@ -307,7 +309,7 @@ class RentalRequestPickupDocument extends Component
 
             DB::commit();
 
-            session()->flash('message', 'Documents uploaded successfully.');
+            $this->toast('success', 'Documents uploaded successfully.');
             $this->mount($this->contractId);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -317,7 +319,7 @@ class RentalRequestPickupDocument extends Component
                 Storage::disk('myimage')->delete($path);
             }
 
-            session()->flash('error', 'Error uploading documents: ' . $e->getMessage());
+            $this->toast('error', 'Error uploading documents: ' . $e->getMessage());
         }
     }
 
@@ -332,7 +334,7 @@ class RentalRequestPickupDocument extends Component
         ];
 
         if (! array_key_exists($fileType, $mapping)) {
-            session()->flash('error', 'The file type "' . $fileType . '" is not valid.');
+            $this->toast('error', 'The file type "' . $fileType . '" is not valid.');
             return;
         }
 
@@ -353,7 +355,7 @@ class RentalRequestPickupDocument extends Component
 
         $this->existingFiles[$viewKey] = null;
 
-        session()->flash('message', 'File deleted successfully.');
+        $this->toast('success', 'File deleted successfully.');
         $this->mount($this->contractId);
     }
 
@@ -374,7 +376,7 @@ class RentalRequestPickupDocument extends Component
     public function removeGalleryItem(string $section, string $path): void
     {
         if (! in_array($section, ['inside', 'outside'], true)) {
-            session()->flash('error', 'The requested gallery section is not valid.');
+            $this->toast('error', 'The requested gallery section is not valid.');
             return;
         }
 
@@ -382,7 +384,7 @@ class RentalRequestPickupDocument extends Component
 
         $pickupDocument = PickupDocument::where('contract_id', $this->contractId)->first();
         if (! $pickupDocument) {
-            session()->flash('error', 'Pickup document not found.');
+            $this->toast('error', 'Pickup document not found.');
             return;
         }
 
@@ -391,14 +393,14 @@ class RentalRequestPickupDocument extends Component
             : ($pickupDocument->$column ? json_decode($pickupDocument->$column, true) : []);
 
         if (! is_array($gallery) || empty($gallery)) {
-            session()->flash('error', 'No photos available to remove.');
+            $this->toast('error', 'No photos available to remove.');
             return;
         }
 
         $filteredGallery = array_values(array_filter($gallery, fn ($storedPath) => $storedPath !== $path));
 
         if (count($filteredGallery) === count($gallery)) {
-            session()->flash('error', 'The selected photo was not found.');
+            $this->toast('error', 'The selected photo was not found.');
             return;
         }
 
@@ -409,7 +411,7 @@ class RentalRequestPickupDocument extends Component
         $pickupDocument->$column = $filteredGallery;
         $pickupDocument->save();
 
-        session()->flash('message', 'Photo removed successfully.');
+        $this->toast('success', 'Photo removed successfully.');
         $this->mount($this->contractId);
     }
 
@@ -425,7 +427,7 @@ class RentalRequestPickupDocument extends Component
         // تغییر وضعیت به 'delivery'
         $contract->changeStatus('delivery', auth()->id());
 
-        session()->flash('message', 'Status changed to Delivery successfully.');
+        $this->toast('success', 'Status changed to Delivery successfully.');
     }
 
     private function storeGalleryPhoto(TemporaryUploadedFile $photo, string $section): string

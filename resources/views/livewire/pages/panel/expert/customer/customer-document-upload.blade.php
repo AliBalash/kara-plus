@@ -2,19 +2,6 @@
     <h4 class="fw-bold py-3 mb-4">
         <span class="text-muted fw-light">Customer /</span> Document
     </h4>
-
-    @if (session()->has('message'))
-        <div class="alert alert-success">{{ session('message') }}</div>
-    @endif
-
-    @if (session()->has('info'))
-        <div class="alert alert-info">{{ session('info') }}</div>
-    @endif
-
-    @if (session()->has('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
 

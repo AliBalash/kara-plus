@@ -4,10 +4,11 @@ namespace App\Livewire\Pages\Panel\Expert\Customer;
 
 use Livewire\Component;
 use App\Models\Customer;
-use Illuminate\Support\Facades\Session;
+use App\Livewire\Concerns\InteractsWithToasts;
 
 class CustomerDetail extends Component
 {
+    use InteractsWithToasts;
     public $customer; // Holds the customer data
 
     public function mount($customerId)
@@ -42,8 +43,7 @@ class CustomerDetail extends Component
         $customer = Customer::findOrFail($this->customer['id']); // Ensure 'id' exists in $this->customer
         $customer->update($this->customer);
 
-        // Flash a success message
-        session()->flash('message', 'Customer details updated successfully.');
+        $this->toast('success', 'Customer details updated successfully.');
     }
 
     public function render()

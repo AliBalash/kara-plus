@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\User;
 
 use App\Models\User;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -11,6 +12,7 @@ use Spatie\Permission\Models\Role;
 class ManageUserRoles extends Component
 {
     use WithPagination;
+    use InteractsWithToasts;
     public string $search = '';
 
     protected $queryString = [
@@ -35,7 +37,7 @@ class ManageUserRoles extends Component
             $user->syncRoles(array_unique(array_merge($currentRoles, [$driverRole->name])));
         }
 
-        session()->flash('message', $user->shortName() . ' assigned to driver role.');
+        $this->toast('success', $user->shortName() . ' assigned to driver role.');
     }
 
     public function removeDriver(int $userId): void
@@ -43,7 +45,7 @@ class ManageUserRoles extends Component
         $user = User::findOrFail($userId);
         if ($user->hasRole('driver')) {
             $user->removeRole('driver');
-            session()->flash('message', $user->shortName() . ' removed from driver role.');
+            $this->toast('success', $user->shortName() . ' removed from driver role.');
         }
     }
 

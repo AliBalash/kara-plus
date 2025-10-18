@@ -10,13 +10,14 @@ use Throwable;
 
 trait HandlesContractCancellation
 {
+    use InteractsWithToasts;
     public function cancelContract(int $contractId): void
     {
         try {
             $contract = Contract::findOrFail($contractId);
 
             if ($contract->current_status === 'cancelled') {
-                session()->flash('info', 'Contract is already cancelled.');
+                $this->toast('info', 'Contract is already cancelled.');
                 return;
             }
 
@@ -48,7 +49,7 @@ trait HandlesContractCancellation
                 }
             });
 
-            session()->flash('success', 'Contract cancelled successfully.');
+            $this->toast('success', 'Contract cancelled successfully.');
 
             if (method_exists($this, 'resetPage')) {
                 $this->resetPage();
@@ -67,7 +68,7 @@ trait HandlesContractCancellation
                 'message' => $exception->getMessage(),
             ]);
 
-            session()->flash('error', 'Failed to cancel contract. Please try again.');
+            $this->toast('error', 'Failed to cancel contract. Please try again.');
         }
     }
 }

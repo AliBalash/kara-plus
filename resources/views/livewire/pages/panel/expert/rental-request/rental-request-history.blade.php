@@ -2,13 +2,6 @@
     <h4 class="fw-bold py-3 mb-4">
         <span class="text-muted fw-light">Rental Request /</span> History
     </h4>
-
-    @if (session()->has('message'))
-        <div class="alert alert-success">
-            {{ session('message') }}
-        </div>
-    @endif
-
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
 

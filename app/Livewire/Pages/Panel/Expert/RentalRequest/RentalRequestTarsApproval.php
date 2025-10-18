@@ -12,11 +12,11 @@ class RentalRequestTarsApproval extends BaseRentalRequestApproval
             $this->pickupDocument->tars_approved_at = now();
             $this->pickupDocument->tars_approved_by = Auth::id();
             $this->pickupDocument->save();
-            session()->flash('success', 'TARS approved successfully.');
+            $this->toast('success', 'TARS approved successfully.');
             return;
         }
 
-        session()->flash('error', 'TARS contract not uploaded.');
+        $this->toast('error', 'TARS contract not uploaded.', false);
     }
 
     public function render()
