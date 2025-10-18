@@ -1,6 +1,6 @@
 <div class="container">
     <div class="row g-3 align-items-center">
-        <div class="col-lg-6">
+        <div class="col-lg-4">
             <h4 class="fw-bold py-3 mb-0">
                 <span class="text-muted fw-light">Contract /</span> Return Document
             </h4>
@@ -12,7 +12,7 @@
                 $vehicleName = optional($contract->car)->modelName() ?? 'Vehicle not assigned';
                 $plateNumber = optional($contract->car)->plate_number;
             @endphp
-            <div class="col-lg-6">
+            <div class="col-lg-8">
                 <div class="status-toolbar d-flex flex-column flex-lg-row align-items-lg-center gap-3">
                     <div class="status-overview flex-grow-1 d-flex flex-column flex-md-row flex-wrap gap-3">
                         <div class="status-card">

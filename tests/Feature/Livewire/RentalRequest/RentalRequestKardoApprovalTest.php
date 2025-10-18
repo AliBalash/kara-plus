@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Livewire\RentalRequest;
 
-use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestInspection;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestKardoApproval;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\Customer;
@@ -11,7 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class RentalRequestInspectionTest extends TestCase
+class RentalRequestKardoApprovalTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -27,7 +27,7 @@ class RentalRequestInspectionTest extends TestCase
             ->status('delivery')
             ->create(['kardo_required' => true]);
 
-        $pickupDocument = PickupDocument::factory()->for($contract)->create([
+        PickupDocument::factory()->for($contract)->create([
             'tars_contract' => 'PickupDocument/tars_contract_sample.jpg',
             'kardo_contract' => 'PickupDocument/kardo_contract_sample.jpg',
             'tars_approved_at' => now(),
@@ -36,7 +36,7 @@ class RentalRequestInspectionTest extends TestCase
             'kardo_approved_by' => $user->id,
         ]);
 
-        $component = app(RentalRequestInspection::class);
+        $component = app(RentalRequestKardoApproval::class);
         $component->mount($contract->id);
         $component->completeInspection();
 
