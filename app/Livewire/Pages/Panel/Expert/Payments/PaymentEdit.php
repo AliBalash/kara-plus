@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Payments;
 use App\Models\Payment;
 use App\Models\Contract;
 use App\Services\Media\OptimizedUploadService;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -14,6 +15,7 @@ use Carbon\Carbon;
 class PaymentEdit extends Component
 {
     use WithFileUploads;
+    use InteractsWithToasts;
 
     public Payment $payment;
     public $paymentId;
@@ -165,7 +167,7 @@ class PaymentEdit extends Component
             'receipt' => $receiptPath,
         ]);
 
-        session()->flash('success', 'Payment updated successfully.');
+        $this->toast('success', 'Payment updated successfully.');
 
         return redirect()->route('rental-requests.payment', [$this->payment->contract_id, $this->payment->customer_id]);
     }

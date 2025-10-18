@@ -15,15 +15,6 @@
             </form>
         </div>
     </div>
-
-    <!-- Displaying success message after actions -->
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Success!</strong> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
     <div class="table-responsive text-nowrap">
         <table class="table table-hover">
             <thead>

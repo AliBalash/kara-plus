@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\Profile;
 
 use App\Services\Media\OptimizedUploadService;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -11,6 +12,7 @@ use Livewire\WithFileUploads;
 class Profile extends Component
 {
     use WithFileUploads;
+    use InteractsWithToasts;
     public $first_name;
     public $last_name;
     public $email;
@@ -89,7 +91,7 @@ class Profile extends Component
             'avatar'        => $user->avatar,
         ]);
 
-        session()->flash('message', 'Profile updated successfully.');
+        $this->toast('success', 'Profile updated successfully.');
     }
 
 

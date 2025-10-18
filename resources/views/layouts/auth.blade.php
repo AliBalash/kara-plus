@@ -43,6 +43,8 @@
         {{ $slot }}
     </div>
 
+    <x-panel.toast-manager :validation-errors="$errors" />
+
     <!-- Core JS -->
     <script src="{{ asset('assets/panel/assets/vendor/libs/jquery/jquery.js') }}"></script>
     <script src="{{ asset('assets/panel/assets/vendor/libs/popper/popper.js') }}"></script>

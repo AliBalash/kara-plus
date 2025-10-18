@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Illuminate\Support\Str;
+use App\Livewire\Concerns\InteractsWithToasts;
 
 class RentalRequestEdit extends Component
 {
+    use InteractsWithToasts;
     public $cars;
     public $carModels;
     public $selectedBrand;
@@ -417,13 +419,13 @@ class RentalRequestEdit extends Component
             $oldTotal = $this->contract->total_price;
             $newTotal = $this->final_total;
             if ($newTotal > $oldTotal) {
-                session()->flash('info', "Extension cost: " . ($newTotal - $oldTotal) . " AED");
+                $this->toast('info', "Extension cost: " . ($newTotal - $oldTotal) . " AED", false);
             }
             DB::commit();
-            session()->flash('info', 'Contract Updated successfully!');
+            $this->toast('success', 'Contract Updated successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'An error occurred: ' . $e->getMessage());
+            $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
         }
     }
 
@@ -589,10 +591,10 @@ class RentalRequestEdit extends Component
                 'user_id' => auth()->id(),
             ]);
             $contract->changeStatus('assigned', auth()->id());
-            session()->flash('success', 'Contract assigned to you successfully.');
+            $this->toast('success', 'Contract assigned to you successfully.');
             $this->dispatch('refreshContracts');
         } else {
-            session()->flash('error', 'This contract is already assigned to someone.');
+            $this->toast('error', 'This contract is already assigned to someone.', false);
         }
     }
 
@@ -625,7 +627,7 @@ class RentalRequestEdit extends Component
             $contract->car->update(['status' => 'reserved']);
         }
 
-        session()->flash('success', 'Status changed to Reserved successfully.');
+        $this->toast('success', 'Status changed to Reserved successfully.');
     }
 
     public function updatedSelectedModelId()

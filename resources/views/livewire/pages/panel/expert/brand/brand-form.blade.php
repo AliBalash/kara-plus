@@ -1,10 +1,4 @@
 <div>
-    @if (session()->has('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-
     <form wire:submit.prevent="save">
         <div class="row">
             <!-- Car Model Information -->

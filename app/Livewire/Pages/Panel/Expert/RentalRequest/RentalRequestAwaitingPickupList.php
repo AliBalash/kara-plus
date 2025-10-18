@@ -6,12 +6,14 @@ use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Livewire\Concerns\HandlesContractCancellation;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Auth;
 
 class RentalRequestAwaitingPickupList extends Component
 {
     use WithPagination;
     use HandlesContractCancellation;
+    use InteractsWithToasts;
 
     public $search = '';
     public $searchInput = '';
@@ -199,19 +201,19 @@ class RentalRequestAwaitingPickupList extends Component
         $user = Auth::user();
 
         if (! $user || ! $user->hasRole('driver')) {
-            session()->flash('error', 'Only drivers can claim delivery tasks.');
+            $this->toast('error', 'Only drivers can claim delivery tasks.', false);
             return;
         }
 
         $contract = Contract::query()->whereKey($contractId)->first();
 
         if (! $contract) {
-            session()->flash('error', 'The selected contract could not be found.');
+            $this->toast('error', 'The selected contract could not be found.', false);
             return;
         }
 
         if ($contract->driver_id && $contract->driver_id !== $user->id) {
-            session()->flash('error', 'This delivery is already assigned to another driver.');
+            $this->toast('error', 'This delivery is already assigned to another driver.', false);
             return;
         }
 
@@ -220,7 +222,7 @@ class RentalRequestAwaitingPickupList extends Component
 
         $this->driverId = $user->id;
 
-        session()->flash('success', 'Delivery assigned to you successfully.');
+        $this->toast('success', 'Delivery assigned to you successfully.');
         $this->dispatch('refreshContracts');
     }
 }

@@ -70,26 +70,6 @@
             </div>
         </div>
     </div>
-
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
-            {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-    @if (session('info'))
-        <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
-            {{ session('info') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
     <div class="card shadow-sm border-0 rounded-4 mt-4">
@@ -178,7 +158,7 @@
                                         </p>
                                     @endif
                                 @else
-                                    <div class="alert alert-warning rounded-3 mb-2">
+                                    <div class="bg-warning-subtle border border-warning-subtle text-warning-emphasis rounded-3 mb-2 p-3">
                                         KARDO document has not been uploaded yet.
                                     </div>
                                     @if (! empty($pickupDocument->agreement_number))
@@ -186,7 +166,7 @@
                                     @endif
                                 @endif
                             @else
-                                <div class="alert alert-info rounded-3 mb-0">
+                                <div class="bg-info-subtle border border-info-subtle text-info-emphasis rounded-3 mb-0 p-3">
                                     KARDO inspection is not required for this contract.
                                 </div>
                             @endif
@@ -219,7 +199,7 @@
             </div>
 
             @if (! $inspectionReady)
-                <div class="alert alert-warning d-flex align-items-center mt-4 mb-0" role="alert">
+                <div class="bg-warning-subtle border border-warning-subtle text-warning-emphasis d-flex align-items-center mt-4 mb-0 rounded-3 p-3">
                     <i class="bx bx-time-five me-2"></i>
                     <div>Please approve all required documents before completing the inspection.</div>
                 </div>

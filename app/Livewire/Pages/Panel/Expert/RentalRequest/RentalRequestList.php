@@ -6,11 +6,13 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Contract;
 use App\Livewire\Concerns\HandlesContractCancellation;
+use App\Livewire\Concerns\InteractsWithToasts;
 
 class RentalRequestList extends Component
 {
     use WithPagination;
     use HandlesContractCancellation;
+    use InteractsWithToasts;
 
     public $search = '';
     public $statusFilter = '';
@@ -70,10 +72,10 @@ class RentalRequestList extends Component
         if (is_null($contract->user_id)) {
             $contract->update(['user_id' => auth()->id()]);
             $contract->changeStatus('assigned', auth()->id());
-            session()->flash('success', 'Contract assigned to you successfully.');
+            $this->toast('success', 'Contract assigned to you successfully.');
             $this->dispatch('refreshContracts');
         } else {
-            session()->flash('error', 'This contract is already assigned.');
+            $this->toast('error', 'This contract is already assigned.', false);
         }
     }
 

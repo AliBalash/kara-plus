@@ -4,10 +4,12 @@ namespace App\Livewire\Pages\Panel\Expert\Insurances;
 
 use App\Models\Car;
 use App\Models\Insurance;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Livewire\Component;
 
 class InsurancesForm extends Component
 {
+    use InteractsWithToasts;
     public $insuranceId;
     public $carId;
     public $car;
@@ -70,7 +72,7 @@ class InsurancesForm extends Component
 
         // Check if the car already has insurance
         if (!$this->insuranceId && Insurance::where('car_id', $this->carId)->exists()) {
-            session()->flash('error', 'This car already has an insurance policy.');
+            $this->toast('error', 'This car already has an insurance policy.', false);
             return;
         }
         
@@ -86,9 +88,9 @@ class InsurancesForm extends Component
 
         $insurance->save();
 
-        session()->flash('success', $this->insuranceId
+        $this->toast('success', $this->insuranceId
             ? 'Insurance updated successfully!'
-            : 'New insurance added successfully!');
+            : 'New insurance added successfully!', true);
 
         return redirect()->route('insurance.add');
     }

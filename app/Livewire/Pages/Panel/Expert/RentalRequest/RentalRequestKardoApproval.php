@@ -9,7 +9,7 @@ class RentalRequestKardoApproval extends BaseRentalRequestApproval
     public function approveKardo(): void
     {
         if (! $this->contract->kardo_required) {
-            session()->flash('info', 'KARDO is not required for this contract.');
+            $this->toast('info', 'KARDO is not required for this contract.', false);
             return;
         }
 
@@ -17,22 +17,22 @@ class RentalRequestKardoApproval extends BaseRentalRequestApproval
             $this->pickupDocument->kardo_approved_at = now();
             $this->pickupDocument->kardo_approved_by = Auth::id();
             $this->pickupDocument->save();
-            session()->flash('success', 'KARDO approved successfully.');
+            $this->toast('success', 'KARDO approved successfully.');
             return;
         }
 
-        session()->flash('error', 'KARDO contract not uploaded.');
+        $this->toast('error', 'KARDO contract not uploaded.', false);
     }
 
     public function completeInspection(): void
     {
         if (! $this->pickupDocument->tars_approved_at) {
-            session()->flash('error', 'Please approve TARS first.');
+            $this->toast('error', 'Please approve TARS first.', false);
             return;
         }
 
         if ($this->contract->kardo_required && ! $this->pickupDocument->kardo_approved_at) {
-            session()->flash('error', 'Please approve KARDO first.');
+            $this->toast('error', 'Please approve KARDO first.', false);
             return;
         }
 
@@ -40,7 +40,7 @@ class RentalRequestKardoApproval extends BaseRentalRequestApproval
         $this->contract->changeStatus('agreement_inspection', $userId);
         $this->contract->changeStatus('awaiting_return', $userId);
 
-        session()->flash('success', 'Inspection completed and status changed to awaiting_return.');
+        $this->toast('success', 'Inspection completed and status changed to awaiting_return.');
     }
 
     public function render()

@@ -4,12 +4,14 @@ namespace App\Livewire\Pages\Panel\Expert\Payments;
 
 use Livewire\Component;
 use App\Models\Payment;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Storage;
 
 class ConfirmPayementList extends Component
 {
     use WithPagination;
+    use InteractsWithToasts;
 
     public $search = '';
     public $searchInput = '';
@@ -52,7 +54,7 @@ class ConfirmPayementList extends Component
         $payment->approval_status = 'approved';
         $payment->save();
 
-        session()->flash('success', "Payment #{$paymentId} approved successfully.");
+        $this->toast('success', "Payment #{$paymentId} approved successfully.");
     }
 
     public function reject($paymentId)
@@ -62,7 +64,7 @@ class ConfirmPayementList extends Component
         $payment->approval_status = 'rejected';
         $payment->save();
 
-        session()->flash('error', "Payment #{$paymentId} rejected.");
+        $this->toast('error', "Payment #{$paymentId} rejected.");
     }
 
     public function deletePayment($paymentId)
@@ -75,7 +77,7 @@ class ConfirmPayementList extends Component
 
         $payment->delete();
 
-        session()->flash('success', "Payment #{$paymentId} deleted successfully.");
+        $this->toast('success', "Payment #{$paymentId} deleted successfully.");
     }
 
     public function render()

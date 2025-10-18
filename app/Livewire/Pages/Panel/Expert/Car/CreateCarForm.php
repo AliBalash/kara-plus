@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\Car;
 
 use App\Models\Car;
 use App\Models\CarModel;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -12,6 +13,7 @@ use Illuminate\Support\Str;
 class CreateCarForm extends Component
 {
     use WithFileUploads;
+    use InteractsWithToasts;
 
     public $carModels;
     public $brands;
@@ -369,7 +371,7 @@ class CreateCarForm extends Component
         $carModel->is_featured = $this->is_featured;
         $carModel->save();
 
-        session()->flash('message', 'Car added successfully!');
+        $this->toast('success', 'Car added successfully!');
         $this->resetCarData();
     }
 

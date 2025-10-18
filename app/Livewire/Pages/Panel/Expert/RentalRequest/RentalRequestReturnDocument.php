@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use App\Models\Contract;
 use App\Models\ReturnDocument;
 use App\Services\Media\OptimizedUploadService;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,6 +18,7 @@ class RentalRequestReturnDocument extends Component
 {
 
     use WithFileUploads;
+    use InteractsWithToasts;
 
     public $contractId;
     public $factorContract;
@@ -229,7 +231,7 @@ class RentalRequestReturnDocument extends Component
 
             DB::commit();
 
-            session()->flash('message', 'Documents uploaded successfully.');
+            $this->toast('success', 'Documents uploaded successfully.');
             $this->mount($this->contractId);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -239,7 +241,7 @@ class RentalRequestReturnDocument extends Component
                 Storage::disk('myimage')->delete($path);
             }
 
-            session()->flash('error', 'Error uploading documents: ' . $e->getMessage());
+            $this->toast('error', 'Error uploading documents: ' . $e->getMessage(), false);
         }
     }
 
@@ -252,7 +254,7 @@ class RentalRequestReturnDocument extends Component
         ];
 
         if (! array_key_exists($fileType, $mapping)) {
-            session()->flash('error', 'The file type "' . $fileType . '" is not valid.');
+            $this->toast('error', 'The file type "' . $fileType . '" is not valid.', false);
             return;
         }
 
@@ -273,7 +275,7 @@ class RentalRequestReturnDocument extends Component
 
         $this->existingFiles[$viewKey] = null;
 
-        session()->flash('message', ucfirst($fileType) . ' successfully removed.');
+        $this->toast('success', ucfirst($fileType) . ' successfully removed.');
 
         // بارگذاری مجدد
         $this->mount($this->contractId);
@@ -288,7 +290,7 @@ class RentalRequestReturnDocument extends Component
     public function removeGalleryItem(string $section, string $path): void
     {
         if (! in_array($section, ['inside', 'outside'], true)) {
-            session()->flash('error', 'The requested gallery section is not valid.');
+            $this->toast('error', 'The requested gallery section is not valid.', false);
             return;
         }
 
@@ -296,7 +298,7 @@ class RentalRequestReturnDocument extends Component
 
         $returnDocument = ReturnDocument::where('contract_id', $this->contractId)->first();
         if (! $returnDocument) {
-            session()->flash('error', 'Return document not found.');
+            $this->toast('error', 'Return document not found.', false);
             return;
         }
 
@@ -305,14 +307,14 @@ class RentalRequestReturnDocument extends Component
             : ($returnDocument->$column ? json_decode($returnDocument->$column, true) : []);
 
         if (! is_array($gallery) || empty($gallery)) {
-            session()->flash('error', 'No photos available to remove.');
+            $this->toast('error', 'No photos available to remove.', false);
             return;
         }
 
         $filteredGallery = array_values(array_filter($gallery, fn ($storedPath) => $storedPath !== $path));
 
         if (count($filteredGallery) === count($gallery)) {
-            session()->flash('error', 'The selected photo was not found.');
+            $this->toast('error', 'The selected photo was not found.', false);
             return;
         }
 
@@ -323,7 +325,7 @@ class RentalRequestReturnDocument extends Component
         $returnDocument->$column = $filteredGallery;
         $returnDocument->save();
 
-        session()->flash('message', 'Photo removed successfully.');
+        $this->toast('success', 'Photo removed successfully.');
         $this->mount($this->contractId);
     }
 
@@ -377,7 +379,7 @@ class RentalRequestReturnDocument extends Component
 
         // اگر کنترکت قبلاً وضعیت payment دارد، کاری نکن
         if ($contract->current_status === 'payment') {
-            session()->flash('message', 'Contract is already in payment status.');
+            $this->toast('info', 'Contract is already in payment status.', false);
             return;
         }
 
@@ -388,10 +390,10 @@ class RentalRequestReturnDocument extends Component
             // سپس به payment
             $contract->changeStatus('payment', auth()->id());
             DB::commit();
-            session()->flash('message', 'Status changed to Returned then Payment successfully.');
+            $this->toast('success', 'Status changed to Returned then Payment successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'Error changing status: ' . $e->getMessage());
+            $this->toast('error', 'Error changing status: ' . $e->getMessage(), false);
         }
     }
 

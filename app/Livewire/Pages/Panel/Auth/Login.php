@@ -6,9 +6,11 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
+use App\Livewire\Concerns\InteractsWithToasts;
 
 class Login extends Component
 {
+    use InteractsWithToasts;
     public function render()
     {
 
@@ -53,9 +55,9 @@ class Login extends Component
             $user->update(['last_login' => now()]);
 
             return redirect()->to(route('expert.dashboard'));
-        } else {
-            session()->flash('error', 'The number or password is incorrect.');
         }
+
+        $this->toast('error', 'The number or password is incorrect.', false);
     }
 
     // تابع استاندارد‌سازی شماره تلفن

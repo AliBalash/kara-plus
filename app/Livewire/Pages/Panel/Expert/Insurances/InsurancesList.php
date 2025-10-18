@@ -5,12 +5,14 @@ namespace App\Livewire\Pages\Panel\Expert\Insurances;
 use App\Models\Car;
 use Livewire\Component;
 use App\Models\Insurance;
+use App\Livewire\Concerns\InteractsWithToasts;
 use Livewire\WithPagination;
 
 class InsurancesList extends Component
 {
     public $insurances; // ویژگی باید قابل مشاهده باشد
     use WithPagination;
+    use InteractsWithToasts;
 
     public function mount() {}
 
@@ -25,7 +27,7 @@ class InsurancesList extends Component
         $insurance = Insurance::find($id);
         if ($insurance) {
             $insurance->delete();
-            session()->flash('message', 'Insurance deleted successfully!');
+            $this->toast('success', 'Insurance deleted successfully!');
             $this->loadInsurances(); // به روز رسانی لیست
         }
     }
