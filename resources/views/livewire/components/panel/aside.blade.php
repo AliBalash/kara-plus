@@ -83,7 +83,8 @@
                             </a>
                         </li>
 
-                        <li class="menu-item {{ Request::routeIs('rental-requests.inspection-list') ? 'active' : '' }}">
+                        <li
+                            class="menu-item {{ Request::routeIs('rental-requests.inspection-list', 'rental-requests.tars-approval', 'rental-requests.kardo-approval') ? 'active' : '' }}">
                             <a href="{{ route('rental-requests.inspection-list') }}" class="menu-link">
                                 <div data-i18n="Without menu">Inspection Contracts</div>
                             </a>

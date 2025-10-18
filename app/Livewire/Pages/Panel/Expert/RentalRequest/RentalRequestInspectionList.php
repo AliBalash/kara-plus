@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Livewire\Concerns\HandlesContractCancellation;
 
 class RentalRequestInspectionList extends Component
 {
@@ -22,6 +22,8 @@ class RentalRequestInspectionList extends Component
     public $sortField = 'pickup_date';
     public $sortDirection = 'asc';
     public $searchInput = '';
+    public $tarsStatus = 'all';
+    public $kardoStatus = 'all';
 
     protected array $statusScope = [
         'delivery',
@@ -39,6 +41,8 @@ class RentalRequestInspectionList extends Component
         'created_at',
     ];
 
+    protected $listeners = ['refreshContracts' => '$refresh'];
+
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => 'delivery'],
@@ -49,8 +53,9 @@ class RentalRequestInspectionList extends Component
         'returnTo' => ['except' => null],
         'sortField' => ['except' => 'pickup_date'],
         'sortDirection' => ['except' => 'asc'],
+        'tarsStatus' => ['except' => 'all'],
+        'kardoStatus' => ['except' => 'all'],
     ];
-    protected $listeners = ['refreshContracts' => '$refresh'];
 
     public function mount(): void
     {
@@ -86,8 +91,16 @@ class RentalRequestInspectionList extends Component
             'returnTo',
             'sortField',
             'sortDirection',
+            'tarsStatus',
+            'kardoStatus',
         ]);
 
+        $this->resetPage();
+    }
+
+    public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
         $this->resetPage();
     }
 
@@ -106,7 +119,7 @@ class RentalRequestInspectionList extends Component
             ? $this->statusScope
             : [$this->resolveStatus($this->statusFilter)];
 
-        $inspectionContracts = Contract::with(['customer', 'car.carModel', 'user', 'pickupDocument'])
+        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'pickupDocument'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($q) use ($likeSearch) {
@@ -130,18 +143,37 @@ class RentalRequestInspectionList extends Component
             ->when($this->pickupTo, fn($query) => $query->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($query) => $query->where('return_date', '>=', $this->returnFrom))
             ->when($this->returnTo, fn($query) => $query->where('return_date', '<=', $this->returnTo))
+            ->when($this->tarsStatus === 'pending', function ($query) {
+                $query->where(function ($inner) {
+                    $inner->whereDoesntHave('pickupDocument')
+                        ->orWhereHas('pickupDocument', fn($doc) => $doc->whereNull('tars_approved_at'));
+                });
+            })
+            ->when($this->tarsStatus === 'approved', function ($query) {
+                $query->whereHas('pickupDocument', fn($doc) => $doc->whereNotNull('tars_approved_at'));
+            })
+            ->when($this->kardoStatus === 'pending', function ($query) {
+                $query->where(function ($inner) {
+                    $inner->where('kardo_required', true)
+                        ->where(function ($required) {
+                            $required->whereDoesntHave('pickupDocument')
+                                ->orWhereHas('pickupDocument', fn($doc) => $doc->whereNull('kardo_approved_at'));
+                        });
+                });
+            })
+            ->when($this->kardoStatus === 'approved', function ($query) {
+                $query->where('kardo_required', true)
+                    ->whereHas('pickupDocument', fn($doc) => $doc->whereNotNull('kardo_approved_at'));
+            })
+            ->when($this->kardoStatus === 'not_required', function ($query) {
+                $query->where('kardo_required', false);
+            })
             ->orderBy($sortField, $sortDirection)
             ->paginate(10);
 
         return view('livewire.pages.panel.expert.rental-request.rental-request-inspection-list', [
-            'inspectionContracts' => $inspectionContracts
+            'contracts' => $contracts,
         ]);
-    }
-
-    public function applySearch(): void
-    {
-        $this->search = trim($this->searchInput);
-        $this->resetPage();
     }
 
     private function resolveStatus(?string $status): string

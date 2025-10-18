@@ -27,8 +27,8 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCreate;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestEdit;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestHistory;
-use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestInspectionList;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestKardoApproval;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestMe;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPayment;
@@ -39,6 +39,7 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReturnDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCancelledList;
 use App\Livewire\Pages\Panel\Expert\Payments\PaymentEdit;
 use App\Livewire\Pages\Panel\Expert\User\ManageUserRoles;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
 
 Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
@@ -60,7 +61,20 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
 
     Route::get('/expert/rental-requests/inspection-list', RentalRequestInspectionList::class)->name('rental-requests.inspection-list');
-    Route::get('/expert/rental-requests/inspection/{contractId}', RentalRequestInspection::class)->name('rental-requests.inspection');
+    Route::get('/expert/rental-requests/tars/{contractId}', RentalRequestTarsApproval::class)->name('rental-requests.tars-approval');
+    Route::get('/expert/rental-requests/kardo/{contractId}', RentalRequestKardoApproval::class)->name('rental-requests.kardo-approval');
+
+    Route::get('/expert/rental-requests/inspection/{contractId}', function ($contractId) {
+        return redirect()->route('rental-requests.tars-approval', $contractId);
+    })->name('rental-requests.inspection');
+
+    Route::get('/expert/rental-requests/tars-approvals', function () {
+        return redirect()->route('rental-requests.inspection-list');
+    })->name('rental-requests.tars-approvals');
+
+    Route::get('/expert/rental-requests/kardo-approvals', function () {
+        return redirect()->route('rental-requests.inspection-list');
+    })->name('rental-requests.kardo-approvals');
 
     Route::get('/expert/rental-requests/awaiting-return', RentalRequestAwaitingReturnList::class)->name('rental-requests.awaiting.return');
     Route::get('/expert/rental-requests/payment-list', RentalRequestPaymentList::class)->name('rental-requests.payment.list');

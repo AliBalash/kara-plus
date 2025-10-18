@@ -1,6 +1,5 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Inspection Contracts
-    </h4>
+    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Inspection Approvals</h4>
 
     <div class="row p-3 g-3">
         <div class="col-md-3">
@@ -37,6 +36,23 @@
         </div>
 
         <div class="col-md-2">
+            <select class="form-select" wire:model.live="tarsStatus">
+                <option value="all">All TARS States</option>
+                <option value="pending">Pending TARS</option>
+                <option value="approved">Approved TARS</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <select class="form-select" wire:model.live="kardoStatus">
+                <option value="all">All KARDO States</option>
+                <option value="pending">Pending KARDO</option>
+                <option value="approved">Approved KARDO</option>
+                <option value="not_required">KARDO Not Required</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
             <input type="date" class="form-control" placeholder="Pickup From" wire:model.live="pickupFrom">
         </div>
         <div class="col-md-2">
@@ -54,7 +70,6 @@
         </div>
     </div>
 
-    <!-- Display messages -->
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert" wire:key="success-message">
             <strong>Success!</strong> {{ session('success') }}
@@ -92,77 +107,55 @@
                             class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
+                    <th>Approvals</th>
                     <th>Actions</th>
-                    <th>Inspection Status</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
-                @foreach ($inspectionContracts as $contract)
+                @foreach ($contracts as $contract)
                     @php
                         $pickupDocument = $contract->pickupDocument;
-                        $tarsStatus = $pickupDocument && $pickupDocument->tars_approved_at ? 'Approved' : 'Pending';
-                        $kardoStatus = $contract->kardo_required
-                            ? ($pickupDocument && $pickupDocument->kardo_approved_at
-                                ? 'Approved'
-                                : 'Pending')
-                            : 'Not Required';
+                        $tarsDone = $pickupDocument && $pickupDocument->tars_approved_at;
+                        $kardoDone = $contract->kardo_required
+                            ? ($pickupDocument && $pickupDocument->kardo_approved_at)
+                            : false;
 
-                        $statusBadgeClasses = [
-                            'Approved' => 'bg-success',
-                            'Pending' => 'bg-warning text-dark',
-                            'Not Required' => 'bg-secondary',
-                        ];
-
-                        $tarsBadgeClass = $statusBadgeClasses[$tarsStatus] ?? 'bg-secondary';
-                        $kardoBadgeClass = $statusBadgeClasses[$kardoStatus] ?? 'bg-secondary';
+                        $tarsBadge = $tarsDone ? 'bg-success' : 'bg-warning text-dark';
+                        $kardoBadge = match (true) {
+                            ! $contract->kardo_required => 'bg-secondary',
+                            $kardoDone => 'bg-success',
+                            default => 'bg-warning text-dark',
+                        };
                     @endphp
                     <tr>
                         <td>{{ $contract->id }}</td>
-                        <td>{{ $contract->customer->fullName() }}</td>
-                        <td>{{ $contract->car->fullName() }}</td>
-                        <td>{{ $contract->pickup_date?->format('d M Y H:i') }}</td>
-                        <td>{{ $contract->return_date?->format('d M Y H:i') }}</td>
+                        <td>{{ optional($contract->customer)->fullName() ?? '—' }}</td>
+                        <td>{{ optional($contract->car)->fullName() ?? 'Vehicle N/A' }}</td>
+                        <td>{{ $contract->pickup_date?->format('d M Y H:i') ?? '—' }}</td>
+                        <td>{{ $contract->return_date?->format('d M Y H:i') ?? '—' }}</td>
                         <td>
-                            <div class="dropdown">
-                                <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
-                                    data-bs-toggle="dropdown">
-                                    <i class="bx bx-dots-vertical-rounded"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <a class="dropdown-item"
-                                        href="{{ route('rental-requests.inspection', $contract->id) }}">
-                                        <i class="bx bx-check-circle me-1"></i> Inspect Documents
-                                    </a>
-                                    <a class="dropdown-item"
-                                        href="{{ route('rental-requests.details', $contract->id) }}">
-                                        <i class="bx bx-info-circle me-1"></i> Details
-                                    </a>
-                                    <a class="dropdown-item"
-                                        href="{{ route('rental-requests.edit', $contract->id) }}">
-                                        <i class="bx bx-edit-alt me-1"></i> Edit
-                                    </a>
-                                    @if ($contract->current_status !== 'cancelled')
-                                        <a class="dropdown-item text-danger" href="javascript:void(0);"
-                                            onclick="if(confirm('Are you sure you want to cancel this contract?')) { @this.cancelContract({{ $contract->id }}) }">
-                                            <i class="bx bx-block me-1"></i> Cancel
-                                        </a>
-                                    @endif
-                                    <a class="dropdown-item" href="javascript:void(0);"
-                                        wire:click.prevent="deleteContract({{ $contract->id }})">
-                                        <i class="bx bx-trash me-1"></i> Delete
-                                    </a>
-                                </div>
-                            </div>
+                            <span class="badge {{ $tarsBadge }}">TARS: {{ $tarsDone ? 'Approved' : 'Pending' }}</span>
+                            <span class="badge {{ $kardoBadge }} mt-1">KARDO:
+                                {{ $contract->kardo_required ? ($kardoDone ? 'Approved' : 'Pending') : 'Not Required' }}</span>
                         </td>
                         <td>
-                            <span class="badge {{ $tarsBadgeClass }}">TARS: {{ $tarsStatus }}</span>
-                            <span class="badge {{ $kardoBadgeClass }} mt-1">KARDO: {{ $kardoStatus }}</span>
+                            <div class="btn-group" role="group" aria-label="Approval links">
+                                <a href="{{ route('rental-requests.tars-approval', $contract->id) }}"
+                                    class="btn btn-outline-primary btn-sm">
+                                    <i class="bx bx-check-shield me-1"></i>TARS
+                                </a>
+                                <a href="{{ route('rental-requests.kardo-approval', $contract->id) }}"
+                                    class="btn btn-outline-info btn-sm {{ $contract->kardo_required ? '' : 'disabled' }}"
+                                    @if (! $contract->kardo_required) aria-disabled="true" tabindex="-1" @endif>
+                                    <i class="bx bx-layer me-1"></i>KARDO
+                                </a>
+                            </div>
                         </td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
-        {{ $inspectionContracts->links() }}
+        {{ $contracts->links() }}
     </div>
 </div>
 
