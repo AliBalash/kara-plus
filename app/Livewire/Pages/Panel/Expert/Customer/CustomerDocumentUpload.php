@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 
 class CustomerDocumentUpload extends Component
@@ -32,6 +33,7 @@ class CustomerDocumentUpload extends Component
     protected array $documentTypes = ['visa', 'passport', 'license', 'ticket'];
     protected array $orderedLabels = ['front', 'back'];
     protected OptimizedUploadService $imageUploader;
+    protected array $pendingUploads = [];
 
     public function boot(OptimizedUploadService $imageUploader): void
     {
@@ -63,6 +65,10 @@ class CustomerDocumentUpload extends Component
         }
 
         $this->loadExistingFiles($customerDocument);
+
+        $this->pendingUploads = collect($this->documentTypes)
+            ->mapWithKeys(fn ($type) => [$type => []])
+            ->toArray();
     }
 
 
@@ -110,10 +116,13 @@ class CustomerDocumentUpload extends Component
 
         $customerDocument->save();
 
-        $this->reset(['visa', 'passport', 'license', 'ticket']);
-
         session()->flash('message', 'Documents uploaded successfully.');
         $this->loadExistingFiles($customerDocument);
+
+        foreach ($this->documentTypes as $type) {
+            $this->$type = [];
+            $this->pendingUploads[$type] = [];
+        }
     }
 
 
@@ -156,6 +165,14 @@ class CustomerDocumentUpload extends Component
     public function render()
     {
         return view('livewire.pages.panel.expert.customer.customer-document-upload');
+    }
+
+    public function updated($propertyName, $value)
+    {
+        if (in_array($propertyName, $this->documentTypes, true)) {
+            $this->{$propertyName} = $this->mergePendingUploads($propertyName, $value);
+            $this->pendingUploads[$propertyName] = $this->{$propertyName};
+        }
     }
 
     private function loadExistingFiles(?CustomerDocument $customerDocument): void
@@ -236,6 +253,19 @@ class CustomerDocumentUpload extends Component
         }
 
         return $storedFiles;
+    }
+
+    private function mergePendingUploads(string $type, $incoming): array
+    {
+        $incomingFiles = collect(is_array($incoming) ? $incoming : [])
+            ->filter(fn ($file) => $file instanceof TemporaryUploadedFile)
+            ->unique(fn (TemporaryUploadedFile $file) => $file->getFilename())
+            ->values();
+
+        $existing = collect($this->pendingUploads[$type] ?? [])
+            ->filter(fn ($file) => $file instanceof TemporaryUploadedFile);
+
+        return $existing->merge($incomingFiles)->values()->all();
     }
 
     private function buildFileName(string $type, string $label, string $extension): string
