@@ -3,54 +3,83 @@
 
     <div class="row p-3 g-3">
         <div class="col-md-3">
-            <form class="input-group" wire:submit.prevent="applySearch">
-                <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="search" class="form-control" placeholder="Search..." aria-label="Search"
-                    wire:model.defer="searchInput">
-                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
-                    wire:target="applySearch">
-                    <span wire:loading.remove wire:target="applySearch">Search</span>
-                    <span wire:loading wire:target="applySearch">...</span>
-                </button>
-            </form>
+            <div class="filter-field">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label class="filter-label" for="paymentSearch">Search</label>
+                    <span class="filter-hint">Customer, plate, ID</span>
+                </div>
+                <form class="input-group" wire:submit.prevent="applySearch">
+                    <span class="input-group-text"><i class="bx bx-search"></i></span>
+                    <input id="paymentSearch" type="search" class="form-control" placeholder="Start typing…"
+                        wire:model.defer="searchInput">
+                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
+                        wire:target="applySearch">
+                        <span wire:loading.remove wire:target="applySearch">Apply</span>
+                        <span wire:loading wire:target="applySearch">…</span>
+                    </button>
+                </form>
+            </div>
         </div>
 
         <div class="col-md-2">
-            <select class="form-select" wire:model.live="statusFilter">
-                <option value="payment">Payment</option>
-                <option value="awaiting_return">Awaiting Return</option>
-                <option value="returned">Returned</option>
-                <option value="complete">Complete</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="all">All Statuses</option>
-            </select>
+            <div class="filter-field">
+                <label class="filter-label" for="paymentStatus">Status</label>
+                <select id="paymentStatus" class="form-select" wire:model.live="statusFilter">
+                    <option value="payment">Payment</option>
+                    <option value="awaiting_return">Awaiting Return</option>
+                    <option value="returned">Returned</option>
+                    <option value="complete">Complete</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="all">All Statuses</option>
+                </select>
+            </div>
         </div>
 
         <div class="col-md-2">
-            <select class="form-select" wire:model.live="userFilter">
-                <option value="">All Contracts</option>
-                <option value="assigned">Assigned</option>
-                <option value="unassigned">Unassigned</option>
-            </select>
+            <div class="filter-field">
+                <label class="filter-label" for="paymentAssignment">Assignment</label>
+                <select id="paymentAssignment" class="form-select" wire:model.live="userFilter">
+                    <option value="">All Contracts</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="unassigned">Unassigned</option>
+                </select>
+            </div>
         </div>
 
         <div class="col-md-2">
-            <input type="date" class="form-control" placeholder="Pickup From" wire:model.live="pickupFrom">
+            <div class="filter-field">
+                <label class="filter-label" for="paymentPickupFrom">Pickup From</label>
+                <input id="paymentPickupFrom" type="date" class="form-control" wire:model.live="pickupFrom">
+            </div>
         </div>
         <div class="col-md-2">
-            <input type="date" class="form-control" placeholder="Pickup To" wire:model.live="pickupTo">
+            <div class="filter-field">
+                <label class="filter-label" for="paymentPickupTo">Pickup To</label>
+                <input id="paymentPickupTo" type="date" class="form-control" wire:model.live="pickupTo">
+            </div>
         </div>
         <div class="col-md-2">
-            <input type="date" class="form-control" placeholder="Return From" wire:model.live="returnFrom">
+            <div class="filter-field">
+                <label class="filter-label" for="paymentReturnFrom">Return From</label>
+                <input id="paymentReturnFrom" type="date" class="form-control" wire:model.live="returnFrom">
+            </div>
         </div>
         <div class="col-md-2">
-            <input type="date" class="form-control" placeholder="Return To" wire:model.live="returnTo">
+            <div class="filter-field">
+                <label class="filter-label" for="paymentReturnTo">Return To</label>
+                <input id="paymentReturnTo" type="date" class="form-control" wire:model.live="returnTo">
+            </div>
         </div>
 
         <div class="col-md-2">
-            <button class="btn btn-secondary w-100" type="button" wire:click="clearFilters">Clear Filters</button>
+            <div class="filter-field h-100">
+                <label class="filter-label">Reset</label>
+                <button class="btn btn-outline-secondary" type="button" wire:click="clearFilters">Clear Filters</button>
+            </div>
         </div>
     </div>
+
+    @include('livewire.pages.panel.expert.rental-request.partials.filter-styles')
 
 
     <!-- نمایش پیام‌ها -->
@@ -87,11 +116,13 @@
                     </th>
                     <th wire:click="sortBy('total_price')" role="button" class="sortable">
                         Total Contract (AED)
-                        <i
-                            class="bx {{ $sortField === 'total_price' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        <i class="bx {{ $sortField === 'total_price' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
                     <th>Remaining (AED)</th>
+                    <th>Sales Agent</th>
+                    <th>Submitted By</th>
+                    <th>Assigned Expert</th>
                     <th>Actions</th>
                     <th>Payment Status</th>
                 </tr>
@@ -109,6 +140,21 @@
                         <td>{{ $contract->pickup_date?->format('d M Y') }}</td>
                         <td>{{ number_format($contract->total_price, 2) }}</td>
                         <td>{{ number_format($remaining, 2) }}</td>
+                        <td>
+                            <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $contract->agent_sale ?? '—' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-dark">{{ $contract->submitted_by_name ?? 'Website' }}</span>
+                        </td>
+                        <td>
+                            @if ($contract->user)
+                                <span class="badge bg-success">{{ $contract->user->shortName() }}</span>
+                            @else
+                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
+                            @endif
+                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
