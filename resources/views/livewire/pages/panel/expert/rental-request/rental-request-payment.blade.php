@@ -116,7 +116,7 @@
                         @if ($receipt)
                             <div class="mt-2">
                                 <strong>Preview:</strong><br>
-                                <img src="{{ $receipt->temporaryUrl() }}" alt="Receipt Preview" class="img-thumbnail"
+                                <img src="{{ $receipt->temporaryUrl() }}" alt="Receipt Preview" class="img-thumbnail" loading="lazy" decoding="async" fetchpriority="low"
                                     width="200">
                             </div>
                         @endif
@@ -393,7 +393,7 @@
                         <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
                         <td>
                             @if ($payment->receipt)
-                                <a href="{{ asset('storage/') . '/' . $payment->receipt }}" target="_blank">View</a>
+                                <a href="{{ asset('storage/' . ltrim($payment->receipt, '/')) }}" target="_blank">View</a>
                             @else
                                 N/A
                             @endif

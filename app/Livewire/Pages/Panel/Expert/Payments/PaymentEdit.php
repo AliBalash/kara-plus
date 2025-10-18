@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\Payments;
 
 use App\Models\Payment;
 use App\Models\Contract;
+use App\Services\Media\OptimizedUploadService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -27,6 +28,13 @@ class PaymentEdit extends Component
     public $is_refundable = false;
     public $receipt;
     public $existingReceipt;
+
+    protected OptimizedUploadService $imageUploader;
+
+    public function boot(OptimizedUploadService $imageUploader): void
+    {
+        $this->imageUploader = $imageUploader;
+    }
 
     private const PAYMENT_TYPES = [
         'rental_fee',
@@ -53,7 +61,7 @@ class PaymentEdit extends Component
             'payment_date' => 'required|date',
             'is_refundable' => 'required|boolean',
             'rate' => 'nullable|numeric|min:0.0001',
-            'receipt' => 'nullable|image|max:2048',
+            'receipt' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ];
     }
 
@@ -132,12 +140,17 @@ class PaymentEdit extends Component
         $receiptPath = $this->existingReceipt;
 
         if ($this->receipt) {
-            if ($this->existingReceipt) {
+            if ($this->existingReceipt && Storage::disk('myimage')->exists($this->existingReceipt)) {
                 Storage::disk('myimage')->delete($this->existingReceipt);
             }
 
-            $filename = "payment_receipt_{$this->payment->contract_id}_" . time() . '.' . $this->receipt->getClientOriginalExtension();
-            $receiptPath = $this->receipt->storeAs('payment_receipts', $filename, 'myimage');
+            $baseName = "payment_receipt_{$this->payment->contract_id}_" . time();
+            $receiptPath = $this->imageUploader->store(
+                $this->receipt,
+                "payment_receipts/{$baseName}.webp",
+                'myimage',
+                ['quality' => 30, 'max_width' => 1600, 'max_height' => 1600]
+            );
         }
 
         $this->payment->update([

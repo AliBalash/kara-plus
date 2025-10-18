@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
 use App\Models\ReturnDocument;
+use App\Services\Media\OptimizedUploadService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -36,6 +37,15 @@ class RentalRequestReturnDocument extends Component
     public $contract;
     public $agreementNumber;
 
+    protected OptimizedUploadService $imageUploader;
+    public array $pendingInsideUploads = [];
+    public array $pendingOutsideUploads = [];
+
+    public function boot(OptimizedUploadService $imageUploader): void
+    {
+        $this->imageUploader = $imageUploader;
+    }
+
 
     public function mount($contractId)
     {
@@ -55,12 +65,8 @@ class RentalRequestReturnDocument extends Component
             $this->driverNote = $return->driver_note;
         }
         $this->existingFiles = [
-            'factorContract' => Storage::disk('myimage')->exists("ReturnDocument/factor_contract_{$this->contractId}.jpg")
-                ? Storage::url("ReturnDocument/factor_contract_{$this->contractId}.jpg")
-                : null,
-            'carDashboard' => Storage::disk('myimage')->exists("ReturnDocument/car_dashboard_{$this->contractId}.jpg")
-                ? Storage::url("ReturnDocument/car_dashboard_{$this->contractId}.jpg")
-                : null,
+            'factorContract' => $this->resolveDocumentUrl("ReturnDocument/factor_contract_{$this->contractId}"),
+            'carDashboard' => $this->resolveDocumentUrl("ReturnDocument/car_dashboard_{$this->contractId}"),
         ];
 
         $this->existingGalleries = [
@@ -70,6 +76,8 @@ class RentalRequestReturnDocument extends Component
 
         $this->carInsidePhotos = [];
         $this->carOutsidePhotos = [];
+        $this->pendingInsideUploads = [];
+        $this->pendingOutsideUploads = [];
 
         $this->remainingBalance = $this->contract->calculateRemainingBalance();
         $this->agreementNumber = optional($this->contract->pickupDocument)->agreement_number;
@@ -146,6 +154,9 @@ class RentalRequestReturnDocument extends Component
             $this->validate($validationRules);
         }
 
+        $this->carInsidePhotos = array_values($this->carInsidePhotos);
+        $this->carOutsidePhotos = array_values($this->carOutsidePhotos);
+
 
         // Start Database Transaction
         DB::beginTransaction();
@@ -163,8 +174,8 @@ class RentalRequestReturnDocument extends Component
 
             // Factor Contract Upload
             if ($this->factorContract) {
-                $factorPath = $this->factorContract->storeAs('ReturnDocument', "factor_contract_{$this->contractId}.jpg", 'myimage');
-                if (!$factorPath) throw new \Exception('Error uploading factor contract.');
+                $factorPath = "ReturnDocument/factor_contract_{$this->contractId}.webp";
+                $this->imageUploader->store($this->factorContract, $factorPath, 'myimage');
                 $returnDocument->factor_contract = $factorPath;
                 $uploadedPaths[] = $factorPath;
             }
@@ -172,8 +183,8 @@ class RentalRequestReturnDocument extends Component
 
             // Car Dashboard  Upload
             if ($this->carDashboard) {
-                $carDashboardPath = $this->carDashboard->storeAs('ReturnDocument', "car_dashboard_{$this->contractId}.jpg", 'myimage');
-                if (!$carDashboardPath) throw new \Exception('Error uploading dashboard photo.');
+                $carDashboardPath = "ReturnDocument/car_dashboard_{$this->contractId}.webp";
+                $this->imageUploader->store($this->carDashboard, $carDashboardPath, 'myimage');
                 $returnDocument->car_dashboard = $carDashboardPath;
                 $uploadedPaths[] = $carDashboardPath;
             }
@@ -235,28 +246,22 @@ class RentalRequestReturnDocument extends Component
 
     public function removeFile($fileType)
     {
-        // نگاشت بین fileType از view و نام واقعی فیلد در دیتابیس + نوع فایل
         $mapping = [
-            'tars_contract' => ['db_field' => 'tars_contract', 'extension' => 'jpg'],
-            'kardo_contract' => ['db_field' => 'kardo_contract', 'extension' => 'jpg'],
-            'factor_contract' => ['db_field' => 'factor_contract', 'extension' => 'jpg'],
-            'car_dashboard' => ['db_field' => 'car_dashboard', 'extension' => 'jpg'],
+            'factor_contract' => ['db_field' => 'factor_contract', 'view_key' => 'factorContract'],
+            'car_dashboard' => ['db_field' => 'car_dashboard', 'view_key' => 'carDashboard'],
         ];
 
-        // بررسی اعتبار کلید
-        if (!array_key_exists($fileType, $mapping)) {
+        if (! array_key_exists($fileType, $mapping)) {
             session()->flash('error', 'The file type "' . $fileType . '" is not valid.');
             return;
         }
 
         $dbField = $mapping[$fileType]['db_field'];
-        $extension = $mapping[$fileType]['extension'];
+        $viewKey = $mapping[$fileType]['view_key'];
+        $storedPath = $this->resolveStoredPath("ReturnDocument/{$fileType}_{$this->contractId}");
 
-        // ساخت مسیر فایل
-        $filePath = "ReturnDocument/{$fileType}_{$this->contractId}.{$extension}";
-
-        if (Storage::disk('myimage')->exists($filePath)) {
-            Storage::disk('myimage')->delete($filePath);
+        if ($storedPath && Storage::disk('myimage')->exists($storedPath)) {
+            Storage::disk('myimage')->delete($storedPath);
         }
 
         // پاک کردن مقدار از دیتابیس
@@ -266,8 +271,7 @@ class RentalRequestReturnDocument extends Component
             $returnDocument->save();
         }
 
-        // پاک‌سازی فایل در UI
-        $this->existingFiles[$fileType] = null;
+        $this->existingFiles[$viewKey] = null;
 
         session()->flash('message', ucfirst($fileType) . ' successfully removed.');
 
@@ -323,6 +327,49 @@ class RentalRequestReturnDocument extends Component
         $this->mount($this->contractId);
     }
 
+    public function updatedCarInsidePhotos($photos): void
+    {
+        $this->carInsidePhotos = $this->mergePendingUploads($this->pendingInsideUploads, $photos);
+        $this->pendingInsideUploads = $this->carInsidePhotos;
+    }
+
+    public function updatedCarOutsidePhotos($photos): void
+    {
+        $this->carOutsidePhotos = $this->mergePendingUploads($this->pendingOutsideUploads, $photos);
+        $this->pendingOutsideUploads = $this->carOutsidePhotos;
+    }
+
+    private function mergePendingUploads(array $current, $incoming): array
+    {
+        $incomingFiles = collect(is_array($incoming) ? $incoming : [])
+            ->filter(fn ($file) => $file instanceof TemporaryUploadedFile)
+            ->unique(fn (TemporaryUploadedFile $file) => $file->getFilename())
+            ->values();
+
+        $existing = collect($current)->filter(fn ($file) => $file instanceof TemporaryUploadedFile);
+
+        return $existing->merge($incomingFiles)->values()->all();
+    }
+
+    private function resolveDocumentUrl(string $basePath): ?string
+    {
+        $storedPath = $this->resolveStoredPath($basePath);
+
+        return $storedPath ? Storage::url($storedPath) : null;
+    }
+
+    private function resolveStoredPath(string $basePath): ?string
+    {
+        foreach (['webp', 'jpg', 'jpeg', 'png'] as $extension) {
+            $path = "{$basePath}.{$extension}";
+            if (Storage::disk('myimage')->exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
 
     public function changeStatusToPayment($contractId)
     {
@@ -350,24 +397,17 @@ class RentalRequestReturnDocument extends Component
 
     private function storeGalleryPhoto(TemporaryUploadedFile $photo, string $section): string
     {
-        $extension = Str::lower($photo->getClientOriginalExtension() ?: $photo->guessExtension() ?: 'jpg');
-        if (! in_array($extension, ['jpeg', 'jpg', 'png', 'webp'])) {
-            $extension = 'jpg';
-        }
-
         $filename = sprintf(
-            '%s_%s_%s.%s',
+            '%s_%s_%s.webp',
             $section,
             $this->contractId,
-            Str::uuid(),
-            $extension
+            Str::uuid()
         );
 
-        return $photo->storeAs(
-            "ReturnDocument/{$section}/{$this->contractId}",
-            $filename,
-            'myimage'
-        );
+        $path = "ReturnDocument/{$section}/{$this->contractId}/{$filename}";
+        $this->imageUploader->store($photo, $path, 'myimage');
+
+        return $path;
     }
 
     private function sanitizeGalleryArray($items): array

@@ -146,7 +146,7 @@
                             @if ($kardoRequired)
                                 @if (! empty($existingFiles['kardoContract']))
                                     <div class="ratio ratio-4x3 rounded-3 overflow-hidden bg-light border">
-                                        <img src="{{ $existingFiles['kardoContract'] }}" class="w-100 h-100 object-fit-cover"
+                                        <img src="{{ $existingFiles['kardoContract'] }}" class="w-100 h-100 object-fit-cover" loading="lazy" decoding="async" fetchpriority="low"
                                             alt="KARDO document preview">
                                     </div>
                                     <div class="d-flex flex-wrap gap-2 mt-3">

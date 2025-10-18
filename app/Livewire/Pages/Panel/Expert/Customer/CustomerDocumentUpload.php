@@ -2,12 +2,13 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Customer;
 
-use Livewire\Component;
-use Livewire\WithFileUploads;
-use Illuminate\Support\Facades\Storage;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
+use App\Services\Media\OptimizedUploadService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Livewire\Component;
+use Livewire\WithFileUploads;
 
 
 class CustomerDocumentUpload extends Component
@@ -30,6 +31,12 @@ class CustomerDocumentUpload extends Component
 
     protected array $documentTypes = ['visa', 'passport', 'license', 'ticket'];
     protected array $orderedLabels = ['front', 'back'];
+    protected OptimizedUploadService $imageUploader;
+
+    public function boot(OptimizedUploadService $imageUploader): void
+    {
+        $this->imageUploader = $imageUploader;
+    }
 
     public function mount($customerId, $contractId)
     {
@@ -65,13 +72,13 @@ class CustomerDocumentUpload extends Component
             'hotel_name' => 'required|string',
             'hotel_address' => 'required|string',
             'visa' => 'nullable|array|max:3',
-            'visa.*' => 'file|mimes:jpg,jpeg,png,pdf|max:8000',
+            'visa.*' => 'file|mimes:jpg,jpeg,png,webp,pdf|max:8000',
             'passport' => 'nullable|array|max:3',
-            'passport.*' => 'file|mimes:jpg,jpeg,png,pdf|max:8000',
+            'passport.*' => 'file|mimes:jpg,jpeg,png,webp,pdf|max:8000',
             'license' => 'nullable|array|max:3',
-            'license.*' => 'file|mimes:jpg,jpeg,png,pdf|max:8000',
+            'license.*' => 'file|mimes:jpg,jpeg,png,webp,pdf|max:8000',
             'ticket' => 'nullable|array|max:3',
-            'ticket.*' => 'file|mimes:jpg,jpeg,png,pdf|max:8000',
+            'ticket.*' => 'file|mimes:jpg,jpeg,png,webp,pdf|max:8000',
         ];
 
         foreach ($this->documentTypes as $type) {
@@ -208,9 +215,23 @@ class CustomerDocumentUpload extends Component
 
         foreach ($uploads as $file) {
             $label = $this->nextAvailableLabel($storedFiles);
-            $extension = Str::lower($file->getClientOriginalExtension());
-            $fileName = $this->buildFileName($type, $label, $extension);
-            $path = $file->storeAs('CustomerDocument', $fileName, 'myimage');
+            $extension = Str::lower($file->getClientOriginalExtension() ?: 'jpg');
+            $isPdf = $extension === 'pdf';
+
+            $finalExtension = $isPdf ? 'pdf' : 'webp';
+            $fileName = $this->buildFileName($type, $label, $finalExtension);
+
+            if ($isPdf) {
+                $path = $file->storeAs('CustomerDocument', $fileName, 'myimage');
+            } else {
+                $path = $this->imageUploader->store(
+                    $file,
+                    "CustomerDocument/{$fileName}",
+                    'myimage',
+                    ['quality' => 35, 'max_width' => 1800, 'max_height' => 1800]
+                );
+            }
+
             $storedFiles[$label] = $path;
         }
 

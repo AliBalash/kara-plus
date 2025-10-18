@@ -52,7 +52,7 @@
                         <td>
                             <div class="d-flex align-items-center">
                                 @if ($brand->brand_icon)
-                                    <img src="{{ asset('storage/' . $brand->brand_icon) }}" alt="Brand Icon"
+                                    <img src="{{ asset('storage/' . ltrim($brand->brand_icon, '/')) }}" alt="Brand Icon"
                                         class="rounded-circle me-2" width="30" height="30">
                                 @endif
                                 {{ $brand->brand }}

@@ -30,18 +30,12 @@ abstract class BaseRentalRequestApproval extends Component
 
     protected function resolveExistingFiles(): array
     {
-        $storage = Storage::disk('myimage');
-
-        $paths = [
-            'tarsContract' => "PickupDocument/tars_contract_{$this->contractId}.jpg",
-            'kardoContract' => "PickupDocument/kardo_contract_{$this->contractId}.jpg",
-            'factorContract' => "PickupDocument/factor_contract_{$this->contractId}.jpg",
-            'carDashboard' => "PickupDocument/car_dashboard_{$this->contractId}.jpg",
+        return [
+            'tarsContract' => $this->resolveDocumentUrl("PickupDocument/tars_contract_{$this->contractId}"),
+            'kardoContract' => $this->resolveDocumentUrl("PickupDocument/kardo_contract_{$this->contractId}"),
+            'factorContract' => $this->resolveDocumentUrl("PickupDocument/factor_contract_{$this->contractId}"),
+            'carDashboard' => $this->resolveDocumentUrl("PickupDocument/car_dashboard_{$this->contractId}"),
         ];
-
-        return collect($paths)
-            ->map(fn ($path) => $storage->exists($path) ? Storage::url($path) : null)
-            ->toArray();
     }
 
     protected function prepareCustomerDocuments(): void
@@ -145,5 +139,24 @@ abstract class BaseRentalRequestApproval extends Component
             Str::startsWith($variant, 'extra_') => $categoryLabel . ' ' . Str::after($variant, 'extra_'),
             default => $categoryLabel . ' ' . Str::of($variant)->replace('_', ' ')->title(),
         };
+    }
+
+    protected function resolveDocumentUrl(string $basePath): ?string
+    {
+        $storedPath = $this->resolveStoredPath($basePath);
+
+        return $storedPath ? Storage::url($storedPath) : null;
+    }
+
+    protected function resolveStoredPath(string $basePath): ?string
+    {
+        foreach (['webp', 'jpg', 'jpeg', 'png'] as $extension) {
+            $path = "{$basePath}.{$extension}";
+            if (Storage::disk('myimage')->exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 }

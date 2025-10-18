@@ -46,7 +46,7 @@
                         <div class="mb-3">
                             <label for="brandIcon" class="form-label">Brand Icon</label>
                             @if ($currentBrandIcon)
-                                <img src="{{ asset('storage/' . $currentBrandIcon) }}" alt="Current Brand Icon"
+                                <img src="{{ asset('storage/' . ltrim($currentBrandIcon, '/')) }}" alt="Current Brand Icon"
                                     width="100">
                             @endif
                             <input type="file" class="form-control" id="brandIcon" wire:model="brandIcon">

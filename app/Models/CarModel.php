@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Services\Media\OptimizedUploadService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CarModel extends Model
 {
@@ -59,9 +62,20 @@ class CarModel extends Model
     // دسترسی‌ برای آیکون برند
     public function getBrandIconUrlAttribute()
     {
-        return $this->brand_icon
-            ? asset('storage/brand_icons/' . $this->brand_icon)
-            : null;
+        if (! $this->brand_icon) {
+            return null;
+        }
+
+        $path = ltrim($this->brand_icon, '/');
+        if (! Str::startsWith($path, 'brand-icons/')) {
+            $path = 'brand-icons/' . ltrim($path, '/');
+        }
+
+        if (! Storage::disk('myimage')->exists($path)) {
+            return null;
+        }
+
+        return asset('storage/' . $path);
     }
 
     public function updateBrandIcon(Request $request, $id)
@@ -70,10 +84,21 @@ class CarModel extends Model
 
         if ($request->hasFile('brand_icon')) {
             $file = $request->file('brand_icon');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/brand_icons', $fileName);
 
-            $carModel->update(['brand_icon' => $fileName]);
+            if ($carModel->brand_icon && Storage::disk('myimage')->exists($carModel->brand_icon)) {
+                Storage::disk('myimage')->delete($carModel->brand_icon);
+            }
+
+            $uploader = app(OptimizedUploadService::class);
+            $slug = Str::slug(pathinfo($file->getClientOriginalName() ?? $carModel->fullName(), PATHINFO_FILENAME));
+            $storedPath = $uploader->store(
+                $file,
+                'brand-icons/' . $slug . '-' . time() . '.webp',
+                'myimage',
+                ['quality' => 50, 'max_width' => 512, 'max_height' => 512]
+            );
+
+            $carModel->update(['brand_icon' => $storedPath]);
         }
 
         return response()->json(['message' => 'Brand icon updated successfully']);
@@ -84,12 +109,18 @@ class CarModel extends Model
         $carModel = CarModel::findOrFail($id);
 
         foreach ($request->file('images') as $file) {
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/images', $fileName);
+            $uploader = app(OptimizedUploadService::class);
+            $slug = Str::slug(pathinfo($file->getClientOriginalName() ?? $carModel->fullName(), PATHINFO_FILENAME));
+            $storedPath = $uploader->store(
+                $file,
+                $slug . '-' . time() . '.webp',
+                'car_pics',
+                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080]
+            );
 
             $carModel->images()->create([
-                'file_path' => 'storage/images/',
-                'file_name' => $fileName,
+                'file_path' => 'assets/car-pics/',
+                'file_name' => basename($storedPath),
             ]);
         }
 

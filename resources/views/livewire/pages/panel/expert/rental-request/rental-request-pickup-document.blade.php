@@ -108,7 +108,7 @@
                             </div>
                             @if (!empty($existingFiles['tarsContract']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['tarsContract'] }}" class="img-fluid preview-clickable"
+                                    <img src="{{ $existingFiles['tarsContract'] }}" class="img-fluid preview-clickable" loading="lazy" decoding="async" fetchpriority="low"
                                         alt="Tars Contract"
                                         onclick="openModal('{{ $existingFiles['tarsContract'] }}')">
                                 </div>
@@ -147,7 +147,7 @@
                                 </div>
                                 @if (!empty($existingFiles['kardoContract']))
                                     <div class="preview-wrapper mb-3">
-                                        <img src="{{ $existingFiles['kardoContract'] }}"
+                                        <img src="{{ $existingFiles['kardoContract'] }}" loading="lazy" decoding="async" fetchpriority="low"
                                             class="img-fluid preview-clickable" alt="Kardo Contract"
                                             onclick="openModal('{{ $existingFiles['kardoContract'] }}')">
                                     </div>
@@ -188,7 +188,7 @@
                             </div>
                             @if (!empty($existingFiles['factorContract']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['factorContract'] }}"
+                                    <img src="{{ $existingFiles['factorContract'] }}" loading="lazy" decoding="async" fetchpriority="low"
                                         class="img-fluid preview-clickable" alt="Watcher's Receipt"
                                         onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 </div>
@@ -220,7 +220,7 @@
                             </div>
                             @if (!empty($existingFiles['carDashboard']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['carDashboard'] }}"
+                                    <img src="{{ $existingFiles['carDashboard'] }}" loading="lazy" decoding="async" fetchpriority="low"
                                         class="img-fluid preview-clickable" alt="Dashboard Photo"
                                         onclick="openModal('{{ $existingFiles['carDashboard'] }}')">
                                 </div>
@@ -249,7 +249,7 @@
                                 <div class="gallery-grid mb-3">
                                     @foreach ($existingGalleries['inside'] as $photo)
                                         <div class="gallery-thumb position-relative" wire:key="inside-existing-{{ md5($photo['path']) }}">
-                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img"
+                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img" loading="lazy" decoding="async" fetchpriority="low"
                                                 alt="Inside car photo" onclick="openModal('{{ $photo['url'] }}')">
                                             <button type="button" class="btn btn-sm btn-danger rounded-circle gallery-remove"
                                                 onclick="confirmGalleryRemoval('inside', '{{ addslashes($photo['path']) }}')">
@@ -271,7 +271,7 @@
                                     <div class="gallery-grid">
                                         @foreach ($carInsidePhotos as $index => $photo)
                                             <div class="gallery-thumb" wire:key="inside-temp-{{ $index }}">
-                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img"
+                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img" loading="lazy" decoding="async" fetchpriority="low"
                                                     alt="Inside preview">
                                             </div>
                                         @endforeach
@@ -312,7 +312,7 @@
                                 <div class="gallery-grid mb-3">
                                     @foreach ($existingGalleries['outside'] as $photo)
                                         <div class="gallery-thumb position-relative" wire:key="outside-existing-{{ md5($photo['path']) }}">
-                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img"
+                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img" loading="lazy" decoding="async" fetchpriority="low"
                                                 alt="Outside car photo" onclick="openModal('{{ $photo['url'] }}')">
                                             <button type="button" class="btn btn-sm btn-danger rounded-circle gallery-remove"
                                                 onclick="confirmGalleryRemoval('outside', '{{ addslashes($photo['path']) }}')">
@@ -334,7 +334,7 @@
                                     <div class="gallery-grid">
                                         @foreach ($carOutsidePhotos as $index => $photo)
                                             <div class="gallery-thumb" wire:key="outside-temp-{{ $index }}">
-                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img"
+                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img" loading="lazy" decoding="async" fetchpriority="low"
                                                     alt="Outside preview">
                                             </div>
                                         @endforeach
@@ -552,7 +552,7 @@
                                                         <i class="bx bxs-file-pdf me-1"></i> View PDF
                                                     </a>
                                                 @else
-                                                    <img src="{{ $file['url'] }}" class="img-fluid rounded preview-clickable"
+                                                    <img src="{{ $file['url'] }}" class="img-fluid rounded preview-clickable" loading="lazy" decoding="async" fetchpriority="low"
                                                         alt="{{ $docLabel }} {{ $file['label'] }}" onclick="openModal('{{ $file['url'] }}')">
                                                 @endif
                                             </div>

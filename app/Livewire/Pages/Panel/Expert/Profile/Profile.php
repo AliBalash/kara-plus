@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Profile;
 
+use App\Services\Media\OptimizedUploadService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -19,16 +20,22 @@ class Profile extends Component
     public $national_code;
     public $address;
     public $last_login;
+    protected OptimizedUploadService $imageUploader;
 
     protected $rules = [
         'first_name'    => 'required|string|max:255',
         'last_name'     => 'required|string|max:255',
         'email'         => 'required|email|max:255',
         'phone'         => 'nullable|string|max:20',
-        'new_avatar'    => 'nullable|image|max:800',
+        'new_avatar'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:800',
         'national_code' => 'nullable|string|max:10',
         'address'       => 'nullable|string|max:255',
     ];
+
+    public function boot(OptimizedUploadService $imageUploader): void
+    {
+        $this->imageUploader = $imageUploader;
+    }
 
     public function mount()
     {
@@ -62,7 +69,12 @@ class Profile extends Component
             }
 
             // آپلود عکس جدید
-            $avatarPath = $this->new_avatar->store('avatars', 'myimage');
+            $avatarPath = $this->imageUploader->store(
+                $this->new_avatar,
+                'avatars/user_' . $user->id . '_' . time() . '.webp',
+                'myimage',
+                ['quality' => 40, 'max_width' => 512, 'max_height' => 512]
+            );
             $user->avatar = $avatarPath; // اصلاح مسیر ذخیره‌سازی
         }
 

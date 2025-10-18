@@ -107,7 +107,7 @@
                             </div>
                             @if (!empty($existingFiles['factorContract']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['factorContract'] }}" class="img-fluid preview-clickable"
+                                    <img src="{{ $existingFiles['factorContract'] }}" class="img-fluid preview-clickable" loading="lazy" decoding="async" fetchpriority="low"
                                         alt="Watcher's Receipt" onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 </div>
                             @endif
@@ -134,7 +134,7 @@
                             </div>
                             @if (!empty($existingFiles['carDashboard']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['carDashboard'] }}" class="img-fluid preview-clickable"
+                                    <img src="{{ $existingFiles['carDashboard'] }}" class="img-fluid preview-clickable" loading="lazy" decoding="async" fetchpriority="low"
                                         alt="Dashboard Photo" onclick="openModal('{{ $existingFiles['carDashboard'] }}')">
                                 </div>
                             @endif
@@ -161,7 +161,7 @@
                                 <div class="gallery-grid mb-3">
                                     @foreach ($existingGalleries['inside'] as $photo)
                                         <div class="gallery-thumb position-relative" wire:key="return-inside-{{ md5($photo['path']) }}">
-                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img"
+                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img" loading="lazy" decoding="async" fetchpriority="low"
                                                 alt="Inside car photo" onclick="openModal('{{ $photo['url'] }}')">
                                             <button type="button" class="btn btn-sm btn-danger rounded-circle gallery-remove"
                                                 onclick="confirmGalleryRemoval('inside', '{{ addslashes($photo['path']) }}')">
@@ -183,7 +183,7 @@
                                     <div class="gallery-grid">
                                         @foreach ($carInsidePhotos as $index => $photo)
                                             <div class="gallery-thumb" wire:key="return-inside-temp-{{ $index }}">
-                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img"
+                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img" loading="lazy" decoding="async" fetchpriority="low"
                                                     alt="Inside preview">
                                             </div>
                                         @endforeach
@@ -224,7 +224,7 @@
                                 <div class="gallery-grid mb-3">
                                     @foreach ($existingGalleries['outside'] as $photo)
                                         <div class="gallery-thumb position-relative" wire:key="return-outside-{{ md5($photo['path']) }}">
-                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img"
+                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img" loading="lazy" decoding="async" fetchpriority="low"
                                                 alt="Outside car photo" onclick="openModal('{{ $photo['url'] }}')">
                                             <button type="button" class="btn btn-sm btn-danger rounded-circle gallery-remove"
                                                 onclick="confirmGalleryRemoval('outside', '{{ addslashes($photo['path']) }}')">
@@ -246,7 +246,7 @@
                                     <div class="gallery-grid">
                                         @foreach ($carOutsidePhotos as $index => $photo)
                                             <div class="gallery-thumb" wire:key="return-outside-temp-{{ $index }}">
-                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img"
+                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img" loading="lazy" decoding="async" fetchpriority="low"
                                                     alt="Outside preview">
                                             </div>
                                         @endforeach

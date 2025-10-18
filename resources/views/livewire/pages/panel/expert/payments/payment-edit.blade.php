@@ -94,7 +94,7 @@
                         <div class="col-md-6">
                             <label class="form-label">Current Receipt</label>
                             <div>
-                                <a href="{{ asset('storage/' . $existingReceipt) }}" target="_blank">View current receipt</a>
+                                <a href="{{ asset('storage/' . ltrim($existingReceipt, '/')) }}" target="_blank">View current receipt</a>
                             </div>
                         </div>
                     @endif
