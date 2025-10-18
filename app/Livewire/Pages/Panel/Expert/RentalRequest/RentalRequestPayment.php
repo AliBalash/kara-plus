@@ -2,14 +2,15 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
-use Livewire\Component;
-use App\Models\Payment;
 use App\Models\Contract;
 use App\Models\CustomerDocument;
+use App\Models\Payment;
+use App\Services\Media\OptimizedUploadService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Livewire\Component;
 use Livewire\WithFileUploads;
 
 class RentalRequestPayment extends Component
@@ -48,9 +49,15 @@ class RentalRequestPayment extends Component
     public $contract;
     public $contractMeta = [];
     public $payment_method = 'cash';
+    protected OptimizedUploadService $imageUploader;
 
 
 
+
+    public function boot(OptimizedUploadService $imageUploader): void
+    {
+        $this->imageUploader = $imageUploader;
+    }
 
     private const PAYMENT_METHODS = ['cash', 'transfer', 'ticket'];
     private const PAYMENT_TYPES = [
@@ -76,7 +83,7 @@ class RentalRequestPayment extends Component
             'payment_method' => ['required', Rule::in(self::PAYMENT_METHODS)],
             'is_refundable' => ['required', 'boolean'],
             'rate' => ['nullable', 'numeric', 'min:0.0001'],
-            'receipt' => ['nullable', 'image', 'max:2048'], // optional receipt image
+            'receipt' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], // optional receipt image
         ];
     }
 
@@ -196,8 +203,13 @@ class RentalRequestPayment extends Component
             $receiptPath = null;
 
             if ($this->receipt) {
-                $filename = "payment_receipt_{$this->contractId}_" . time() . '.' . $this->receipt->getClientOriginalExtension();
-                $receiptPath = $this->receipt->storeAs('payment_receipts', $filename, 'myimage');
+                $baseName = "payment_receipt_{$this->contractId}_" . time();
+                $receiptPath = $this->imageUploader->store(
+                    $this->receipt,
+                    "payment_receipts/{$baseName}.webp",
+                    'myimage',
+                    ['quality' => 30, 'max_width' => 1600, 'max_height' => 1600]
+                );
             }
 
             Payment::create([

@@ -9,7 +9,7 @@
 
             <div class="card-body">
                 <div class="d-flex align-items-start align-items-sm-center gap-4">
-                    <img src="{{ Auth::user()->avatar ? asset('storage/' . Auth::user()->avatar) : asset('assets/panel/assets/img/avatars/unknow.jpg') }}"
+                    <img src="{{ Auth::user()->avatar ? asset('storage/' . ltrim(Auth::user()->avatar, '/')) : asset('assets/panel/assets/img/avatars/unknow.jpg') }}"
                         alt="User Avatar" class="d-block rounded" height="100" width="100" />
 
 

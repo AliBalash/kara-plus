@@ -129,7 +129,7 @@
                         <div class="mt-3">
                             @if (! empty($existingFiles['tarsContract']))
                                 <div class="ratio ratio-4x3 rounded-3 overflow-hidden bg-light border">
-                                    <img src="{{ $existingFiles['tarsContract'] }}" class="w-100 h-100 object-fit-cover"
+                                <img src="{{ $existingFiles['tarsContract'] }}" class="w-100 h-100 object-fit-cover" loading="lazy" decoding="async" fetchpriority="low"
                                         alt="TARS document preview">
                                 </div>
                                 <div class="d-flex flex-wrap gap-2 mt-3">

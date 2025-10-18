@@ -136,7 +136,7 @@
                                             </td>
                                             <td>
                                                 @if ($payment->receipt)
-                                                    <a href="{{ asset('storage/' . $payment->receipt) }}"
+                                                    <a href="{{ asset('storage/' . ltrim($payment->receipt, '/')) }}"
                                                         target="_blank">View</a>
                                                 @else
                                                     -

@@ -4,10 +4,11 @@ namespace App\Livewire\Pages\Panel\Expert\Brand;
 
 
 use App\Models\CarModel;
+use App\Services\Media\OptimizedUploadService;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
-use Illuminate\Support\Str;
 
 class BrandForm extends Component
 {
@@ -19,6 +20,12 @@ class BrandForm extends Component
     public $brandIcon;
     public $currentBrandIcon;
     public $additionalImage;
+    protected OptimizedUploadService $imageUploader;
+
+    public function boot(OptimizedUploadService $imageUploader): void
+    {
+        $this->imageUploader = $imageUploader;
+    }
 
     public function mount($brandId = null)
     {
@@ -43,7 +50,7 @@ class BrandForm extends Component
         $this->validate([
             'brand' => 'required|string|max:255',
             'model' => 'required|string|max:255',
-            'brandIcon' => 'nullable|image|mimes:jpg,jpeg,png|max:1024',
+            'brandIcon' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'additionalImage' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5048',
 
         ]);
@@ -56,10 +63,17 @@ class BrandForm extends Component
 
 
         if ($this->brandIcon) {
-            if ($carModel->brand_icon && Storage::exists('public/' . $carModel->brand_icon)) {
-                Storage::delete('public/' . $carModel->brand_icon);
+            if ($carModel->brand_icon && Storage::disk('myimage')->exists($carModel->brand_icon)) {
+                Storage::disk('myimage')->delete($carModel->brand_icon);
             }
-            $path = $this->brandIcon->store('brand-icons', 'myimage');
+
+            $path = $this->imageUploader->store(
+                $this->brandIcon,
+                'brand-icons/' . Str::slug($this->brand . '-' . $this->model) . '-' . time() . '.webp',
+                'myimage',
+                ['quality' => 50, 'max_width' => 512, 'max_height' => 512]
+            );
+
             $carModel->brand_icon = $path;
         }
         $carModel->save();
@@ -67,26 +81,28 @@ class BrandForm extends Component
         // Handle image upload
         if ($this->additionalImage) {
             $imageModel = $carModel->image;
-            // Delete old image if exists
             if ($imageModel && $imageModel->file_name) {
                 Storage::disk('car_pics')->delete($imageModel->file_name);
             }
 
-            $extension = $this->additionalImage->getClientOriginalExtension();
-            $carName = $carModel->fullname();
-            $safeName = Str::slug($carName) . '.' . $extension;
+            $safeName = Str::slug($carModel->fullname() ?? ($this->brand . '-' . $this->model)) . '-' . time() . '.webp';
+            $storedPath = $this->imageUploader->store(
+                $this->additionalImage,
+                $safeName,
+                'car_pics',
+                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080]
+            );
 
-            Storage::disk('car_pics')->putFileAs('', $this->additionalImage, $safeName);
+            $fileName = basename($storedPath);
 
-            // Update or create image
-            if (!$imageModel) {
-                $imageModel = $carModel->image()->create([
-                    'file_path' => 'car-pics/',
-                    'file_name' => $safeName,
+            if (! $imageModel) {
+                $carModel->image()->create([
+                    'file_path' => 'assets/car-pics/',
+                    'file_name' => $fileName,
                 ]);
             } else {
                 $imageModel->update([
-                    'file_name' => $safeName
+                    'file_name' => $fileName,
                 ]);
             }
         }
