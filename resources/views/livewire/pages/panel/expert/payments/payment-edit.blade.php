@@ -2,20 +2,6 @@
     <h4 class="fw-bold py-3 mb-4">
         <span class="text-muted fw-light">Payments /</span> Edit Payment #{{ $payment->id }}
     </h4>
-
-    @if (session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <div class="card">
         <div class="card-header">Payment Details</div>
         <div class="card-body">
