@@ -12,7 +12,7 @@
         'success' => [
             'title' => 'Success',
             'icon' => 'bi-check-circle-fill',
-            'class' => 'text-bg-success',
+            'class' => 'text-bg-success kara-toast-success',
             'delay' => 4000,
             'autohide' => true,
             'close_class' => 'btn-close btn-close-white',
@@ -146,10 +146,48 @@
             .toast-container .toast {
                 min-width: 320px;
                 backdrop-filter: blur(6px);
+                border: 0;
             }
 
             .toast-container .toast .display-6 {
                 font-size: 1.75rem;
+            }
+
+            .toast-container .toast.kara-toast-success {
+                position: relative;
+                background: linear-gradient(135deg, #2ecc71, #27ae60);
+                color: #fff;
+                box-shadow: 0 12px 30px rgba(39, 174, 96, 0.35);
+                overflow: hidden;
+            }
+
+            .toast-container .toast.kara-toast-success::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.45), transparent 58%);
+                opacity: 0.9;
+            }
+
+            .toast-container .toast.kara-toast-success .toast-body {
+                position: relative;
+                z-index: 1;
+            }
+
+            .toast-container .toast.kara-toast-success .display-6 {
+                background: rgba(255, 255, 255, 0.25);
+                border-radius: 0.85rem;
+                padding: 0.45rem 0.6rem;
+                color: #fff;
+                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+            }
+
+            .toast-container .toast.kara-toast-success .fw-semibold {
+                color: #ffffff;
+            }
+
+            .toast-container .toast.kara-toast-success .mb-0.small {
+                color: rgba(255, 255, 255, 0.85);
             }
 
             @media (max-width: 575.98px) {

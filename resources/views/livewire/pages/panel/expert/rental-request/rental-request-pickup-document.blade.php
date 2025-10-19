@@ -105,7 +105,8 @@
                             <div class="mt-3">
                                 <label class="form-label mb-1">Agreement Number</label>
                                 <input type="text" class="form-control" placeholder="Enter agreement number"
-                                    wire:model.lazy="agreement_number" inputmode="numeric" pattern="[0-9]*">
+                                    wire:model.lazy="agreement_number" inputmode="numeric" pattern="[0-9]*"
+                                    @if ($contract->kardo_required) required @endif>
                                 <small class="text-muted d-block">Digits only, up to 30 characters.</small>
                                 @error('agreement_number')
                                     <span class="text-danger small d-block">{{ $message }}</span>

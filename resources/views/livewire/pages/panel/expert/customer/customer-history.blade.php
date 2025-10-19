@@ -2,11 +2,6 @@
     <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Customer /</span> History</h4>
 
     <div>
-        @if (session()->has('message'))
-            <div class="alert alert-success">
-                {{ session('message') }}
-            </div>
-        @endif
         <div class="row">
             <div class="col-md-12">
                 <ul class="nav nav-pills flex-column flex-md-row mb-3">

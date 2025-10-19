@@ -8,13 +8,6 @@
                             <img width="120" src="{{ asset('assets/panel/assets/img/logo/logo.png') }}" alt="logo">
                         </span>
                     </div>
-                    @if (session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <strong> {{ session('error') }} </strong>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"
-                                aria-label="Close"></button>
-                        </div>
-                    @endif
                     <form wire:submit.prevent="login">
                         <div class="mb-3">
                             <label for="phone" class="form-label">Phone</label>

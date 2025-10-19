@@ -88,17 +88,6 @@
     </div>
 
     @include('livewire.pages.panel.expert.rental-request.partials.filter-styles')
-
-
-    <!-- نمایش پیام‌ها -->
-    <!-- Flash Messages -->
-    @if (session('success'))
-        <div class="alert alert-success mt-2">{{ session('success') }}</div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-danger mt-2">{{ session('error') }}</div>
-    @endif
-
     <!-- Table -->
     <div class="table-responsive mt-3">
         <table class="table table-hover">

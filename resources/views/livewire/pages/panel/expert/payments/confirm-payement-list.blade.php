@@ -66,15 +66,6 @@
             <button class="btn btn-secondary w-100" wire:click="clearFilters">Clear All Filters</button>
         </div>
     </div>
-
-    <!-- Flash Messages -->
-    @if (session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
     <!-- Accordion for Grouped Payments -->
     <div class="accordion" id="paymentAccordion">
         @forelse($groupedPayments as $contractId => $paymentGroup)
