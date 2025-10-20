@@ -24,6 +24,7 @@ class RentalRequestPaymentList extends Component
     public $pickupTo;
     public $returnFrom;
     public $returnTo;
+    public $paymentContracts;
 
     protected $listeners = [
         'refreshContracts' => '$refresh',
@@ -129,6 +130,8 @@ class RentalRequestPaymentList extends Component
             ->when($this->returnTo, fn($query) => $query->where('return_date', '<=', $this->returnTo))
             ->orderBy($sortField, $sortDirection)
             ->paginate(10);
+
+        $this->paymentContracts = $paymentContracts;
 
         return view('livewire.pages.panel.expert.rental-request.rental-request-payment-list', [
             'paymentContracts' => $paymentContracts,

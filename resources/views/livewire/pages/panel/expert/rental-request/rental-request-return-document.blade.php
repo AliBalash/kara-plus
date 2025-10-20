@@ -75,8 +75,11 @@
                 </div>
 
                 <div class="row g-4">
+                    @php $carDashboardRequired = empty($existingFiles['carDashboard']); @endphp
+                    @php $insideRequired = empty($existingGalleries['inside']); @endphp
+                    @php $outsideRequired = empty($existingGalleries['outside']); @endphp
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="factorContract">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label fw-semibold mb-0">Watcher's Receipt</label>
                                 @if (!empty($existingFiles['factorContract']))
@@ -90,7 +93,7 @@
                                         alt="Watcher's Receipt" onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="factorContract">
+                            <input type="file" class="form-control @error('factorContract') is-invalid @enderror" wire:model="factorContract">
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             <div wire:loading wire:target="factorContract" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
@@ -103,9 +106,11 @@
                     </div>
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="carDashboard">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="form-label fw-semibold mb-0">KM/Fuel Photo</label>
+                                <label class="form-label fw-semibold mb-0" for="returnCarDashboardInput">
+                                    KM/Fuel Photo @if ($carDashboardRequired)<span class="badge bg-danger-subtle text-danger ms-1">Required</span>@endif
+                                </label>
                                 @if (!empty($existingFiles['carDashboard']))
                                     <button type="button" class="btn btn-outline-danger btn-sm"
                                         onclick="confirmDeletion('car_dashboard')">Remove</button>
@@ -117,7 +122,8 @@
                                         alt="Dashboard Photo" onclick="openModal('{{ $existingFiles['carDashboard'] }}')">
                                 </div>
                             @endif
-                            <input type="file" class="form-control" wire:model="carDashboard">
+                            <input id="returnCarDashboardInput" type="file" class="form-control @error('carDashboard') is-invalid @enderror" wire:model="carDashboard"
+                                @if ($carDashboardRequired) aria-required="true" @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             <div wire:loading wire:target="carDashboard" class="progress mt-3">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
@@ -130,9 +136,11 @@
                     </div>
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="carInsidePhotos">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="form-label fw-semibold mb-0">Inside Car Photos</label>
+                                <label class="form-label fw-semibold mb-0" for="returnCarInsideInput">
+                                    Inside Car Photos @if ($insideRequired)<span class="badge bg-danger-subtle text-danger ms-1">Required</span>@endif
+                                </label>
                                 <span class="badge bg-primary-subtle text-primary">Max 12</span>
                             </div>
 
@@ -172,8 +180,8 @@
 
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
-                                <input type="file" class="form-control" wire:model="carInsidePhotos" accept="image/*"
-                                    multiple>
+                                <input id="returnCarInsideInput" type="file" class="form-control @error('carInsidePhotos') is-invalid @enderror @error('carInsidePhotos.*') is-invalid @enderror" wire:model="carInsidePhotos" accept="image/*"
+                                    multiple @if ($insideRequired) aria-required="true" @endif>
                                 <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12 photos
                                     in gallery.</small>
                             </div>
@@ -193,9 +201,11 @@
                     </div>
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="carOutsidePhotos">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="form-label fw-semibold mb-0">Outside Car Photos</label>
+                                <label class="form-label fw-semibold mb-0" for="returnCarOutsideInput">
+                                    Outside Car Photos @if ($outsideRequired)<span class="badge bg-danger-subtle text-danger ms-1">Required</span>@endif
+                                </label>
                                 <span class="badge bg-success-subtle text-success">Max 12</span>
                             </div>
 
@@ -235,8 +245,8 @@
 
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
-                                <input type="file" class="form-control" wire:model="carOutsidePhotos" accept="image/*"
-                                    multiple>
+                                <input id="returnCarOutsideInput" type="file" class="form-control @error('carOutsidePhotos') is-invalid @enderror @error('carOutsidePhotos.*') is-invalid @enderror" wire:model="carOutsidePhotos" accept="image/*"
+                                    multiple @if ($outsideRequired) aria-required="true" @endif>
                                 <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12 photos
                                     in gallery.</small>
                             </div>
@@ -256,9 +266,10 @@
                     </div>
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="mileage">
                             <label class="form-label fw-semibold">Mileage</label>
-                            <input type="text" class="form-control" wire:model="mileage" placeholder="Km on return">
+                            <input type="number" class="form-control @error('mileage') is-invalid @enderror" wire:model="mileage" inputmode="numeric"
+                                min="0" step="1" placeholder="Km on return">
                             <small class="text-muted d-block mt-2">Odometer reading on return</small>
                             @error('mileage')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
@@ -267,9 +278,9 @@
                     </div>
 
                     <div class="col-12 col-xl-6">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="note">
                             <label class="form-label fw-semibold">Note (Optional)</label>
-                            <textarea class="form-control" wire:model="note" rows="4" placeholder="Internal note for the team"></textarea>
+                            <textarea class="form-control @error('note') is-invalid @enderror" wire:model="note" rows="4" placeholder="Internal note for the team"></textarea>
                             @error('note')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
                             @enderror
@@ -277,9 +288,9 @@
                     </div>
 
                     <div class="col-12 col-xl-6">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="driverNote">
                             <label class="form-label fw-semibold">Driver Note (Optional)</label>
-                            <textarea class="form-control" wire:model="driverNote" rows="4" placeholder="Message for the driver"></textarea>
+                            <textarea class="form-control @error('driverNote') is-invalid @enderror" wire:model="driverNote" rows="4" placeholder="Message for the driver"></textarea>
                             @error('driverNote')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
                             @enderror
@@ -287,20 +298,23 @@
                     </div>
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="card shadow-sm h-100">
+                        <div class="card shadow-sm h-100" data-validation-field="fuelLevel">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>Fuel Level</span>
+                                <span>Fuel Level <span class="badge bg-danger-subtle text-danger ms-2">Required</span></span>
                                 <span class="badge bg-primary">{{ $fuelLevel }}%</span>
                             </div>
                             <div class="card-body">
                                 <label for="fuelRange" class="form-label">Select fuel level (%)</label>
-                                <input type="range" class="form-range" min="0" max="100" step="10" id="fuelRange"
-                                    wire:model.live="fuelLevel">
+                                <input type="range" class="form-range @error('fuelLevel') is-invalid @enderror" min="0" max="100" step="10" id="fuelRange"
+                                    wire:model.live="fuelLevel" aria-required="true">
                                 <div class="d-flex justify-content-between small text-muted">
                                     <span>0%</span>
                                     <span>50%</span>
                                     <span>100%</span>
                                 </div>
+                                @error('fuelLevel')
+                                    <span class="text-danger small d-block mt-2">{{ $message }}</span>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -353,6 +367,26 @@
             border-radius: 0.9rem;
             padding: 0.75rem 1rem;
             min-width: 160px;
+        }
+
+        .validation-error-highlight {
+            animation: validationPulse 1.4s ease;
+            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.2);
+            border-color: rgba(220, 53, 69, 0.35) !important;
+        }
+
+        @keyframes validationPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.3);
+            }
+
+            70% {
+                box-shadow: 0 0 0 0.6rem rgba(220, 53, 69, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            }
         }
 
         .status-card-label {
@@ -514,3 +548,5 @@
         }
     </script>
 @endpush
+
+@include('components.panel.form-error-highlighter')

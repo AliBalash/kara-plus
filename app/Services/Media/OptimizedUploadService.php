@@ -27,20 +27,26 @@ class OptimizedUploadService
         try {
             $image = Image::useImageDriver($this->preferredDriver());
 
-            $image->loadFile($file->getRealPath())
+            $pipeline = $image->loadFile($file->getRealPath())
                 ->orientation()
                 ->fit(Fit::Max, $maxWidth, $maxHeight)
                 ->quality($quality)
-                ->format($format)
-                ->optimize()
-                ->save($tempFile);
+                ->format($format);
 
-            try {
-                ImageOptimizer::optimize($tempFile);
-            } catch (Throwable $optimizerException) {
-                Log::warning('Image optimizer binary not available.', [
-                    'message' => $optimizerException->getMessage(),
-                ]);
+            if ($this->canUseExternalOptimizers()) {
+                $pipeline->optimize();
+            }
+
+            $pipeline->save($tempFile);
+
+            if ($this->canUseExternalOptimizers()) {
+                try {
+                    ImageOptimizer::optimize($tempFile);
+                } catch (Throwable $optimizerException) {
+                    Log::warning('Image optimizer binary not available.', [
+                        'message' => $optimizerException->getMessage(),
+                    ]);
+                }
             }
 
             $stream = fopen($tempFile, 'rb');
@@ -100,6 +106,20 @@ class OptimizedUploadService
     private function preferredDriver(): string
     {
         return extension_loaded('imagick') ? 'imagick' : 'gd';
+    }
+
+    private function canUseExternalOptimizers(): bool
+    {
+        $requiredFunctions = ['proc_open', 'exec', 'shell_exec'];
+        $disabledFunctions = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+
+        foreach ($requiredFunctions as $function) {
+            if (!function_exists($function) || in_array($function, $disabledFunctions, true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function prepareTempFile(string $format): string

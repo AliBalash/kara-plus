@@ -46,102 +46,154 @@
                 <div class="card mb-4 shadow-sm border-0">
                     <h5 class="card-header bg-primary text-white mb-3 rounded-top">Customer Information</h5>
                     <div class="card-body demo-vertical-spacing demo-only-element">
-                        <div class="input-group mt-3">
-                            <span class="input-group-text"><i class="bx bx-user"></i></span>
-                            <input type="text" class="form-control @error('first_name') is-invalid @enderror"
-                                placeholder="First Name" wire:model="first_name" data-bs-toggle="tooltip"
-                                title="Enter customer's first name">
+                        <div class="mb-3 mt-3" data-validation-field="first_name">
+                            <label class="form-label fw-semibold mb-1" for="firstNameInput">
+                                First Name <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-user"></i></span>
+                                <input id="firstNameInput" type="text"
+                                    class="form-control @error('first_name') is-invalid @enderror"
+                                    placeholder="First Name" wire:model="first_name" data-bs-toggle="tooltip"
+                                    title="Enter customer's first name">
+                            </div>
                             @error('first_name')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-user"></i></span>
-                            <input type="text" class="form-control @error('last_name') is-invalid @enderror"
-                                placeholder="Last Name" wire:model="last_name" data-bs-toggle="tooltip"
-                                title="Enter customer's last name">
+                        <div class="mb-3" data-validation-field="last_name">
+                            <label class="form-label fw-semibold mb-1" for="lastNameInput">
+                                Last Name <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-user"></i></span>
+                                <input id="lastNameInput" type="text"
+                                    class="form-control @error('last_name') is-invalid @enderror"
+                                    placeholder="Last Name" wire:model="last_name" data-bs-toggle="tooltip"
+                                    title="Enter customer's last name">
+                            </div>
                             @error('last_name')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-envelope"></i></span>
-                            <input type="email" class="form-control @error('email') is-invalid @enderror"
-                                placeholder="Email" wire:model="email" data-bs-toggle="tooltip"
-                                title="Enter customer's email address">
+                        <div class="mb-3" data-validation-field="email">
+                            <label class="form-label fw-semibold mb-1" for="emailInput">
+                                Email
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-envelope"></i></span>
+                                <input id="emailInput" type="email"
+                                    class="form-control @error('email') is-invalid @enderror"
+                                    placeholder="Email" wire:model="email" data-bs-toggle="tooltip"
+                                    title="Enter customer's email address">
+                            </div>
                             @error('email')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-phone"></i></span>
-                            <input type="tel" class="form-control @error('phone') is-invalid @enderror"
-                                placeholder="Phone" wire:model="phone" data-bs-toggle="tooltip"
-                                title="Enter customer's phone number">
+                        <div class="mb-3" data-validation-field="phone">
+                            <label class="form-label fw-semibold mb-1" for="phoneInput">
+                                Phone <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-phone"></i></span>
+                                <input id="phoneInput" type="tel"
+                                    class="form-control @error('phone') is-invalid @enderror"
+                                    placeholder="Phone" wire:model="phone" data-bs-toggle="tooltip"
+                                    title="Enter customer's phone number">
+                            </div>
                             @error('phone')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-chat"></i></span>
-                            <input type="tel" class="form-control @error('messenger_phone') is-invalid @enderror"
-                                placeholder="Messenger Phone" wire:model="messenger_phone" data-bs-toggle="tooltip"
-                                title="Enter customer's messenger phone number">
+                        <div class="mb-3" data-validation-field="messenger_phone">
+                            <label class="form-label fw-semibold mb-1" for="messengerPhoneInput">
+                                Messenger Phone <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-chat"></i></span>
+                                <input id="messengerPhoneInput" type="tel"
+                                    class="form-control @error('messenger_phone') is-invalid @enderror"
+                                    placeholder="Messenger Phone" wire:model="messenger_phone" data-bs-toggle="tooltip"
+                                    title="Enter customer's messenger phone number">
+                            </div>
                             @error('messenger_phone')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-home"></i></span>
-                            <input type="text" class="form-control @error('address') is-invalid @enderror"
-                                placeholder="Address" wire:model="address" data-bs-toggle="tooltip"
-                                title="Enter customer's address">
+                        <div class="mb-3" data-validation-field="address">
+                            <label class="form-label fw-semibold mb-1" for="addressInput">Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-home"></i></span>
+                                <input id="addressInput" type="text" class="form-control @error('address') is-invalid @enderror"
+                                    placeholder="Address" wire:model="address" data-bs-toggle="tooltip"
+                                    title="Enter customer's address">
+                            </div>
                             @error('address')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-id-card"></i></span>
-                            <input type="text" class="form-control @error('national_code') is-invalid @enderror"
-                                placeholder="National Code" wire:model="national_code" data-bs-toggle="tooltip"
-                                title="Enter customer's national code">
+                        <div class="mb-3" data-validation-field="national_code">
+                            <label class="form-label fw-semibold mb-1" for="nationalCodeInput">
+                                National Code <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-id-card"></i></span>
+                                <input id="nationalCodeInput" type="text"
+                                    class="form-control @error('national_code') is-invalid @enderror"
+                                    placeholder="National Code" wire:model="national_code" data-bs-toggle="tooltip"
+                                    title="Enter customer's national code">
+                            </div>
                             @error('national_code')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bxs-plane-take-off"></i></span>
-                            <input type="text" class="form-control @error('passport_number') is-invalid @enderror"
-                                placeholder="Passport Number" wire:model="passport_number" data-bs-toggle="tooltip"
-                                title="Enter customer's passport number">
+                        <div class="mb-3" data-validation-field="passport_number">
+                            <label class="form-label fw-semibold mb-1" for="passportNumberInput">Passport Number</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bxs-plane-take-off"></i></span>
+                                <input id="passportNumberInput" type="text"
+                                    class="form-control @error('passport_number') is-invalid @enderror"
+                                    placeholder="Passport Number" wire:model="passport_number" data-bs-toggle="tooltip"
+                                    title="Enter customer's passport number">
+                            </div>
                             @error('passport_number')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-calendar"></i></span>
-                            <input type="date"
-                                class="form-control @error('passport_expiry_date') is-invalid @enderror"
-                                min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" wire:model="passport_expiry_date"
-                                data-bs-toggle="tooltip" title="Enter passport expiry date">
+                        <div class="mb-3" data-validation-field="passport_expiry_date">
+                            <label class="form-label fw-semibold mb-1" for="passportExpiryInput">Passport Expiry Date</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-calendar"></i></span>
+                                <input id="passportExpiryInput" type="date"
+                                    class="form-control @error('passport_expiry_date') is-invalid @enderror"
+                                    min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" wire:model="passport_expiry_date"
+                                    data-bs-toggle="tooltip" title="Enter passport expiry date">
+                            </div>
                             @error('passport_expiry_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-flag"></i></span>
-                            <input type="text" class="form-control @error('nationality') is-invalid @enderror"
-                                placeholder="Nationality" wire:model="nationality" data-bs-toggle="tooltip"
-                                title="Enter customer's nationality">
+                        <div class="mb-3" data-validation-field="nationality">
+                            <label class="form-label fw-semibold mb-1" for="nationalityInput">
+                                Nationality <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-flag"></i></span>
+                                <input id="nationalityInput" type="text"
+                                    class="form-control @error('nationality') is-invalid @enderror"
+                                    placeholder="Nationality" wire:model="nationality" data-bs-toggle="tooltip"
+                                    title="Enter customer's nationality">
+                            </div>
                             @error('nationality')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
@@ -202,35 +254,46 @@
                 <div class="card mb-4 shadow-sm border-0">
                     <h5 class="card-header bg-primary text-white mb-3 rounded-top">Car Information</h5>
                     <div class="card-body demo-vertical-spacing demo-only-element">
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-car"></i></span>
-                            <select class="form-control text-uppercase @error('selectedBrand') is-invalid @enderror"
-                                wire:model.live="selectedBrand" required data-bs-toggle="tooltip"
-                                title="Select car brand">
-                                <option value="">Select Brand</option>
-                                @foreach ($brands as $brand)
-                                    <option value="{{ $brand }}">{{ $brand }}</option>
-                                @endforeach
-                            </select>
+                        <div class="mb-3" data-validation-field="selectedBrand">
+                            <label class="form-label fw-semibold mb-1" for="selectedBrandInput">
+                                Car Brand <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-car"></i></span>
+                                <select id="selectedBrandInput"
+                                    class="form-control text-uppercase @error('selectedBrand') is-invalid @enderror"
+                                    wire:model.live="selectedBrand" aria-required="true" data-bs-toggle="tooltip"
+                                    title="Select car brand">
+                                    <option value="">Select Brand</option>
+                                    @foreach ($brands as $brand)
+                                        <option value="{{ $brand }}">{{ $brand }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             @error('selectedBrand')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
                         @if ($selectedBrand)
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="bx bx-car"></i></span>
-                                <select
-                                    class="form-control text-uppercase @error('selectedModelId') is-invalid @enderror"
-                                    wire:model.live="selectedModelId" required data-bs-toggle="tooltip"
-                                    title="Select car model">
-                                    <option value="">Select Model</option>
-                                    @foreach ($models as $model)
-                                        <option value="{{ $model->id }}">
-                                            {{ $model->model }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                            <div class="mb-3" data-validation-field="selectedModelId">
+                                <label class="form-label fw-semibold mb-1" for="selectedModelInput">
+                                    Car Model <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bx bx-car"></i></span>
+                                    <select id="selectedModelInput"
+                                        class="form-control text-uppercase @error('selectedModelId') is-invalid @enderror"
+                                        wire:model.live="selectedModelId" aria-required="true" data-bs-toggle="tooltip"
+                                        title="Select car model">
+                                        <option value="">Select Model</option>
+                                        @foreach ($models as $model)
+                                            <option value="{{ $model->id }}">
+                                                {{ $model->model }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 @error('selectedModelId')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -238,20 +301,26 @@
                         @endif
 
                         @if ($selectedModelId)
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="bx bx-car"></i></span>
-                                <select class="form-control @error('selectedCarId') is-invalid @enderror"
-                                    wire:model.live="selectedCarId" required data-bs-toggle="tooltip"
-                                    title="Select available car">
-                                    <option value="">Select Car</option>
-                                    @foreach ($carsForModel as $car)
-                                        <option value="{{ $car['id'] }}"
-                                            @if ($car['status'] !== 'available') class="text-warning" @endif>
-                                            {{ $car['plate_number'] }} - {{ $car['manufacturing_year'] }} -
-                                            {{ $car['color'] }} - [{{ ucfirst($car['status']) }}]
-                                        </option>
-                                    @endforeach
-                                </select>
+                            <div class="mb-3" data-validation-field="selectedCarId">
+                                <label class="form-label fw-semibold mb-1" for="selectedCarInput">
+                                    Car <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bx bx-car"></i></span>
+                                    <select id="selectedCarInput"
+                                        class="form-control @error('selectedCarId') is-invalid @enderror"
+                                        wire:model.live="selectedCarId" aria-required="true" data-bs-toggle="tooltip"
+                                        title="Select available car">
+                                        <option value="">Select Car</option>
+                                        @foreach ($carsForModel as $car)
+                                            <option value="{{ $car['id'] }}"
+                                                @if ($car['status'] !== 'available') class="text-warning" @endif>
+                                                {{ $car['plate_number'] }} - {{ $car['manufacturing_year'] }} -
+                                                {{ $car['color'] }} - [{{ ucfirst($car['status']) }}]
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 @error('selectedCarId')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -371,55 +440,76 @@
                     <h5 class="card-header bg-primary text-white mb-3 rounded-top">Contract Details</h5>
                     <div class="card-body">
                         <h6 class="text-primary mb-3">Location & Dates</h6>
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-map"></i></span>
-                            <select class="form-control @error('pickup_location') is-invalid @enderror"
-                                wire:model.live="pickup_location" data-bs-toggle="tooltip"
-                                title="Select pickup location">
-                                <option value="">Pickup Location</option>
-                                @foreach (array_keys($this->locationCosts) as $location)
-                                    <option value="{{ $location }}">{{ $location }}</option>
-                                @endforeach
-                            </select>
+                        <div class="mb-3" data-validation-field="pickup_location">
+                            <label class="form-label fw-semibold mb-1" for="pickupLocationInput">
+                                Pickup Location <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-map"></i></span>
+                                <select id="pickupLocationInput"
+                                    class="form-control @error('pickup_location') is-invalid @enderror"
+                                    wire:model.live="pickup_location" aria-required="true" data-bs-toggle="tooltip"
+                                    title="Select pickup location">
+                                    <option value="">Pickup Location</option>
+                                    @foreach (array_keys($this->locationCosts) as $location)
+                                        <option value="{{ $location }}">{{ $location }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             @error('pickup_location')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-map"></i></span>
-                            <select class="form-control @error('return_location') is-invalid @enderror"
-                                wire:model.live="return_location" data-bs-toggle="tooltip"
-                                title="Select return location">
-                                <option value="">Return Location</option>
-                                @foreach (array_keys($this->locationCosts) as $location)
-                                    <option value="{{ $location }}">{{ $location }}</option>
-                                @endforeach
-                            </select>
+                        <div class="mb-3" data-validation-field="return_location">
+                            <label class="form-label fw-semibold mb-1" for="returnLocationInput">
+                                Return Location <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-map"></i></span>
+                                <select id="returnLocationInput"
+                                    class="form-control @error('return_location') is-invalid @enderror"
+                                    wire:model.live="return_location" aria-required="true" data-bs-toggle="tooltip"
+                                    title="Select return location">
+                                    <option value="">Return Location</option>
+                                    @foreach (array_keys($this->locationCosts) as $location)
+                                        <option value="{{ $location }}">{{ $location }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             @error('return_location')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-calendar"></i></span>
-                            <input type="datetime-local"
-                                class="form-control @error('pickup_date') is-invalid @enderror"
-                                wire:model.live="pickup_date" data-bs-toggle="tooltip"
-                                min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}"
-                                title="Select pickup date and time">
+                        <div class="mb-3" data-validation-field="pickup_date">
+                            <label class="form-label fw-semibold mb-1" for="pickupDateInput">
+                                Pickup Date & Time <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-calendar"></i></span>
+                                <input id="pickupDateInput" type="datetime-local"
+                                    class="form-control @error('pickup_date') is-invalid @enderror"
+                                    wire:model.live="pickup_date" aria-required="true" data-bs-toggle="tooltip"
+                                    min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}"
+                                    title="Select pickup date and time">
+                            </div>
                             @error('pickup_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="input-group mb-3">
-                            <span class="input-group-text"><i class="bx bx-calendar"></i></span>
-                            <input type="datetime-local"
-                                class="form-control @error('return_date') is-invalid @enderror"
-                                wire:model.live="return_date" data-bs-toggle="tooltip"
-                                min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}"
-                                title="Select return date and time">
+                        <div class="mb-3" data-validation-field="return_date">
+                            <label class="form-label fw-semibold mb-1" for="returnDateInput">
+                                Return Date & Time <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-calendar"></i></span>
+                                <input id="returnDateInput" type="datetime-local"
+                                    class="form-control @error('return_date') is-invalid @enderror"
+                                    wire:model.live="return_date" aria-required="true" data-bs-toggle="tooltip"
+                                    title="Select return date and time">
+                            </div>
                             @error('return_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
@@ -610,6 +700,8 @@
         </div>
     </form>
 </div>
+
+@include('components.panel.form-error-highlighter')
 
 @section('styles')
     <style>

@@ -43,6 +43,40 @@ class RentalRequestReturnDocument extends Component
     public array $pendingInsideUploads = [];
     public array $pendingOutsideUploads = [];
 
+    protected array $messages = [
+        'fuelLevel.required' => 'Please record the fuel level at return.',
+        'fuelLevel.integer' => 'Fuel level must be provided as a whole number between 0 and 100.',
+        'fuelLevel.between' => 'Fuel level must be between 0% and 100%.',
+        'mileage.required' => 'Please enter the odometer reading at return.',
+        'mileage.integer' => 'Mileage may only contain numbers.',
+        'mileage.min' => 'Mileage cannot be negative.',
+        'mileage.max' => 'Mileage looks too large. Please check the value.',
+        'factorContract.image' => 'Watcher receipt must be an image file.',
+        'factorContract.mimes' => 'Watcher receipt must be a JPG, PNG, or WEBP file.',
+        'carDashboard.required' => 'Uploading a dashboard photo is mandatory on return.',
+        'carDashboard.image' => 'Dashboard photo must be an image.',
+        'carDashboard.mimes' => 'Dashboard photo must be a JPG, PNG, or WEBP file.',
+        'carInsidePhotos.required' => 'Please upload at least one interior photo.',
+        'carInsidePhotos.array' => 'Interior photos must be selected from valid image files.',
+        'carInsidePhotos.*.image' => 'Every interior photo must be a valid image.',
+        'carInsidePhotos.*.mimes' => 'Interior photos must be JPG, PNG, or WEBP files.',
+        'carOutsidePhotos.required' => 'Please upload at least one exterior photo.',
+        'carOutsidePhotos.array' => 'Exterior photos must be selected from valid image files.',
+        'carOutsidePhotos.*.image' => 'Every exterior photo must be a valid image.',
+        'carOutsidePhotos.*.mimes' => 'Exterior photos must be JPG, PNG, or WEBP files.',
+    ];
+
+    protected array $validationAttributes = [
+        'carInsidePhotos' => 'interior photos',
+        'carInsidePhotos.*' => 'interior photo',
+        'carOutsidePhotos' => 'exterior photos',
+        'carOutsidePhotos.*' => 'exterior photo',
+        'factorContract' => 'watcher receipt',
+        'carDashboard' => 'dashboard photo',
+        'fuelLevel' => 'fuel level',
+        'mileage' => 'mileage',
+    ];
+
     public function boot(OptimizedUploadService $imageUploader): void
     {
         $this->imageUploader = $imageUploader;
@@ -153,7 +187,7 @@ class RentalRequestReturnDocument extends Component
 
 
         if ($validationRules) {
-            $this->validate($validationRules);
+            $this->validateWithScroll($validationRules);
         }
 
         $this->carInsidePhotos = array_values($this->carInsidePhotos);
@@ -353,6 +387,28 @@ class RentalRequestReturnDocument extends Component
         return $existing->merge($incomingFiles)->values()->all();
     }
 
+    private function validateWithScroll(array $rules): void
+    {
+        try {
+            $this->validate($rules, $this->messages, $this->validationAttributes);
+        } catch (ValidationException $exception) {
+            $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
+            throw $exception;
+        }
+    }
+
+    private function firstErrorField(ValidationException $exception): string
+    {
+        $errors = $exception->errors();
+        $firstKey = array_key_first($errors);
+
+        if (! is_string($firstKey) || $firstKey === '') {
+            return '';
+        }
+
+        return Str::before($firstKey, '.');
+    }
+
     private function resolveDocumentUrl(string $basePath): ?string
     {
         $storedPath = $this->resolveStoredPath($basePath);
@@ -379,7 +435,7 @@ class RentalRequestReturnDocument extends Component
 
         // اگر کنترکت قبلاً وضعیت payment دارد، کاری نکن
         if ($contract->current_status === 'payment') {
-            $this->toast('info', 'Contract is already in payment status.', false);
+            $this->toast('success', 'Contract is already in payment status.');
             return;
         }
 
