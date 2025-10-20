@@ -20,7 +20,7 @@
         'info' => [
             'title' => 'Information',
             'icon' => 'bi-info-circle-fill',
-            'class' => 'text-bg-info',
+            'class' => 'text-bg-info kara-toast-info',
             'delay' => 5000,
             'autohide' => true,
             'close_class' => 'btn-close btn-close-white',
@@ -28,7 +28,7 @@
         'warning' => [
             'title' => 'Warning',
             'icon' => 'bi-exclamation-triangle-fill',
-            'class' => 'text-bg-warning',
+            'class' => 'text-bg-warning kara-toast-warning',
             'delay' => 6000,
             'autohide' => true,
             'close_class' => 'btn-close',
@@ -36,7 +36,7 @@
         'error' => [
             'title' => 'Error',
             'icon' => 'bi-x-circle-fill',
-            'class' => 'text-bg-danger',
+            'class' => 'text-bg-danger kara-toast-error',
             'delay' => 8000,
             'autohide' => false,
             'close_class' => 'btn-close btn-close-white',
@@ -44,7 +44,7 @@
         'status' => [
             'title' => 'Status',
             'icon' => 'bi-bell-fill',
-            'class' => 'text-bg-secondary',
+            'class' => 'text-bg-secondary kara-toast-status',
             'delay' => 5000,
             'autohide' => true,
             'close_class' => 'btn-close btn-close-white',
@@ -52,7 +52,7 @@
         'validation' => [
             'title' => 'Validation Error',
             'icon' => 'bi-exclamation-octagon-fill',
-            'class' => 'text-bg-danger',
+            'class' => 'text-bg-danger kara-toast-error',
             'delay' => 8000,
             'autohide' => false,
             'close_class' => 'btn-close btn-close-white',
@@ -143,51 +143,112 @@
 @once
     @push('styles')
         <style>
+            .toast-container {
+                width: 360px;
+            }
+
             .toast-container .toast {
                 min-width: 320px;
-                backdrop-filter: blur(6px);
-                border: 0;
+                border-radius: 1rem;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+                overflow: hidden;
+                position: relative;
+            }
+
+            .toast-container .toast::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(120deg, rgba(255, 255, 255, 0.22), transparent 65%);
+                opacity: 0.85;
+                pointer-events: none;
+            }
+
+            .toast-container .toast .toast-body {
+                position: relative;
+                z-index: 2;
             }
 
             .toast-container .toast .display-6 {
                 font-size: 1.75rem;
+                border-radius: 0.85rem;
+                padding: 0.45rem 0.6rem;
+                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.25);
+            }
+
+            .toast-container .toast .fw-semibold {
+                font-size: 0.95rem;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+
+            .toast-container .toast .mb-0.small {
+                font-size: 0.85rem;
             }
 
             .toast-container .toast.kara-toast-success {
-                position: relative;
-                background: linear-gradient(135deg, #2ecc71, #27ae60);
+                background: linear-gradient(135deg, #20bf6b, #01baef);
                 color: #fff;
-                box-shadow: 0 12px 30px rgba(39, 174, 96, 0.35);
-                overflow: hidden;
             }
 
-            .toast-container .toast.kara-toast-success::before {
-                content: '';
-                position: absolute;
-                inset: 0;
-                background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.45), transparent 58%);
-                opacity: 0.9;
-            }
-
-            .toast-container .toast.kara-toast-success .toast-body {
-                position: relative;
-                z-index: 1;
-            }
-
-            .toast-container .toast.kara-toast-success .display-6 {
-                background: rgba(255, 255, 255, 0.25);
-                border-radius: 0.85rem;
-                padding: 0.45rem 0.6rem;
-                color: #fff;
-                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
-            }
-
-            .toast-container .toast.kara-toast-success .fw-semibold {
-                color: #ffffff;
-            }
-
+            .toast-container .toast.kara-toast-success .display-6,
+            .toast-container .toast.kara-toast-success .fw-semibold,
             .toast-container .toast.kara-toast-success .mb-0.small {
-                color: rgba(255, 255, 255, 0.85);
+                color: #fff;
+            }
+
+            .toast-container .toast.kara-toast-info {
+                background: linear-gradient(135deg, #5c6cff, #4fd1c5);
+                color: #f8fafc;
+            }
+
+            .toast-container .toast.kara-toast-info .display-6,
+            .toast-container .toast.kara-toast-info .fw-semibold,
+            .toast-container .toast.kara-toast-info .mb-0.small {
+                color: #f8fafc;
+            }
+
+            .toast-container .toast.kara-toast-warning {
+                background: linear-gradient(135deg, #ff9f1c, #ff5714);
+                color: #2f1100;
+            }
+
+            .toast-container .toast.kara-toast-warning .display-6 {
+                background: rgba(255, 255, 255, 0.35);
+                color: #2f1100;
+            }
+
+            .toast-container .toast.kara-toast-warning .fw-semibold {
+                color: #2f1100;
+            }
+
+            .toast-container .toast.kara-toast-warning .mb-0.small {
+                color: rgba(47, 17, 0, 0.85);
+            }
+
+            .toast-container .toast.kara-toast-error {
+                background: linear-gradient(135deg, #ff4d6d, #c9184a);
+                color: #fff;
+            }
+
+            .toast-container .toast.kara-toast-error .display-6,
+            .toast-container .toast.kara-toast-error .fw-semibold,
+            .toast-container .toast.kara-toast-error .mb-0.small {
+                color: #fff;
+            }
+
+            .toast-container .toast.kara-toast-status {
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: #f8fafc;
+            }
+
+            .toast-container .toast.kara-toast-status .display-6,
+            .toast-container .toast.kara-toast-status .fw-semibold,
+            .toast-container .toast.kara-toast-status .mb-0.small {
+                color: #f8fafc;
             }
 
             @media (max-width: 575.98px) {

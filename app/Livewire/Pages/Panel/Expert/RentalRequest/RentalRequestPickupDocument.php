@@ -58,6 +58,49 @@ class RentalRequestPickupDocument extends Component
     public array $pendingInsideUploads = [];
     public array $pendingOutsideUploads = [];
 
+    protected array $messages = [
+        'fuelLevel.required' => 'Please select the fuel level before submitting the pickup checklist.',
+        'fuelLevel.integer' => 'Fuel level must be provided as a whole number between 0 and 100.',
+        'fuelLevel.between' => 'Fuel level must be between 0% and 100%.',
+        'mileage.required' => 'Please enter the odometer reading captured at pickup.',
+        'mileage.integer' => 'Mileage may only contain numbers.',
+        'mileage.min' => 'Mileage cannot be a negative value.',
+        'mileage.max' => 'Mileage looks too large. Please double-check and try again.',
+        'tarsContract.required' => 'Uploading the Tars contract is mandatory for pickup.',
+        'tarsContract.image' => 'Tars contract must be provided as an image file.',
+        'tarsContract.mimes' => 'Tars contract must be a JPG, PNG, or WEBP file.',
+        'kardoContract.required' => 'Uploading the KARDO inspection contract is mandatory for this booking.',
+        'kardoContract.image' => 'KARDO contract must be provided as an image.',
+        'kardoContract.mimes' => 'KARDO contract must be a JPG, PNG, or WEBP file.',
+        'factorContract.image' => 'Watcher receipt must be provided as an image.',
+        'factorContract.mimes' => 'Watcher receipt must be a JPG, PNG, or WEBP file.',
+        'carDashboard.required' => 'A dashboard photo showing mileage and fuel level is required.',
+        'carDashboard.image' => 'Dashboard photo must be an image.',
+        'carDashboard.mimes' => 'Dashboard photo must be a JPG, PNG, or WEBP file.',
+        'carInsidePhotos.required' => 'Please upload at least one interior photo.',
+        'carInsidePhotos.array' => 'Interior photos must be selected from valid image files.',
+        'carInsidePhotos.*.image' => 'Every interior photo must be a valid image.',
+        'carInsidePhotos.*.mimes' => 'Interior photos must be JPG, PNG, or WEBP files.',
+        'carOutsidePhotos.required' => 'Please upload at least one exterior photo.',
+        'carOutsidePhotos.array' => 'Exterior photos must be selected from valid image files.',
+        'carOutsidePhotos.*.image' => 'Every exterior photo must be a valid image.',
+        'carOutsidePhotos.*.mimes' => 'Exterior photos must be JPG, PNG, or WEBP files.',
+        'agreement_number.required' => 'Agreement number is required.',
+        'agreement_number.digits_between' => 'Agreement number must contain only digits and be at most 30 characters.',
+    ];
+
+    protected array $validationAttributes = [
+        'carInsidePhotos' => 'interior photos',
+        'carInsidePhotos.*' => 'interior photo',
+        'carOutsidePhotos' => 'exterior photos',
+        'carOutsidePhotos.*' => 'exterior photo',
+        'agreement_number' => 'agreement number',
+        'factorContract' => 'watcher receipt',
+        'carDashboard' => 'dashboard photo',
+        'fuelLevel' => 'fuel level',
+        'mileage' => 'mileage',
+    ];
+
     public function boot(OptimizedUploadService $imageUploader): void
     {
         $this->imageUploader = $imageUploader;
@@ -211,7 +254,7 @@ class RentalRequestPickupDocument extends Component
 
 
         if ($validationRules) {
-            $this->validate($validationRules);
+            $this->validateWithScroll($validationRules);
         }
 
         $this->carInsidePhotos = array_values($this->carInsidePhotos);
@@ -467,6 +510,28 @@ class RentalRequestPickupDocument extends Component
         $existing = collect($current)->filter(fn ($file) => $file instanceof TemporaryUploadedFile);
 
         return $existing->merge($incomingFiles)->values()->all();
+    }
+
+    private function validateWithScroll(array $rules): void
+    {
+        try {
+            $this->validate($rules, $this->messages, $this->validationAttributes);
+        } catch (ValidationException $exception) {
+            $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
+            throw $exception;
+        }
+    }
+
+    private function firstErrorField(ValidationException $exception): string
+    {
+        $errors = $exception->errors();
+        $firstKey = array_key_first($errors);
+
+        if (! is_string($firstKey) || $firstKey === '') {
+            return '';
+        }
+
+        return Str::before($firstKey, '.');
     }
 
     private function resolveDocumentUrl(string $basePath): ?string

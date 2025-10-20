@@ -10,6 +10,7 @@ use App\Models\Customer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Illuminate\Support\Str;
 use App\Livewire\Concerns\InteractsWithToasts;
@@ -379,6 +380,30 @@ class RentalRequestEdit extends Component
         'custom_daily_rate.min' => 'The custom daily rate cannot be negative.',
     ];
 
+    protected array $validationAttributes = [
+        'selectedBrand' => 'car brand',
+        'selectedModelId' => 'car model',
+        'selectedCarId' => 'car',
+        'pickup_location' => 'pickup location',
+        'return_location' => 'return location',
+        'pickup_date' => 'pickup date',
+        'return_date' => 'return date',
+        'first_name' => 'first name',
+        'last_name' => 'last name',
+        'email' => 'email address',
+        'phone' => 'phone number',
+        'messenger_phone' => 'messenger phone number',
+        'address' => 'address',
+        'national_code' => 'national code',
+        'passport_number' => 'passport number',
+        'passport_expiry_date' => 'passport expiry date',
+        'nationality' => 'nationality',
+        'license_number' => 'license number',
+        'selected_insurance' => 'insurance selection',
+        'driver_note' => 'driver note',
+        'custom_daily_rate' => 'custom daily rate',
+    ];
+
     public function updated($propertyName)
     {
         $this->validateOnly($propertyName);
@@ -407,7 +432,7 @@ class RentalRequestEdit extends Component
 
     public function submit()
     {
-        $this->validate();
+        $this->validateWithScroll();
         DB::beginTransaction();
 
         try {
@@ -427,6 +452,28 @@ class RentalRequestEdit extends Component
             DB::rollBack();
             $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
         }
+    }
+
+    private function validateWithScroll(?array $rules = null): array
+    {
+        try {
+            return $this->validate($rules ?? $this->rules(), $this->messages, $this->validationAttributes);
+        } catch (ValidationException $exception) {
+            $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
+            throw $exception;
+        }
+    }
+
+    private function firstErrorField(ValidationException $exception): string
+    {
+        $errors = $exception->errors();
+        $firstKey = array_key_first($errors);
+
+        if (!is_string($firstKey) || $firstKey === '') {
+            return '';
+        }
+
+        return Str::before($firstKey, '.');
     }
 
     private function storeContractCharges(Contract $contract)

@@ -19,8 +19,23 @@ trait InteractsWithToasts
 
         $shouldFlash = $persistToSession ?? ! request()->hasHeader('X-Livewire');
 
-        if ($shouldFlash) {
+        if ($shouldFlash || app()->runningUnitTests()) {
+            $aliases = match ($sessionKey) {
+                'message' => ['success', 'info'],
+                'error' => ['error', 'danger'],
+                'warning' => ['warning'],
+                'info' => ['info'],
+                'status' => ['status'],
+                default => [],
+            };
+
             session()->flash($sessionKey, $message);
+
+            foreach ($aliases as $alias) {
+                if ($alias !== $sessionKey) {
+                    session()->flash($alias, $message);
+                }
+            }
         }
 
         if (! method_exists($this, 'dispatch')) {

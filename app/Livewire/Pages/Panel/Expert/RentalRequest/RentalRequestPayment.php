@@ -10,7 +10,9 @@ use App\Livewire\Concerns\InteractsWithToasts;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -52,6 +54,38 @@ class RentalRequestPayment extends Component
     public $contractMeta = [];
     public $payment_method = 'cash';
     protected OptimizedUploadService $imageUploader;
+
+    protected array $messages = [
+        'amount.required' => 'Payment amount is required.',
+        'amount.numeric' => 'Payment amount must be a number.',
+        'amount.min' => 'Payment amount cannot be negative.',
+        'currency.required' => 'Currency is required.',
+        'currency.in' => 'Selected currency is not supported.',
+        'payment_type.required' => 'Please choose a payment type.',
+        'payment_type.in' => 'Selected payment type is invalid.',
+        'payment_date.required' => 'Payment date is required.',
+        'payment_date.date' => 'Please provide a valid payment date.',
+        'payment_method.required' => 'Please choose a payment method.',
+        'payment_method.in' => 'Selected payment method is invalid.',
+        'is_refundable.required' => 'Please specify whether the payment is refundable.',
+        'is_refundable.boolean' => 'Refundable selection must be yes or no.',
+        'rate.numeric' => 'Exchange rate must be a number.',
+        'rate.min' => 'Exchange rate must be greater than zero.',
+        'receipt.image' => 'Receipt must be an image file.',
+        'receipt.mimes' => 'Receipt must be a JPG, JPEG, PNG, or WEBP file.',
+        'receipt.max' => 'Receipt may not be greater than 2MB.',
+    ];
+
+    protected array $validationAttributes = [
+        'amount' => 'amount',
+        'currency' => 'currency',
+        'payment_type' => 'payment type',
+        'payment_date' => 'payment date',
+        'payment_method' => 'payment method',
+        'is_refundable' => 'refundable selection',
+        'rate' => 'exchange rate',
+        'receipt' => 'receipt upload',
+    ];
 
 
 
@@ -183,14 +217,16 @@ class RentalRequestPayment extends Component
             $this->payment_method = self::PAYMENT_METHODS[0];
         }
 
-        $this->validate();
+        $this->validateWithScroll();
         if ($this->currency !== 'AED' && empty($this->rate)) {
             $this->addError('rate', 'Exchange rate is required for non-AED currencies.');
+            $this->dispatch('kara-scroll-to-error', field: 'rate');
             return;
         }
 
         if (in_array($this->payment_type, ['fine', 'parking', 'damage']) && !$this->receipt) {
             $this->addError('receipt', 'Receipt is required for fines, parking, or damage charges.');
+            $this->dispatch('kara-scroll-to-error', field: 'receipt');
             return;
         }
 
@@ -263,7 +299,27 @@ class RentalRequestPayment extends Component
         }
     }
 
+    private function validateWithScroll(?array $rules = null): array
+    {
+        try {
+            return $this->validate($rules ?? $this->rules(), $this->messages, $this->validationAttributes);
+        } catch (ValidationException $exception) {
+            $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
+            throw $exception;
+        }
+    }
 
+    private function firstErrorField(ValidationException $exception): string
+    {
+        $errors = $exception->errors();
+        $firstKey = array_key_first($errors);
+
+        if (!is_string($firstKey) || $firstKey === '') {
+            return '';
+        }
+
+        return Str::before($firstKey, '.');
+    }
 
     public function resetForm()
     {

@@ -10,16 +10,16 @@
         <div class="card-body">
             <form wire:submit.prevent="submitPayment">
                 <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Amount</label>
-                        <input type="number" class="form-control" wire:model="amount" step="0.01" placeholder="$">
+                    <div class="col-md-4 mb-3" data-validation-field="amount">
+                        <label class="form-label fw-semibold" for="paymentAmountInput">Amount <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                        <input id="paymentAmountInput" type="number" class="form-control" wire:model="amount" step="0.01" placeholder="$" aria-required="true">
                         @error('amount')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Currency</label>
-                        <select class="form-control" wire:model.live="currency">
+                    <div class="col-md-4 mb-3" data-validation-field="currency">
+                        <label class="form-label fw-semibold" for="paymentCurrencyInput">Currency <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                        <select id="paymentCurrencyInput" class="form-control" wire:model.live="currency" aria-required="true">
                             <option value="IRR">Rial</option>
                             <option value="USD">Dollar</option>
                             <option value="AED">Dirham</option>
@@ -31,10 +31,11 @@
                     </div>
 
                     @if ($currency !== 'AED')
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Exchange Rate (to AED)</label>
+                        <div class="col-md-4 mb-3" data-validation-field="rate">
+                            <label class="form-label fw-semibold" for="paymentRateInput">Exchange Rate (to AED) <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
                             <div class="input-group">
-                                <input type="number" step="0.0001" class="form-control" required wire:model="rate">
+                                <input id="paymentRateInput" type="number" step="0.0001" class="form-control" wire:model="rate"
+                                    aria-required="true">
                             </div>
                             @error('rate')
                                 <span class="text-danger">{{ $message }}</span>
@@ -44,9 +45,9 @@
 
 
 
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Payment Type</label>
-                        <select class="form-control" wire:model="payment_type">
+                    <div class="col-md-4 mb-3" data-validation-field="payment_type">
+                        <label class="form-label fw-semibold" for="paymentTypeInput">Payment Type <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                        <select id="paymentTypeInput" class="form-control" wire:model="payment_type" aria-required="true">
                             <option value="">Select Payment Type</option>
                             @foreach ($this->paymentTypeOptions as $value => $label)
                                 <option value="{{ $value }}">{{ $label }}</option>
@@ -57,9 +58,9 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Payment Method</label>
-                        <select class="form-control" wire:model="payment_method">
+                    <div class="col-md-4 mb-3" data-validation-field="payment_method">
+                        <label class="form-label fw-semibold" for="paymentMethodInput">Payment Method <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                        <select id="paymentMethodInput" class="form-control" wire:model="payment_method" aria-required="true">
                             <option value="cash">Cash</option>
                             <option value="transfer">Transfer</option>
                             <option value="ticket">Ticket</option>
@@ -70,17 +71,17 @@
                     </div>
 
 
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Payment Date</label>
-                        <input type="date" class="form-control" wire:model="payment_date">
+                    <div class="col-md-6 mb-3" data-validation-field="payment_date">
+                        <label class="form-label fw-semibold" for="paymentDateInput">Payment Date <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                        <input id="paymentDateInput" type="date" class="form-control" wire:model="payment_date" aria-required="true">
                         @error('payment_date')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Refundable?</label>
-                        <select class="form-control" wire:model="is_refundable">
+                    <div class="col-md-6 mb-3" data-validation-field="is_refundable">
+                        <label class="form-label fw-semibold" for="isRefundableInput">Refundable? <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                        <select id="isRefundableInput" class="form-control" wire:model="is_refundable" aria-required="true">
                             <option value="0">No</option>
                             <option value="1">Yes</option>
                         </select>
@@ -395,6 +396,8 @@
         </table>
     </div>
 </div>
+
+@include('components.panel.form-error-highlighter')
 
 @push('styles')
     <style>
