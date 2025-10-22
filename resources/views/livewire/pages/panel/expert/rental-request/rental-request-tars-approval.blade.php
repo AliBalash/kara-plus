@@ -170,11 +170,17 @@
                                             download>
                                             <i class="bx bx-download me-1"></i>Download
                                         </a>
-                                        @unless ($tarsApproved)
+                                        @if ($tarsApproved)
+                                            <button type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                onclick="window.confirm('Revoke TARS approval?') && @this.revokeTars()">
+                                                <i class="bx bx-undo me-1"></i>Revoke TARS
+                                            </button>
+                                        @else
                                             <button wire:click="approveTars" class="btn btn-success btn-sm">
                                                 <i class="bx bx-check me-1"></i>Approve TARS
                                             </button>
-                                        @endunless
+                                        @endif
                                     </div>
                                     @if ($tarsApproved)
                                         <p class="text-muted small mt-2 mb-0">
