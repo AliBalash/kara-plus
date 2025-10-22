@@ -7,6 +7,8 @@ use Livewire\WithPagination;
 use App\Models\Contract;
 use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Livewire\Concerns\InteractsWithToasts;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class RentalRequestList extends Component
 {
@@ -84,7 +86,7 @@ class RentalRequestList extends Component
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
 
-        $contracts = Contract::with(['customer', 'car.carModel', 'user'])
+        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'latestStatus.user'])
             ->when($search !== '', function ($query) use ($search, $likeSearch) {
                 $query->where(function ($scopedQuery) use ($search, $likeSearch) {
                     $scopedQuery
@@ -119,5 +121,19 @@ class RentalRequestList extends Component
         return view('livewire.pages.panel.expert.rental-request.rental-request-list', [
             'contracts' => $contracts
         ]);
+    }
+
+    public function deleteContract(int $contractId): void
+    {
+        try {
+            $contract = Contract::findOrFail($contractId);
+            $contract->delete();
+            $this->toast('success', 'Contract deleted successfully.');
+            $this->resetPage();
+            $this->dispatch('refreshContracts');
+        } catch (Throwable $exception) {
+            Log::error('Failed to delete contract', ['contract_id' => $contractId, 'message' => $exception->getMessage()]);
+            $this->toast('error', 'Failed to delete contract. Please try again.');
+        }
     }
 }
