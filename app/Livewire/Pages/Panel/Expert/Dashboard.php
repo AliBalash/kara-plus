@@ -293,7 +293,7 @@ class Dashboard extends Component
         $now = Carbon::now();
 
         $this->driverPickups = Contract::with(['car.carModel', 'customer'])
-            ->where('driver_id', $userId)
+            ->where('delivery_driver_id', $userId)
             ->whereIn('current_status', ['reserved', 'delivery', 'assigned'])
             ->whereNotNull('pickup_date')
             ->where('pickup_date', '>=', $now->copy()->startOfDay())
@@ -302,7 +302,7 @@ class Dashboard extends Component
             ->get();
 
         $this->driverReturns = Contract::with(['car.carModel', 'customer'])
-            ->where('driver_id', $userId)
+            ->where('return_driver_id', $userId)
             ->whereIn('current_status', ['awaiting_return', 'delivery'])
             ->whereNotNull('return_date')
             ->where('return_date', '>=', $now->copy()->startOfDay())
@@ -312,26 +312,31 @@ class Dashboard extends Component
 
         $assignedStatuses = ['reserved', 'delivery', 'awaiting_return', 'assigned'];
 
+        $activeAssignmentsQuery = Contract::query()
+            ->whereIn('current_status', $assignedStatuses)
+            ->where(function ($query) use ($userId) {
+                $query->where('delivery_driver_id', $userId)
+                    ->orWhere('return_driver_id', $userId);
+            });
+
         $this->driverStats = [
-            'pickupsToday' => Contract::where('driver_id', $userId)
+            'pickupsToday' => Contract::where('delivery_driver_id', $userId)
                 ->whereIn('current_status', ['reserved', 'delivery', 'assigned'])
                 ->whereDate('pickup_date', $now->toDateString())
                 ->count(),
-            'returnsToday' => Contract::where('driver_id', $userId)
+            'returnsToday' => Contract::where('return_driver_id', $userId)
                 ->whereIn('current_status', ['awaiting_return', 'delivery'])
                 ->whereDate('return_date', $now->toDateString())
                 ->count(),
-            'activeAssignments' => Contract::where('driver_id', $userId)
-                ->whereIn('current_status', $assignedStatuses)
-                ->count(),
-            'overdueReturns' => Contract::where('driver_id', $userId)
+            'activeAssignments' => $activeAssignmentsQuery->count(),
+            'overdueReturns' => Contract::where('return_driver_id', $userId)
                 ->where('current_status', 'awaiting_return')
                 ->where('return_date', '<', $now)
                 ->count(),
         ];
 
         $nextPickup = Contract::with(['car.carModel', 'customer'])
-            ->where('driver_id', $userId)
+            ->where('delivery_driver_id', $userId)
             ->whereIn('current_status', ['reserved', 'delivery', 'assigned'])
             ->whereNotNull('pickup_date')
             ->where('pickup_date', '>=', $now)
@@ -339,7 +344,7 @@ class Dashboard extends Component
             ->first();
 
         $nextReturn = Contract::with(['car.carModel', 'customer'])
-            ->where('driver_id', $userId)
+            ->where('return_driver_id', $userId)
             ->whereIn('current_status', ['awaiting_return', 'delivery'])
             ->whereNotNull('return_date')
             ->where('return_date', '>=', $now)
