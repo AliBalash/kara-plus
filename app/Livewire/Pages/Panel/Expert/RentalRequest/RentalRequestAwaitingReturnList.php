@@ -80,10 +80,6 @@ class RentalRequestAwaitingReturnList extends Component
             'sortDirection',
         ]);
 
-        if ($this->isDriver) {
-            $this->statusFilter = 'awaiting_return';
-        }
-
         $this->searchInput = $this->search;
 
         $this->resetPage();
@@ -105,7 +101,7 @@ class RentalRequestAwaitingReturnList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         return Contract::query()
-            ->with(['customer', 'car.carModel', 'user', 'driver'])
+            ->with(['customer', 'car.carModel', 'user', 'returnDriver', 'latestStatus.user'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($scoped) use ($likeSearch) {
@@ -129,12 +125,6 @@ class RentalRequestAwaitingReturnList extends Component
             ->when($this->pickupTo, fn($query) => $query->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($query) => $query->where('return_date', '>=', $this->returnFrom))
             ->when($this->returnTo, fn($query) => $query->where('return_date', '<=', $this->returnTo))
-            ->when($this->isDriver, function ($query) {
-                $query->orderByRaw(
-                    'CASE WHEN contracts.driver_id = ? THEN 0 WHEN contracts.driver_id IS NULL THEN 1 ELSE 2 END',
-                    [$this->driverId ?? 0]
-                );
-            })
             ->orderBy($sortField, $sortDirection)
             ->paginate(10);
     }
@@ -178,5 +168,35 @@ class RentalRequestAwaitingReturnList extends Component
         }
 
         return $status;
+    }
+
+    public function assignReturnToDriver(int $contractId): void
+    {
+        $user = Auth::user();
+
+        if (! $user || ! $user->hasRole('driver')) {
+            $this->toast('error', 'Only drivers can claim return tasks.', false);
+            return;
+        }
+
+        $contract = Contract::query()->whereKey($contractId)->first();
+
+        if (! $contract) {
+            $this->toast('error', 'The selected contract could not be found.', false);
+            return;
+        }
+
+        if ($contract->return_driver_id && $contract->return_driver_id !== $user->id) {
+            $this->toast('error', 'This return is already assigned to another driver.', false);
+            return;
+        }
+
+        $contract->return_driver_id = $user->id;
+        $contract->save();
+
+        $this->driverId = $user->id;
+
+        $this->toast('success', 'Return assigned to you successfully.');
+        $this->dispatch('refreshContracts');
     }
 }

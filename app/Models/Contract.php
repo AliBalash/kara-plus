@@ -33,7 +33,8 @@ class Contract extends Model
         'payment_on_delivery',
         'used_daily_rate',
         'discount_note',
-        'driver_id',
+        'delivery_driver_id',
+        'return_driver_id',
     ];
 
     /**
@@ -90,9 +91,19 @@ class Contract extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function driver()
+    public function deliveryDriver()
     {
-        return $this->belongsTo(User::class, 'driver_id');
+        return $this->belongsTo(User::class, 'delivery_driver_id');
+    }
+
+    public function returnDriver()
+    {
+        return $this->belongsTo(User::class, 'return_driver_id');
+    }
+
+    public function latestStatus()
+    {
+        return $this->hasOne(ContractStatus::class)->latestOfMany();
     }
 
     /**
