@@ -93,9 +93,14 @@ class User extends Authenticatable
         return $this->hasMany(Contract::class, 'user_id');
     }
 
-    public function driverContracts()
+    public function deliveryContracts()
     {
-        return $this->hasMany(Contract::class, 'driver_id');
+        return $this->hasMany(Contract::class, 'delivery_driver_id');
+    }
+
+    public function returnContracts()
+    {
+        return $this->hasMany(Contract::class, 'return_driver_id');
     }
 
     public function shortName(): string

@@ -22,7 +22,10 @@ class RentalRequestHistory extends Component
         $this->contract = Contract::findOrFail($this->contractId);
 
         // گرفتن تاریخچه وضعیت‌ها
-        $this->statuses = ContractStatus::where('contract_id', $this->contractId)->orderBy('created_at', 'desc')->get();
+        $this->statuses = ContractStatus::with(['user.roles'])
+            ->where('contract_id', $this->contractId)
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     public function render()
@@ -35,7 +38,8 @@ class RentalRequestHistory extends Component
     protected function afterContractCancelled(): void
     {
         $this->contract->refresh();
-        $this->statuses = ContractStatus::where('contract_id', $this->contractId)
+        $this->statuses = ContractStatus::with(['user.roles'])
+            ->where('contract_id', $this->contractId)
             ->orderByDesc('created_at')
             ->get();
     }
