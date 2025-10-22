@@ -119,7 +119,7 @@ class RentalRequestInspectionList extends Component
             ? $this->statusScope
             : [$this->resolveStatus($this->statusFilter)];
 
-        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'pickupDocument'])
+        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'pickupDocument', 'latestStatus.user'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($q) use ($likeSearch) {

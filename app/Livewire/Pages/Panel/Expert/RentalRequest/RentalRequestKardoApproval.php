@@ -13,15 +13,12 @@ class RentalRequestKardoApproval extends BaseRentalRequestApproval
             return;
         }
 
-        if ($this->pickupDocument->kardo_contract) {
-            $this->pickupDocument->kardo_approved_at = now();
-            $this->pickupDocument->kardo_approved_by = Auth::id();
-            $this->pickupDocument->save();
-            $this->toast('success', 'KARDO approved successfully.');
-            return;
-        }
+        $this->pickupDocument->kardo_approved_at = now();
+        $this->pickupDocument->kardo_approved_by = Auth::id();
+        $this->pickupDocument->save();
 
-        $this->toast('error', 'KARDO contract not uploaded.', false);
+        $this->toast('success', 'KARDO approved successfully.');
+        $this->refreshApprovalState();
     }
 
     public function completeInspection(): void
@@ -41,6 +38,27 @@ class RentalRequestKardoApproval extends BaseRentalRequestApproval
         $this->contract->changeStatus('awaiting_return', $userId);
 
         $this->toast('success', 'Inspection completed and status changed to awaiting_return.');
+        $this->refreshApprovalState();
+    }
+
+    public function revokeKardo(): void
+    {
+        if (! $this->contract->kardo_required) {
+            $this->toast('info', 'KARDO is not required for this contract.', false);
+            return;
+        }
+
+        if (! $this->pickupDocument->kardo_approved_at) {
+            $this->toast('info', 'KARDO approval is already cleared.', false);
+            return;
+        }
+
+        $this->pickupDocument->kardo_approved_at = null;
+        $this->pickupDocument->kardo_approved_by = null;
+        $this->pickupDocument->save();
+
+        $this->toast('success', 'KARDO approval reverted.');
+        $this->refreshApprovalState();
     }
 
     public function render()
