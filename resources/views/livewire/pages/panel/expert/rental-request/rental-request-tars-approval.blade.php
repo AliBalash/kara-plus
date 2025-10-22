@@ -27,7 +27,7 @@
             @endphp
             <div class="col-lg-8">
                 <div class="status-toolbar d-flex flex-column flex-lg-row align-items-lg-center gap-3">
-                    <div class="status-overview flex-grow-1 d-flex flex-column flex-md-row flex-wrap gap-3">
+                    <div class="status-overview flex-grow-1">
                         <div class="status-card">
                             <div class="status-card-label"><i class="bi bi-person-circle me-2"></i>Customer</div>
                             <div class="status-card-value">{{ $customerName }}</div>
@@ -58,7 +58,7 @@
                             <div class="status-card-value {{ $kardoStatusClass }}">{{ $kardoStatusText }}</div>
                         </div>
                     </div>
-                    <div class="d-flex flex-column flex-md-row flex-wrap gap-2">
+                    <div class="status-actions d-flex flex-column flex-md-row flex-wrap gap-2 justify-content-md-end">
                         @if ($statusReady)
                             <button type="button" class="btn btn-sm btn-gradient-danger status-action flex-shrink-0"
                                 onclick="window.confirm('Set this contract to Delivery for the rider?') && @this.changeStatusToDelivery()">
@@ -221,55 +221,45 @@
         @push('styles')
             <style>
                 .status-toolbar {
-                    background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(244, 244, 255, 0.95));
-                    border: 1px solid rgba(99, 102, 241, 0.1);
-                    border-radius: 16px;
-                    padding: 1.25rem;
-                }
-
-                .status-card {
-                    background: white;
-                    border-radius: 12px;
-                    padding: 0.75rem 1rem;
-                    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
-                }
-
-                .status-card--status {
-                    border-left: 4px solid rgba(99, 102, 241, 0.45);
-                }
-
-                .status-card-label {
-                    font-size: 0.75rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.08em;
-                    color: #64748b;
-                    margin-bottom: 0.35rem;
-                }
-
-                .status-card-value {
-                    font-weight: 600;
-                    font-size: 1rem;
-                }
-
-                .status-toolbar {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
+                    flex-wrap: wrap;
                     background: #fff;
                     border: 1px solid #e0e6ef;
                     border-radius: 1rem;
-                    padding: 1rem 1.2rem;
+                    padding: 1.1rem 1.25rem;
                     box-shadow: 0 6px 16px rgba(33, 56, 86, 0.06);
                 }
 
+                @media (min-width: 992px) {
+                    .status-toolbar {
+                        flex-direction: row;
+                        align-items: center;
+                        gap: 1.5rem;
+                    }
+                }
+
                 .status-overview {
-                    display: flex;
+                    display: grid;
+                    gap: 0.75rem;
+                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                    flex: 1 1 100%;
+                }
+
+                @media (max-width: 575.98px) {
+                    .status-overview {
+                        grid-template-columns: minmax(0, 1fr);
+                    }
                 }
 
                 .status-card {
-                    flex: 1 1 170px;
+                    min-width: 0;
                     background: #f8f9fc;
                     border: 1px solid #edf1f7;
                     border-radius: 0.9rem;
                     padding: 0.75rem 1rem;
-                    min-width: 160px;
+                    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
                 }
 
                 .status-card-label {
@@ -281,14 +271,15 @@
                     letter-spacing: 0.12em;
                     color: #8a96aa;
                     font-weight: 600;
+                    margin-bottom: 0.35rem;
                 }
 
                 .status-card-value {
                     font-size: 1rem;
                     font-weight: 600;
-                    margin-top: 0.35rem;
                     color: #1f2a3d;
                     word-break: break-word;
+                    margin-top: 0.35rem;
                 }
 
                 .status-card-sub {
@@ -312,22 +303,60 @@
                     color: #fff;
                 }
 
+                .status-actions {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                    width: 100%;
+                }
+
+                @media (min-width: 768px) {
+                    .status-actions {
+                        flex-direction: row;
+                        flex-wrap: wrap;
+                        justify-content: flex-end;
+                        width: auto;
+                    }
+                }
+
                 .status-action {
                     display: inline-flex;
                     align-items: center;
                     gap: 0.4rem;
                     padding: 0.6rem 1.1rem;
                     border-radius: 999px;
+                    transition: transform 0.15s ease, box-shadow 0.15s ease;
+                }
+
+                .status-action.btn-gradient-danger {
                     border: none;
                     color: #fff;
                     background: linear-gradient(135deg, #ff6f61, #ff3b3b);
                     box-shadow: 0 12px 24px rgba(255, 68, 41, 0.25);
-                    transition: transform 0.15s ease, box-shadow 0.15s ease;
                 }
 
-                .status-action:hover {
+                .status-action.btn-gradient-primary {
+                    border: none;
+                    color: #fff;
+                    background: linear-gradient(135deg, #3a86ff, #4361ee);
+                    box-shadow: 0 12px 24px rgba(67, 97, 238, 0.25);
+                }
+
+                .status-action.btn-outline-secondary {
+                    background: #fff;
+                    color: #6c757d;
+                    border: 1px solid rgba(108, 117, 125, 0.35);
+                    box-shadow: none;
+                }
+
+                .status-action.btn-gradient-danger:hover {
                     transform: translateY(-2px);
                     box-shadow: 0 14px 28px rgba(255, 68, 41, 0.3);
+                }
+
+                .status-action.btn-gradient-primary:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 14px 28px rgba(67, 97, 238, 0.28);
                 }
 
                 .status-action:active {
@@ -339,13 +368,10 @@
                         gap: 0.75rem;
                     }
 
-                    .status-action {
+                    .status-actions .status-action,
+                    .status-actions .btn {
                         width: 100%;
                         justify-content: center;
-                    }
-
-                    .status-card {
-                        min-width: 100%;
                     }
                 }
 
