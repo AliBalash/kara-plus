@@ -6,6 +6,7 @@ use Livewire\Component;
 use App\Models\Payment;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ConfirmPayementList extends Component
@@ -20,22 +21,28 @@ class ConfirmPayementList extends Component
     public $paymentTypeFilter = '';
     public $dateFrom;
     public $dateTo;
-    public $page;
     public $openAccordions = [];
 
-    protected $queryString = ['search', 'statusFilter', 'currencyFilter', 'paymentTypeFilter', 'dateFrom', 'dateTo'];
+    protected $queryString = [
+        'search',
+        'statusFilter',
+        'currencyFilter',
+        'paymentTypeFilter',
+        'dateFrom',
+        'dateTo',
+        'page' => ['except' => 1],
+    ];
     
     public function mount(): void
     {
         $this->searchInput = $this->search;
-        $this->page = max(1, (int) ($this->page ?? 1));
     }
 
     public function clearFilters()
     {
         $this->reset(['search', 'statusFilter', 'currencyFilter', 'paymentTypeFilter', 'dateFrom', 'dateTo']);
         $this->searchInput = '';
-        $this->page = 1;
+        $this->resetPage();
     }
 
     public function toggleAccordion($contractId)
@@ -85,8 +92,7 @@ class ConfirmPayementList extends Component
         $search = trim($this->search);
         $isNumericSearch = is_numeric($search);
 
-        $query = Payment::query()
-            ->with(['customer', 'contract', 'car'])
+        $baseQuery = Payment::query()
             ->when($search !== '', function ($q) use ($search, $isNumericSearch) {
                 $likeSearch = '%' . $search . '%';
 
@@ -105,28 +111,46 @@ class ConfirmPayementList extends Component
             ->when($this->currencyFilter, fn($q) => $q->where('currency', $this->currencyFilter))
             ->when($this->paymentTypeFilter, fn($q) => $q->where('payment_type', $this->paymentTypeFilter))
             ->when($this->dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $this->dateFrom))
-            ->when($this->dateTo, fn($q) => $q->whereDate('payment_date', '<=', $this->dateTo))
-            ->orderByDesc('id');
+            ->when($this->dateTo, fn($q) => $q->whereDate('payment_date', '<=', $this->dateTo));
 
-        // Group payments by contract_id
-        $groupedPayments = $query->get()->groupBy('contract_id');
-        $currentPage = max(1, (int) ($this->page ?? 1));
+        $contractsPaginator = (clone $baseQuery)
+            ->select('contract_id')
+            ->groupBy('contract_id')
+            ->orderByDesc(DB::raw('MAX(id)'))
+            ->paginate(10, ['contract_id']);
+
+        $payments = (clone $baseQuery)
+            ->with(['customer', 'contract', 'car'])
+            ->whereIn('contract_id', $contractsPaginator->pluck('contract_id'))
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('contract_id');
+
+        $groupedPayments = $contractsPaginator->getCollection()->mapWithKeys(
+            fn($contract) => [
+                $contract->contract_id => $payments->get($contract->contract_id, collect())
+            ]
+        );
+
         $groupedPayments = new \Illuminate\Pagination\LengthAwarePaginator(
-            $groupedPayments->forPage($currentPage, 10),
-            $groupedPayments->count(),
-            10,
-            $currentPage,
-            ['path' => url()->current()]
+            $groupedPayments,
+            $contractsPaginator->total(),
+            $contractsPaginator->perPage(),
+            $contractsPaginator->currentPage(),
+            [
+                'path' => $contractsPaginator->path(),
+                'pageName' => $contractsPaginator->getPageName(),
+            ]
         );
 
         return view('livewire.pages.panel.expert.payments.confirm-payement-list', [
-            'groupedPayments' => $groupedPayments
+            'groupedPayments' => $groupedPayments,
         ]);
     }
 
     public function applySearch(): void
     {
         $this->search = trim($this->searchInput);
-        $this->page = 1;
+        $this->resetPage();
     }
 }

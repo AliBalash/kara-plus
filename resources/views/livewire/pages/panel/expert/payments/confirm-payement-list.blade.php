@@ -76,8 +76,9 @@
                         type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ $contractId }}"
                         aria-expanded="{{ in_array($contractId, $this->openAccordions) ? 'true' : 'false' }}"
                         aria-controls="collapse{{ $contractId }}" wire:click="toggleAccordion({{ $contractId }})">
+                        @php($firstPayment = $paymentGroup->first())
                         <strong>Contract #{{ $contractId }} - Customer:
-                            {{ $paymentGroup[0]->customer?->fullName() ?? 'Unknown' }}</strong>
+                            {{ $firstPayment?->customer?->fullName() ?? 'Unknown' }}</strong>
                         <span class="ms-3 badge bg-info">{{ count($paymentGroup) }} Payment(s)</span>
                     </button>
                 </h2>
