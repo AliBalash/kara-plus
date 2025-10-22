@@ -22,13 +22,7 @@ abstract class BaseRentalRequestApproval extends Component
     public function mount($contractId): void
     {
         $this->contractId = $contractId;
-        $this->contract = Contract::with(['customer', 'car.carModel', 'pickupDocument'])->findOrFail($contractId);
-        $this->pickupDocument = PickupDocument::firstOrNew([
-            'contract_id' => $contractId,
-        ]);
-
-        $this->existingFiles = $this->resolveExistingFiles();
-        $this->prepareCustomerDocuments();
+        $this->refreshApprovalState();
     }
 
     protected function resolveExistingFiles(): array
@@ -161,5 +155,23 @@ abstract class BaseRentalRequestApproval extends Component
         }
 
         return null;
+    }
+
+    protected function refreshApprovalState(): void
+    {
+        $this->contract = Contract::with([
+            'customer',
+            'car.carModel',
+            'pickupDocument',
+            'deliveryDriver',
+            'returnDriver',
+        ])->findOrFail($this->contractId);
+
+        $this->pickupDocument = PickupDocument::firstOrNew([
+            'contract_id' => $this->contractId,
+        ]);
+
+        $this->existingFiles = $this->resolveExistingFiles();
+        $this->prepareCustomerDocuments();
     }
 }
