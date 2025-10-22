@@ -275,20 +275,6 @@
                                 </div>
                             @endif
 
-                            @if (!empty($carInsidePhotos))
-                                <div class="mb-3">
-                                    <div class="small fw-semibold text-muted mb-2">Ready to upload</div>
-                                    <div class="gallery-grid">
-                                        @foreach ($carInsidePhotos as $index => $photo)
-                                            <div class="gallery-thumb" wire:key="inside-temp-{{ $index }}">
-                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img" loading="lazy" decoding="async" fetchpriority="low"
-                                                    alt="Inside preview">
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
                                 <input id="pickupCarInsideInput" type="file" class="form-control @error('carInsidePhotos') is-invalid @enderror @error('carInsidePhotos.*') is-invalid @enderror" wire:model="carInsidePhotos" accept="image/*"
@@ -338,20 +324,6 @@
                                 <div class="empty-placeholder text-center py-4 mb-3 border rounded-3">
                                     <i class="bx bx-image fs-1 text-muted mb-2 d-block"></i>
                                     <span class="text-muted small d-block">No outside photos uploaded yet.</span>
-                                </div>
-                            @endif
-
-                            @if (!empty($carOutsidePhotos))
-                                <div class="mb-3">
-                                    <div class="small fw-semibold text-muted mb-2">Ready to upload</div>
-                                    <div class="gallery-grid">
-                                        @foreach ($carOutsidePhotos as $index => $photo)
-                                            <div class="gallery-thumb" wire:key="outside-temp-{{ $index }}">
-                                                <img src="{{ $photo->temporaryUrl() }}" class="img-fluid rounded-3 gallery-img" loading="lazy" decoding="async" fetchpriority="low"
-                                                    alt="Outside preview">
-                                            </div>
-                                        @endforeach
-                                    </div>
                                 </div>
                             @endif
 

@@ -55,8 +55,6 @@ class RentalRequestPickupDocument extends Component
 
     protected OptimizedUploadService $imageUploader;
 
-    public array $pendingInsideUploads = [];
-    public array $pendingOutsideUploads = [];
 
     protected array $messages = [
         'fuelLevel.required' => 'Please select the fuel level before submitting the pickup checklist.',
@@ -148,8 +146,6 @@ class RentalRequestPickupDocument extends Component
 
         $this->carInsidePhotos = [];
         $this->carOutsidePhotos = [];
-        $this->pendingInsideUploads = [];
-        $this->pendingOutsideUploads = [];
 
         $payments = $this->contract->relationLoaded('payments') ? $this->contract->payments : null;
         $this->remainingBalance = $this->contract->calculateRemainingBalance($payments);
@@ -490,26 +486,21 @@ class RentalRequestPickupDocument extends Component
 
     public function updatedCarInsidePhotos($photos): void
     {
-        $this->carInsidePhotos = $this->mergePendingUploads($this->pendingInsideUploads, $photos);
-        $this->pendingInsideUploads = $this->carInsidePhotos;
+        $this->carInsidePhotos = $this->normalizeUploadSelection($photos);
     }
 
     public function updatedCarOutsidePhotos($photos): void
     {
-        $this->carOutsidePhotos = $this->mergePendingUploads($this->pendingOutsideUploads, $photos);
-        $this->pendingOutsideUploads = $this->carOutsidePhotos;
+        $this->carOutsidePhotos = $this->normalizeUploadSelection($photos);
     }
 
-    private function mergePendingUploads(array $current, $incoming): array
+    private function normalizeUploadSelection($value): array
     {
-        $incomingFiles = collect(is_array($incoming) ? $incoming : [])
+        return collect(is_array($value) ? $value : [])
             ->filter(fn ($file) => $file instanceof TemporaryUploadedFile)
             ->unique(fn (TemporaryUploadedFile $file) => $file->getFilename())
-            ->values();
-
-        $existing = collect($current)->filter(fn ($file) => $file instanceof TemporaryUploadedFile);
-
-        return $existing->merge($incomingFiles)->values()->all();
+            ->values()
+            ->all();
     }
 
     private function validateWithScroll(array $rules): void
