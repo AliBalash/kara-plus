@@ -17,14 +17,14 @@ class CustomerHistory extends Component
         $this->customerId = $customerId;
     
         // فقط قراردادهایی که مربوط به این مشتری هستند بارگذاری کن
-        $this->contracts = Contract::with(['customer', 'car', 'user'])
+        $this->contracts = Contract::with(['customer', 'car', 'user', 'latestStatus.user'])
             ->where('customer_id', $this->customerId) // فیلتر کردن بر اساس ID مشتری
             ->get();
     }
 
     protected function afterContractCancelled(): void
     {
-        $this->contracts = Contract::with(['customer', 'car', 'user'])
+        $this->contracts = Contract::with(['customer', 'car', 'user', 'latestStatus.user'])
             ->where('customer_id', $this->customerId)
             ->get();
     }

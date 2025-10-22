@@ -83,7 +83,7 @@ class RentalRequestCancelledList extends Component
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
 
-        $contracts = Contract::with(['customer', 'car.carModel', 'user'])
+        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'latestStatus.user'])
             ->where('current_status', 'cancelled')
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($scopedQuery) use ($likeSearch) {
