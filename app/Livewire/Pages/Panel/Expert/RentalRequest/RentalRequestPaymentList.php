@@ -7,6 +7,8 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Livewire\Concerns\InteractsWithToasts;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class RentalRequestPaymentList extends Component
 {
@@ -24,7 +26,7 @@ class RentalRequestPaymentList extends Component
     public $pickupTo;
     public $returnFrom;
     public $returnTo;
-    public $paymentContracts;
+    protected $paymentContracts;
 
     protected $listeners = [
         'refreshContracts' => '$refresh',
@@ -104,7 +106,7 @@ class RentalRequestPaymentList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         $paymentContracts = Contract::query()
-            ->with(['payments', 'customer', 'car', 'user'])
+            ->with(['payments', 'customer', 'car', 'user', 'latestStatus.user'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($q) use ($likeSearch) {
@@ -159,6 +161,20 @@ class RentalRequestPaymentList extends Component
 
         $this->resetPage();
     }
+
+        public function deleteContract(int $contractId): void
+        {
+            try {
+                $contract = Contract::findOrFail($contractId);
+                $contract->delete();  
+                $this->toast('success', 'Contract deleted successfully.');
+                $this->resetPage();  
+                $this->dispatch('refreshContracts');
+            } catch (Throwable $exception) {
+                Log::error('Failed to delete contract', ['contract_id' => $contractId, 'message' => $exception->getMessage()]);
+                $this->toast('error', 'Failed to delete contract. Please try again.');
+            }
+        }
 
     private function resolveStatus(?string $status): string
     {
