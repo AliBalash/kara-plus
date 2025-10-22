@@ -15,7 +15,8 @@ return new class extends Migration
         Schema::create('contracts', function (Blueprint $table) {
             $table->id(); // شناسه قرارداد
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade'); // ارجاع به جدول کاربران (کارشناس)
-            $table->foreignId('driver_id')->nullable()->after('user_id')->constrained('users')->nullOnDelete();
+            $table->foreignId('delivery_driver_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('return_driver_id')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedBigInteger('customer_id'); // ارجاع به جدول مشتریان
             $table->unsignedBigInteger('car_id'); // ارجاع به جدول خودروها
             $table->string('agent_sale')->nullable(); // نام نماینده‌ی فروش

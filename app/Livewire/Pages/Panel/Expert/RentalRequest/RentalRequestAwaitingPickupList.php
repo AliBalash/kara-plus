@@ -8,6 +8,8 @@ use Livewire\WithPagination;
 use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class RentalRequestAwaitingPickupList extends Component
 {
@@ -71,10 +73,6 @@ class RentalRequestAwaitingPickupList extends Component
         $user = Auth::user();
         $this->isDriver = $user?->hasRole('driver') ?? false;
         $this->driverId = $this->isDriver ? $user?->id : null;
-
-        if ($this->isDriver) {
-            $this->statusFilter = 'delivery';
-        }
     }
 
     public function loadContracts()
@@ -87,7 +85,7 @@ class RentalRequestAwaitingPickupList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         $query = Contract::query()
-            ->with(['customer', 'car.carModel', 'user', 'pickupDocument', 'driver'])
+            ->with(['customer', 'car.carModel', 'user', 'pickupDocument', 'deliveryDriver', 'latestStatus.user'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($q) use ($likeSearch) {
                 $q->where(function ($scoped) use ($likeSearch) {
@@ -118,13 +116,6 @@ class RentalRequestAwaitingPickupList extends Component
 
         $sortDirection = $this->sortDirection === 'desc' ? 'desc' : 'asc';
 
-        if ($this->isDriver) {
-            $query->orderByRaw(
-                'CASE WHEN contracts.driver_id = ? THEN 0 WHEN contracts.driver_id IS NULL THEN 1 ELSE 2 END',
-                [$this->driverId ?? 0]
-            );
-        }
-
         return $query->orderBy($sortField, $sortDirection)
             ->paginate($this->perPage);
     }
@@ -154,10 +145,6 @@ class RentalRequestAwaitingPickupList extends Component
             'returnFrom',
             'returnTo',
         ]);
-
-        if ($this->isDriver) {
-            $this->statusFilter = 'delivery';
-        }
 
         $this->searchInput = $this->search;
 
@@ -212,17 +199,32 @@ class RentalRequestAwaitingPickupList extends Component
             return;
         }
 
-        if ($contract->driver_id && $contract->driver_id !== $user->id) {
+        if ($contract->delivery_driver_id && $contract->delivery_driver_id !== $user->id) {
             $this->toast('error', 'This delivery is already assigned to another driver.', false);
             return;
         }
 
-        $contract->driver_id = $user->id;
+        $contract->delivery_driver_id = $user->id;
         $contract->save();
 
         $this->driverId = $user->id;
 
         $this->toast('success', 'Delivery assigned to you successfully.');
         $this->dispatch('refreshContracts');
+    }
+
+
+    public function deleteContract(int $contractId): void
+    {
+        try {
+            $contract = Contract::findOrFail($contractId);
+            $contract->delete();
+            $this->toast('success', 'Contract deleted successfully.');
+            $this->resetPage();
+            $this->dispatch('refreshContracts');
+        } catch (Throwable $exception) {
+            Log::error('Failed to delete contract', ['contract_id' => $contractId, 'message' => $exception->getMessage()]);
+            $this->toast('error', 'Failed to delete contract. Please try again.');
+        }
     }
 }
