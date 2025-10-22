@@ -141,7 +141,13 @@
                                             target="_blank" rel="noopener" download>
                                             <i class="bx bx-download me-1"></i>Download
                                         </a>
-                                        @if (! $kardoApproved)
+                                        @if ($kardoApproved)
+                                            <button type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                onclick="window.confirm('Revoke KARDO approval?') && @this.revokeKardo()">
+                                                <i class="bx bx-undo me-1"></i>Revoke KARDO
+                                            </button>
+                                        @else
                                             <button wire:click="approveKardo" class="btn btn-success btn-sm">
                                                 <i class="bx bx-check me-1"></i>Approve KARDO
                                             </button>
