@@ -96,7 +96,7 @@ class RentalRequestReserved extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         return Contract::query()
-            ->with(['customer', 'car.carModel', 'user'])
+            ->with(['customer', 'car.carModel', 'user', 'latestStatus.user'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($scoped) use ($likeSearch) {
