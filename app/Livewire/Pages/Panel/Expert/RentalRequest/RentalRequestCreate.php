@@ -67,6 +67,7 @@ class RentalRequestCreate extends Component
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
         'UAE/Dubai/Downtown' => ['under_3' => 45, 'over_3' => 45],
+        'UAE/Dubai/Deira' => ['under_3' => 45, 'over_3' => 45], // اضافه‌شده
         'UAE/Dubai/Dubai Airport/Terminal 1' => ['under_3' => 50, 'over_3' => 0],
         'UAE/Dubai/Dubai Airport/Terminal 2' => ['under_3' => 50, 'over_3' => 0],
         'UAE/Dubai/Dubai Airport/Terminal 3' => ['under_3' => 50, 'over_3' => 0],
