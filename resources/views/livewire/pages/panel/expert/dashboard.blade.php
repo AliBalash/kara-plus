@@ -804,7 +804,7 @@
                                 <h5 class="fw-bold mb-1"><i class="bi bi-trophy-fill text-primary me-2"></i>Top Performing Cars</h5>
                                 <span class="text-muted small">Contracts closed by brand and model</span>
                             </div>
-                            <span class="badge bg-primary bg-opacity-10 text-primary">Top 3</span>
+                            <span class="badge bg-primary bg-opacity-10">Top 3</span>
                         </div>
                     </div>
                     <div class="card-body pt-0 pb-4 px-4">
