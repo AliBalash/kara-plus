@@ -14,16 +14,30 @@
                 $tarsApproved = (bool) $pickupDocument->tars_approved_at;
                 $kardoRequired = (bool) $contract->kardo_required;
                 $kardoApproved = (bool) $pickupDocument->kardo_approved_at;
-                $contractStatus = \Illuminate\Support\Str::headline($contract->current_status ?? 'draft');
+                $rawStatus = $contract->current_status ?? 'draft';
+                $contractStatus = \Illuminate\Support\Str::headline($rawStatus);
                 $tarsStatusClass = $tarsApproved ? 'text-success' : 'text-warning';
                 $kardoStatusClass = $kardoRequired ? ($kardoApproved ? 'text-success' : 'text-warning') : 'text-muted';
                 $kardoStatusText = $kardoRequired ? ($kardoApproved ? 'Approved' : 'Pending') : 'Not Required';
-                $statusReady = $tarsApproved && (!$kardoRequired || $kardoApproved);
-                $statusButtonText = match (true) {
-                    $statusReady => 'Move to Delivery',
-                    !$tarsApproved => 'Awaiting TARS approval',
-                    default => 'Awaiting KARDO approval',
-                };
+
+                $completeInspectionDisabledReason = null;
+
+                if ($rawStatus !== 'delivery') {
+                    $completeInspectionDisabledReason = match ($rawStatus) {
+                        'agreement_inspection' => 'Inspection already completed',
+                        'awaiting_return' => 'Already awaiting return',
+                        default => 'Status not eligible',
+                    };
+                } elseif (! $tarsApproved) {
+                    $completeInspectionDisabledReason = 'Awaiting TARS approval';
+                } elseif ($kardoRequired && ! $kardoApproved) {
+                    $completeInspectionDisabledReason = 'Awaiting KARDO approval';
+                }
+
+                $completeInspectionEnabled = $completeInspectionDisabledReason === null;
+                $showAwaitingReturnButton = in_array($rawStatus, ['agreement_inspection', 'awaiting_return'], true);
+                $awaitingReturnButtonDisabledReason = $rawStatus === 'awaiting_return' ? 'Already awaiting return' : null;
+                $awaitingReturnButtonEnabled = $awaitingReturnButtonDisabledReason === null;
             @endphp
             <div class="col-lg-8">
                 <div class="status-toolbar d-flex flex-column flex-lg-row align-items-lg-center gap-3">
@@ -59,18 +73,36 @@
                         </div>
                     </div>
                     <div class="status-actions d-flex flex-column flex-md-row flex-wrap gap-2 justify-content-md-end">
-                        @if ($statusReady)
+                        @if ($completeInspectionEnabled)
                             <button type="button" class="btn btn-sm btn-gradient-danger status-action flex-shrink-0"
-                                onclick="window.confirm('Set this contract to Delivery for the rider?') && @this.changeStatusToDelivery()">
-                                <i class="bx bx-send me-1"></i>
-                                <span>{{ $statusButtonText }}</span>
+                                wire:click="completeInspection"
+                                wire:confirm="Mark the inspection as completed and move to agreement inspection?">
+                                <i class="bx bx-flag-checkered me-1"></i>
+                                <span>Complete Inspection</span>
                             </button>
                         @else
                             <button type="button"
                                 class="btn btn-sm btn-outline-secondary status-action flex-shrink-0 disabled" disabled>
                                 <i class="bx bx-time-five me-1"></i>
-                                <span>{{ $statusButtonText }}</span>
+                                <span>{{ $completeInspectionDisabledReason }}</span>
                             </button>
+                        @endif
+
+                        @if ($showAwaitingReturnButton)
+                            @if ($awaitingReturnButtonEnabled)
+                                <button type="button" class="btn btn-sm btn-outline-primary status-action flex-shrink-0"
+                                    wire:click="moveToAwaitingReturn"
+                                    wire:confirm="Move this contract to awaiting return?">
+                                    <i class="bx bx-send me-1"></i>
+                                    <span>Move to Awaiting Return</span>
+                                </button>
+                            @else
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-secondary status-action flex-shrink-0 disabled" disabled>
+                                    <i class="bx bx-time-five me-1"></i>
+                                    <span>{{ $awaitingReturnButtonDisabledReason }}</span>
+                                </button>
+                            @endif
                         @endif
 
                         @if ($kardoRequired)
