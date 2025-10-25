@@ -311,12 +311,16 @@
                                 $agreementNumber = optional($contract->pickupDocument)->agreement_number;
                                 $status = $contract->current_status ?? 'unknown';
                                 $statusColor = match ($status) {
-                                    'pending', 'under_review' => 'warning',
-                                    'assigned', 'delivery' => 'primary',
-                                    'agreement_inspection', 'awaiting_return' => 'info',
-                                    'complete', 'completed' => 'success',
+                                    'pending', 'under_review', 'agreement_inspection', 'awaiting_return' => 'warning',
+                                    'assigned', 'delivery', 'complete', 'completed' => 'success',
                                     'cancelled', 'canceled' => 'danger',
                                     default => 'secondary',
+                                };
+                                $statusIcon = match ($statusColor) {
+                                    'success' => 'bx bx-check-circle',
+                                    'warning' => 'bx bx-time-five',
+                                    'danger' => 'bx bx-error',
+                                    default => 'bx bx-file',
                                 };
                                 $statusLabel = \Illuminate\Support\Str::headline($status);
                                 $car = $contract->car;
@@ -326,45 +330,52 @@
                             @endphp
                             <a href="{{ route('rental-requests.details', [$contract->id]) }}" class="result-card"
                                 role="listitem" wire:key="agreement-result-{{ $contract->id }}-{{ $agreementNumber }}">
-                                <div class="result-card-header">
-                                    <div class="result-card-title">
-                                        <span class="result-card-name">Agreement #{{ $agreementNumber ?? '—' }}</span>
-                                        <span class="result-card-sub text-muted">{{ optional($car)->fullName() ?? 'Vehicle TBD' }}</span>
+                                <div class="result-card-top">
+                                    <div class="result-card-heading">
+                                        <span class="vehicle-name">Agreement #{{ $agreementNumber ?? '—' }}</span>
+                                        <span class="vehicle-sub text-muted">{{ optional($car)->fullName() ?? 'Vehicle TBD' }}</span>
                                     </div>
-                                    <span class="status-chip bg-{{ $statusColor }}">{{ $statusLabel }}</span>
+                                    <span class="status-chip is-{{ $statusColor }}">
+                                        <i class="bx {{ $statusIcon }}"></i>
+                                        {{ $statusLabel }}
+                                    </span>
                                 </div>
 
-                                <div class="result-card-meta">
-                                    <span><i class="bx bx-user-circle"></i>{{ optional($customer)->fullName() ?? 'Customer TBD' }}</span>
-                                    <span><i class="bx bx-phone"></i>{{ optional($customer)->phone ?? '—' }}</span>
-                                    <span><i class="bx bx-id-card"></i>{{ optional($car)->plate_number ?? 'Plate —' }}</span>
-                                </div>
-
-                                <div class="result-card-timeline">
-                                    <div class="timeline-node">
-                                        <div class="timeline-title">Pickup</div>
-                                        <div class="timeline-value">{{ $pickupDate ?? 'Pickup —' }}</div>
-                                        <div class="timeline-sub text-muted">{{ $contract->pickup_location ?? 'Location TBD' }}</div>
+                                <div class="result-card-highlights">
+                                    <div class="highlight-card">
+                                        <span class="highlight-label">Customer</span>
+                                        <span class="highlight-value"><i class="bx bx-user-circle"></i>{{ optional($customer)->fullName() ?? 'Customer TBD' }}</span>
+                                        <span class="highlight-hint">{{ optional($customer)->phone ?? '—' }}</span>
                                     </div>
-                                    <div class="timeline-node">
-                                        <div class="timeline-title">Return</div>
-                                        <div class="timeline-value">{{ $returnDate ?? 'Return —' }}</div>
-                                        <div class="timeline-sub text-muted">{{ $contract->return_location ?? 'Location TBD' }}</div>
+                                    <div class="highlight-card">
+                                        <span class="highlight-label">Pickup</span>
+                                        <span class="highlight-value"><i class="bx bx-calendar-event"></i>{{ $pickupDate ?? 'Pickup —' }}</span>
+                                        <span class="highlight-hint">{{ $contract->pickup_location ?? 'Location TBD' }}</span>
                                     </div>
-                                    <div class="timeline-node">
-                                        <div class="timeline-title">Agreement</div>
-                                        <div class="timeline-value">#{{ $agreementNumber ?? '—' }}</div>
-                                        <div class="timeline-sub text-muted">{{ $statusLabel }}</div>
+                                    <div class="highlight-card">
+                                        <span class="highlight-label">Return</span>
+                                        <span class="highlight-value"><i class="bx bx-calendar-check"></i>{{ $returnDate ?? 'Return —' }}</span>
+                                        <span class="highlight-hint">{{ $contract->return_location ?? 'Location TBD' }}</span>
+                                    </div>
+                                    <div class="highlight-card">
+                                        <span class="highlight-label">Plate</span>
+                                        <span class="highlight-value"><i class="bx bx-id-card"></i>{{ optional($car)->plate_number ?? 'Plate —' }}</span>
+                                        <span class="highlight-hint">Agreement #{{ $agreementNumber ?? '—' }}</span>
                                     </div>
                                 </div>
 
                                 <div class="result-card-footer">
-                                    <span><i class="bx bx-time-five me-1"></i>Updated
-                                        {{ $contract->updated_at?->diffForHumans() ?? '—' }}</span>
+                                    <div class="result-card-footer-meta">
+                                        <span class="meta-label">Agreement status</span>
+                                        <span class="meta-value"><i class="bx {{ $statusIcon }}"></i>{{ $statusLabel }}</span>
+                                    </div>
+                                    <div class="result-card-footer-meta">
+                                        <span class="meta-label">Last update</span>
+                                        <span class="meta-value"><i class="bx bx-time-five"></i>{{ $contract->updated_at?->diffForHumans() ?? '—' }}</span>
+                                    </div>
                                     <span class="result-card-arrow"><i class="bx bx-chevron-right"></i></span>
                                 </div>
                             </a>
-                            <hr>
                         @empty
                             <div class="search-placeholder text-center text-muted py-4" role="status">
                                 <i class="bx bx-file-find display-6 d-block mb-2"></i>

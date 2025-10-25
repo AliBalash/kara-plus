@@ -174,6 +174,12 @@
                 font-size: 1.1rem;
             }
 
+            .highlight-hint {
+                display: block;
+                font-size: 0.75rem;
+                color: #64748b;
+            }
+
             .reservation-card {
                 border-radius: 1.1rem;
                 border: 1px dashed rgba(79, 70, 229, 0.38);
