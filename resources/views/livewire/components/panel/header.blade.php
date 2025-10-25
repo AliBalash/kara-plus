@@ -32,7 +32,7 @@
                         <button type="button" class="btn btn-icon btn-outline-secondary rounded-circle shadow-sm"
                             data-bs-toggle="offcanvas" data-bs-target="#quickSearchOffcanvas"
                             aria-controls="quickSearchOffcanvas" aria-label="Open quick vehicle search">
-                            <i class="bx bx-search"></i>
+                            <i class="bx bx-car"></i>
                         </button>
                     </li>
                 @endif
@@ -122,7 +122,7 @@
                     $queryLength = \Illuminate\Support\Str::length($query ?? '');
                 @endphp
                 <div @class(['search-input-wrapper', 'has-query' => $queryLength]) role="search">
-                    <i class="bx bx-search" aria-hidden="true"></i>
+                    <i class="bx bx-car" aria-hidden="true"></i>
                     <label class="visually-hidden" for="quickSearchInput">Search vehicles</label>
                     <input type="search" wire:model.live.debounce.400ms="query" class="form-control"
                         placeholder="Start typing to search the fleet" aria-label="Search vehicles" autocomplete="off"
@@ -143,7 +143,7 @@
                     </div>
                     @if ($queryLength <= 1)
                         <div class="search-placeholder text-center text-muted py-4" role="status">
-                            <i class="bx bx-search-alt-2 display-6 d-block mb-2"></i>
+                            <i class="bx bx-car display-6 d-block mb-2"></i>
                             <p class="mb-0">Enter at least 2 characters to search vehicles.</p>
                         </div>
                     @else
@@ -156,69 +156,100 @@
                                     'unavailable', 'sold', 'maintenance' => 'danger',
                                     default => 'secondary',
                                 };
+                                $statusIcon = match ($status) {
+                                    'available' => 'bx bx-check-circle',
+                                    'reserved' => 'bx bx-time-five',
+                                    'unavailable', 'sold', 'maintenance' => 'bx bx-error',
+                                    default => 'bx bx-car',
+                                };
+                                $statusLabel = \Illuminate\Support\Str::headline($status);
                                 $contract = $car->currentContract ?? null;
+                                $plate = $car->plate_number ?? 'Plate TBD';
+                                $year = $car->manufacturing_year ?? 'Year —';
+                                $mileage = $car->mileage !== null ? number_format($car->mileage) . ' km' : 'Mileage —';
+                                $price = $car->price_per_day !== null ? number_format($car->price_per_day) . ' AED / day' : 'Rate —';
                             @endphp
                             <a href="{{ route('car.edit', $car->id) }}" class="result-card" role="listitem"
                                 wire:key="search-result-{{ $car->id }}">
-                                <div class="result-card-header">
-                                    <div class="result-card-title">
-                                        <span class="result-card-name">{{ $car->fullname() }}</span>
-                                        <span class="result-card-sub text-muted">{{ optional($car->carModel)->brand }}
+                                <div class="result-card-top">
+                                    <div class="result-card-heading">
+                                        <span class="vehicle-name">{{ $car->fullname() }}</span>
+                                        <span class="vehicle-sub text-muted">{{ optional($car->carModel)->brand }}
                                             {{ optional($car->carModel)->model }}</span>
                                     </div>
-                                    <span class="status-chip bg-{{ $statusColor }}">{{ ucfirst($status) }}</span>
+                                    <span class="status-chip is-{{ $statusColor }}">
+                                        <i class="bx {{ $statusIcon }}"></i>
+                                        {{ $statusLabel }}
+                                    </span>
                                 </div>
 
-                                <div class="result-card-meta">
-                                    <span><i class="bx bx-id-card"></i>{{ $car->plate_number ?? 'Plate TBD' }}</span>
-                                    <span><i
-                                            class="bx bx-calendar"></i>{{ $car->manufacturing_year ?? 'Year —' }}</span>
-                                    <span><i class="bx bx-gas-pump"></i>{{ number_format($car->mileage ?? 0) }}
-                                        km</span>
-                                    <span><i class="bx bx-dollar-circle"></i>{{ number_format($car->price_per_day) }}
-                                        AED/day</span>
+                                <div class="result-card-highlights">
+                                    <div class="highlight-card">
+                                        <span class="highlight-label">Plate</span>
+                                        <span class="highlight-value"><i class="bx bx-id-card"></i>{{ $plate }}</span>
+                                    </div>
+                                    <div class="highlight-card">
+                                        <span class="highlight-label">Year</span>
+                                        <span class="highlight-value"><i class="bx bx-calendar"></i>{{ $year }}</span>
+                                    </div>
+                                    <div class="highlight-card">
+                                        <span class="highlight-label">Mileage</span>
+                                        <span class="highlight-value"><i class="bx bx-road"></i>{{ $mileage }}</span>
+                                    </div>
+                                    <div class="highlight-card">
+                                        <span class="highlight-label">Daily Rate</span>
+                                        <span class="highlight-value"><i class="bx bx-dollar-circle"></i>{{ $price }}</span>
+                                    </div>
                                 </div>
 
                                 @if ($status === 'reserved' && $contract)
-                                    <div class="result-card-timeline">
-                                        <div class="timeline-node">
-                                            <div class="timeline-title">Pickup</div>
-                                            <div class="timeline-value">
-                                                {{ optional($contract->pickup_date)->format('d M Y · H:i') ?? '-' }}
+                                    <div class="reservation-card">
+                                        <div class="reservation-card-heading">
+                                            <i class="bx bx-calendar-event"></i>
+                                            <div>
+                                                <span class="reservation-title">Active reservation</span>
+                                                <span class="reservation-subtitle">{{ optional($contract->customer)->fullName() ?? 'Customer TBD' }}</span>
                                             </div>
-                                            <div class="timeline-sub text-muted">
-                                                {{ $contract->pickup_location ?? 'Location TBD' }}</div>
                                         </div>
-                                        <div class="timeline-node">
-                                            <div class="timeline-title">Return</div>
-                                            <div class="timeline-value">
-                                                {{ optional($contract->return_date)->format('d M Y · H:i') ?? '-' }}
+                                        <div class="reservation-grid">
+                                            <div class="reservation-item">
+                                                <span class="reservation-label">Pickup</span>
+                                                <span class="reservation-value">
+                                                    {{ optional($contract->pickup_date)->format('d M Y · H:i') ?? '—' }}
+                                                </span>
+                                                <span class="reservation-sub">{{ $contract->pickup_location ?? 'Location TBD' }}</span>
                                             </div>
-                                            <div class="timeline-sub text-muted">
-                                                {{ $contract->return_location ?? 'Location TBD' }}</div>
-                                        </div>
-                                        <div class="timeline-node">
-                                            <div class="timeline-title">Customer</div>
-                                            <div class="timeline-value">
-                                                {{ optional($contract->customer)->fullName() ?? 'Customer TBD' }}</div>
-                                            <div class="timeline-sub text-muted">
-                                                {{ optional($contract->customer)->phone ?? '—' }}</div>
+                                            <div class="reservation-item">
+                                                <span class="reservation-label">Return</span>
+                                                <span class="reservation-value">
+                                                    {{ optional($contract->return_date)->format('d M Y · H:i') ?? '—' }}
+                                                </span>
+                                                <span class="reservation-sub">{{ $contract->return_location ?? 'Location TBD' }}</span>
+                                            </div>
+                                            <div class="reservation-item">
+                                                <span class="reservation-label">Contact</span>
+                                                <span class="reservation-value">{{ optional($contract->customer)->phone ?? '—' }}</span>
+                                                <span class="reservation-sub">Customer</span>
+                                            </div>
                                         </div>
                                     </div>
                                 @endif
 
                                 <div class="result-card-footer">
-                                    <span><i
-                                            class="bx bx-user-pin me-1"></i>{{ optional($car->user)->shortName() ?? 'Unassigned' }}</span>
-                                    <span><i class="bx bx-time-five me-1"></i>Updated
-                                        {{ $car->updated_at?->diffForHumans() ?? '—' }}</span>
+                                    <div class="result-card-footer-meta">
+                                        <span class="meta-label">Fleet manager</span>
+                                        <span class="meta-value"><i class="bx bx-user-pin"></i>{{ optional($car->user)->shortName() ?? 'Unassigned' }}</span>
+                                    </div>
+                                    <div class="result-card-footer-meta">
+                                        <span class="meta-label">Last update</span>
+                                        <span class="meta-value"><i class="bx bx-time-five"></i>{{ $car->updated_at?->diffForHumans() ?? '—' }}</span>
+                                    </div>
                                     <span class="result-card-arrow"><i class="bx bx-chevron-right"></i></span>
                                 </div>
                             </a>
-                            <hr>
                         @empty
                             <div class="search-placeholder text-center text-muted py-4" role="status">
-                                <i class="bx bx-search display-6 d-block mb-2"></i>
+                                <i class="bx bx-car display-6 d-block mb-2"></i>
                                 <p class="mb-0">No vehicles matched "{{ $query }}"</p>
                             </div>
                         @endforelse
@@ -229,394 +260,3 @@
     @endif
 
 </div>
-
-@once
-    @push('styles')
-        <style>
-            .search-offcanvas {
-                width: min(420px, 100vw);
-            }
-
-            .search-offcanvas .offcanvas-body {
-                padding: 1.75rem 1.5rem;
-            }
-
-            .search-input-wrapper {
-                display: flex;
-                align-items: center;
-                gap: 0.65rem;
-                border: 1px solid rgba(133, 146, 163, 0.25);
-                border-radius: 999px;
-                padding: 0.55rem 1rem;
-                background: rgba(246, 248, 252, 0.95);
-                box-shadow: inset 0 1px 2px rgba(33, 56, 86, 0.08);
-                transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-            }
-
-            .search-input-wrapper:focus-within {
-                border-color: rgba(105, 108, 255, 0.45);
-                box-shadow: 0 0 0 0.25rem rgba(105, 108, 255, 0.08);
-                background: #fff;
-            }
-
-            .search-input-wrapper.has-query {
-                background: rgba(255, 255, 255, 0.95);
-                border-color: rgba(133, 146, 163, 0.35);
-            }
-
-            .search-input-wrapper i {
-                color: #6f7f92;
-                font-size: 1.1rem;
-            }
-
-            .search-input-wrapper .form-control {
-                border: none;
-                background: transparent;
-                box-shadow: none !important;
-                padding: 0;
-            }
-
-            .search-input-wrapper .form-control::placeholder {
-                color: #94a3b8;
-            }
-
-            .search-input-wrapper .form-control:focus {
-                outline: none;
-            }
-
-            .search-input-wrapper .btn-link {
-                text-decoration: none;
-                font-size: 0.85rem;
-                color: #6f7f92;
-                padding: 0;
-            }
-
-            .search-input-wrapper .btn-link:hover,
-            .search-input-wrapper .btn-link:focus-visible {
-                color: #556981;
-                text-decoration: underline;
-            }
-
-            .search-results {
-                position: relative;
-                overflow-y: auto;
-                border-radius: 1rem;
-                border: 1px solid rgba(133, 146, 163, 0.15);
-                background: #fff;
-                box-shadow: inset 0 1px 2px rgba(17, 38, 68, 0.05);
-                padding-block: 0.35rem;
-                scrollbar-width: thin;
-                scrollbar-color: rgba(133, 146, 163, 0.3) transparent;
-                max-height: min(520px, calc(100vh - 220px));
-                min-height: 14rem;
-            }
-
-            .search-results::-webkit-scrollbar {
-                width: 8px;
-            }
-
-            .search-results::-webkit-scrollbar-track {
-                background: transparent;
-            }
-
-            .search-results::-webkit-scrollbar-thumb {
-                background-color: rgba(133, 146, 163, 0.35);
-                border-radius: 999px;
-            }
-
-            .search-results.is-loading {
-                filter: saturate(0.85);
-            }
-
-            .search-loading {
-                position: absolute;
-                inset: 0;
-                background: rgba(255, 255, 255, 0.88);
-                border-radius: 1rem;
-                display: none;
-                justify-content: center;
-                align-items: center;
-                z-index: 2;
-                backdrop-filter: blur(2px);
-            }
-
-            .result-card {
-                display: block;
-                padding: 1rem 1.2rem;
-                border-bottom: 1px solid rgba(133, 146, 163, 0.12);
-                text-decoration: none;
-                color: inherit;
-                background: #fff;
-                transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-                border-radius: 1rem;
-                margin: 0.4rem 0.4rem;
-            }
-
-            .result-card:last-child {
-                border-bottom: none;
-            }
-
-            .result-card:hover,
-            .result-card:focus-visible {
-                transform: translateX(4px);
-                box-shadow: 0 12px 26px rgba(33, 56, 86, 0.18);
-            }
-
-            .result-card:focus-visible {
-                outline: none;
-            }
-
-            .result-card-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-
-            .result-card-title {
-                display: flex;
-                flex-direction: column;
-                gap: 0.25rem;
-            }
-
-            .result-card-name {
-                font-weight: 600;
-                font-size: 1rem;
-                color: #1f2a37;
-            }
-
-            .result-card-sub {
-                font-size: 0.82rem;
-            }
-
-            .status-chip {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.35rem;
-                padding: 0.35rem 0.75rem;
-                border-radius: 999px;
-                font-size: 0.7rem;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                color: #fff;
-            }
-
-            .status-chip.bg-warning,
-            .status-chip.bg-secondary {
-                color: #223145;
-            }
-
-            .result-card-meta {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.6rem;
-                margin: 0.9rem 0 0.4rem;
-                font-size: 0.78rem;
-                color: #6f7f92;
-            }
-
-            .result-card-meta span {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.35rem;
-                padding: 0.25rem 0.55rem;
-                border-radius: 0.75rem;
-                background: rgba(133, 146, 163, 0.12);
-                line-height: 1.2;
-            }
-
-            .result-card-meta span i {
-                color: #5c6f84;
-            }
-
-            .result-card-timeline {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-                gap: 0.75rem;
-                background: rgba(33, 56, 86, 0.04);
-                padding: 0.75rem 0.9rem;
-                border-radius: 0.85rem;
-                margin-bottom: 0.75rem;
-            }
-
-            .timeline-node {
-                display: flex;
-                flex-direction: column;
-                gap: 0.25rem;
-            }
-
-            .timeline-title {
-                font-size: 0.7rem;
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-                color: #6f7f92;
-                font-weight: 600;
-            }
-
-            .timeline-value {
-                font-weight: 600;
-                color: #223145;
-                font-size: 0.85rem;
-            }
-
-            .timeline-sub {
-                font-size: 0.75rem;
-            }
-
-            .result-card-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 0.5rem;
-                font-size: 0.78rem;
-                color: #6f7f92;
-            }
-
-            .result-card-arrow {
-                color: rgba(33, 56, 86, 0.45);
-                font-size: 1.2rem;
-                transition: transform 0.18s ease, color 0.18s ease;
-            }
-
-            .result-card:hover .result-card-arrow,
-            .result-card:focus-visible .result-card-arrow {
-                transform: translateX(4px);
-                color: #223145;
-            }
-
-            .search-placeholder {
-                color: #6f7f92;
-            }
-
-            @media (max-height: 720px) {
-                .search-results {
-                    max-height: calc(100vh - 180px);
-                }
-            }
-
-            @media (max-width: 767.98px) {
-                .search-offcanvas .offcanvas-body {
-                    padding: 1.5rem 1.25rem;
-                }
-
-                .result-card {
-                    margin: 0.3rem 0.3rem;
-                }
-
-                .result-card-meta {
-                    gap: 0.45rem;
-                }
-            }
-
-            @media (max-width: 575.98px) {
-                .search-offcanvas {
-                    width: 100vw;
-                }
-
-                .search-results {
-                    max-height: calc(100vh - 170px);
-                }
-            }
-
-            @media (prefers-reduced-motion: reduce) {
-
-                .search-input-wrapper,
-                .search-results,
-                .result-card,
-                .result-card-arrow {
-                    transition: none !important;
-                }
-            }
-        </style>
-    @endpush
-@endonce
-
-@once
-    @push('scripts')
-        <script>
-            (() => {
-                const MENU_KEY = 'layout-menu';
-                const RESIZE_FLAG = '__panelMenuResizeBound';
-
-                const getToggles = () => document.querySelectorAll(`[data-menu-toggle="${MENU_KEY}"]`);
-                const getOverlay = () => document.querySelector('.layout-overlay.layout-menu-toggle');
-                const getMenu = () => document.getElementById(MENU_KEY);
-
-                const updateState = () => {
-                    const menu = getMenu();
-                    if (!menu) {
-                        return;
-                    }
-
-                    const expanded = document.documentElement.classList.contains('layout-menu-expanded');
-                    const isSmallScreen = window.matchMedia('(max-width: 1199.98px)').matches;
-                    const ariaExpanded = expanded ? 'true' : 'false';
-
-                    getToggles().forEach((toggle) => {
-                        toggle.setAttribute('aria-expanded', ariaExpanded);
-                    });
-
-                    if (isSmallScreen) {
-                        menu.setAttribute('aria-hidden', expanded ? 'false' : 'true');
-                    } else {
-                        menu.removeAttribute('aria-hidden');
-                    }
-                };
-
-                const scheduleUpdate = () => window.requestAnimationFrame(updateState);
-
-                const bind = () => {
-                    const toggles = getToggles();
-                    const overlay = getOverlay();
-
-                    if (!toggles.length) {
-                        return;
-                    }
-
-                    toggles.forEach((toggle) => {
-                        if (toggle.dataset.menuToggleBound === 'true') {
-                            return;
-                        }
-
-                        toggle.addEventListener('click', scheduleUpdate);
-                        toggle.dataset.menuToggleBound = 'true';
-                    });
-
-                    if (overlay && overlay.dataset.menuToggleBound !== 'true') {
-                        overlay.addEventListener('click', scheduleUpdate);
-                        overlay.dataset.menuToggleBound = 'true';
-                    }
-
-                    if (!window[RESIZE_FLAG]) {
-                        window.addEventListener('resize', scheduleUpdate);
-                        window[RESIZE_FLAG] = true;
-                    }
-
-                    updateState();
-                };
-
-                if (document.readyState !== 'loading') {
-                    bind();
-                } else {
-                    document.addEventListener('DOMContentLoaded', bind, {
-                        once: true
-                    });
-                }
-
-                window.addEventListener('livewire:navigated', bind);
-            })
-            ();
-
-            document.addEventListener('shown.bs.offcanvas', (event) => {
-                if (event.target && event.target.id === 'quickSearchOffcanvas') {
-                    const input = event.target.querySelector('#quickSearchInput');
-                    if (input) {
-                        input.focus();
-                        input.select();
-                    }
-                }
-            });
-        </script>
-    @endpush
-@endonce

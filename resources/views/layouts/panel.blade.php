@@ -46,8 +46,8 @@
     <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
     <script src="{{ asset('assets/panel/assets/js/config.js') }}"></script>
 
-    <!-- Livewire tyles -->
-    <!-- Custom Styles -->
+    <!-- Livewire styles/scripts + custom header assets -->
+    @include('livewire.components.panel.header-assets')
     @stack('styles')
 </head>
 
