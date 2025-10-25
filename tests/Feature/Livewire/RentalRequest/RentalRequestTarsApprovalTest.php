@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Livewire\RentalRequest;
 
-use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestKardoApproval;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\Customer;
@@ -11,11 +11,11 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class RentalRequestKardoApprovalTest extends TestCase
+class RentalRequestTarsApprovalTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_complete_inspection_updates_status_sequence(): void
+    public function test_complete_inspection_moves_contract_to_awaiting_return(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -25,18 +25,15 @@ class RentalRequestKardoApprovalTest extends TestCase
             ->for(Customer::factory())
             ->for(Car::factory())
             ->status('delivery')
-            ->create(['kardo_required' => true]);
+            ->create(['kardo_required' => false]);
 
         PickupDocument::factory()->for($contract)->create([
             'tars_contract' => 'PickupDocument/tars_contract_sample.jpg',
-            'kardo_contract' => 'PickupDocument/kardo_contract_sample.jpg',
             'tars_approved_at' => now(),
             'tars_approved_by' => $user->id,
-            'kardo_approved_at' => now(),
-            'kardo_approved_by' => $user->id,
         ]);
 
-        $component = app(RentalRequestKardoApproval::class);
+        $component = app(RentalRequestTarsApproval::class);
         $component->mount($contract->id);
         $component->completeInspection();
 

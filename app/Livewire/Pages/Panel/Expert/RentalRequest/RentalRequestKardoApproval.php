@@ -34,10 +34,24 @@ class RentalRequestKardoApproval extends BaseRentalRequestApproval
         }
 
         $userId = Auth::id();
-        $this->contract->changeStatus('agreement_inspection', $userId);
-        $this->contract->changeStatus('awaiting_return', $userId);
 
-        $this->toast('success', 'Inspection completed and status changed to awaiting_return.');
+        if (! $this->completeDeliveryInspection($userId)) {
+            return;
+        }
+
+        $this->toast('success', 'Inspection completed and status changed to agreement_inspection.');
+        $this->refreshApprovalState();
+    }
+
+    public function moveToAwaitingReturn(): void
+    {
+        $userId = Auth::id();
+
+        if (! $this->advanceContractToAwaitingReturn($userId)) {
+            return;
+        }
+
+        $this->toast('success', 'Status changed to awaiting_return.');
         $this->refreshApprovalState();
     }
 

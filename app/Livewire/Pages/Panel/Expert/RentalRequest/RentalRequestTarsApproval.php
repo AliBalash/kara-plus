@@ -31,17 +31,38 @@ class RentalRequestTarsApproval extends BaseRentalRequestApproval
         $this->refreshApprovalState();
     }
 
-    public function changeStatusToDelivery(): void
+    public function completeInspection(): void
     {
-        $userId = Auth::id();
-
-        if (! $userId) {
-            $this->toast('error', 'You need to be logged in to change the status.', false);
+        if (! $this->pickupDocument->tars_approved_at) {
+            $this->toast('error', 'Please approve TARS first.', false);
             return;
         }
 
-        $this->contract->changeStatus('delivery', $userId);
-        $this->toast('success', 'Status changed to delivery successfully.');
+        if ($this->contract->kardo_required && ! $this->pickupDocument->kardo_approved_at) {
+            $this->toast('error', 'Please approve KARDO first.', false);
+            return;
+        }
+
+        $userId = Auth::id();
+
+        if (! $this->completeDeliveryInspection($userId)) {
+            return;
+        }
+
+        $this->toast('success', 'Inspection completed and status changed to agreement_inspection.');
+
+        $this->refreshApprovalState();
+    }
+
+    public function moveToAwaitingReturn(): void
+    {
+        $userId = Auth::id();
+
+        if (! $this->advanceContractToAwaitingReturn($userId)) {
+            return;
+        }
+
+        $this->toast('success', 'Status changed to awaiting_return.');
 
         $this->refreshApprovalState();
     }

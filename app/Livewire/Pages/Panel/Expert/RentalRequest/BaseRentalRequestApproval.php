@@ -157,6 +157,54 @@ abstract class BaseRentalRequestApproval extends Component
         return null;
     }
 
+    protected function completeDeliveryInspection(?int $userId): bool
+    {
+        if (! $userId) {
+            $this->toast('error', 'You need to be logged in to change the status.', false);
+            return false;
+        }
+
+        $currentStatus = $this->contract->current_status;
+
+        if (in_array($currentStatus, ['agreement_inspection', 'awaiting_return'], true)) {
+            $this->toast('info', 'Inspection already completed.', false);
+            return false;
+        }
+
+        if ($currentStatus !== 'delivery') {
+            $this->toast('error', 'Inspection can only be completed from delivery status.', false);
+            return false;
+        }
+
+        $this->contract->changeStatus('agreement_inspection', $userId);
+
+        return true;
+    }
+
+    protected function advanceContractToAwaitingReturn(?int $userId): bool
+    {
+        if (! $userId) {
+            $this->toast('error', 'You need to be logged in to change the status.', false);
+            return false;
+        }
+
+        $currentStatus = $this->contract->current_status;
+
+        if ($currentStatus === 'awaiting_return') {
+            $this->toast('info', 'Contract is already awaiting return.', false);
+            return false;
+        }
+
+        if ($currentStatus !== 'agreement_inspection') {
+            $this->toast('error', 'Complete the inspection before moving to awaiting return.', false);
+            return false;
+        }
+
+        $this->contract->changeStatus('awaiting_return', $userId);
+
+        return true;
+    }
+
     protected function refreshApprovalState(): void
     {
         $this->contract = Contract::with([
