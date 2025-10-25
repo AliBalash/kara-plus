@@ -35,6 +35,13 @@
                             <i class="bx bx-car"></i>
                         </button>
                     </li>
+                    <li class="nav-item me-2">
+                        <button type="button" class="btn btn-icon btn-outline-secondary rounded-circle shadow-sm"
+                            data-bs-toggle="offcanvas" data-bs-target="#agreementSearchOffcanvas"
+                            aria-controls="agreementSearchOffcanvas" aria-label="Open agreement lookup">
+                            <i class="bx bx-file-find"></i>
+                        </button>
+                    </li>
                 @endif
                 <!-- Place this tag where you want the button to render. -->
                 <!-- User -->
@@ -251,6 +258,117 @@
                             <div class="search-placeholder text-center text-muted py-4" role="status">
                                 <i class="bx bx-car display-6 d-block mb-2"></i>
                                 <p class="mb-0">No vehicles matched "{{ $query }}"</p>
+                            </div>
+                        @endforelse
+                    @endif
+                </div>
+            </div>
+        </div>
+        <div class="offcanvas offcanvas-end search-offcanvas" tabindex="-1" id="agreementSearchOffcanvas"
+            wire:ignore.self aria-labelledby="agreementSearchLabel" data-bs-scroll="true">
+            <div class="offcanvas-header border-bottom">
+                <div>
+                    <h5 class="offcanvas-title mb-1" id="agreementSearchLabel">Agreement Lookup</h5>
+                    <p class="text-muted small mb-0">Search contracts by agreement number to jump straight to the
+                        details.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body d-flex flex-column gap-3">
+                @php
+                    $agreementQueryLength = \Illuminate\Support\Str::length($agreementQuery ?? '');
+                @endphp
+                <div @class(['search-input-wrapper', 'has-query' => $agreementQueryLength]) role="search">
+                    <i class="bx bx-file"></i>
+                    <label class="visually-hidden" for="agreementSearchInput">Search agreements</label>
+                    <input type="search" wire:model.live.debounce.400ms="agreementQuery" class="form-control"
+                        placeholder="Enter agreement number" aria-label="Search agreements" autocomplete="off"
+                        spellcheck="false" enterkeyhint="search" id="agreementSearchInput">
+                    @if ($agreementQueryLength > 1)
+                        <button type="button" class="btn btn-sm btn-link text-muted"
+                            wire:click="resetAgreementSearch">
+                            Clear
+                        </button>
+                    @endif
+                </div>
+
+                <div @class(['search-results', 'flex-grow-1', 'position-relative']) role="list"
+                    wire:loading.class="is-loading" wire:target="agreementQuery" aria-live="polite"
+                    wire:loading.attr="aria-busy" data-testid="agreement-search-results">
+                    <div class="search-loading" wire:loading.flex wire:target="agreementQuery" aria-hidden="true">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading…</span>
+                        </div>
+                    </div>
+                    @if ($agreementQueryLength <= 1)
+                        <div class="search-placeholder text-center text-muted py-4" role="status">
+                            <i class="bx bx-file-find display-6 d-block mb-2"></i>
+                            <p class="mb-0">Enter at least 2 digits to search agreements.</p>
+                        </div>
+                    @else
+                        @forelse ($agreementResults as $contract)
+                            @php
+                                $agreementNumber = optional($contract->pickupDocument)->agreement_number;
+                                $status = $contract->current_status ?? 'unknown';
+                                $statusColor = match ($status) {
+                                    'pending', 'under_review' => 'warning',
+                                    'assigned', 'delivery' => 'primary',
+                                    'agreement_inspection', 'awaiting_return' => 'info',
+                                    'complete', 'completed' => 'success',
+                                    'cancelled', 'canceled' => 'danger',
+                                    default => 'secondary',
+                                };
+                                $statusLabel = \Illuminate\Support\Str::headline($status);
+                                $car = $contract->car;
+                                $customer = $contract->customer;
+                                $pickupDate = optional($contract->pickup_date)->format('d M Y · H:i');
+                                $returnDate = optional($contract->return_date)->format('d M Y · H:i');
+                            @endphp
+                            <a href="{{ route('rental-requests.details', [$contract->id]) }}" class="result-card"
+                                role="listitem" wire:key="agreement-result-{{ $contract->id }}-{{ $agreementNumber }}">
+                                <div class="result-card-header">
+                                    <div class="result-card-title">
+                                        <span class="result-card-name">Agreement #{{ $agreementNumber ?? '—' }}</span>
+                                        <span class="result-card-sub text-muted">{{ optional($car)->fullName() ?? 'Vehicle TBD' }}</span>
+                                    </div>
+                                    <span class="status-chip bg-{{ $statusColor }}">{{ $statusLabel }}</span>
+                                </div>
+
+                                <div class="result-card-meta">
+                                    <span><i class="bx bx-user-circle"></i>{{ optional($customer)->fullName() ?? 'Customer TBD' }}</span>
+                                    <span><i class="bx bx-phone"></i>{{ optional($customer)->phone ?? '—' }}</span>
+                                    <span><i class="bx bx-id-card"></i>{{ optional($car)->plate_number ?? 'Plate —' }}</span>
+                                </div>
+
+                                <div class="result-card-timeline">
+                                    <div class="timeline-node">
+                                        <div class="timeline-title">Pickup</div>
+                                        <div class="timeline-value">{{ $pickupDate ?? 'Pickup —' }}</div>
+                                        <div class="timeline-sub text-muted">{{ $contract->pickup_location ?? 'Location TBD' }}</div>
+                                    </div>
+                                    <div class="timeline-node">
+                                        <div class="timeline-title">Return</div>
+                                        <div class="timeline-value">{{ $returnDate ?? 'Return —' }}</div>
+                                        <div class="timeline-sub text-muted">{{ $contract->return_location ?? 'Location TBD' }}</div>
+                                    </div>
+                                    <div class="timeline-node">
+                                        <div class="timeline-title">Agreement</div>
+                                        <div class="timeline-value">#{{ $agreementNumber ?? '—' }}</div>
+                                        <div class="timeline-sub text-muted">{{ $statusLabel }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="result-card-footer">
+                                    <span><i class="bx bx-time-five me-1"></i>Updated
+                                        {{ $contract->updated_at?->diffForHumans() ?? '—' }}</span>
+                                    <span class="result-card-arrow"><i class="bx bx-chevron-right"></i></span>
+                                </div>
+                            </a>
+                            <hr>
+                        @empty
+                            <div class="search-placeholder text-center text-muted py-4" role="status">
+                                <i class="bx bx-file-find display-6 d-block mb-2"></i>
+                                <p class="mb-0">No agreements matched "{{ $agreementQuery }}"</p>
                             </div>
                         @endforelse
                     @endif
