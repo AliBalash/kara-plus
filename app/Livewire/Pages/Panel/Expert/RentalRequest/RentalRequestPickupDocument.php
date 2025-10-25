@@ -159,6 +159,7 @@ class RentalRequestPickupDocument extends Component
         $validationRules = [
             'fuelLevel' => 'required',
             'mileage' => 'required',
+            'agreement_number' => 'required',
             'note' => 'nullable|string|max:1000',
             'driverNote' => 'nullable|string|max:1000',
         ];
@@ -270,9 +271,7 @@ class RentalRequestPickupDocument extends Component
             $pickupDocument->mileage = $this->mileage;
             $pickupDocument->note = $this->note;
             $pickupDocument->driver_note = $this->driverNote;
-            $pickupDocument->agreement_number = $this->contract->kardo_required
-                ? $this->agreement_number
-                : null;
+            $pickupDocument->agreement_number =$this->agreement_number;
 
             // Tars Contract Upload
             if ($this->tarsContract) {
