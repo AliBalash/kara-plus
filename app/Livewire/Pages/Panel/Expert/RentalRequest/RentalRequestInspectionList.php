@@ -27,6 +27,7 @@ class RentalRequestInspectionList extends Component
 
     protected array $statusScope = [
         'delivery',
+        'inspection',
         'agreement_inspection',
         'awaiting_return',
         'returned',
@@ -117,7 +118,7 @@ class RentalRequestInspectionList extends Component
 
         $statuses = $this->statusFilter === 'all'
             ? $this->statusScope
-            : [$this->resolveStatus($this->statusFilter)];
+            : $this->statusesForFilter($this->statusFilter);
 
         $contracts = Contract::with(['customer', 'car.carModel', 'user', 'pickupDocument', 'latestStatus.user'])
             ->whereIn('current_status', $statuses)
@@ -183,5 +184,20 @@ class RentalRequestInspectionList extends Component
         }
 
         return $status;
+    }
+
+    /**
+     * Normalise filter selections to the statuses that should be queried.
+     */
+    private function statusesForFilter(?string $status): array
+    {
+        $resolved = $this->resolveStatus($status);
+
+        return match ($resolved) {
+            'delivery' => ['delivery', 'inspection', 'agreement_inspection'],
+            'inspection' => ['inspection', 'agreement_inspection'],
+            'agreement_inspection' => ['agreement_inspection'],
+            default => [$resolved],
+        };
     }
 }

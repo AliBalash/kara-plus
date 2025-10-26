@@ -26,6 +26,7 @@
                 <label class="filter-label" for="inspectionStatus">Status</label>
                 <select id="inspectionStatus" class="form-select" wire:model.live="statusFilter">
                     <option value="delivery">Awaiting Delivery</option>
+                    <option value="inspection">Inspection</option>
                     <option value="agreement_inspection">Agreement Inspection</option>
                     <option value="awaiting_return">Awaiting Return</option>
                     <option value="returned">Returned</option>
@@ -141,6 +142,7 @@
                         <i class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
+                    <th>Status</th>
                     <th>Sales Agent</th>
                     <th>Submitted By</th>
                     <th>Assigned Expert</th>
@@ -170,6 +172,9 @@
                         <td>{{ optional($contract->car)->fullName() ?? 'Vehicle N/A' }}</td>
                         <td>{{ $contract->pickup_date?->format('d M Y H:i') ?? '—' }}</td>
                         <td>{{ $contract->return_date?->format('d M Y H:i') ?? '—' }}</td>
+                        <td>
+                            <x-status-badge :status="$contract->current_status" />
+                        </td>
                         <td>
                             <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
                                 {{ $contract->agent_sale ?? '—' }}
