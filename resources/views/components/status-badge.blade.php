@@ -1,26 +1,6 @@
 @php
-    switch ($status) {
-        case 'pending': $badgeClass = 'bg-label-warning'; break;
-        case 'assigned': $badgeClass = 'bg-label-info'; break;
-        case 'under_review': $badgeClass = 'bg-label-secondary'; break;
-        case 'reserved': $badgeClass = 'bg-label-primary'; break;
-        case 'delivery': $badgeClass = 'bg-label-dark'; break;
-        case 'agreement_inspection': $badgeClass = 'bg-label-light'; break;
-        case 'awaiting_return': $badgeClass = 'bg-label-warning'; break;
-        case 'returned': $badgeClass = 'bg-label-success'; break;
-        case 'complete': $badgeClass = 'bg-label-success'; break;
-        case 'cancelled': $badgeClass = 'bg-label-danger'; break;
-        case 'rejected': $badgeClass = 'bg-label-danger'; break;
-        default: $badgeClass = 'bg-label-secondary';
-    }
-
-    $labelMap = [
-        'reserved' => 'Booking',
-        'delivery' => 'Delivery',
-        'awaiting_return' => 'Return',
-    ];
-
-    $displayLabel = $labelMap[$status] ?? ucwords(str_replace('_', ' ', $status));
+    $badgeClass = \App\Support\ContractStatus::badgeClass($status);
+    $displayLabel = \App\Support\ContractStatus::label($status);
 @endphp
 
 <span class="badge {{ $badgeClass }}">
