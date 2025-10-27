@@ -116,11 +116,16 @@ class RentalRequestAwaitingReturnList extends Component
                                     $modelQuery->where('brand', 'like', $likeSearch)
                                         ->orWhere('model', 'like', $likeSearch);
                                 });
-                        });
+                    });
                 });
             })
             ->when($this->userFilter === 'assigned', fn($query) => $query->whereNotNull('user_id'))
             ->when($this->userFilter === 'unassigned', fn($query) => $query->whereNull('user_id'))
+            ->whereHas('pickupDocument', fn($doc) => $doc->whereNotNull('tars_approved_at'))
+            ->where(function ($query) {
+                $query->where('kardo_required', false)
+                    ->orWhereHas('pickupDocument', fn($doc) => $doc->whereNotNull('kardo_approved_at'));
+            })
             ->when($this->pickupFrom, fn($query) => $query->where('pickup_date', '>=', $this->pickupFrom))
             ->when($this->pickupTo, fn($query) => $query->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($query) => $query->where('return_date', '>=', $this->returnFrom))
