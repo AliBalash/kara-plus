@@ -1,5 +1,19 @@
 <div class="card">
-    <h4 class="card-header fw-bold py-3 mb-4"><span class="text-muted fw-light">Contract /</span> Inspection Approvals</h4>
+    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 fw-bold py-3 mb-4">
+        <h4 class="mb-0">
+            <span class="text-muted fw-light">Contract /</span>
+            {{ $isTarsList ? 'TARS Inspection Approvals' : 'KARDO Inspection Approvals' }}
+        </h4>
+
+        <div class="btn-group" role="group" aria-label="Approval type">
+            <a href="{{ route('rental-requests.tars-inspection-list') }}"
+                class="btn btn-sm {{ $isTarsList ? 'btn-primary' : 'btn-outline-primary' }}">TARS</a>
+            @if ($hasPendingKardoContracts || ! $isTarsList)
+                <a href="{{ route('rental-requests.kardo-inspection-list') }}"
+                    class="btn btn-sm {{ $isTarsList ? 'btn-outline-primary' : 'btn-primary' }}">KARDO</a>
+            @endif
+        </div>
+    </div>
 
     <div class="row p-3 g-3">
         <div class="col-md-3">
@@ -28,10 +42,6 @@
                     <option value="delivery">Awaiting Delivery</option>
                     <option value="inspection">Inspection</option>
                     <option value="agreement_inspection">Agreement Inspection</option>
-                    <option value="awaiting_return">Awaiting Return</option>
-                    <option value="returned">Returned</option>
-                    <option value="complete">Complete</option>
-                    <option value="cancelled">Cancelled</option>
                     <option value="all">All Statuses</option>
                 </select>
             </div>
@@ -48,28 +58,29 @@
             </div>
         </div>
 
-        <div class="col-md-2">
-            <div class="filter-field">
-                <label class="filter-label" for="inspectionTars">TARS State</label>
-                <select id="inspectionTars" class="form-select" wire:model.live="tarsStatus">
-                    <option value="all">All TARS States</option>
-                    <option value="pending">Pending TARS</option>
-                    <option value="approved">Approved TARS</option>
-                </select>
+        @if ($isTarsList)
+            <div class="col-md-2">
+                <div class="filter-field">
+                    <label class="filter-label" for="inspectionTars">TARS State</label>
+                    <select id="inspectionTars" class="form-select" wire:model.live="tarsStatus">
+                        <option value="pending">Pending TARS</option>
+                        <option value="approved">Approved TARS</option>
+                        <option value="all">All TARS States</option>
+                    </select>
+                </div>
             </div>
-        </div>
-
-        <div class="col-md-2">
-            <div class="filter-field">
-                <label class="filter-label" for="inspectionKardo">KARDO State</label>
-                <select id="inspectionKardo" class="form-select" wire:model.live="kardoStatus">
-                    <option value="all">All KARDO States</option>
-                    <option value="pending">Pending KARDO</option>
-                    <option value="approved">Approved KARDO</option>
-                    <option value="not_required">KARDO Not Required</option>
-                </select>
+        @else
+            <div class="col-md-2">
+                <div class="filter-field">
+                    <label class="filter-label" for="inspectionKardo">KARDO State</label>
+                    <select id="inspectionKardo" class="form-select" wire:model.live="kardoStatus">
+                        <option value="pending">Pending KARDO</option>
+                        <option value="approved">Approved KARDO</option>
+                        <option value="all">All KARDO States</option>
+                    </select>
+                </div>
             </div>
-        </div>
+        @endif
 
         <div class="col-md-2">
             <div class="filter-field">
@@ -119,6 +130,12 @@
         </div>
     @endif
 
+    @if (! $isTarsList && ! $hasPendingKardoContracts)
+        <div class="alert alert-info mx-3" role="alert">
+            All KARDO approvals are complete for the current inspection stage.
+        </div>
+    @endif
+
     <div class="table-responsive text-nowrap">
         <table class="table table-hover">
             <thead>
@@ -146,12 +163,12 @@
                     <th>Sales Agent</th>
                     <th>Submitted By</th>
                     <th>Assigned Expert</th>
-                    <th>Approvals</th>
+                    <th>{{ $isTarsList ? 'TARS Status' : 'KARDO Status' }}</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
-                @foreach ($contracts as $contract)
+                @forelse ($contracts as $contract)
                     @php
                         $pickupDocument = $contract->pickupDocument;
                         $tarsDone = $pickupDocument && $pickupDocument->tars_approved_at;
@@ -160,11 +177,7 @@
                             : false;
 
                         $tarsBadge = $tarsDone ? 'bg-success' : 'bg-warning text-dark';
-                        $kardoBadge = match (true) {
-                            ! $contract->kardo_required => 'bg-secondary',
-                            $kardoDone => 'bg-success',
-                            default => 'bg-warning text-dark',
-                        };
+                        $kardoBadge = $kardoDone ? 'bg-success' : 'bg-warning text-dark';
                     @endphp
                     <tr>
                         <td>{{ $contract->id }}</td>
@@ -191,9 +204,16 @@
                             @endif
                         </td>
                         <td>
-                            <span class="badge {{ $tarsBadge }}">TARS: {{ $tarsDone ? 'Approved' : 'Pending' }}</span>
-                            <span class="badge {{ $kardoBadge }} mt-1">KARDO:
-                                {{ $contract->kardo_required ? ($kardoDone ? 'Approved' : 'Pending') : 'Not Required' }}</span>
+                            @if ($isTarsList)
+                                <span class="badge {{ $tarsBadge }}">TARS: {{ $tarsDone ? 'Approved' : 'Pending' }}</span>
+                                @if ($contract->kardo_required)
+                                    <span class="badge {{ $kardoBadge }} mt-1">KARDO:
+                                        {{ $kardoDone ? 'Approved' : 'Pending' }}</span>
+                                @endif
+                            @else
+                                <span class="badge {{ $kardoBadge }}">KARDO: {{ $kardoDone ? 'Approved' : 'Pending' }}</span>
+                                <span class="badge {{ $tarsBadge }} mt-1">TARS: {{ $tarsDone ? 'Approved' : 'Pending' }}</span>
+                            @endif
                         </td>
                         <td>
                             <div class="btn-group" role="group" aria-label="Approval links">
@@ -209,7 +229,11 @@
                             </div>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="11" class="text-center text-muted py-4">No contracts found.</td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
         {{ $contracts->links() }}

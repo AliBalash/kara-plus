@@ -60,7 +60,15 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/awaiting-pickup', RentalRequestAwaitingPickupList::class)->name('rental-requests.awaiting.pickup');
     Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
 
-    Route::get('/expert/rental-requests/inspection-list', RentalRequestInspectionList::class)->name('rental-requests.inspection-list');
+    Route::get('/expert/rental-requests/inspection-list', function () {
+        return redirect()->route('rental-requests.tars-inspection-list');
+    })->name('rental-requests.inspection-list');
+    Route::get('/expert/rental-requests/tars-inspections', RentalRequestInspectionList::class)
+        ->name('rental-requests.tars-inspection-list')
+        ->defaults('type', 'tars');
+    Route::get('/expert/rental-requests/kardo-inspections', RentalRequestInspectionList::class)
+        ->name('rental-requests.kardo-inspection-list')
+        ->defaults('type', 'kardo');
     Route::get('/expert/rental-requests/tars/{contractId}', RentalRequestTarsApproval::class)->name('rental-requests.tars-approval');
     Route::get('/expert/rental-requests/kardo/{contractId}', RentalRequestKardoApproval::class)->name('rental-requests.kardo-approval');
 
@@ -69,11 +77,11 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     })->name('rental-requests.inspection');
 
     Route::get('/expert/rental-requests/tars-approvals', function () {
-        return redirect()->route('rental-requests.inspection-list');
+        return redirect()->route('rental-requests.tars-inspection-list');
     })->name('rental-requests.tars-approvals');
 
     Route::get('/expert/rental-requests/kardo-approvals', function () {
-        return redirect()->route('rental-requests.inspection-list');
+        return redirect()->route('rental-requests.kardo-inspection-list');
     })->name('rental-requests.kardo-approvals');
 
     Route::get('/expert/rental-requests/awaiting-return', RentalRequestAwaitingReturnList::class)->name('rental-requests.awaiting.return');
