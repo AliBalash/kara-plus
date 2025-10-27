@@ -19,18 +19,6 @@
     <ul class="menu-inner py-1">
         @php
             $isDriver = auth()->user()?->hasRole('driver');
-            $hasPendingKardoContracts = false;
-
-            if (! $isDriver) {
-                $hasPendingKardoContracts = \App\Models\Contract::query()
-                    ->where('kardo_required', true)
-                    ->whereIn('current_status', ['delivery', 'inspection', 'agreement_inspection'])
-                    ->where(function ($inner) {
-                        $inner->whereDoesntHave('pickupDocument')
-                            ->orWhereHas('pickupDocument', fn($doc) => $doc->whereNull('kardo_approved_at'));
-                    })
-                    ->exists();
-            }
         @endphp
 
         @if ($isDriver)
@@ -102,14 +90,12 @@
                             </a>
                         </li>
 
-                        @if ($hasPendingKardoContracts)
                             <li
                                 class="menu-item {{ Request::routeIs('rental-requests.kardo-inspection-list', 'rental-requests.kardo-approval') ? 'active' : '' }}">
                                 <a href="{{ route('rental-requests.kardo-inspection-list') }}" class="menu-link">
                                     <div data-i18n="Without menu">Inspection Contracts (KARDO)</div>
                                 </a>
                             </li>
-                        @endif
 
                         <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.return') ? 'active' : '' }}">
                             <a href="{{ route('rental-requests.awaiting.return') }}" class="menu-link">
