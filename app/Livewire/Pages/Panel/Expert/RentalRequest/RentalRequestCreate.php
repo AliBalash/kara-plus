@@ -286,15 +286,32 @@ class RentalRequestCreate extends Component
         return Contract::where('car_id', $carId)
             ->whereIn('current_status', ['pending', 'assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection', 'awaiting_return'])
             ->where('return_date', '>=', now())
-            ->select('pickup_date', 'return_date')
+            ->select('id', 'pickup_date', 'return_date')
             ->get()
             ->map(function ($contract) {
                 return [
+                    'id' => $contract->id,
                     'pickup_date' => Carbon::parse($contract->pickup_date)->format('Y-m-d H:i'),
                     'return_date' => Carbon::parse($contract->return_date)->format('Y-m-d H:i'),
                 ];
             })
             ->toArray();
+    }
+
+    private function getAvailabilityConflictMessage(Carbon $pickup, Carbon $return): ?string
+    {
+        $reservations = $this->getCarReservations($this->selectedCarId);
+
+        foreach ($reservations as $reservation) {
+            $existingPickup = Carbon::parse($reservation['pickup_date']);
+            $existingReturn = Carbon::parse($reservation['return_date']);
+
+            if ($pickup->lessThan($existingReturn) && $return->greaterThan($existingPickup)) {
+                return "The selected car is already reserved from {$reservation['pickup_date']} to {$reservation['return_date']}.";
+            }
+        }
+
+        return null;
     }
 
     protected function rules()
@@ -310,22 +327,38 @@ class RentalRequestCreate extends Component
                 'date',
                 'after_or_equal:today',
                 function ($attribute, $value, $fail) {
-                    if ($this->selectedCarId && $this->return_date) {
-                        $pickup = Carbon::parse($value);
-                        $return = Carbon::parse($this->return_date);
-                        $reservations = $this->getCarReservations($this->selectedCarId);
+                    if (!$this->selectedCarId || !$this->return_date) {
+                        return;
+                    }
 
-                        foreach ($reservations as $reservation) {
-                            $existingPickup = Carbon::parse($reservation['pickup_date']);
-                            $existingReturn = Carbon::parse($reservation['return_date']);
-                            if ($pickup->lessThanOrEqualTo($existingReturn) && $return->greaterThanOrEqualTo($existingPickup)) {
-                                $fail("The selected car is already reserved from {$reservation['pickup_date']} to {$reservation['return_date']}.");
-                            }
-                        }
+                    $pickup = Carbon::parse($value);
+                    $return = Carbon::parse($this->return_date);
+                    $conflictMessage = $this->getAvailabilityConflictMessage($pickup, $return);
+
+                    if ($conflictMessage) {
+                        $fail($conflictMessage);
                     }
                 },
             ],
-            'return_date' => ['required', 'date', 'after:pickup_date', 'after_or_equal:today'],
+            'return_date' => [
+                'required',
+                'date',
+                'after:pickup_date',
+                'after_or_equal:today',
+                function ($attribute, $value, $fail) {
+                    if (!$this->selectedCarId || !$this->pickup_date) {
+                        return;
+                    }
+
+                    $pickup = Carbon::parse($this->pickup_date);
+                    $return = Carbon::parse($value);
+                    $conflictMessage = $this->getAvailabilityConflictMessage($pickup, $return);
+
+                    if ($conflictMessage) {
+                        $fail($conflictMessage);
+                    }
+                },
+            ],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('customers')],

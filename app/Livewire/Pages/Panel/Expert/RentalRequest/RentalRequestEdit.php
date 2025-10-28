@@ -300,8 +300,41 @@ class RentalRequestEdit extends Component
             'selectedCarId' => ['required', 'exists:cars,id'],
             'pickup_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'return_location' => ['required', Rule::in(array_keys($this->locationCosts))],
-            'pickup_date' => ['required', 'date'],
-            'return_date' => ['required', 'date', 'after_or_equal:pickup_date'],
+            'pickup_date' => [
+                'required',
+                'date',
+                function ($attribute, $value, $fail) {
+                    if (!$this->selectedCarId || !$this->return_date) {
+                        return;
+                    }
+
+                    $pickup = Carbon::parse($value);
+                    $return = Carbon::parse($this->return_date);
+                    $conflictMessage = $this->getAvailabilityConflictMessage($pickup, $return);
+
+                    if ($conflictMessage) {
+                        $fail($conflictMessage);
+                    }
+                },
+            ],
+            'return_date' => [
+                'required',
+                'date',
+                'after_or_equal:pickup_date',
+                function ($attribute, $value, $fail) {
+                    if (!$this->selectedCarId || !$this->pickup_date) {
+                        return;
+                    }
+
+                    $pickup = Carbon::parse($this->pickup_date);
+                    $return = Carbon::parse($value);
+                    $conflictMessage = $this->getAvailabilityConflictMessage($pickup, $return);
+
+                    if ($conflictMessage) {
+                        $fail($conflictMessage);
+                    }
+                },
+            ],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => [
@@ -654,16 +687,36 @@ class RentalRequestEdit extends Component
         $reservations = Contract::where('car_id', $carId)
             ->whereIn('current_status', ['pending', 'assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection', 'awaiting_return'])
             ->where('return_date', '>=', now())
-            ->select('pickup_date', 'return_date')
+            ->when($this->contract, function ($query) {
+                return $query->where('id', '!=', $this->contract->id);
+            })
+            ->select('id', 'pickup_date', 'return_date')
             ->get()
             ->map(function ($contract) {
                 return [
+                    'id' => $contract->id,
                     'pickup_date' => Carbon::parse($contract->pickup_date)->format('Y-m-d H:i'),
                     'return_date' => Carbon::parse($contract->return_date)->format('Y-m-d H:i'),
                 ];
             })
             ->toArray();
         return $reservations;
+    }
+
+    private function getAvailabilityConflictMessage(Carbon $pickup, Carbon $return): ?string
+    {
+        $reservations = $this->getCarReservations($this->selectedCarId);
+
+        foreach ($reservations as $reservation) {
+            $existingPickup = Carbon::parse($reservation['pickup_date']);
+            $existingReturn = Carbon::parse($reservation['return_date']);
+
+            if ($pickup->lessThan($existingReturn) && $return->greaterThan($existingPickup)) {
+                return "The selected car is already reserved from {$reservation['pickup_date']} to {$reservation['return_date']}.";
+            }
+        }
+
+        return null;
     }
 
     public function changeStatusToReserve($contractId)
