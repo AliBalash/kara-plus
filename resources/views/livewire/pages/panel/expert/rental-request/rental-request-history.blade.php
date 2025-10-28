@@ -22,6 +22,8 @@
                             <th>Agent Sale</th>
                             <th>Expert</th>
                             <th>Status</th>
+                            <th>Changed By</th>
+                            <th>Changed At</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -46,6 +48,14 @@
                                 <td>
                                     <x-status-badge :status="$status->status" />
 
+                                </td>
+                                <td>
+                                    <span class="badge bg-label-primary">
+                                        {{ $status->user?->shortName() ?? 'System' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ $status->created_at?->timezone(config('app.timezone'))?->format('d M Y - H:i') ?? '—' }}
                                 </td>
                                 <td>
                                     <div class="dropdown">
