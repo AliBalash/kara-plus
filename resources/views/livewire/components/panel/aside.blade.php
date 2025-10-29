@@ -122,6 +122,13 @@
                             </a>
                         </li>
 
+                        <li
+                            class="menu-item {{ Request::routeIs('rental-requests.processed-payments') ? 'active' : '' }}">
+                            <a href="{{ route('rental-requests.processed-payments') }}" class="menu-link">
+                                <div data-i18n="Without menu">Processed Payments</div>
+                            </a>
+                        </li>
+
                         <li class="menu-item {{ Request::routeIs('rental-requests.me') ? 'active' : '' }}">
                             <a href="{{ route('rental-requests.me') }}" class="menu-link">
                                 <div data-i18n="Without menu">Me</div>
