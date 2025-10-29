@@ -1,18 +1,17 @@
 <div class="card">
     <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
         <div>
-            <h5 class="mb-1">Confirm Payments</h5>
-            <p class="mb-0 text-muted small">Review and confirm pending payments submitted by customers.</p>
+            <h5 class="mb-1">Processed Payments</h5>
+            <p class="mb-0 text-muted small">Browse the payments that have already been approved or rejected.</p>
         </div>
-        <a href="{{ route('rental-requests.processed-payments') }}" class="btn btn-outline-primary mt-2 mt-md-0">
-            View Processed Payments
+        <a href="{{ route('rental-requests.confirm-payment-list') }}" class="btn btn-outline-secondary mt-2 mt-md-0">
+            Back to Confirmation Queue
         </a>
     </div>
 
-    @php($summaryData = $summaryData ?? [])
     @php
+        $summaryData = $summaryData ?? [];
         $statusMeta = $statusMeta ?? [
-            'pending' => ['label' => 'Pending', 'bg' => 'warning', 'text' => 'dark'],
             'approved' => ['label' => 'Approved', 'bg' => 'success', 'text' => 'white'],
             'rejected' => ['label' => 'Rejected', 'bg' => 'danger', 'text' => 'white'],
         ];
@@ -48,10 +47,9 @@
         <div class="col-md-3 mb-2">
             <form class="input-group" wire:submit.prevent="applySearch">
                 <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="search" class="form-control"
-                    placeholder="Search by Contract ID or Customer Last Name..." wire:model.defer="searchInput">
-                <button class="btn btn-primary" type="submit" wire:loading.attr="disabled"
-                    wire:target="applySearch">
+                <input type="search" class="form-control" placeholder="Search by Contract ID or Customer Last Name..."
+                    wire:model.defer="searchInput">
+                <button class="btn btn-primary" type="submit" wire:loading.attr="disabled" wire:target="applySearch">
                     <span wire:loading.remove wire:target="applySearch">Search</span>
                     <span wire:loading wire:target="applySearch">...</span>
                 </button>
@@ -61,9 +59,9 @@
         <!-- Status Filter -->
         <div class="col-md-2 mb-2">
             <select class="form-select" wire:model.live="statusFilter">
-                <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
+                <option value="all">Approved &amp; Rejected</option>
             </select>
         </div>
 
@@ -107,25 +105,26 @@
             <button type="button" class="btn btn-secondary w-100" wire:click="clearFilters">Clear All Filters</button>
         </div>
     </div>
+
     <!-- Accordion for Grouped Payments -->
-    <div class="accordion" id="paymentAccordion">
-        @forelse($groupedPayments as $contractId => $paymentGroup)
+    <div class="accordion" id="processedPaymentAccordion">
+        @forelse ($groupedPayments as $contractId => $paymentGroup)
             <div class="accordion-item">
-                <h2 class="accordion-header" id="heading{{ $contractId }}">
-                    <button
-                        class="accordion-button {{ in_array($contractId, $this->openAccordions) ? '' : 'collapsed' }}"
-                        type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ $contractId }}"
+                <h2 class="accordion-header" id="processedHeading{{ $contractId }}">
+                    <button class="accordion-button {{ in_array($contractId, $this->openAccordions) ? '' : 'collapsed' }}"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#processedCollapse{{ $contractId }}"
                         aria-expanded="{{ in_array($contractId, $this->openAccordions) ? 'true' : 'false' }}"
-                        aria-controls="collapse{{ $contractId }}" wire:click="toggleAccordion({{ $contractId }})">
+                        aria-controls="processedCollapse{{ $contractId }}"
+                        wire:click="toggleAccordion({{ $contractId }})">
                         @php($firstPayment = $paymentGroup->first())
                         <strong>Contract #{{ $contractId }} - Customer:
                             {{ $firstPayment?->customer?->fullName() ?? 'Unknown' }}</strong>
                         <span class="ms-3 badge bg-info">{{ count($paymentGroup) }} Payment(s)</span>
                     </button>
                 </h2>
-                <div id="collapse{{ $contractId }}"
+                <div id="processedCollapse{{ $contractId }}"
                     class="accordion-collapse collapse {{ in_array($contractId, $this->openAccordions) ? 'show' : '' }}"
-                    aria-labelledby="heading{{ $contractId }}" data-bs-parent="#paymentAccordion">
+                    aria-labelledby="processedHeading{{ $contractId }}" data-bs-parent="#processedPaymentAccordion">
                     <div class="accordion-body">
                         <div class="table-responsive text-nowrap">
                             <table class="table table-hover">
@@ -140,7 +139,7 @@
                                         <th>Payment Date</th>
                                         <th>Status</th>
                                         <th>Receipt</th>
-                                        <th>Actions</th>
+                                        <th>Processed On</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -175,17 +174,7 @@
                                                     -
                                                 @endif
                                             </td>
-                                            <td class="d-flex flex-wrap gap-1">
-                                                <a href="{{ route('payments.edit', $payment->id) }}"
-                                                    class="btn btn-sm btn-outline-primary">Edit</a>
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                    wire:click="deletePayment({{ $payment->id }})"
-                                                    onclick="if(!confirm('Are you sure you want to delete this payment?')) { event.stopImmediatePropagation(); }">Delete</button>
-                                                <button class="btn btn-sm btn-success"
-                                                    wire:click="approve({{ $payment->id }})">Approve</button>
-                                                <button class="btn btn-sm btn-warning text-dark"
-                                                    wire:click="reject({{ $payment->id }})">Reject</button>
-                                            </td>
+                                            <td>{{ optional($payment->updated_at)->format('Y-m-d H:i') }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -195,7 +184,7 @@
                 </div>
             </div>
         @empty
-            <div class="text-center p-3">No payments found.</div>
+            <div class="text-center p-3">No processed payments found.</div>
         @endforelse
     </div>
 

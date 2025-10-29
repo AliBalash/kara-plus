@@ -87,8 +87,18 @@ class ConfirmPayementList extends Component
         $this->toast('success', "Payment #{$paymentId} deleted successfully.");
     }
 
+    protected function statusMeta(): array
+    {
+        return [
+            'pending' => ['label' => 'Pending', 'bg' => 'warning', 'text' => 'dark'],
+            'approved' => ['label' => 'Approved', 'bg' => 'success', 'text' => 'white'],
+            'rejected' => ['label' => 'Rejected', 'bg' => 'danger', 'text' => 'white'],
+        ];
+    }
+
     public function render()
     {
+        $statusMeta = $this->statusMeta();
         $search = trim($this->search);
         $isNumericSearch = is_numeric($search);
 
@@ -145,6 +155,7 @@ class ConfirmPayementList extends Component
 
         return view('livewire.pages.panel.expert.payments.confirm-payement-list', [
             'groupedPayments' => $groupedPayments,
+            'statusMeta' => $statusMeta,
         ]);
     }
 

@@ -19,6 +19,7 @@ use App\Livewire\Pages\Panel\Expert\DiscountCode\DiscountCodeList;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesForm;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
 use App\Livewire\Pages\Panel\Expert\Payments\ConfirmPayementList;
+use App\Livewire\Pages\Panel\Expert\Payments\ProcessedPaymentList;
 use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingPickupList;
@@ -89,7 +90,8 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/cancelled', RentalRequestCancelledList::class)->name('rental-requests.cancelled');
 
 
-    Route::get('/expert/rental-requests/confirm-payment-list',ConfirmPayementList::class)->name('rental-requests.confirm-payment-list');
+    Route::get('/expert/rental-requests/confirm-payment-list', ConfirmPayementList::class)->name('rental-requests.confirm-payment-list');
+    Route::get('/expert/rental-requests/processed-payments', ProcessedPaymentList::class)->name('rental-requests.processed-payments');
     Route::get('/expert/payments/{paymentId}/edit', PaymentEdit::class)->name('payments.edit');
 
     Route::get('/expert/cashier', CashierDashboard::class)->name('cashier.dashboard');
