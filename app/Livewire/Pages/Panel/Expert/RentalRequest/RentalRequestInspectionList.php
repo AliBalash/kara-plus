@@ -26,7 +26,7 @@ class RentalRequestInspectionList extends Component
     public $sortField = 'pickup_date';
     public $sortDirection = 'asc';
     public $searchInput = '';
-    public $tarsStatus = 'pending';
+    public $tarsStatus = 'all';
     public $kardoStatus = 'pending';
     public string $type = 'tars';
 
@@ -57,7 +57,7 @@ class RentalRequestInspectionList extends Component
         'returnTo' => ['except' => null],
         'sortField' => ['except' => 'pickup_date'],
         'sortDirection' => ['except' => 'asc'],
-        'tarsStatus' => ['except' => 'pending'],
+        'tarsStatus' => ['except' => 'all'],
         'kardoStatus' => ['except' => 'pending'],
         'type' => ['except' => 'tars'],
     ];
@@ -266,7 +266,7 @@ class RentalRequestInspectionList extends Component
     private function applyDefaultApprovalFilters(): void
     {
         if (! in_array($this->tarsStatus, ['pending', 'approved', 'all'], true)) {
-            $this->tarsStatus = 'pending';
+            $this->tarsStatus = 'all';
         }
 
         if (! in_array($this->kardoStatus, ['pending', 'approved', 'all'], true)) {
@@ -274,7 +274,7 @@ class RentalRequestInspectionList extends Component
         }
 
         if ($this->type === 'tars') {
-            $this->tarsStatus = 'pending';
+            $this->tarsStatus = 'all';
         }
 
         if ($this->type === 'kardo') {
