@@ -184,10 +184,9 @@
 
                             <div class="mt-3">
                                 @if (!empty($existingFiles['tarsContract']))
-                                    <div class="ratio ratio-4x3 rounded-3 overflow-hidden bg-light border">
-                                        <img src="{{ $existingFiles['tarsContract'] }}"
-                                            class="w-100 h-100 object-fit-cover" loading="lazy" decoding="async"
-                                            fetchpriority="low" alt="TARS document preview">
+                                    <div class="preview-wrapper rounded-3 border bg-light">
+                                        <img src="{{ $existingFiles['tarsContract'] }}" loading="lazy"
+                                            decoding="async" fetchpriority="low" alt="TARS document preview">
                                     </div>
                                     <div class="d-flex flex-wrap gap-2 mt-3">
                                         <button type="button" class="btn btn-outline-primary btn-sm"
@@ -417,11 +416,20 @@
                     background: #f1f3f5;
                     border-radius: 0.75rem;
                     overflow: hidden;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0.75rem;
+                    min-height: 240px;
                 }
 
                 .document-card .preview-wrapper img,
                 .document-card .preview-wrapper video {
-                    object-fit: cover;
+                    width: auto;
+                    height: auto;
+                    max-width: 100%;
+                    max-height: 100%;
+                    object-fit: contain;
                 }
 
                 .gallery-grid {
@@ -435,13 +443,18 @@
                     overflow: hidden;
                     border-radius: 0.75rem;
                     background: #f1f3f5;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0.35rem;
+                    aspect-ratio: 4 / 3;
                 }
 
                 .gallery-thumb img,
                 .gallery-thumb video {
                     width: 100%;
                     height: 100%;
-                    object-fit: cover;
+                    object-fit: contain;
                 }
 
                 .gallery-remove {
@@ -468,6 +481,11 @@
                 @media (max-width: 575.98px) {
                     .document-card {
                         border-radius: 1rem;
+                    }
+
+                    .document-card .preview-wrapper {
+                        min-height: 180px;
+                        padding: 0.5rem;
                     }
                 }
             </style>
