@@ -58,6 +58,10 @@
         </div>
         <div class="card-body">
             <form wire:submit.prevent="uploadDocuments">
+                <div class="alert alert-info d-none d-flex align-items-center" data-upload-guard role="status">
+                    <i class="bi bi-cloud-arrow-up me-2"></i>
+                    <span>Please wait for the current uploads to finish before adding more files.</span>
+                </div>
                 {{-- Preview Modal --}}
                 <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel"
                     aria-hidden="true">
@@ -93,11 +97,22 @@
                                         alt="Watcher's Receipt" onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 </div>
                             @endif
-                            <input type="file" class="form-control @error('factorContract') is-invalid @enderror" wire:model="factorContract">
+                            <input type="file" class="form-control @error('factorContract') is-invalid @enderror"
+                                wire:model="factorContract" wire:loading.attr="disabled"
+                                wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
+                                data-upload-field="factorContract">
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
-                            <div wire:loading wire:target="factorContract" class="progress mt-3">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                                    style="width: 100%;">Uploading...</div>
+                            <div class="mt-3 d-none" data-progress-container="factorContract"
+                                wire:loading.class.remove="d-none" wire:target="factorContract">
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
+                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between small text-muted mt-1">
+                                    <span data-progress-status="factorContract">Ready for upload</span>
+                                    <span data-progress-percent="factorContract">0%</span>
+                                </div>
                             </div>
                             @error('factorContract')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
@@ -122,12 +137,23 @@
                                         alt="Dashboard Photo" onclick="openModal('{{ $existingFiles['carDashboard'] }}')">
                                 </div>
                             @endif
-                            <input id="returnCarDashboardInput" type="file" class="form-control @error('carDashboard') is-invalid @enderror" wire:model="carDashboard"
+                            <input id="returnCarDashboardInput" type="file" class="form-control @error('carDashboard') is-invalid @enderror"
+                                wire:model="carDashboard" wire:loading.attr="disabled"
+                                wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
+                                data-upload-field="carDashboard"
                                 @if ($carDashboardRequired) aria-required="true" @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
-                            <div wire:loading wire:target="carDashboard" class="progress mt-3">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                                    style="width: 100%;">Uploading...</div>
+                            <div class="mt-3 d-none" data-progress-container="carDashboard"
+                                wire:loading.class.remove="d-none" wire:target="carDashboard">
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
+                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between small text-muted mt-1">
+                                    <span data-progress-status="carDashboard">Ready for upload</span>
+                                    <span data-progress-percent="carDashboard">0%</span>
+                                </div>
                             </div>
                             @error('carDashboard')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
@@ -181,14 +207,26 @@
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
                                 <input id="returnCarInsideInput" type="file" class="form-control @error('carInsidePhotos') is-invalid @enderror @error('carInsidePhotos.*') is-invalid @enderror" wire:model="carInsidePhotos" accept="image/*"
-                                    multiple @if ($insideRequired) aria-required="true" @endif>
+                                    multiple
+                                    wire:loading.attr="disabled"
+                                    wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
+                                    data-upload-field="carInsidePhotos"
+                                    @if ($insideRequired) aria-required="true" @endif>
                                 <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12 photos
                                     in gallery.</small>
                             </div>
 
-                            <div wire:loading wire:target="carInsidePhotos" class="progress mt-3">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                                    style="width: 100%;">Uploading...</div>
+                            <div class="mt-3 d-none" data-progress-container="carInsidePhotos"
+                                wire:loading.class.remove="d-none" wire:target="carInsidePhotos">
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
+                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between small text-muted mt-1">
+                                    <span data-progress-status="carInsidePhotos">Ready for upload</span>
+                                    <span data-progress-percent="carInsidePhotos">0%</span>
+                                </div>
                             </div>
 
                             @error('carInsidePhotos')
@@ -246,14 +284,26 @@
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
                                 <input id="returnCarOutsideInput" type="file" class="form-control @error('carOutsidePhotos') is-invalid @enderror @error('carOutsidePhotos.*') is-invalid @enderror" wire:model="carOutsidePhotos" accept="image/*"
-                                    multiple @if ($outsideRequired) aria-required="true" @endif>
+                                    multiple
+                                    wire:loading.attr="disabled"
+                                    wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
+                                    data-upload-field="carOutsidePhotos"
+                                    @if ($outsideRequired) aria-required="true" @endif>
                                 <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12 photos
                                     in gallery.</small>
                             </div>
 
-                            <div wire:loading wire:target="carOutsidePhotos" class="progress mt-3">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                                    style="width: 100%;">Uploading...</div>
+                            <div class="mt-3 d-none" data-progress-container="carOutsidePhotos"
+                                wire:loading.class.remove="d-none" wire:target="carOutsidePhotos">
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
+                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between small text-muted mt-1">
+                                    <span data-progress-status="carOutsidePhotos">Ready for upload</span>
+                                    <span data-progress-percent="carOutsidePhotos">0%</span>
+                                </div>
                             </div>
 
                             @error('carOutsidePhotos')
@@ -339,7 +389,9 @@
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg px-4">Upload Documents</button>
+                    <button type="submit" class="btn btn-primary btn-lg px-4" data-upload-submit
+                        wire:loading.attr="disabled"
+                        wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments">Upload Documents</button>
                 </div>
             </form>
         </div>
@@ -526,6 +578,220 @@
 @endpush
 
 @push('scripts')
+    <script>
+        (() => {
+            const resetTimers = {};
+            let activeUploads = 0;
+
+            const getUploadInputs = () => Array.from(document.querySelectorAll('[data-upload-field]'));
+
+            const storeInitialDisabledState = (element) => {
+                if (!element || element.dataset.uploadInitiallyDisabled !== undefined) {
+                    return;
+                }
+
+                element.dataset.uploadInitiallyDisabled = element.disabled ? 'true' : 'false';
+            };
+
+            const setDisabledState = (element, shouldDisable) => {
+                if (!element) {
+                    return;
+                }
+
+                storeInitialDisabledState(element);
+
+                if (shouldDisable) {
+                    element.setAttribute('disabled', 'disabled');
+                    return;
+                }
+
+                if ((element.dataset.uploadInitiallyDisabled ?? 'false') === 'true') {
+                    element.setAttribute('disabled', 'disabled');
+                } else {
+                    element.removeAttribute('disabled');
+                }
+            };
+
+            const toggleDisabledState = (shouldDisable) => {
+                getUploadInputs().forEach((input) => {
+                    setDisabledState(input, shouldDisable);
+                });
+
+                const guardAlert = document.querySelector('[data-upload-guard]');
+
+                if (guardAlert) {
+                    guardAlert.classList.toggle('d-none', !shouldDisable);
+                }
+
+                const submitButton = document.querySelector('[data-upload-submit]');
+                setDisabledState(submitButton, shouldDisable);
+            };
+
+            const scheduleReset = (field, delay) => {
+                if (resetTimers[field]) {
+                    window.clearTimeout(resetTimers[field]);
+                }
+
+                resetTimers[field] = window.setTimeout(() => {
+                    const container = document.querySelector(`[data-progress-container="${field}"]`);
+                    const bar = container ? container.querySelector('.progress-bar') : null;
+                    const status = document.querySelector(`[data-progress-status="${field}"]`);
+                    const percent = document.querySelector(`[data-progress-percent="${field}"]`);
+
+                    if (!container) {
+                        delete resetTimers[field];
+                        return;
+                    }
+
+                    container.classList.add('d-none');
+
+                    if (status) {
+                        status.textContent = 'Ready for upload';
+                    }
+
+                    if (percent) {
+                        percent.textContent = '0%';
+                    }
+
+                    if (bar) {
+                        bar.style.width = '0%';
+                        bar.setAttribute('aria-valuenow', '0');
+                        bar.textContent = '0%';
+                    }
+
+                    delete resetTimers[field];
+                }, delay);
+            };
+
+            const bindUploadHandlers = () => {
+                getUploadInputs().forEach((input) => {
+                    if (input.dataset.uploadHandlerBound === 'true') {
+                        return;
+                    }
+
+                    input.dataset.uploadHandlerBound = 'true';
+                    storeInitialDisabledState(input);
+
+                    const field = input.dataset.uploadField;
+
+                    const findContainer = () => document.querySelector(`[data-progress-container="${field}"]`);
+                    const findBar = () => {
+                        const container = findContainer();
+                        return container ? container.querySelector('.progress-bar') : null;
+                    };
+                    const findStatus = () => document.querySelector(`[data-progress-status="${field}"]`);
+                    const findPercent = () => document.querySelector(`[data-progress-percent="${field}"]`);
+
+                    input.addEventListener('livewire-upload-start', () => {
+                        activeUploads += 1;
+
+                        if (activeUploads === 1) {
+                            toggleDisabledState(true);
+                        }
+
+                        if (resetTimers[field]) {
+                            window.clearTimeout(resetTimers[field]);
+                            delete resetTimers[field];
+                        }
+
+                        const container = findContainer();
+                        const bar = findBar();
+                        const status = findStatus();
+                        const percent = findPercent();
+
+                        if (container) {
+                            container.classList.remove('d-none');
+                        }
+
+                        if (status) {
+                            status.textContent = 'Uploading...';
+                        }
+
+                        if (percent) {
+                            percent.textContent = '0%';
+                        }
+
+                        if (bar) {
+                            bar.style.width = '0%';
+                            bar.setAttribute('aria-valuenow', '0');
+                            bar.textContent = '0%';
+                        }
+                    });
+
+                    input.addEventListener('livewire-upload-progress', (event) => {
+                        const progress = event.detail.progress ?? 0;
+
+                        const bar = findBar();
+                        const status = findStatus();
+                        const percent = findPercent();
+
+                        if (bar) {
+                            bar.style.width = `${progress}%`;
+                            bar.setAttribute('aria-valuenow', String(progress));
+                            bar.textContent = `${progress}%`;
+                        }
+
+                        if (percent) {
+                            percent.textContent = `${progress}%`;
+                        }
+
+                        if (status) {
+                            status.textContent = progress >= 100 ? 'Finishing...' : 'Uploading...';
+                        }
+                    });
+
+                    const finalizeUpload = (isError = false) => {
+                        const bar = findBar();
+                        const status = findStatus();
+                        const percent = findPercent();
+
+                        if (status) {
+                            status.textContent = isError ? 'Upload failed' : 'Upload complete';
+                        }
+
+                        if (percent) {
+                            percent.textContent = isError ? '0%' : '100%';
+                        }
+
+                        if (bar) {
+                            const value = isError ? 0 : 100;
+                            bar.style.width = `${value}%`;
+                            bar.setAttribute('aria-valuenow', String(value));
+                            bar.textContent = `${value}%`;
+                        }
+
+                        activeUploads = Math.max(activeUploads - 1, 0);
+
+                        if (activeUploads === 0) {
+                            toggleDisabledState(false);
+                        }
+
+                        scheduleReset(field, isError ? 2000 : 800);
+                    };
+
+                    input.addEventListener('livewire-upload-finish', () => finalizeUpload(false));
+                    input.addEventListener('livewire-upload-error', () => finalizeUpload(true));
+                    input.addEventListener('livewire-upload-cancel', () => finalizeUpload(true));
+                });
+            };
+
+            document.addEventListener('DOMContentLoaded', bindUploadHandlers);
+            document.addEventListener('livewire:load', bindUploadHandlers);
+            document.addEventListener('livewire:update', bindUploadHandlers);
+            document.addEventListener('livewire:navigated', bindUploadHandlers);
+
+            if (document.readyState !== 'loading') {
+                bindUploadHandlers();
+            }
+
+            if (window.Livewire && typeof window.Livewire.hook === 'function') {
+                window.Livewire.hook('message.processed', bindUploadHandlers);
+            }
+
+            const submitButton = document.querySelector('[data-upload-submit]');
+            storeInitialDisabledState(submitButton);
+        })();
+    </script>
     <script>
         function confirmDeletion(fileType) {
             if (confirm('Are you sure you want to delete this file?')) {
