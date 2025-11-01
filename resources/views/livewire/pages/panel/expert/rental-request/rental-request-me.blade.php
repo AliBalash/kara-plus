@@ -121,13 +121,13 @@
                     </th>
                     <th>Submitted By</th>
                     <th>Assigned Expert</th>
+                    <th>Actions</th>
                     <th wire:click="sortBy('current_status')" role="button" class="sortable">
                         Status
                         <i
                             class="bx {{ $sortField === 'current_status' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
-                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0" wire:poll.10s>
@@ -152,9 +152,6 @@
                             @else
                                 <span class="badge bg-label-secondary text-muted">Unassigned</span>
                             @endif
-                        </td>
-                        <td>
-                            <x-status-badge :status="$contract->current_status" />
                         </td>
                         <td>
                             <div class="dropdown">
@@ -195,7 +192,9 @@
                                     </a>
                                 </div>
                             </div>
-
+                        </td>
+                        <td>
+                            <x-status-badge :status="$contract->current_status" />
                         </td>
                     </tr>
                 @empty

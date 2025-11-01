@@ -138,9 +138,9 @@
                                         <th>Currency</th>
                                         <th>Type</th>
                                         <th>Payment Date</th>
+                                        <th>Actions</th>
                                         <th>Status</th>
                                         <th>Receipt</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -153,6 +153,17 @@
                                             <td>{{ $payment->currency }}</td>
                                             <td>{{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}</td>
                                             <td>{{ $payment->payment_date }}</td>
+                                            <td class="d-flex flex-wrap gap-1">
+                                                <a href="{{ route('payments.edit', $payment->id) }}"
+                                                    class="btn btn-sm btn-outline-primary">Edit</a>
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                    wire:click="deletePayment({{ $payment->id }})"
+                                                    onclick="if(!confirm('Are you sure you want to delete this payment?')) { event.stopImmediatePropagation(); }">Delete</button>
+                                                <button class="btn btn-sm btn-success"
+                                                    wire:click="approve({{ $payment->id }})">Approve</button>
+                                                <button class="btn btn-sm btn-warning text-dark"
+                                                    wire:click="reject({{ $payment->id }})">Reject</button>
+                                            </td>
                                             <td>
                                                 @switch($payment->approval_status)
                                                     @case('approved')
@@ -174,17 +185,6 @@
                                                 @else
                                                     -
                                                 @endif
-                                            </td>
-                                            <td class="d-flex flex-wrap gap-1">
-                                                <a href="{{ route('payments.edit', $payment->id) }}"
-                                                    class="btn btn-sm btn-outline-primary">Edit</a>
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                    wire:click="deletePayment({{ $payment->id }})"
-                                                    onclick="if(!confirm('Are you sure you want to delete this payment?')) { event.stopImmediatePropagation(); }">Delete</button>
-                                                <button class="btn btn-sm btn-success"
-                                                    wire:click="approve({{ $payment->id }})">Approve</button>
-                                                <button class="btn btn-sm btn-warning text-dark"
-                                                    wire:click="reject({{ $payment->id }})">Reject</button>
                                             </td>
                                         </tr>
                                     @endforeach

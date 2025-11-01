@@ -105,6 +105,7 @@
                         </i>
                     </th>
                     <th>Driver</th>
+                    <th>Actions</th>
                     <th>Status</th>
                     <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
                         Sales Agent
@@ -113,7 +114,6 @@
                     </th>
                     <th>Submitted By</th>
                     <th>Assigned Expert</th>
-                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
@@ -151,28 +151,6 @@
                         </td>
 
                         <td>
-                            <x-status-badge :status="$contract->current_status" />
-                        </td>
-
-                        <td>
-                            <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
-                                {{ $contract->agent_sale ?? '—' }}
-                            </span>
-                        </td>
-
-                        <td>
-                            <span class="badge bg-info text-dark">{{ $contract->submitted_by_name ?? 'Website' }}</span>
-                        </td>
-
-                        <td>
-                            @if ($contract->user)
-                                <span class="badge bg-success">{{ $contract->user->shortName() }}</span>
-                            @else
-                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
-                            @endif
-                        </td>
-
-                        <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
                                     data-bs-toggle="dropdown">
@@ -202,6 +180,28 @@
                                     @endif
                                 </div>
                             </div>
+                        </td>
+
+                        <td>
+                            <x-status-badge :status="$contract->current_status" />
+                        </td>
+
+                        <td>
+                            <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $contract->agent_sale ?? '—' }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-info text-dark">{{ $contract->submitted_by_name ?? 'Website' }}</span>
+                        </td>
+
+                        <td>
+                            @if ($contract->user)
+                                <span class="badge bg-success">{{ $contract->user->shortName() }}</span>
+                            @else
+                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
+                            @endif
                         </td>
                     </tr>
                 @empty

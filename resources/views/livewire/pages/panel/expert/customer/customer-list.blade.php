@@ -25,8 +25,8 @@
                     <th>National Code</th>
                     <th>Email</th>
                     <th>Phone</th>
-                    <th>Status</th>
                     <th>Actions</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
@@ -38,14 +38,6 @@
                         <td>{{ $customer->national_code ?? 'N/A' }}</td>
                         <td>{{ $customer->email }}</td>
                         <td>{{ $customer->phone }}</td>
-                        <td>
-                            <span
-                                class="badge 
-                                @if ($customer->status === 'active') bg-label-success 
-                                @else bg-label-danger @endif">
-                                {{ ucfirst($customer->status) }}
-                            </span>
-                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
@@ -65,6 +57,14 @@
                                     </a>
                                 </div>
                             </div>
+                        </td>
+                        <td>
+                            <span
+                                class="badge 
+                                @if ($customer->status === 'active') bg-label-success 
+                                @else bg-label-danger @endif">
+                                {{ ucfirst($customer->status) }}
+                            </span>
                         </td>
                     </tr>
                 @empty

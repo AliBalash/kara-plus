@@ -21,10 +21,10 @@
                             <th>Return Date</th>
                             <th>Agent Sale</th>
                             <th>Expert</th>
+                            <th>Actions</th>
                             <th>Status</th>
                             <th>Changed By</th>
                             <th>Changed At</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody class="table-border-bottom-0">
@@ -44,18 +44,6 @@
                                     @else
                                         <span class="badge bg-secondary">No Expert</span>
                                     @endif
-                                </td>
-                                <td>
-                                    <x-status-badge :status="$status->status" />
-
-                                </td>
-                                <td>
-                                    <span class="badge bg-label-primary">
-                                        {{ $status->user?->shortName() ?? 'System' }}
-                                    </span>
-                                </td>
-                                <td>
-                                    {{ $status->created_at?->timezone(config('app.timezone'))?->format('d M Y - H:i') ?? '—' }}
                                 </td>
                                 <td>
                                     <div class="dropdown">
@@ -89,6 +77,18 @@
                                             </a>
                                         </div>
                                     </div>
+                                </td>
+                                <td>
+                                    <x-status-badge :status="$status->status" />
+
+                                </td>
+                                <td>
+                                    <span class="badge bg-label-primary">
+                                        {{ $status->user?->shortName() ?? 'System' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ $status->created_at?->timezone(config('app.timezone'))?->format('d M Y - H:i') ?? '—' }}
                                 </td>
                             </tr>
                         @endforeach

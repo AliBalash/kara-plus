@@ -100,6 +100,7 @@
                     </th>
                     <th>Return Location</th>
                     <th>Driver</th>
+                    <th>Actions</th>
                     <th>Status</th>
                     <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
                         Sales Agent
@@ -108,7 +109,6 @@
                     </th>
                     <th>Submitted By</th>
                     <th>Assigned Expert</th>
-                    <th>Actions</th>
                     <th>Documents</th>
                 </tr>
             </thead>
@@ -135,27 +135,6 @@
                             @endif
                         </td>
                         <td>
-                            <x-status-badge :status="$awaitContract->current_status" />
-                        </td>
-                        <td>
-                            <span class="badge {{ $awaitContract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
-                                {{ $awaitContract->agent_sale ?? '—' }}
-                            </span>
-                        </td>
-
-                        <td>
-                            <span class="badge bg-info text-dark">{{ $awaitContract->submitted_by_name ?? 'Website' }}</span>
-                        </td>
-
-                        <td>
-                            @if ($awaitContract->user)
-                                <span class="badge bg-success">{{ $awaitContract->user->shortName() }}</span>
-                            @else
-                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
-                            @endif
-                        </td>
-
-                        <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
                                     data-bs-toggle="dropdown">
@@ -178,6 +157,27 @@
                                     @endif
                                 </div>
                             </div>
+                        </td>
+                        <td>
+                            <x-status-badge :status="$awaitContract->current_status" />
+                        </td>
+                        <td>
+                            <span class="badge {{ $awaitContract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $awaitContract->agent_sale ?? '—' }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-info text-dark">{{ $awaitContract->submitted_by_name ?? 'Website' }}</span>
+                        </td>
+
+                        <td>
+                            @if ($awaitContract->user)
+                                <span class="badge bg-success">{{ $awaitContract->user->shortName() }}</span>
+                            @else
+                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
+                            @endif
+                        </td>
                         </td>
                         <td>
                             @if ($awaitContract->customerDocument()->exists())

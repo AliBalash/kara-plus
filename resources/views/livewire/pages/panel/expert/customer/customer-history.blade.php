@@ -34,8 +34,8 @@
                                         <th>Return Date</th>
                                         <th>Agent Sale</th>
                                         <th>Expert</th>
-                                        <th>Status</th>
                                         <th>Actions</th>
+                                        <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody class="table-border-bottom-0">
@@ -58,9 +58,6 @@
                                                     $badgeLabel = $showAgent ? $contract->user->shortName() : ($contract->submitted_by_name ?? 'Website');
                                                 @endphp
                                                 <span class="{{ $badgeClass }}" title="{{ $badgeTitle }}">{{ $badgeLabel }}</span>
-                                            </td>
-                                            <td>
-                                                <x-status-badge :status="$contract->current_status" />
                                             </td>
                                             <td>
                                                 <div class="dropdown">
@@ -95,6 +92,9 @@
                                                         </a>
                                                     </div>
                                                 </div>
+                                            </td>
+                                            <td>
+                                                <x-status-badge :status="$contract->current_status" />
                                             </td>
                                         </tr>
                                     @endforeach

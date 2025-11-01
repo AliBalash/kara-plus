@@ -26,6 +26,7 @@
                     <th>Discount (%)</th>
                     <th>Registery Date</th>
                     <th>Actions</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0" wire:poll.10s>
@@ -37,13 +38,6 @@
                         <td>{{ $discountCode->code }}</td>
                         <td>{{ $discountCode->discount_percentage }}%</td>
                         <td>{{ \Carbon\Carbon::parse($discountCode->registery_at)->format('Y-m-d H:i') }}</td>
-                        <td>
-                            @if ($discountCode->contacted)
-                                <span class="badge bg-success">Contacted</span>
-                            @else
-                                <span class="badge bg-danger">Not Contacted</span>
-                            @endif
-                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
@@ -65,11 +59,18 @@
                                 </div>
                             </div>
                         </td>
+                        <td>
+                            @if ($discountCode->contacted)
+                                <span class="badge bg-success">Contacted</span>
+                            @else
+                                <span class="badge bg-danger">Not Contacted</span>
+                            @endif
+                        </td>
 
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center">No active discount codes found</td>
+                        <td colspan="8" class="text-center">No active discount codes found</td>
                     </tr>
                 @endforelse
             </tbody>
