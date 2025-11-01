@@ -159,12 +159,12 @@
                         <i class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
+                    <th>Actions</th>
                     <th>Status</th>
                     <th>Sales Agent</th>
                     <th>Submitted By</th>
                     <th>Assigned Expert</th>
                     <th>{{ $isTarsList ? 'TARS Status' : 'KARDO Status' }}</th>
-                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="table-border-bottom-0">
@@ -185,6 +185,19 @@
                         <td>{{ optional($contract->car)->fullName() ?? 'Vehicle N/A' }}</td>
                         <td>{{ $contract->pickup_date?->format('d M Y H:i') ?? '—' }}</td>
                         <td>{{ $contract->return_date?->format('d M Y H:i') ?? '—' }}</td>
+                        <td>
+                            <div class="btn-group" role="group" aria-label="Approval links">
+                                <a href="{{ route('rental-requests.tars-approval', $contract->id) }}"
+                                    class="btn btn-outline-primary btn-sm">
+                                    <i class="bx bx-check-shield me-1"></i>TARS
+                                </a>
+                                <a href="{{ route('rental-requests.kardo-approval', $contract->id) }}"
+                                    class="btn btn-outline-info btn-sm {{ $contract->kardo_required ? '' : 'disabled' }}"
+                                    @if (! $contract->kardo_required) aria-disabled="true" tabindex="-1" @endif>
+                                    <i class="bx bx-layer me-1"></i>KARDO
+                                </a>
+                            </div>
+                        </td>
                         <td>
                             <x-status-badge :status="$contract->current_status" />
                         </td>
@@ -214,19 +227,6 @@
                                 <span class="badge {{ $kardoBadge }}">KARDO: {{ $kardoDone ? 'Approved' : 'Pending' }}</span>
                                 <span class="badge {{ $tarsBadge }} mt-1">TARS: {{ $tarsDone ? 'Approved' : 'Pending' }}</span>
                             @endif
-                        </td>
-                        <td>
-                            <div class="btn-group" role="group" aria-label="Approval links">
-                                <a href="{{ route('rental-requests.tars-approval', $contract->id) }}"
-                                    class="btn btn-outline-primary btn-sm">
-                                    <i class="bx bx-check-shield me-1"></i>TARS
-                                </a>
-                                <a href="{{ route('rental-requests.kardo-approval', $contract->id) }}"
-                                    class="btn btn-outline-info btn-sm {{ $contract->kardo_required ? '' : 'disabled' }}"
-                                    @if (! $contract->kardo_required) aria-disabled="true" tabindex="-1" @endif>
-                                    <i class="bx bx-layer me-1"></i>KARDO
-                                </a>
-                            </div>
                         </td>
                     </tr>
                 @empty

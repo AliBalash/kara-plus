@@ -64,10 +64,10 @@
                     <th wire:click="sortBy('id')">#</th>
                     <th>Car Model</th>
                     <th wire:click="sortBy('color')">Color</th>
+                    <th>Actions</th>
                     <th wire:click="sortBy('status')">Status</th>
                     <th wire:click="sortBy('pickup_date')">Pickup Date</th>
                     <th wire:click="sortBy('return_date')">Return Date</th>
-                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -76,6 +76,19 @@
                         <td>{{ $car->id }}</td>
                         <td>{{ $car->fullname() }}</td>
                         <td>{{ $car->color ?? 'N/A' }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn p-0 dropdown-toggle" data-bs-toggle="dropdown"><i
+                                        class="bx bx-dots-vertical-rounded"></i></button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="{{ route('car.edit', $car->id) }}"><i
+                                            class="bx bx-edit-alt"></i> Edit</a>
+                                    <a class="dropdown-item" href="javascript:void(0);"
+                                        onclick="if(confirm('Delete?')){@this.call('deletecar', {{ $car->id }})}"><i
+                                            class="bx bx-trash"></i> Delete</a>
+                                </div>
+                            </div>
+                        </td>
                         <td>
                             <span
                                 class="badge 
@@ -90,19 +103,6 @@
                         </td>
                         <td>{{ $car->currentContract ? $car->currentContract->pickup_date->format('d M Y') : '-' }}</td>
                         <td>{{ $car->currentContract ? $car->currentContract->return_date->format('d M Y') : '-' }}</td>
-                        <td>
-                            <div class="dropdown">
-                                <button class="btn p-0 dropdown-toggle" data-bs-toggle="dropdown"><i
-                                        class="bx bx-dots-vertical-rounded"></i></button>
-                                <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="{{ route('car.edit', $car->id) }}"><i
-                                            class="bx bx-edit-alt"></i> Edit</a>
-                                    <a class="dropdown-item" href="javascript:void(0);"
-                                        onclick="if(confirm('Delete?')){@this.call('deletecar', {{ $car->id }})}"><i
-                                            class="bx bx-trash"></i> Delete</a>
-                                </div>
-                            </div>
-                        </td>
                     </tr>
                 @empty
                     <tr>

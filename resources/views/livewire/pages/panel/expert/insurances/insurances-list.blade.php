@@ -9,8 +9,8 @@
                     <th>Insurance Company</th>
                     <th>Expiry Date</th>
                     <th>Valid Days</th>
-                    <th>Status</th>
                     <th>Actions</th>
+                    <th>Status</th>
                 </tr>
             </thead>
 
@@ -22,19 +22,6 @@
                         <td>{{ $insurance->insurance_company }}</td>
                         <td>{{ $insurance->expiry_date }}</td>
                         <td>{{ $insurance->valid_days }}</td>
-                        <td>
-                            <span
-                                class="badge 
-                                @switch($insurance->status)
-                                    @case('done') bg-label-success @break
-                                    @case('pending') bg-label-warning @break
-                                    @case('failed') bg-label-danger @break
-                                    @default bg-label-secondary
-                                @endswitch">
-                                {{ ucfirst($insurance->status) }}
-                            </span>
-                        </td>
-
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
@@ -56,6 +43,18 @@
                                     </a>
                                 </div>
                             </div>
+                        </td>
+                        <td>
+                            <span
+                                class="badge 
+                                @switch($insurance->status)
+                                    @case('done') bg-label-success @break
+                                    @case('pending') bg-label-warning @break
+                                    @case('failed') bg-label-danger @break
+                                    @default bg-label-secondary
+                                @endswitch">
+                                {{ ucfirst($insurance->status) }}
+                            </span>
                         </td>
                     </tr>
                 @empty

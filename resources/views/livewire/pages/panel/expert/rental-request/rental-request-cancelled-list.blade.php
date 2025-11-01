@@ -93,11 +93,11 @@
                         <i class="bx {{ $sortField === 'updated_at' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
+                    <th>Actions</th>
                     <th>Status</th>
                     <th>Sales Agent</th>
                     <th>Submitted By</th>
                     <th>Assigned Expert</th>
-                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -109,24 +109,6 @@
                         <td>{{ optional($contract->pickup_date)->format('d M Y') }}</td>
                         <td>{{ optional($contract->return_date)->format('d M Y') }}</td>
                         <td>{{ optional($contract->updated_at)->format('d M Y H:i') }}</td>
-                        <td>
-                            <x-status-badge :status="$contract->current_status" />
-                        </td>
-                        <td>
-                            <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
-                                {{ $contract->agent_sale ?? '—' }}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge bg-info text-dark">{{ $contract->submitted_by_name ?? 'Website' }}</span>
-                        </td>
-                        <td>
-                            @if ($contract->user)
-                                <span class="badge bg-success">{{ $contract->user->shortName() }}</span>
-                            @else
-                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
-                            @endif
-                        </td>
                         <td>
                             <div class="dropdown">
                                 <button class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
@@ -145,6 +127,24 @@
                                     </a>
                                 </div>
                             </div>
+                        </td>
+                        <td>
+                            <x-status-badge :status="$contract->current_status" />
+                        </td>
+                        <td>
+                            <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $contract->agent_sale ?? '—' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-dark">{{ $contract->submitted_by_name ?? 'Website' }}</span>
+                        </td>
+                        <td>
+                            @if ($contract->user)
+                                <span class="badge bg-success">{{ $contract->user->shortName() }}</span>
+                            @else
+                                <span class="badge bg-label-secondary text-muted">Unassigned</span>
+                            @endif
                         </td>
                     </tr>
                 @empty
