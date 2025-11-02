@@ -80,7 +80,7 @@ class RentalRequestEditTest extends TestCase
         $component->shouldAllowMockingProtectedMethods();
         $component->mount($contract->id);
 
-        $component->selected_services = ['additional_driver'];
+        $component->selected_services = ['additional_driver', 'child_seat'];
         $component->selected_insurance = 'ldw_insurance';
         $component->apply_discount = true;
         $component->custom_daily_rate = 300;
@@ -159,13 +159,16 @@ class RentalRequestEditTest extends TestCase
 
         $charges = $contract->charges()->pluck('amount', 'title');
         $this->assertArrayHasKey('base_rental', $charges->toArray());
-        $this->assertArrayHasKey('additional_driver', $charges->toArray());
+        $chargesArray = $charges->toArray();
+        $this->assertArrayHasKey('additional_driver', $chargesArray);
+        $this->assertArrayHasKey('child_seat', $chargesArray);
         $this->assertArrayHasKey('tax', $charges->toArray());
 
         $expectedDays = $newPickup->diffInDays($newReturn, false);
         $transferFees = 50 * 2; // pickup and return location fees for JBR
-        $expectedSubtotal = ($expectedDays * 300) + 20 + ($expectedDays * 40) + $transferFees;
+        $expectedSubtotal = ($expectedDays * 300) + ($expectedDays * 20) + 20 + ($expectedDays * 40) + $transferFees;
         $expectedTax = round($expectedSubtotal * 0.05);
+        $this->assertEquals($expectedDays * 20, (float) ($chargesArray['child_seat'] ?? 0));
         $this->assertEquals($expectedSubtotal + $expectedTax, (float) $contract->total_price);
         $this->assertEquals('Contract Updated successfully!', session('info'));
     }

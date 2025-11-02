@@ -14,10 +14,12 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Illuminate\Support\Str;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\Concerns\HandlesServicePricing;
 
 class RentalRequestEdit extends Component
 {
     use InteractsWithToasts;
+    use HandlesServicePricing;
     public $cars;
     public $carModels;
     public $selectedBrand;
@@ -117,16 +119,27 @@ class RentalRequestEdit extends Component
         $this->selected_insurance = null; // Default to null for "No Additional Insurance"
 
         foreach ($charges as $charge) {
-            if ($charge->type === 'addon' || $charge->type === 'insurance') {
-                if (array_key_exists($charge->title, $this->services)) {
-                    if (in_array($charge->title, ['ldw_insurance', 'scdw_insurance'])) {
-                        $this->selected_insurance = $charge->title;
-                    } elseif ($charge->title !== 'basic_insurance') {
-                        $this->selected_services[] = $charge->title;
-                    }
-                }
+            if (!in_array($charge->type, ['addon', 'insurance'], true)) {
+                continue;
+            }
+
+            $resolvedId = $this->resolveServiceId((string) $charge->title);
+
+            if (!$resolvedId) {
+                continue;
+            }
+
+            if (in_array($resolvedId, ['ldw_insurance', 'scdw_insurance'], true)) {
+                $this->selected_insurance = $resolvedId;
+                continue;
+            }
+
+            if ($resolvedId !== 'basic_insurance') {
+                $this->selected_services[] = $resolvedId;
             }
         }
+
+        $this->canonicalizeSelectedServices();
 
         // If no insurance charge is found, set to null to reflect "No Additional Insurance"
         if (!$this->selected_insurance) {
@@ -177,6 +190,7 @@ class RentalRequestEdit extends Component
 
     public function calculateCosts()
     {
+        $this->canonicalizeSelectedServices();
         $this->calculateRentalDays();
         $this->calculateBasePrice();
         $this->calculateTransferCosts();
@@ -263,11 +277,12 @@ class RentalRequestEdit extends Component
         $days = $this->rental_days;
 
         foreach ($this->selected_services as $serviceId) {
-            $service = $this->services[$serviceId] ?? null;
-            if ($service) {
-                $amount = $service['amount'] ?? 0;
-                $servicesTotal += $service['per_day'] ? $amount * $days : $amount;
+            $service = $this->resolveServiceDefinition($serviceId);
+            if (!$service) {
+                continue;
             }
+
+            $servicesTotal += $this->calculateServiceAmount($service, $days);
         }
 
         if ($this->selected_insurance && in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance']) && $this->selectedCarId) {
@@ -543,16 +558,22 @@ class RentalRequestEdit extends Component
         }
 
         foreach ($this->selected_services as $serviceId) {
-            if (!array_key_exists($serviceId, $this->services)) continue;
-            $service = $this->services[$serviceId];
-            $amount = $service['per_day'] ? $service['amount'] * $this->rental_days : $service['amount'];
+            $resolvedId = $this->resolveServiceId($serviceId);
+            if (!$resolvedId) {
+                continue;
+            }
+
+            $service = $this->services[$resolvedId] ?? null;
+            if (!$service) {
+                continue;
+            }
 
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => $serviceId,
-                'amount' => $amount,
+                'title' => $resolvedId,
+                'amount' => $this->calculateServiceAmount($service, $this->rental_days),
                 'type' => 'addon',
-                'description' => $service['per_day'] ? "{$this->rental_days} روز × {$service['amount']} درهم" : 'یک‌بار هزینه'
+                'description' => $this->buildServiceDescription($service, $this->rental_days)
             ]);
         }
 
