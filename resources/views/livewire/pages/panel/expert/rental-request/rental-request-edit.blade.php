@@ -58,6 +58,12 @@
         </div>
     @endif
 
+    @include('livewire.components.waiting-overlay', [
+        'target' => 'submit',
+        'title' => 'Updating rental request',
+        'subtitle' => 'We are syncing your latest changes. Hang tight for a moment.',
+    ])
+
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
     <form wire:submit.prevent="submit" novalidate>

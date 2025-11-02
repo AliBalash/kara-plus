@@ -6,6 +6,12 @@
     </h4>
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
+    @include('livewire.components.waiting-overlay', [
+        'target' => 'uploadDocument',
+        'title' => 'Submitting customer documents',
+        'subtitle' => 'We are attaching these files to the customer profile. Please wait a moment.',
+    ])
+
 
 
     <div class="card">

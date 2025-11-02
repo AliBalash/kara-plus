@@ -4,6 +4,12 @@
     </h4>
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
+    @include('livewire.components.waiting-overlay', [
+        'target' => 'submitPayment,submitDeposit',
+        'title' => 'Processing payment updates',
+        'subtitle' => 'We are updating the contract ledger. Please keep this page open until we finish.',
+    ])
+
 
     <div class="card">
         <h5 class="card-header">Make a Payment</h5>

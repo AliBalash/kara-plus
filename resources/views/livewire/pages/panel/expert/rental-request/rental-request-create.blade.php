@@ -39,6 +39,12 @@
         </div>
     @endif
 
+    @include('livewire.components.waiting-overlay', [
+        'target' => 'submit',
+        'title' => 'Creating rental request',
+        'subtitle' => 'We are saving the contract details. Please stay on this page for a moment.',
+    ])
+
     <form wire:submit.prevent="submit" novalidate>
         <div class="row">
             <!-- Customer Information -->

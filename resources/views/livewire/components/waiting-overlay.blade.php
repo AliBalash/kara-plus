@@ -1,0 +1,99 @@
+@props([
+    'target' => 'submit',
+    'title' => 'Saving your changes',
+    'subtitle' => 'Please stay on this page while we finalize everything.',
+])
+
+@once
+    <style>
+        .waiting-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(6px);
+            z-index: 1100;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 180ms ease-out, visibility 180ms ease-out;
+            padding: 1.5rem;
+        }
+
+        .waiting-overlay.waiting-overlay--visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: all;
+            transition-duration: 240ms;
+        }
+
+        .waiting-overlay__card {
+            width: min(90vw, 360px);
+            background: rgba(15, 23, 42, 0.9);
+            color: #f8fafc;
+            border-radius: 1.5rem;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(2px);
+            text-align: center;
+        }
+
+        @media (max-width: 576px) {
+            .waiting-overlay__card {
+                width: min(100vw, 320px);
+                padding: 2rem 1.5rem;
+            }
+
+            .waiting-overlay__title {
+                font-size: 1rem;
+            }
+
+            .waiting-overlay__subtitle {
+                font-size: 0.875rem;
+            }
+        }
+
+        .waiting-overlay__spinner {
+            width: 3.25rem;
+            height: 3.25rem;
+            border-radius: 9999px;
+            border: 4px solid rgba(148, 163, 184, 0.35);
+            border-top-color: #3b82f6;
+            animation: waiting-overlay-spin 0.8s linear infinite;
+        }
+
+        .waiting-overlay__title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .waiting-overlay__subtitle {
+            font-size: 0.95rem;
+            color: rgba(226, 232, 240, 0.85);
+        }
+
+        @keyframes waiting-overlay-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+@endonce
+
+<div
+    wire:loading.delay.longer
+    wire:loading.class="waiting-overlay--visible"
+    wire:target="{{ $target }}"
+    class="waiting-overlay align-items-center justify-content-center"
+    role="status"
+    aria-live="polite"
+>
+    <div class="waiting-overlay__card" role="presentation">
+        <div class="waiting-overlay__spinner mx-auto"></div>
+        <p class="waiting-overlay__title mt-4 mb-2">{{ $title }}</p>
+        <p class="waiting-overlay__subtitle mb-0">{{ $subtitle }}</p>
+    </div>
+</div>
