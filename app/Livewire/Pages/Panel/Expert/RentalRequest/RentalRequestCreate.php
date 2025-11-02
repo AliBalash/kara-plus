@@ -14,10 +14,12 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Illuminate\Support\Str;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\Concerns\HandlesServicePricing;
 
 class RentalRequestCreate extends Component
 {
     use InteractsWithToasts;
+    use HandlesServicePricing;
     public $selectedBrand;
     public $selectedModelId;
     public $selectedCarId;
@@ -172,6 +174,7 @@ class RentalRequestCreate extends Component
 
     public function calculateCosts()
     {
+        $this->canonicalizeSelectedServices();
         $this->calculateRentalDays();
         $this->calculateBasePrice();
         $this->calculateTransferCosts();
@@ -251,11 +254,12 @@ class RentalRequestCreate extends Component
         $days = $this->rental_days;
 
         foreach ($this->selected_services as $serviceId) {
-            $service = $this->services[$serviceId] ?? null;
-            if ($service) {
-                $amount = $service['amount'] ?? 0;
-                $servicesTotal += $service['per_day'] ? $amount * $days : $amount;
+            $service = $this->resolveServiceDefinition($serviceId);
+            if (!$service) {
+                continue;
             }
+
+            $servicesTotal += $this->calculateServiceAmount($service, $days);
         }
 
         if ($this->selected_insurance && in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance']) && $this->selectedCarId) {
@@ -591,16 +595,22 @@ class RentalRequestCreate extends Component
         }
 
         foreach ($this->selected_services as $serviceId) {
-            if (!array_key_exists($serviceId, $this->services)) continue;
-            $service = $this->services[$serviceId];
-            $amount = $service['per_day'] ? $service['amount'] * $this->rental_days : $service['amount'];
+            $resolvedId = $this->resolveServiceId($serviceId);
+            if (!$resolvedId) {
+                continue;
+            }
+
+            $service = $this->services[$resolvedId] ?? null;
+            if (!$service) {
+                continue;
+            }
 
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => $serviceId,
-                'amount' => $amount,
+                'title' => $resolvedId,
+                'amount' => $this->calculateServiceAmount($service, $this->rental_days),
                 'type' => 'addon',
-                'description' => $service['per_day'] ? ((int)$this->rental_days) . " روز × " . number_format($service['amount'], 2) . " درهم" : 'یک‌بار هزینه',
+                'description' => $this->buildServiceDescription($service, $this->rental_days),
             ]);
         }
 
