@@ -49,6 +49,12 @@
 
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
+    @include('livewire.components.waiting-overlay', [
+        'target' => 'uploadDocuments',
+        'title' => 'Uploading return documents',
+        'subtitle' => 'We are storing the return evidence. This can take a few moments for larger files.',
+    ])
+
     <div class="card shadow-sm border-0 rounded-4 mt-4">
         <div class="card-header bg-white border-0 rounded-top-4 py-3">
             <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
