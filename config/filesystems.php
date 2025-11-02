@@ -1,5 +1,49 @@
 <?php
 
+$defaultPublicPath = public_path();
+
+$hostedPublicPath = null;
+$hostCandidates = [
+    base_path('../public_html'),
+    base_path('..'),
+];
+
+foreach ($hostCandidates as $candidate) {
+    if (!is_string($candidate) || $candidate === '') {
+        continue;
+    }
+
+    $candidate = rtrim($candidate, DIRECTORY_SEPARATOR);
+
+    if (!is_dir($candidate)) {
+        continue;
+    }
+
+    $panelDirectory = $candidate . DIRECTORY_SEPARATOR . basename(base_path());
+
+    if (
+        !is_dir($panelDirectory) ||
+        realpath($panelDirectory) !== base_path() ||
+        !is_dir($candidate . DIRECTORY_SEPARATOR . 'assets') ||
+        !is_dir($candidate . DIRECTORY_SEPARATOR . 'storage') ||
+        !file_exists($candidate . DIRECTORY_SEPARATOR . 'index.php')
+    ) {
+        continue;
+    }
+
+    $hostedPublicPath = $candidate;
+
+    break;
+}
+
+$publicRoot = rtrim(env('PUBLIC_PATH', $hostedPublicPath ?: $defaultPublicPath), DIRECTORY_SEPARATOR);
+$publicUrl = rtrim(env('PUBLIC_URL', env('APP_URL')), '/');
+
+$storageLinkPath = rtrim(env('PUBLIC_STORAGE_PATH', $publicRoot . '/storage'), DIRECTORY_SEPARATOR);
+$storageLinkTarget = rtrim(env('PUBLIC_STORAGE_TARGET', storage_path('app/public')), DIRECTORY_SEPARATOR);
+$publicDiskRoot = rtrim(env('PUBLIC_DISK_ROOT', $storageLinkTarget), DIRECTORY_SEPARATOR);
+$publicDiskUrl = rtrim(env('PUBLIC_DISK_URL', $publicUrl . '/storage'), '/');
+
 return [
 
     /*
@@ -39,22 +83,22 @@ return [
 
         'car_pics' => [
             'driver' => 'local',
-            'root' => public_path('assets/car-pics'),
-            'url' => env('APP_URL') . '/assets/car-pics',
+            'root' => rtrim(env('CAR_PICS_ROOT', $publicRoot . '/assets/car-pics'), DIRECTORY_SEPARATOR),
+            'url' => rtrim(env('CAR_PICS_URL', $publicUrl . '/assets/car-pics'), '/'),
             'visibility' => 'public',
         ],
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
-            'url' => env('APP_URL') . '/storage',
+            'root' => $publicDiskRoot,
+            'url' => $publicDiskUrl,
             'visibility' => 'public',
         ],
 
         'myimage' => [
             'driver' => 'local',
-            'root' => public_path('/storage'),
-            'url' => env('APP_URL') . '/storage',
+            'root' => rtrim(env('MYIMAGE_ROOT', $storageLinkPath), DIRECTORY_SEPARATOR),
+            'url' => rtrim(env('MYIMAGE_URL', $publicDiskUrl), '/'),
             'visibility' => 'public',
         ],
 
@@ -84,7 +128,7 @@ return [
     */
 
     'links' => [
-        public_path('storage') => storage_path('app/public'),
+        $storageLinkPath => $storageLinkTarget,
     ],
 
 ];
