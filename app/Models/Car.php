@@ -158,9 +158,6 @@ class Car extends Model
 
     protected static function reservingStatuses(): array
     {
-<<<<<<< ours
-        return ['reserved', 'assigned', 'under_review', 'delivery'];
-=======
         return [
             'pending',
             'assigned',
@@ -172,7 +169,6 @@ class Car extends Model
             'awaiting_return',
             'payment',
         ];
->>>>>>> theirs
     }
 
     /**
