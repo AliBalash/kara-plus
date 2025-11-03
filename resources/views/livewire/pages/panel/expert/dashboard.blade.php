@@ -510,24 +510,112 @@
                                 $carImage = $carModel && $carModel->image
                                     ? asset('assets/car-pics/' . $carModel->image->file_name)
                                     : asset('assets/car-pics/car test.webp');
+                                $pickupAt = $contract->pickup_date ? \Carbon\Carbon::parse($contract->pickup_date) : null;
+                                $returnAt = $contract->return_date ? \Carbon\Carbon::parse($contract->return_date) : null;
+                                $agreementNumber = optional($contract->pickupDocument)->agreement_number;
+                                $rawId = $contract->id;
+                                $requestRef = $rawId ? str_pad((string) $rawId, 5, '0', STR_PAD_LEFT) : '—';
+                                $durationLabel = null;
+
+                                if ($pickupAt && $returnAt) {
+                                    $diffHours = $pickupAt->diffInHours($returnAt);
+                                    $days = intdiv($diffHours, 24);
+                                    $hours = $diffHours % 24;
+                                    $durationBits = [];
+
+                                    if ($days > 0) {
+                                        $durationBits[] = $days . 'd';
+                                    }
+
+                                    if ($hours > 0) {
+                                        $durationBits[] = $hours . 'h';
+                                    }
+
+                                    if (empty($durationBits)) {
+                                        $durationBits[] = $pickupAt->diffInMinutes($returnAt) . 'm';
+                                    }
+
+                                    $durationLabel = implode(' ', $durationBits);
+                                }
+
+                                $durationLabel = $durationLabel ?? '—';
+                                $statusLabel = ucfirst(str_replace('_', ' ', $contract->current_status));
                             @endphp
-                            <div class="border rounded-4 p-3 mb-3 shadow-sm">
-                                <div class="d-flex align-items-center gap-3">
-                                    <img src="{{ $carImage }}" alt="Car" class="rounded-3" style="width: 70px; height: 70px; object-fit: cover;">
+                            <div class="border rounded-4 p-3 mb-3 shadow-sm booking-card booking-card--reserved">
+                                <div class="d-flex align-items-start gap-3">
+                                    <img src="{{ $carImage }}" alt="Car" class="rounded-3 booking-card__image">
                                     <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
-                                            <span class="badge bg-warning text-dark">Booking</span>
-                                        </div>
-                                        <div class="text-muted small mt-2">
-                                            <span class="d-block"><i class="bi bi-calendar me-1"></i>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M') }} - {{ \Carbon\Carbon::parse($contract->return_date)->format('d M') }}</span>
-                                            <span class="d-block"><i class="bi bi-person-circle me-1"></i>{{ optional($contract->customer)->fullName() }}</span>
+                                        <div class="d-flex flex-column gap-3">
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
+                                                    <span class="badge bg-warning text-dark">Booking</span>
+                                                </div>
+                                                <span class="meta-chip meta-chip--status">
+                                                    <i class="bi bi-lightning-charge me-1"></i>
+                                                    {{ $statusLabel }}
+                                                </span>
+                                            </div>
+
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <span class="meta-chip meta-chip--request">
+                                                    <i class="bi bi-hash me-1"></i>
+                                                    Request #{{ $requestRef }}
+                                                </span>
+
+                                                @if ($agreementNumber)
+                                                    <span class="meta-chip meta-chip--agreement">
+                                                        <i class="bi bi-file-earmark-text me-1"></i>
+                                                        Agreement {{ $agreementNumber }}
+                                                    </span>
+                                                @endif
+
+                                                <span class="meta-chip meta-chip--person">
+                                                    <i class="bi bi-person-circle me-1"></i>
+                                                    {{ optional($contract->customer)->fullName() ?? 'Customer TBD' }}
+                                                </span>
+
+                                                @if ($durationLabel !== '—')
+                                                    <span class="meta-chip meta-chip--duration">
+                                                        <i class="bi bi-hourglass-split me-1"></i>
+                                                        {{ $durationLabel }}
+                                                    </span>
+                                                @endif
+                                            </div>
+
+                                            <div class="booking-timeline">
+                                                <div class="booking-timeline__leg">
+                                                    <span class="booking-timeline__label">Pickup</span>
+                                                    <span class="booking-timeline__date">{{ $pickupAt ? $pickupAt->format('d M Y · H:i') : 'TBD' }}</span>
+                                                    <span class="booking-timeline__meta">
+                                                        <i class="bi bi-geo-alt me-1"></i>{{ $contract->pickup_location ?? 'Pickup TBD' }}
+                                                    </span>
+                                                </div>
+                                                <div class="booking-timeline__divider">
+                                                    <span class="booking-timeline__distance">{{ $durationLabel }}</span>
+                                                    <i class="bi bi-arrow-right-short"></i>
+                                                </div>
+                                                <div class="booking-timeline__leg booking-timeline__leg--accent">
+                                                    <span class="booking-timeline__label">Return</span>
+                                                    <span class="booking-timeline__date">{{ $returnAt ? $returnAt->format('d M Y · H:i') : 'TBD' }}</span>
+                                                    <span class="booking-timeline__meta">
+                                                        <i class="bi bi-flag me-1"></i>{{ $contract->return_location ?? 'Return TBD' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                                                <div class="text-muted small d-flex align-items-center gap-2">
+                                                    <i class="bi bi-clock-history text-warning"></i>
+                                                    <span>{{ $pickupAt ? 'Pickup ' . $pickupAt->diffForHumans() : 'Pickup timing pending' }}</span>
+                                                </div>
+                                                <a href="{{ route('rental-requests.details', $contract->id) }}" class="btn btn-sm btn-dark shadow-sm">
+                                                    <span class="me-1">Open request</span>
+                                                    <i class="bx bx-right-arrow-alt"></i>
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <span class="fw-bold text-success">${{ number_format($contract->total_price, 2) }}</span>
-                                    <a href="{{ route('rental-requests.edit', $contract->id) }}" class="btn btn-sm btn-outline-dark"><i class="bx bx-show"></i></a>
                                 </div>
                             </div>
                         @empty
@@ -555,24 +643,112 @@
                                 $carImage = $carModel && $carModel->image
                                     ? asset('assets/car-pics/' . $carModel->image->file_name)
                                     : asset('assets/car-pics/car test.webp');
+                                $pickupAt = $contract->pickup_date ? \Carbon\Carbon::parse($contract->pickup_date) : null;
+                                $returnAt = $contract->return_date ? \Carbon\Carbon::parse($contract->return_date) : null;
+                                $agreementNumber = optional($contract->pickupDocument)->agreement_number;
+                                $rawId = $contract->id;
+                                $requestRef = $rawId ? str_pad((string) $rawId, 5, '0', STR_PAD_LEFT) : '—';
+                                $durationLabel = null;
+
+                                if ($pickupAt && $returnAt) {
+                                    $diffHours = $pickupAt->diffInHours($returnAt);
+                                    $days = intdiv($diffHours, 24);
+                                    $hours = $diffHours % 24;
+                                    $durationBits = [];
+
+                                    if ($days > 0) {
+                                        $durationBits[] = $days . 'd';
+                                    }
+
+                                    if ($hours > 0) {
+                                        $durationBits[] = $hours . 'h';
+                                    }
+
+                                    if (empty($durationBits)) {
+                                        $durationBits[] = $pickupAt->diffInMinutes($returnAt) . 'm';
+                                    }
+
+                                    $durationLabel = implode(' ', $durationBits);
+                                }
+
+                                $durationLabel = $durationLabel ?? '—';
+                                $statusLabel = ucfirst(str_replace('_', ' ', $contract->current_status));
                             @endphp
-                            <div class="border rounded-4 p-3 mb-3 shadow-sm">
-                                <div class="d-flex align-items-center gap-3">
-                                    <img src="{{ $carImage }}" alt="Car" class="rounded-3" style="width: 70px; height: 70px; object-fit: cover;">
+                            <div class="border rounded-4 p-3 mb-3 shadow-sm booking-card booking-card--return">
+                                <div class="d-flex align-items-start gap-3">
+                                    <img src="{{ $carImage }}" alt="Car" class="rounded-3 booking-card__image">
                                     <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
-                                            <span class="badge bg-success">Return</span>
-                                        </div>
-                                        <div class="text-muted small mt-2">
-                                            <span class="d-block"><i class="bi bi-calendar-check me-1"></i>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M') }} - {{ \Carbon\Carbon::parse($contract->return_date)->format('d M') }}</span>
-                                            <span class="d-block"><i class="bi bi-person-circle me-1"></i>{{ optional($contract->customer)->fullName() }}</span>
+                                        <div class="d-flex flex-column gap-3">
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
+                                                    <span class="badge bg-success">Return</span>
+                                                </div>
+                                                <span class="meta-chip meta-chip--status">
+                                                    <i class="bi bi-arrow-clockwise me-1"></i>
+                                                    {{ $statusLabel }}
+                                                </span>
+                                            </div>
+
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <span class="meta-chip meta-chip--request">
+                                                    <i class="bi bi-hash me-1"></i>
+                                                    Request #{{ $requestRef }}
+                                                </span>
+
+                                                @if ($agreementNumber)
+                                                    <span class="meta-chip meta-chip--agreement">
+                                                        <i class="bi bi-file-earmark-text me-1"></i>
+                                                        Agreement {{ $agreementNumber }}
+                                                    </span>
+                                                @endif
+
+                                                <span class="meta-chip meta-chip--person">
+                                                    <i class="bi bi-person-circle me-1"></i>
+                                                    {{ optional($contract->customer)->fullName() ?? 'Customer TBD' }}
+                                                </span>
+
+                                                @if ($durationLabel !== '—')
+                                                    <span class="meta-chip meta-chip--duration">
+                                                        <i class="bi bi-hourglass-split me-1"></i>
+                                                        {{ $durationLabel }}
+                                                    </span>
+                                                @endif
+                                            </div>
+
+                                            <div class="booking-timeline">
+                                                <div class="booking-timeline__leg">
+                                                    <span class="booking-timeline__label">Pickup</span>
+                                                    <span class="booking-timeline__date">{{ $pickupAt ? $pickupAt->format('d M Y · H:i') : 'TBD' }}</span>
+                                                    <span class="booking-timeline__meta">
+                                                        <i class="bi bi-geo-alt me-1"></i>{{ $contract->pickup_location ?? 'Pickup TBD' }}
+                                                    </span>
+                                                </div>
+                                                <div class="booking-timeline__divider">
+                                                    <span class="booking-timeline__distance">{{ $durationLabel }}</span>
+                                                    <i class="bi bi-arrow-right-short"></i>
+                                                </div>
+                                                <div class="booking-timeline__leg booking-timeline__leg--accent">
+                                                    <span class="booking-timeline__label">Drop-off</span>
+                                                    <span class="booking-timeline__date">{{ $returnAt ? $returnAt->format('d M Y · H:i') : 'TBD' }}</span>
+                                                    <span class="booking-timeline__meta">
+                                                        <i class="bi bi-flag me-1"></i>{{ $contract->return_location ?? 'Drop-off TBD' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                                                <div class="text-muted small d-flex align-items-center gap-2">
+                                                    <i class="bi bi-stopwatch text-success"></i>
+                                                    <span>{{ $returnAt ? 'Return ' . $returnAt->diffForHumans() : 'Return timing pending' }}</span>
+                                                </div>
+                                                <a href="{{ route('rental-requests.details', $contract->id) }}" class="btn btn-sm btn-success shadow-sm">
+                                                    <span class="me-1">Review return</span>
+                                                    <i class="bx bx-right-arrow-alt"></i>
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <span class="fw-bold text-success">${{ number_format($contract->total_price, 2) }} <small class="text-muted">AED</small></span>
-                                    <a href="{{ route('rental-requests.edit', $contract->id) }}" class="btn btn-sm btn-outline-success"><i class="bx bx-right-arrow-alt"></i></a>
                                 </div>
                             </div>
                         @empty
@@ -740,6 +916,186 @@
 </div>
 
 @endif
+
+@once
+    @push('styles')
+        <style>
+            .booking-card {
+                border: 1px solid rgba(224, 230, 239, 0.7);
+                background: #fff;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .booking-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 18px 32px rgba(32, 56, 90, 0.12);
+            }
+
+            .booking-card__image {
+                width: 70px;
+                height: 70px;
+                object-fit: cover;
+                flex-shrink: 0;
+            }
+
+            .booking-card--reserved .booking-timeline__leg--accent {
+                background: rgba(255, 196, 0, 0.12);
+                border: 1px dashed rgba(255, 171, 0, 0.45);
+            }
+
+            .booking-card--return .booking-timeline__leg--accent {
+                background: rgba(46, 204, 113, 0.12);
+                border: 1px dashed rgba(46, 204, 113, 0.45);
+            }
+
+            .booking-timeline {
+                display: flex;
+                align-items: stretch;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+
+            .booking-timeline__leg {
+                flex: 1 1 240px;
+                background: rgba(133, 146, 163, 0.08);
+                border-radius: 0.9rem;
+                padding: 0.9rem 1rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.35rem;
+                border: 1px solid rgba(224, 230, 239, 0.8);
+            }
+
+            .booking-timeline__label {
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #6f7f92;
+                font-weight: 600;
+            }
+
+            .booking-timeline__date {
+                font-weight: 600;
+                color: #20385a;
+            }
+
+            .booking-timeline__meta {
+                font-size: 0.78rem;
+                color: #5c6b7a;
+                display: flex;
+                align-items: center;
+            }
+
+            .booking-timeline__divider {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                padding: 0 0.5rem;
+                color: #a0acb8;
+                min-width: 48px;
+            }
+
+            .booking-timeline__distance {
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.12em;
+                color: #8592a3;
+            }
+
+            .booking-timeline__divider i {
+                font-size: 1.5rem;
+            }
+
+            .booking-timeline__leg--accent {
+                background: rgba(105, 108, 255, 0.1);
+                border-color: rgba(105, 108, 255, 0.35);
+            }
+
+            .meta-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.4rem;
+                padding: 0.35rem 0.85rem;
+                border-radius: 999px;
+                background: rgba(133, 146, 163, 0.16);
+                color: #495d6c;
+                font-size: 0.78rem;
+                font-weight: 600;
+                letter-spacing: 0.01em;
+                white-space: nowrap;
+            }
+
+            .meta-chip i {
+                font-size: 0.95rem;
+            }
+
+            .meta-chip--calendar {
+                background: rgba(80, 136, 247, 0.18);
+                color: #1d4fc4;
+            }
+
+            .meta-chip--person {
+                background: rgba(255, 214, 153, 0.28);
+                color: #a16000;
+            }
+
+            .meta-chip--location {
+                background: rgba(111, 207, 151, 0.2);
+                color: #1f7a46;
+            }
+
+            .meta-chip--muted {
+                background: rgba(133, 146, 163, 0.16);
+                color: #495d6c;
+            }
+
+            .meta-chip--request {
+                background: rgba(255, 171, 0, 0.18);
+                color: #a66a00;
+            }
+
+            .meta-chip--agreement {
+                background: rgba(32, 56, 90, 0.12);
+                color: #20385a;
+            }
+
+            .meta-chip--status {
+                background: rgba(105, 108, 255, 0.16);
+                color: #3f45d4;
+            }
+
+            .meta-chip--duration {
+                background: rgba(3, 195, 236, 0.14);
+                color: #0b7a92;
+            }
+
+            @media (max-width: 575.98px) {
+                .meta-chip {
+                    width: 100%;
+                    justify-content: center;
+                }
+
+                .booking-card__image {
+                    width: 56px;
+                    height: 56px;
+                }
+
+                .booking-timeline {
+                    flex-direction: column;
+                }
+
+                .booking-timeline__divider {
+                    flex-direction: row;
+                    justify-content: flex-start;
+                    gap: 0.5rem;
+                    padding: 0;
+                }
+            }
+        </style>
+    @endpush
+@endonce
 
 @push('scripts')
 <script>

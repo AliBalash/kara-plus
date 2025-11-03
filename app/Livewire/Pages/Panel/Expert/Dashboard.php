@@ -122,12 +122,12 @@ class Dashboard extends Component
         ];
 
 
-        $this->reservedCars = \App\Models\Contract::with(['car.carModel'])
+        $this->reservedCars = Contract::with(['car.carModel', 'customer', 'pickupDocument'])
             ->where('current_status', 'reserved')
             ->latest()
             ->get();
 
-        $this->returnedCars = Contract::with(['car.carModel', 'customer'])
+        $this->returnedCars = Contract::with(['car.carModel', 'customer', 'pickupDocument'])
             ->where('current_status', 'awaiting_return')
             ->latest()
             ->get();
