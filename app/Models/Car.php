@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -122,6 +123,42 @@ class Car extends Model
     public function carModel()
     {
         return $this->belongsTo(CarModel::class, 'car_model_id');
+    }
+
+    public function contracts()
+    {
+        return $this->hasMany(Contract::class);
+    }
+
+    public function scopeWithoutActiveReservations($query)
+    {
+        $now = Carbon::now();
+        $statuses = static::reservingStatuses();
+
+        return $query->whereDoesntHave('contracts', function ($builder) use ($now, $statuses) {
+            $builder->whereIn('current_status', $statuses)
+                ->whereNotNull('pickup_date')
+                ->where('pickup_date', '<=', $now)
+                ->where(function ($timeQuery) use ($now) {
+                    $timeQuery->whereNull('return_date')->orWhere('return_date', '>=', $now);
+                });
+        });
+    }
+
+    public function upcomingReservation()
+    {
+        $statuses = static::reservingStatuses();
+
+        return $this->hasOne(Contract::class)
+            ->whereIn('current_status', $statuses)
+            ->whereNotNull('pickup_date')
+            ->where('pickup_date', '>', Carbon::now())
+            ->orderBy('pickup_date');
+    }
+
+    protected static function reservingStatuses(): array
+    {
+        return ['reserved', 'assigned', 'under_review', 'delivery'];
     }
 
     /**
