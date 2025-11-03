@@ -371,7 +371,10 @@ class Dashboard extends Component
     {
         $brands = CarModel::query()
             ->whereHas('cars', function ($query) {
-                $query->where('status', 'available')->where('availability', true);
+                $query
+                    ->where('status', 'available')
+                    ->where('availability', true)
+                    ->withoutActiveReservations();
             })
             ->orderBy('brand')
             ->pluck('brand')
@@ -391,7 +394,16 @@ class Dashboard extends Component
     {
         $query = Car::with(['carModel'])
             ->where('status', 'available')
-            ->where('availability', true);
+            ->where('availability', true)
+            ->withoutActiveReservations()
+            ->with(['upcomingReservation' => function ($builder) {
+                $builder->select([
+                    'id',
+                    'car_id',
+                    'pickup_date',
+                    'pickup_location',
+                ]);
+            }]);
 
         if ($this->availableBrand !== 'all') {
             $query->whereHas('carModel', function ($builder) {
@@ -402,7 +414,6 @@ class Dashboard extends Component
         return $query
             ->orderByDesc('updated_at')
             ->orderByDesc('manufacturing_year')
-            ->limit(12)
             ->get();
     }
 
@@ -410,7 +421,8 @@ class Dashboard extends Component
     {
         $query = Car::query()
             ->where('status', 'available')
-            ->where('availability', true);
+            ->where('availability', true)
+            ->withoutActiveReservations();
 
         if ($this->availableBrand !== 'all') {
             $query->whereHas('carModel', function ($builder) {
