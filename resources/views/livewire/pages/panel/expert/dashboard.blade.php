@@ -458,11 +458,22 @@
                                         <td>{{ $car->manufacturing_year ?? '—' }}</td>
                                         <td>
                                             @if ($upcomingReservation)
+<<<<<<< ours
                                                 <div class="fw-semibold">
                                                     {{ optional($upcomingReservation->pickup_date)->format('d M Y · H:i') }}
                                                 </div>
                                                 <div class="text-muted small">
                                                     <i class="bi bi-geo-alt me-1"></i>{{ $upcomingReservation->pickup_location ?? 'Location TBD' }}
+=======
+                                                <div class="d-flex flex-column gap-1">
+                                                    <span class="badge bg-success-subtle text-success align-self-start">Available now</span>
+                                                    <div class="fw-semibold">
+                                                        {{ optional($upcomingReservation->pickup_date)->format('d M Y · H:i') }}
+                                                    </div>
+                                                    <div class="text-muted small">
+                                                        <i class="bi bi-geo-alt me-1"></i>{{ $upcomingReservation->pickup_location ?? 'Location TBD' }}
+                                                    </div>
+>>>>>>> theirs
                                                 </div>
                                             @else
                                                 <span class="badge bg-success-subtle text-success">No upcoming booking</span>

@@ -158,7 +158,21 @@ class Car extends Model
 
     protected static function reservingStatuses(): array
     {
+<<<<<<< ours
         return ['reserved', 'assigned', 'under_review', 'delivery'];
+=======
+        return [
+            'pending',
+            'assigned',
+            'under_review',
+            'reserved',
+            'delivery',
+            'inspection',
+            'agreement_inspection',
+            'awaiting_return',
+            'payment',
+        ];
+>>>>>>> theirs
     }
 
     /**
