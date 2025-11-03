@@ -62,6 +62,8 @@
                                         name="status" wire:model="status" required>
                                         <option value="available" {{ $status == 'available' ? 'selected' : '' }}>
                                             Available</option>
+                                        <option value="pre_reserved" {{ $status == 'pre_reserved' ? 'selected' : '' }}>
+                                            Upcoming Booking</option>
                                         <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Booking
                                         </option>
                                         <option value="under_maintenance"

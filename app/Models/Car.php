@@ -69,7 +69,7 @@ class Car extends Model
      */
     public function isAvailable(): bool
     {
-        return $this->status === 'available' && $this->availability;
+        return in_array($this->status, ['available', 'pre_reserved'], true) && $this->availability;
     }
 
     /**
@@ -156,7 +156,7 @@ class Car extends Model
             ->orderBy('pickup_date');
     }
 
-    protected static function reservingStatuses(): array
+    public static function reservingStatuses(): array
     {
         return [
             'pending',
@@ -192,8 +192,8 @@ class Car extends Model
     public function currentContract()
     {
         return $this->hasOne(\App\Models\Contract::class)
-            ->where('current_status', 'reserved')
-            ->latest('pickup_date');
+            ->whereIn('current_status', static::reservingStatuses())
+            ->orderBy('pickup_date');
     }
 
     public function options()

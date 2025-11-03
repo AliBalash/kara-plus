@@ -6,6 +6,7 @@ use App\Models\Car;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,6 +29,31 @@ class ContractCarAvailabilityTest extends TestCase
 
         $this->assertEquals('reserved', $car->status);
         $this->assertFalse($car->availability);
+    }
+
+    public function test_upcoming_contract_marks_car_pre_reserved(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        Contract::factory()
+            ->for(User::factory())
+            ->for(Customer::factory())
+            ->for($car)
+            ->status('pending')
+            ->state(function () {
+                $pickup = Carbon::now()->addDays(5);
+
+                return [
+                    'pickup_date' => $pickup,
+                    'return_date' => $pickup->copy()->addDays(3),
+                ];
+            })
+            ->create();
+
+        $car->refresh();
+
+        $this->assertEquals('pre_reserved', $car->status);
+        $this->assertTrue($car->availability);
     }
 
     public function test_completing_contract_releases_car_when_no_other_active_contract_exists(): void

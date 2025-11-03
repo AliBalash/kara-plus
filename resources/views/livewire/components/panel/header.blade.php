@@ -159,17 +159,23 @@
                                 $status = $car->status ?? 'unknown';
                                 $statusColor = match ($status) {
                                     'available' => 'success',
+                                    'pre_reserved' => 'info',
                                     'reserved' => 'warning',
-                                    'unavailable', 'sold', 'maintenance' => 'danger',
+                                    'unavailable', 'sold', 'maintenance', 'under_maintenance' => 'danger',
                                     default => 'secondary',
                                 };
                                 $statusIcon = match ($status) {
                                     'available' => 'bx bx-check-circle',
+                                    'pre_reserved' => 'bx bx-calendar-event',
                                     'reserved' => 'bx bx-time-five',
-                                    'unavailable', 'sold', 'maintenance' => 'bx bx-error',
+                                    'unavailable', 'sold', 'maintenance', 'under_maintenance' => 'bx bx-error',
                                     default => 'bx bx-car',
                                 };
-                                $statusLabel = \Illuminate\Support\Str::headline($status);
+                                $statusLabel = match ($status) {
+                                    'pre_reserved' => 'Upcoming reservation',
+                                    'under_maintenance' => 'Under maintenance',
+                                    default => \Illuminate\Support\Str::headline($status),
+                                };
                                 $contract = $car->currentContract ?? null;
                                 $plate = $car->plate_number ?? 'Plate TBD';
                                 $year = $car->manufacturing_year ?? 'Year —';
@@ -209,20 +215,23 @@
                                     </div>
                                 </div>
 
-                                @if ($status === 'reserved' && $contract)
+                                @if (in_array($status, ['reserved', 'pre_reserved'], true) && $contract)
                                     @php
                                         $pickupDate = optional($contract->pickup_date)->format('d M Y · H:i');
                                         $returnDate = optional($contract->return_date)->format('d M Y · H:i');
                                         $pickupLocation = $contract->pickup_location ?? 'Location TBD';
                                         $returnLocation = $contract->return_location ?? 'Location TBD';
                                         $customerPhone = optional($contract->customer)->phone ?? '—';
+                                        $reservationTitle = $status === 'reserved' ? 'Active reservation' : 'Upcoming reservation';
                                     @endphp
                                     <div class="reservation-card" role="presentation">
                                         <div class="reservation-card-heading">
                                             <i class="bx bx-calendar-event" aria-hidden="true"></i>
                                             <div>
-                                                <span class="reservation-title">Active reservation</span>
-                                                <span class="reservation-subtitle">{{ optional($contract->customer)->fullName() ?? 'Customer TBD' }}</span>
+                                                <span class="reservation-title">{{ $reservationTitle }}</span>
+                                                <span class="reservation-subtitle">
+                                                    {{ $status === 'reserved' ? (optional($contract->customer)->fullName() ?? 'Customer TBD') : ($pickupDate ? 'Pickup on ' . $pickupDate : 'Schedule pending') }}
+                                                </span>
                                             </div>
                                         </div>
                                         <div class="reservation-itinerary" role="list">
@@ -256,6 +265,11 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        @if ($status === 'pre_reserved')
+                                            <div class="reservation-note text-muted small">
+                                                Vehicle stays available until pickup time.
+                                            </div>
+                                        @endif
                                         <div class="reservation-contact">
                                             <span class="reservation-contact-label"><i class="bx bx-phone"></i>Customer contact</span>
                                             <span class="reservation-contact-value">{{ $customerPhone }}</span>

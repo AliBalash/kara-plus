@@ -53,7 +53,7 @@ class EditCarForm extends Component
     {
         return [
             'plate_number' => 'required|string|max:255',
-            'status' => 'required|in:available,reserved,under_maintenance',
+            'status' => 'required|in:available,pre_reserved,reserved,under_maintenance',
             'availability' => 'required|boolean',
             'mileage' => 'required|numeric|min:0',
             'price_per_day_short' => 'required|numeric|min:0',
@@ -94,7 +94,7 @@ class EditCarForm extends Component
         'plate_number.required' => 'The plate number is required.',
         'plate_number.max' => 'The plate number cannot exceed 255 characters.',
         'status.required' => 'The status is required.',
-        'status.in' => 'The status must be one of available, reserved, or under maintenance.',
+        'status.in' => 'The status must be one of available, pre-reserved, reserved, or under maintenance.',
         'availability.required' => 'The availability is required.',
         'mileage.required' => 'The mileage is required.',
         'mileage.numeric' => 'The mileage must be a number.',

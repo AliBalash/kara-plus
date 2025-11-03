@@ -460,6 +460,9 @@
                                             @if ($upcomingReservation)
                                                 <div class="d-flex flex-column gap-1">
                                                     <span class="badge bg-success-subtle text-success align-self-start">Available now</span>
+                                                    @if ($car->status === 'pre_reserved')
+                                                        <span class="badge bg-info-subtle text-info align-self-start">Upcoming booking</span>
+                                                    @endif
                                                     <div class="fw-semibold">
                                                         {{ optional($upcomingReservation->pickup_date)->format('d M Y · H:i') }}
                                                     </div>
@@ -616,142 +619,6 @@
             @endforeach
         </div>
 
-        {{-- <div class="row g-4 mb-4">
-            <div class="col-12 col-xxl-8">
-                <div class="card shadow-lg border-0 rounded-4 h-100">
-                    <div class="card-header border-0 bg-transparent pt-4 px-4">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Revenue & Volume</h5>
-                                <span class="text-muted small">Rolling 6-month performance</span>
-                            </div>
-                            <div class="text-end">
-                                <span class="text-muted small text-uppercase">This month</span>
-                                <div class="h4 fw-bold mb-0">${{ number_format($currentMonthRevenue, 2) }}</div>
-                                <div class="text-muted small">{{ now()->format('M Y') }} - {{ $currentMonthContracts }} contracts</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body pt-0 pb-4 px-4">
-                        <div class="row g-3 mb-4">
-                            <div class="col-6 col-md">
-                                <div class="text-muted small text-uppercase">Fleet utilization</div>
-                                <div class="fw-semibold fs-6 mt-1">{{ $fleetUtilization }}%</div>
-                            </div>
-                            <div class="col-6 col-md">
-                                <div class="text-muted small text-uppercase">Active vehicles</div>
-                                <div class="fw-semibold fs-6 mt-1">{{ $activeVehicles }} / {{ $totalCars }}</div>
-                            </div>
-                            <div class="col-6 col-md">
-                                <div class="text-muted small text-uppercase">Maintenance queue</div>
-                                <div class="fw-semibold fs-6 mt-1">{{ $offlineVehicles }}</div>
-                            </div>
-                        </div>
-                        <div id="revenueTrendChart" style="min-height: 320px;" wire:ignore></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-xxl-4">
-                <div class="card shadow-lg border-0 rounded-4 h-100">
-                    <div class="card-header border-0 bg-transparent pt-4 px-4">
-                        <h5 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-success me-2"></i>Fleet Health</h5>
-                        <span class="text-muted small">Availability across the fleet</span>
-                    </div>
-                    <div class="card-body pt-0 pb-4 px-4 d-flex flex-column align-items-center gap-3">
-                        <div id="fleetDistributionChart" style="min-height: 300px; width: 100%;" wire:ignore></div>
-                        <div class="row g-2 w-100 text-center">
-                            <div class="col">
-                                <span class="badge bg-success bg-opacity-10 text-success">{{ $activeVehicles }} Active</span>
-                            </div>
-                            <div class="col">
-                                <span class="badge bg-info bg-opacity-10 text-info">{{ max($totalCars - ($activeVehicles + $offlineVehicles), 0) }} Available</span>
-                            </div>
-                            <div class="col">
-                                <span class="badge bg-warning bg-opacity-10 text-warning">{{ $offlineVehicles }} Maintenance</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div> --}}
-
-        {{-- <div class="row g-4 mb-4">
-            <div class="col-12 col-xxl-8">
-                <div class="card shadow-lg border-0 rounded-4 h-100">
-                    <div class="card-header border-0 bg-transparent pt-4 px-4">
-                        <h5 class="fw-bold mb-1"><i class="bi bi-arrow-repeat text-primary me-2"></i>Status Progression</h5>
-                        <span class="text-muted small">How contracts move through each stage</span>
-                    </div>
-                    <div class="card-body pt-0 pb-4 px-4">
-                        <div id="statusTrendChart" style="min-height: 320px;" wire:ignore></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-xxl-4">
-                <div class="card shadow-lg border-0 rounded-4 h-100">
-                    <div class="card-header border-0 bg-transparent pt-4 px-4">
-                        <h5 class="fw-bold mb-1"><i class="bi bi-clipboard-data text-info me-2"></i>Contract Snapshot</h5>
-                        <span class="text-muted small">Live breakdown and personal activity</span>
-                    </div>
-                    <div class="card-body pt-0 pb-4 px-4 d-flex flex-column gap-4">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="text-muted small text-uppercase">Average total</span>
-                                <div class="h4 fw-bold mb-0">${{ number_format($averageTotalPrice, 2) }}</div>
-                            </div>
-                            <div class="text-end">
-                                <span class="text-muted small text-uppercase">Usage rate</span>
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="progress flex-grow-1" style="height: 6px; width: 110px;">
-                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ $usagePercent }}%" aria-valuenow="{{ $usagePercent }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                    <span class="fw-semibold text-info">{{ $usagePercent }}%</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex flex-column gap-3">
-                            @foreach ($contractSnapshot as $item)
-                                <div>
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="fw-semibold">{{ $item['label'] }}</span>
-                                        <span class="text-muted small">{{ $item['count'] }} contracts</span>
-                                    </div>
-                                    <div class="progress" style="height: 8px;">
-                                        <div class="progress-bar bg-{{ $item['color'] }}" role="progressbar" style="width: {{ min($item['percent'], 100) }}%" aria-valuenow="{{ $item['percent'] }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                        <div class="border-top pt-3">
-                            <div class="d-flex flex-column gap-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span class="text-muted small text-uppercase">My last contract</span>
-                                        <div class="fw-bold">{{ $lastUserContractStatus ? ucfirst($lastUserContractStatus) : 'No activity yet' }}</div>
-                                    </div>
-                                    @if ($lastUserDiscountCode)
-                                        <div class="text-end">
-                                            <span class="text-muted small text-uppercase">Last discount used</span>
-                                            <div class="badge bg-primary bg-opacity-10 text-primary">{{ $lastUserDiscountCode->code }}</div>
-                                        </div>
-                                    @endif
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span class="text-muted small text-uppercase">Overdue returns</span>
-                                        <div class="fw-bold text-danger">{{ $overdueContracts }}</div>
-                                    </div>
-                                    <div class="text-end">
-                                        <span class="text-muted small text-uppercase">Upcoming returns</span>
-                                        <div class="fw-bold text-warning">{{ $upcomingReturns }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div> --}}
 
         <div class="row g-4 mb-4">
             <div class="col-12 col-xxl-5">

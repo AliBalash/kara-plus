@@ -22,7 +22,7 @@ class Header extends Component
     public function updatedQuery()
     {
         if (strlen($this->query) > 1) {
-            $this->cars = Car::with('carModel')
+            $this->cars = Car::with(['carModel', 'currentContract.customer'])
                 ->where('plate_number', 'like', '%' . $this->query . '%')
                 ->orWhereHas('carModel', function ($q) {
                     $q->where('brand', 'like', '%' . $this->query . '%')

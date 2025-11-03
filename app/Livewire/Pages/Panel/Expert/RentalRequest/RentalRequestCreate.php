@@ -167,9 +167,16 @@ class RentalRequestCreate extends Component
 
     private function loadCars()
     {
-        $this->carsForModel = $this->selectedModelId
-            ? Car::where('car_model_id', $this->selectedModelId)->with('carModel')->get()
-            : [];
+        if (! $this->selectedModelId) {
+            $this->carsForModel = [];
+            return;
+        }
+
+        $this->carsForModel = Car::where('car_model_id', $this->selectedModelId)
+            ->whereIn('status', ['available', 'pre_reserved'])
+            ->where('availability', true)
+            ->with('carModel')
+            ->get();
     }
 
     public function calculateCosts()
