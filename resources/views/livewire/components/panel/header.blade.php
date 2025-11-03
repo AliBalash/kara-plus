@@ -210,34 +210,55 @@
                                 </div>
 
                                 @if ($status === 'reserved' && $contract)
-                                    <div class="reservation-card">
+                                    @php
+                                        $pickupDate = optional($contract->pickup_date)->format('d M Y · H:i');
+                                        $returnDate = optional($contract->return_date)->format('d M Y · H:i');
+                                        $pickupLocation = $contract->pickup_location ?? 'Location TBD';
+                                        $returnLocation = $contract->return_location ?? 'Location TBD';
+                                        $customerPhone = optional($contract->customer)->phone ?? '—';
+                                    @endphp
+                                    <div class="reservation-card" role="presentation">
                                         <div class="reservation-card-heading">
-                                            <i class="bx bx-calendar-event"></i>
+                                            <i class="bx bx-calendar-event" aria-hidden="true"></i>
                                             <div>
                                                 <span class="reservation-title">Active reservation</span>
                                                 <span class="reservation-subtitle">{{ optional($contract->customer)->fullName() ?? 'Customer TBD' }}</span>
                                             </div>
                                         </div>
-                                        <div class="reservation-grid">
-                                            <div class="reservation-item">
-                                                <span class="reservation-label">Pickup</span>
-                                                <span class="reservation-value">
-                                                    {{ optional($contract->pickup_date)->format('d M Y · H:i') ?? '—' }}
-                                                </span>
-                                                <span class="reservation-sub">{{ $contract->pickup_location ?? 'Location TBD' }}</span>
+                                        <div class="reservation-itinerary" role="list">
+                                            <div class="reservation-leg" role="listitem">
+                                                <div class="reservation-leg-icon is-pickup" aria-hidden="true">
+                                                    <i class="bx bx-log-in-circle"></i>
+                                                </div>
+                                                <div class="reservation-leg-body">
+                                                    <span class="reservation-leg-label">Pickup</span>
+                                                    <span class="reservation-leg-value">{{ $pickupDate ?? '—' }}</span>
+                                                    <span class="reservation-leg-meta">
+                                                        <i class="bx bx-map" aria-hidden="true"></i>
+                                                        <span class="reservation-leg-meta-text">{{ $pickupLocation }}</span>
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div class="reservation-item">
-                                                <span class="reservation-label">Return</span>
-                                                <span class="reservation-value">
-                                                    {{ optional($contract->return_date)->format('d M Y · H:i') ?? '—' }}
-                                                </span>
-                                                <span class="reservation-sub">{{ $contract->return_location ?? 'Location TBD' }}</span>
+                                            <div class="reservation-leg-connector" aria-hidden="true">
+                                                <span class="reservation-leg-line"></span>
                                             </div>
-                                            <div class="reservation-item">
-                                                <span class="reservation-label">Contact</span>
-                                                <span class="reservation-value">{{ optional($contract->customer)->phone ?? '—' }}</span>
-                                                <span class="reservation-sub">Customer</span>
+                                            <div class="reservation-leg" role="listitem">
+                                                <div class="reservation-leg-icon is-return" aria-hidden="true">
+                                                    <i class="bx bx-log-out-circle"></i>
+                                                </div>
+                                                <div class="reservation-leg-body">
+                                                    <span class="reservation-leg-label">Return</span>
+                                                    <span class="reservation-leg-value">{{ $returnDate ?? '—' }}</span>
+                                                    <span class="reservation-leg-meta">
+                                                        <i class="bx bx-map" aria-hidden="true"></i>
+                                                        <span class="reservation-leg-meta-text">{{ $returnLocation }}</span>
+                                                    </span>
+                                                </div>
                                             </div>
+                                        </div>
+                                        <div class="reservation-contact">
+                                            <span class="reservation-contact-label"><i class="bx bx-phone"></i>Customer contact</span>
+                                            <span class="reservation-contact-value">{{ $customerPhone }}</span>
                                         </div>
                                     </div>
                                 @endif
