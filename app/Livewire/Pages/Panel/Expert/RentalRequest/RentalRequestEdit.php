@@ -668,11 +668,26 @@ class RentalRequestEdit extends Component
     private function loadCars()
     {
         $this->carsForModel = [];
-        if ($this->selectedModelId) {
-            $this->carsForModel = Car::where('car_model_id', $this->selectedModelId)
-                ->with('carModel')
-                ->get();
+
+        if (! $this->selectedModelId) {
+            return;
         }
+
+        $currentCarId = $this->contract?->car_id;
+
+        $this->carsForModel = Car::where('car_model_id', $this->selectedModelId)
+            ->with('carModel')
+            ->where(function ($builder) use ($currentCarId) {
+                $builder->where(function ($available) {
+                    $available->whereIn('status', ['available', 'pre_reserved'])
+                        ->where('availability', true);
+                });
+
+                if ($currentCarId) {
+                    $builder->orWhere('id', $currentCarId);
+                }
+            })
+            ->get();
     }
 
     private function loadModels()
@@ -744,10 +759,6 @@ class RentalRequestEdit extends Component
     {
         $contract = Contract::findOrFail($contractId);
         $contract->changeStatus('reserved', auth()->id());
-
-        if ($contract->car) {
-            $contract->car->update(['status' => 'reserved']);
-        }
 
         $this->toast('success', 'Status changed to Reserved successfully.');
     }

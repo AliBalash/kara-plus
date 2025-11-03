@@ -272,25 +272,57 @@ class Contract extends Model
         }
 
         $inactiveStatuses = ['complete', 'cancelled', 'rejected'];
+        $now = now();
 
-        $hasActiveContracts = self::where('car_id', $carId)
+        $relevantContracts = self::where('car_id', $carId)
             ->whereNotIn('current_status', $inactiveStatuses)
-            ->exists();
+            ->get(['pickup_date', 'return_date', 'current_status']);
 
-        if ($hasActiveContracts) {
-            $update = ['availability' => false];
+        if ($relevantContracts->isNotEmpty()) {
+            $hasActiveReservation = $relevantContracts->contains(function ($reservation) use ($now) {
+                if (!$reservation->pickup_date) {
+                    return false;
+                }
 
-            if ($car->status !== 'under_maintenance') {
-                $update['status'] = 'reserved';
+                $pickup = $reservation->pickup_date;
+                $return = $reservation->return_date;
+
+                $hasStarted = $pickup->lessThanOrEqualTo($now);
+                $notReturned = $return === null || $return->greaterThanOrEqualTo($now);
+
+                return $hasStarted && $notReturned;
+            });
+
+            if ($hasActiveReservation) {
+                $update = ['availability' => false];
+
+                if ($car->status !== 'under_maintenance') {
+                    $update['status'] = 'reserved';
+                }
+
+                $car->update($update);
+                return;
             }
 
-            $car->update($update);
-            return;
+            $hasUpcomingReservation = $relevantContracts->contains(function ($reservation) use ($now) {
+                return $reservation->pickup_date && $reservation->pickup_date->greaterThan($now);
+            });
+
+            if ($hasUpcomingReservation) {
+                $update = ['availability' => true];
+
+                if ($car->status === 'reserved' || $car->status === 'available') {
+                    $update['status'] = 'pre_reserved';
+                }
+
+                $car->update($update);
+                return;
+            }
         }
 
         $update = ['availability' => true];
 
-        if ($car->status === 'reserved') {
+        if (in_array($car->status, ['reserved', 'pre_reserved'], true)) {
             $update['status'] = 'available';
         }
 

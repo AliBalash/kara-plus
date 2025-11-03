@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id(); // شناسه خودرو
             $table->unsignedBigInteger('car_model_id'); // ارجاع به مدل خودرو
             $table->string('plate_number')->unique(); // شماره پلاک خودرو
-            $table->enum('status', ['available', 'reserved', 'under_maintenance'])->default('available'); // وضعیت خودرو
+            $table->enum('status', ['available', 'pre_reserved', 'reserved', 'under_maintenance'])->default('available'); // وضعیت خودرو
             $table->boolean('availability')->default(true); // در دسترس بودن خودرو
             $table->integer('mileage')->default(0); // میزان پیمایش خودرو
             $table->decimal('price_per_day_short', 10, 2); // 1 تا 6 روز

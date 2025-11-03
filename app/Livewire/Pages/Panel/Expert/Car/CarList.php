@@ -98,7 +98,7 @@ class CarList extends Component
 
             ->when($this->selectedBrand, fn($q) => $q->whereHas('carModel', fn($q2) => $q2->where('brand', $this->selectedBrand)))
             ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
-            ->when($this->onlyReserved, fn($q) => $q->where('status', 'reserved'))
+            ->when($this->onlyReserved, fn($q) => $q->whereIn('status', ['reserved', 'pre_reserved']))
             ->when($this->pickupFrom, fn($q) => $q->whereHas('currentContract', fn($q2) => $q2->where('pickup_date', '>=', $this->pickupFrom)))
             ->when($this->pickupTo, fn($q) => $q->whereHas('currentContract', fn($q2) => $q2->where('pickup_date', '<=', $this->pickupTo)));
 

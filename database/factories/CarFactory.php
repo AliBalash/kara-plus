@@ -15,7 +15,7 @@ class CarFactory extends Factory
         return [
             'car_model_id' => CarModel::factory(),
             'plate_number' => strtoupper($this->faker->bothify('??-####')),
-            'status' => $this->faker->randomElement(['available', 'reserved', 'under_maintenance']),
+            'status' => $this->faker->randomElement(['available', 'pre_reserved', 'reserved', 'under_maintenance']),
             'availability' => true,
             'mileage' => $this->faker->numberBetween(1_000, 100_000),
             'price_per_day_short' => $this->faker->randomFloat(2, 200, 1000),
@@ -52,4 +52,3 @@ class CarFactory extends Factory
         ]);
     }
 }
-

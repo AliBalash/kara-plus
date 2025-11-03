@@ -245,7 +245,13 @@ class Dashboard extends Component
         $this->totalCars = Car::count();
         $this->offlineVehicles = Car::whereIn('status', $maintenanceStatuses)->count();
 
-        $activeVehicleIds = Contract::whereIn('current_status', ['reserved', 'assigned', 'under_review', 'delivery', 'awaiting_return'])
+        $activeVehicleIds = Contract::whereIn('current_status', Car::reservingStatuses())
+            ->whereNotNull('pickup_date')
+            ->where('pickup_date', '<=', Carbon::now())
+            ->where(function ($query) {
+                $query->whereNull('return_date')
+                    ->orWhere('return_date', '>=', Carbon::now());
+            })
             ->pluck('car_id')
             ->filter()
             ->unique();
@@ -372,7 +378,7 @@ class Dashboard extends Component
         $brands = CarModel::query()
             ->whereHas('cars', function ($query) {
                 $query
-                    ->where('status', 'available')
+                    ->whereIn('status', ['available', 'pre_reserved'])
                     ->where('availability', true)
                     ->withoutActiveReservations();
             })
@@ -393,7 +399,7 @@ class Dashboard extends Component
     public function getAvailableCarsProperty()
     {
         $query = Car::with(['carModel'])
-            ->where('status', 'available')
+            ->whereIn('status', ['available', 'pre_reserved'])
             ->where('availability', true)
             ->withoutActiveReservations()
             ->with(['upcomingReservation' => function ($builder) {
@@ -420,7 +426,7 @@ class Dashboard extends Component
     public function getAvailableCarsTotalProperty()
     {
         $query = Car::query()
-            ->where('status', 'available')
+            ->whereIn('status', ['available', 'pre_reserved'])
             ->where('availability', true)
             ->withoutActiveReservations();
 

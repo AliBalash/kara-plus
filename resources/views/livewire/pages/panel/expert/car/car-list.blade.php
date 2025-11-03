@@ -31,7 +31,8 @@
             <select class="form-select" wire:model.live="statusFilter">
                 <option value="">All Status</option>
                 <option value="available">Available</option>
-                <option value="reserved">Booking</option>
+                <option value="pre_reserved">Upcoming Booking</option>
+                <option value="reserved">Active Booking</option>
                 <option value="under_maintenance">Under Maintenance</option>
             </select>
         </div>
@@ -39,7 +40,7 @@
         <!-- Only Booking -->
         <div class="col-md-3 mb-2 d-flex align-items-center">
             <input type="checkbox" class="form-check-input me-1" id="onlyReserved" wire:model.live="onlyReserved">
-            <label class="form-check-label" for="onlyReserved">Show only booking</label>
+            <label class="form-check-label" for="onlyReserved">Show only bookings</label>
         </div>
 
         <!-- Date Filters -->
@@ -94,15 +95,24 @@
                                 class="badge 
                                 @switch($car->status)
                                     @case('available') bg-success @break
+                                    @case('pre_reserved') bg-info @break
                                     @case('reserved') bg-warning @break
                                     @case('under_maintenance') bg-danger @break
                                     @default bg-secondary
                                 @endswitch">
-                                {{ ucfirst($car->status) }}
+                                @php
+                                    $statusLabel = match ($car->status) {
+                                        'pre_reserved' => 'Upcoming booking',
+                                        'reserved' => 'Active booking',
+                                        'under_maintenance' => 'Under maintenance',
+                                        default => ucfirst($car->status),
+                                    };
+                                @endphp
+                                {{ $statusLabel }}
                             </span>
                         </td>
-                        <td>{{ $car->currentContract ? $car->currentContract->pickup_date->format('d M Y') : '-' }}</td>
-                        <td>{{ $car->currentContract ? $car->currentContract->return_date->format('d M Y') : '-' }}</td>
+                        <td>{{ optional(optional($car->currentContract)->pickup_date)->format('d M Y') ?? '-' }}</td>
+                        <td>{{ optional(optional($car->currentContract)->return_date)->format('d M Y') ?? '-' }}</td>
                     </tr>
                 @empty
                     <tr>
