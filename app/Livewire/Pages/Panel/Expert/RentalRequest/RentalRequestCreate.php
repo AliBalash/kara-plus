@@ -336,7 +336,6 @@ class RentalRequestCreate extends Component
             'pickup_date' => [
                 'required',
                 'date',
-                'after_or_equal:today',
                 function ($attribute, $value, $fail) {
                     if (!$this->selectedCarId || !$this->return_date) {
                         return;
@@ -355,7 +354,6 @@ class RentalRequestCreate extends Component
                 'required',
                 'date',
                 'after:pickup_date',
-                'after_or_equal:today',
                 function ($attribute, $value, $fail) {
                     if (!$this->selectedCarId || !$this->pickup_date) {
                         return;
@@ -402,11 +400,9 @@ class RentalRequestCreate extends Component
         'return_location.in' => 'The selected return location is invalid.',
         'pickup_date.required' => 'The pickup date and time is required.',
         'pickup_date.date' => 'Please provide a valid date for pickup.',
-        'pickup_date.after_or_equal' => 'The pickup date cannot be in the past.',
         'return_date.required' => 'The return date and time is required.',
         'return_date.date' => 'Please provide a valid date for return.',
         'return_date.after' => 'The return date must be after the pickup date.',
-        'return_date.after_or_equal' => 'The return date cannot be in the past.',
         'first_name.required' => 'First name is required.',
         'first_name.string' => 'First name must be a string.',
         'first_name.max' => 'First name cannot be longer than 255 characters.',
