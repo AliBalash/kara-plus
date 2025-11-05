@@ -541,7 +541,6 @@
                                 <input id="pickupDateInput" type="datetime-local"
                                     class="form-control @error('pickup_date') is-invalid @enderror"
                                     wire:model.live="pickup_date" aria-required="true" data-bs-toggle="tooltip"
-                                    min="{{ \Carbon\Carbon::now()->format('Y-m-d\TH:i') }}"
                                     title="Select pickup date and time">
                             </div>
                             @error('pickup_date')
