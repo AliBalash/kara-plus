@@ -676,17 +676,8 @@ class RentalRequestEdit extends Component
         $currentCarId = $this->contract?->car_id;
 
         $this->carsForModel = Car::where('car_model_id', $this->selectedModelId)
-            ->with('carModel')
-            ->where(function ($builder) use ($currentCarId) {
-                $builder->where(function ($available) {
-                    $available->whereIn('status', ['available', 'pre_reserved'])
-                        ->where('availability', true);
-                });
-
-                if ($currentCarId) {
-                    $builder->orWhere('id', $currentCarId);
-                }
-            })
+            ->with(['carModel', 'currentContract.customer'])
+            ->orderBy('plate_number')
             ->get();
     }
 
@@ -726,13 +717,14 @@ class RentalRequestEdit extends Component
             ->when($this->contract, function ($query) {
                 return $query->where('id', '!=', $this->contract->id);
             })
-            ->select('id', 'pickup_date', 'return_date')
+            ->select('id', 'pickup_date', 'return_date', 'current_status')
             ->get()
             ->map(function ($contract) {
                 return [
                     'id' => $contract->id,
                     'pickup_date' => Carbon::parse($contract->pickup_date)->format('Y-m-d H:i'),
                     'return_date' => Carbon::parse($contract->return_date)->format('Y-m-d H:i'),
+                    'status' => $contract->current_status,
                 ];
             })
             ->toArray();

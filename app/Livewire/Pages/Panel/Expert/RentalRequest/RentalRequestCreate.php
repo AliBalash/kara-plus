@@ -173,9 +173,8 @@ class RentalRequestCreate extends Component
         }
 
         $this->carsForModel = Car::where('car_model_id', $this->selectedModelId)
-            ->whereIn('status', ['available', 'pre_reserved'])
-            ->where('availability', true)
-            ->with('carModel')
+            ->with(['carModel', 'currentContract.customer'])
+            ->orderBy('plate_number')
             ->get();
     }
 
@@ -297,13 +296,14 @@ class RentalRequestCreate extends Component
         return Contract::where('car_id', $carId)
             ->whereIn('current_status', ['pending', 'assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection', 'awaiting_return'])
             ->where('return_date', '>=', now())
-            ->select('id', 'pickup_date', 'return_date')
+            ->select('id', 'pickup_date', 'return_date', 'current_status')
             ->get()
             ->map(function ($contract) {
                 return [
                     'id' => $contract->id,
                     'pickup_date' => Carbon::parse($contract->pickup_date)->format('Y-m-d H:i'),
                     'return_date' => Carbon::parse($contract->return_date)->format('Y-m-d H:i'),
+                    'status' => $contract->current_status,
                 ];
             })
             ->toArray();
