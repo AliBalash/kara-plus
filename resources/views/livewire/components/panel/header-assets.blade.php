@@ -53,6 +53,18 @@
                 background: #fff;
             }
 
+            .result-card-overlay {
+                position: absolute;
+                inset: 0;
+                z-index: 1;
+                border-radius: inherit;
+            }
+
+            .result-card > :not(.result-card-overlay) {
+                position: relative;
+                z-index: 2;
+            }
+
             .result-card:hover,
             .result-card:focus-visible {
                 transform: translateY(-4px);
@@ -122,6 +134,12 @@
                 border-color: rgba(234, 179, 8, 0.3);
             }
 
+            .status-chip.is-info {
+                background: rgba(59, 130, 246, 0.18);
+                color: #1d4ed8;
+                border-color: rgba(59, 130, 246, 0.35);
+            }
+
             .status-chip.is-danger {
                 background: rgba(248, 113, 113, 0.22);
                 color: #7f1d1d;
@@ -180,20 +198,27 @@
                 color: #64748b;
             }
 
+            .reservation-collection {
+                display: flex;
+                flex-direction: column;
+                gap: 1.1rem;
+            }
+
             .reservation-card {
                 border-radius: 1.1rem;
                 border: 1px solid rgba(79, 70, 229, 0.22);
                 background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(59, 130, 246, 0.08));
                 padding: 1.2rem 1.3rem 1.35rem;
-                margin-bottom: 1.25rem;
                 box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+                display: flex;
+                flex-direction: column;
+                gap: 1.1rem;
             }
 
             .reservation-card-heading {
                 display: flex;
                 align-items: flex-start;
                 gap: 0.75rem;
-                margin-bottom: 1.05rem;
             }
 
             .reservation-card-heading i {
@@ -206,6 +231,22 @@
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
+            }
+
+            .reservation-heading-body {
+                display: flex;
+                flex-direction: column;
+                gap: 0.45rem;
+                width: 100%;
+                min-width: 0;
+            }
+
+            .reservation-heading-top {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+                flex-wrap: wrap;
             }
 
             .reservation-title {
@@ -227,7 +268,6 @@
                 gap: 0.9rem;
                 align-items: stretch;
                 position: relative;
-                margin-bottom: 1.1rem;
             }
 
             .reservation-leg {
@@ -321,37 +361,83 @@
                 border-radius: 999px;
             }
 
-            .reservation-contact {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 0.75rem;
-                padding: 0.9rem 1rem;
-                border-radius: 0.9rem;
-                background: rgba(30, 64, 175, 0.08);
-                border: 1px solid rgba(37, 99, 235, 0.18);
-                color: #1e3a8a;
-                font-size: 0.85rem;
-                font-weight: 600;
-            }
-
-            .reservation-contact-label {
+            .reservation-note {
                 display: inline-flex;
                 align-items: center;
                 gap: 0.45rem;
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-                font-size: 0.7rem;
+                font-size: 0.78rem;
+                font-weight: 600;
                 color: #1d4ed8;
+                background: rgba(59, 130, 246, 0.12);
+                border: 1px dashed rgba(59, 130, 246, 0.35);
+                border-radius: 0.75rem;
+                padding: 0.55rem 0.85rem;
             }
 
-            .reservation-contact-label i {
+            .reservation-note i {
                 font-size: 1rem;
             }
 
-            .reservation-contact-value {
-                font-size: 0.92rem;
+            .reservation-meta {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 0.85rem;
+            }
+
+            .reservation-meta-item {
+                display: flex;
+                flex-direction: column;
+                gap: 0.35rem;
+                padding: 0.85rem 1rem;
+                border-radius: 0.9rem;
+                background: rgba(255, 255, 255, 0.86);
+                border: 1px solid rgba(79, 70, 229, 0.18);
+                box-shadow: 0 6px 16px -10px rgba(79, 70, 229, 0.3);
+                min-height: 86px;
+            }
+
+            .reservation-meta-label {
+                font-size: 0.65rem;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #4f46e5;
+                font-weight: 700;
+            }
+
+            .reservation-meta-value {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.4rem;
+                font-size: 0.88rem;
+                font-weight: 600;
                 color: #111827;
+            }
+
+            .reservation-meta-value i {
+                color: #4338ca;
+                font-size: 1.05rem;
+            }
+
+            .reservation-actions {
+                display: flex;
+                justify-content: flex-end;
+            }
+
+            .reservation-actions .btn {
+                border-radius: 0.85rem;
+                font-weight: 700;
+                padding: 0.6rem 1rem;
+                box-shadow: 0 18px 34px -20px rgba(37, 99, 235, 0.65);
+                position: relative;
+                z-index: 3;
+            }
+
+            .reservation-actions .btn:hover {
+                box-shadow: 0 24px 38px -18px rgba(37, 99, 235, 0.75);
+            }
+
+            .reservation-actions .btn i {
+                font-size: 1.1rem;
             }
 
             .result-card-footer {
@@ -546,10 +632,8 @@
                     padding: 0.85rem 0.9rem;
                 }
 
-                .reservation-contact {
-                    flex-direction: column;
-                    align-items: flex-start;
-                    gap: 0.5rem;
+                .reservation-meta {
+                    grid-template-columns: 1fr;
                 }
             }
 
