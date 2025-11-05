@@ -176,14 +176,15 @@
                                     'under_maintenance' => 'Under maintenance',
                                     default => \Illuminate\Support\Str::headline($status),
                                 };
-                                $contract = $car->currentContract ?? null;
                                 $plate = $car->plate_number ?? 'Plate TBD';
                                 $year = $car->manufacturing_year ?? 'Year —';
                                 $mileage = $car->mileage !== null ? number_format($car->mileage) . ' km' : 'Mileage —';
                                 $price = $car->price_per_day !== null ? number_format($car->price_per_day) . ' AED / day' : 'Rate —';
                             @endphp
-                            <a href="{{ route('car.edit', $car->id) }}" class="result-card" role="listitem"
+                            <article class="result-card" role="listitem"
                                 wire:key="search-result-{{ $car->id }}">
+                                <a href="{{ route('car.edit', $car->id) }}" class="result-card-overlay"
+                                    aria-label="Open {{ $car->fullname() }} details" title="Open vehicle"></a>
                                 <div class="result-card-top">
                                     <div class="result-card-heading">
                                         <span class="vehicle-name">{{ $car->fullname() }}</span>
@@ -215,65 +216,119 @@
                                     </div>
                                 </div>
 
-                                @if (in_array($status, ['reserved', 'pre_reserved'], true) && $contract)
-                                    @php
-                                        $pickupDate = optional($contract->pickup_date)->format('d M Y · H:i');
-                                        $returnDate = optional($contract->return_date)->format('d M Y · H:i');
-                                        $pickupLocation = $contract->pickup_location ?? 'Location TBD';
-                                        $returnLocation = $contract->return_location ?? 'Location TBD';
-                                        $customerPhone = optional($contract->customer)->phone ?? '—';
-                                        $reservationTitle = $status === 'reserved' ? 'Active reservation' : 'Upcoming reservation';
-                                    @endphp
-                                    <div class="reservation-card" role="presentation">
-                                        <div class="reservation-card-heading">
-                                            <i class="bx bx-calendar-event" aria-hidden="true"></i>
-                                            <div>
-                                                <span class="reservation-title">{{ $reservationTitle }}</span>
-                                                <span class="reservation-subtitle">
-                                                    {{ $status === 'reserved' ? (optional($contract->customer)->fullName() ?? 'Customer TBD') : ($pickupDate ? 'Pickup on ' . $pickupDate : 'Schedule pending') }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div class="reservation-itinerary" role="list">
-                                            <div class="reservation-leg" role="listitem">
-                                                <div class="reservation-leg-icon is-pickup" aria-hidden="true">
-                                                    <i class="bx bx-log-in-circle"></i>
+                                @php
+                                    $reservations = collect($car->contracts ?? [])
+                                        ->filter(fn($item) => $item instanceof \App\Models\Contract)
+                                        ->sortBy(fn($contract) => optional($contract->pickup_date)->getTimestamp() ?? PHP_INT_MAX)
+                                        ->values();
+                                @endphp
+                                @if ($reservations->isNotEmpty())
+                                    <div class="reservation-collection" role="list">
+                                        @foreach ($reservations as $reservation)
+                                            @php
+                                                $reservationStatus = $reservation->current_status ?? 'unknown';
+                                                $reservationTone = match ($reservationStatus) {
+                                                    'pending', 'under_review', 'pre_reserved', 'agreement_inspection' => 'info',
+                                                    'assigned', 'reserved', 'delivery', 'awaiting_return' => 'warning',
+                                                    'complete', 'completed' => 'success',
+                                                    'cancelled', 'canceled' => 'danger',
+                                                    default => 'secondary',
+                                                };
+                                                $reservationIcon = match ($reservationTone) {
+                                                    'success' => 'bx bx-check-circle',
+                                                    'warning' => 'bx bx-time-five',
+                                                    'danger' => 'bx bx-error',
+                                                    'info' => 'bx bx-calendar-event',
+                                                    default => 'bx bx-file',
+                                                };
+                                                $reservationLabel = \Illuminate\Support\Str::headline($reservationStatus);
+                                                $pickupDate = optional($reservation->pickup_date)->format('d M Y · H:i');
+                                                $returnDate = optional($reservation->return_date)->format('d M Y · H:i');
+                                                $pickupLocation = $reservation->pickup_location ?? 'Location TBD';
+                                                $returnLocation = $reservation->return_location ?? 'Location TBD';
+                                                $customerName = optional($reservation->customer)->fullName() ?? 'Customer TBD';
+                                                $deliveryDriver = optional($reservation->deliveryDriver)->shortName();
+                                                $returnDriver = optional($reservation->returnDriver)->shortName();
+                                                $updatedAt = $reservation->updated_at?->diffForHumans() ?? '—';
+                                            @endphp
+                                            <div class="reservation-card" role="listitem"
+                                                wire:key="search-result-{{ $car->id }}-reservation-{{ $reservation->id }}">
+                                                <div class="reservation-card-heading">
+                                                    <i class="bx bx-calendar-event" aria-hidden="true"></i>
+                                                    <div class="reservation-heading-body">
+                                                        <div class="reservation-heading-top">
+                                                            <span class="reservation-title">Request #{{ $reservation->id }}</span>
+                                                            <span class="status-chip is-{{ $reservationTone }}">
+                                                                <i class="bx {{ $reservationIcon }}"></i>
+                                                                {{ $reservationLabel }}
+                                                            </span>
+                                                        </div>
+                                                        <span class="reservation-subtitle">{{ $customerName }}</span>
+                                                    </div>
                                                 </div>
-                                                <div class="reservation-leg-body">
-                                                    <span class="reservation-leg-label">Pickup</span>
-                                                    <span class="reservation-leg-value">{{ $pickupDate ?? '—' }}</span>
-                                                    <span class="reservation-leg-meta">
-                                                        <i class="bx bx-map" aria-hidden="true"></i>
-                                                        <span class="reservation-leg-meta-text">{{ $pickupLocation }}</span>
-                                                    </span>
+                                                <div class="reservation-itinerary" role="list">
+                                                    <div class="reservation-leg" role="listitem">
+                                                        <div class="reservation-leg-icon is-pickup" aria-hidden="true">
+                                                            <i class="bx bx-log-in-circle"></i>
+                                                        </div>
+                                                        <div class="reservation-leg-body">
+                                                            <span class="reservation-leg-label">Pickup</span>
+                                                            <span class="reservation-leg-value">{{ $pickupDate ?? '—' }}</span>
+                                                            <span class="reservation-leg-meta">
+                                                                <i class="bx bx-map" aria-hidden="true"></i>
+                                                                <span class="reservation-leg-meta-text">{{ $pickupLocation }}</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="reservation-leg-connector" aria-hidden="true">
+                                                        <span class="reservation-leg-line"></span>
+                                                    </div>
+                                                    <div class="reservation-leg" role="listitem">
+                                                        <div class="reservation-leg-icon is-return" aria-hidden="true">
+                                                            <i class="bx bx-log-out-circle"></i>
+                                                        </div>
+                                                        <div class="reservation-leg-body">
+                                                            <span class="reservation-leg-label">Return</span>
+                                                            <span class="reservation-leg-value">{{ $returnDate ?? '—' }}</span>
+                                                            <span class="reservation-leg-meta">
+                                                                <i class="bx bx-map" aria-hidden="true"></i>
+                                                                <span class="reservation-leg-meta-text">{{ $returnLocation }}</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                @if ($reservationStatus === 'pre_reserved')
+                                                    <div class="reservation-note">
+                                                        <i class="bx bx-info-circle" aria-hidden="true"></i>
+                                                        Vehicle stays available until pickup time.
+                                                    </div>
+                                                @endif
+                                                <div class="reservation-meta">
+                                                    <div class="reservation-meta-item">
+                                                        <span class="reservation-meta-label">Delivery driver</span>
+                                                        <span class="reservation-meta-value"><i class="bx bx-id-card"></i>{{ $deliveryDriver ?? 'Unassigned' }}</span>
+                                                    </div>
+                                                    @if ($returnDriver)
+                                                        <div class="reservation-meta-item">
+                                                            <span class="reservation-meta-label">Return driver</span>
+                                                            <span class="reservation-meta-value"><i class="bx bx-id-card"></i>{{ $returnDriver }}</span>
+                                                        </div>
+                                                    @endif
+                                                    <div class="reservation-meta-item">
+                                                        <span class="reservation-meta-label">Last update</span>
+                                                        <span class="reservation-meta-value"><i class="bx bx-time-five"></i>{{ $updatedAt }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="reservation-actions">
+                                                    <a href="{{ route('rental-requests.details', [$reservation->id]) }}"
+                                                        class="btn btn-sm btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2"
+                                                        aria-label="Open request #{{ $reservation->id }}">
+                                                        <span>Open request</span>
+                                                        <i class="bx bx-chevron-right" aria-hidden="true"></i>
+                                                    </a>
                                                 </div>
                                             </div>
-                                            <div class="reservation-leg-connector" aria-hidden="true">
-                                                <span class="reservation-leg-line"></span>
-                                            </div>
-                                            <div class="reservation-leg" role="listitem">
-                                                <div class="reservation-leg-icon is-return" aria-hidden="true">
-                                                    <i class="bx bx-log-out-circle"></i>
-                                                </div>
-                                                <div class="reservation-leg-body">
-                                                    <span class="reservation-leg-label">Return</span>
-                                                    <span class="reservation-leg-value">{{ $returnDate ?? '—' }}</span>
-                                                    <span class="reservation-leg-meta">
-                                                        <i class="bx bx-map" aria-hidden="true"></i>
-                                                        <span class="reservation-leg-meta-text">{{ $returnLocation }}</span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @if ($status === 'pre_reserved')
-                                            <div class="reservation-note text-muted small">
-                                                Vehicle stays available until pickup time.
-                                            </div>
-                                        @endif
-                                        <div class="reservation-contact">
-                                            <span class="reservation-contact-label"><i class="bx bx-phone"></i>Customer contact</span>
-                                            <span class="reservation-contact-value">{{ $customerPhone }}</span>
-                                        </div>
+                                        @endforeach
                                     </div>
                                 @endif
 
@@ -288,7 +343,7 @@
                                     </div>
                                     <span class="result-card-arrow"><i class="bx bx-chevron-right"></i></span>
                                 </div>
-                            </a>
+                            </article>
                         @empty
                             <div class="search-placeholder text-center text-muted py-4" role="status">
                                 <i class="bx bx-car display-6 d-block mb-2"></i>

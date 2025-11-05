@@ -21,13 +21,41 @@ class Header extends Component
 
     public function updatedQuery()
     {
-        if (strlen($this->query) > 1) {
-            $this->cars = Car::with(['carModel', 'currentContract.customer'])
-                ->where('plate_number', 'like', '%' . $this->query . '%')
-                ->orWhereHas('carModel', function ($q) {
-                    $q->where('brand', 'like', '%' . $this->query . '%')
-                        ->orWhere('model', 'like', '%' . $this->query . '%');
+        $term = trim((string) $this->query);
+
+        if (strlen($term) > 1) {
+            $now = now();
+
+            $this->cars = Car::with([
+                'carModel',
+                'contracts' => function ($query) use ($now) {
+                    $query->with(['customer', 'deliveryDriver', 'returnDriver'])
+                        ->whereIn('current_status', Car::reservingStatuses())
+                        ->where(function ($builder) use ($now) {
+                            $builder
+                                ->whereNull('pickup_date')
+                                ->orWhere('pickup_date', '>=', $now)
+                                ->orWhere(function ($active) use ($now) {
+                                    $active->whereNotNull('pickup_date')
+                                        ->where('pickup_date', '<', $now)
+                                        ->where(function ($time) use ($now) {
+                                            $time->whereNull('return_date')
+                                                ->orWhere('return_date', '>=', $now);
+                                        });
+                                });
+                        })
+                        ->orderByRaw('pickup_date IS NULL')
+                        ->orderBy('pickup_date');
+                },
+            ])
+                ->where(function ($builder) use ($term) {
+                    $builder->where('plate_number', 'like', '%' . $term . '%')
+                        ->orWhereHas('carModel', function ($q) use ($term) {
+                            $q->where('brand', 'like', '%' . $term . '%')
+                                ->orWhere('model', 'like', '%' . $term . '%');
+                        });
                 })
+                ->orderBy('plate_number')
                 ->get();
         } else {
             $this->cars = [];
