@@ -320,9 +320,12 @@
                                         <option value="">Select Car</option>
                                         @foreach ($carsForModel as $car)
                                             <option value="{{ $car['id'] }}"
-                                                @if ($car['status'] !== 'available') class="text-warning" @endif>
+                                                @class([
+                                                    'text-warning' => $car['status'] !== 'available' || ! $car['availability'],
+                                                ])>
                                                 {{ $car['plate_number'] }} - {{ $car['manufacturing_year'] }} -
-                                                {{ $car['color'] }} - [{{ ucfirst($car['status']) }}]
+                                                {{ $car['color'] ?? 'N/A' }} -
+                                                [{{ ucfirst(str_replace('_', ' ', $car['status'])) }}]
                                             </option>
                                         @endforeach
                                     </select>
@@ -335,7 +338,7 @@
 
                         @if ($selectedCarId)
                             @php
-                                $selectedCar = App\Models\Car::find($selectedCarId);
+                                $selectedCar = App\Models\Car::with(['carModel', 'currentContract.customer'])->find($selectedCarId);
                                 $reservations = $this->getCarReservations($selectedCarId);
                             @endphp
                             <div class="mt-3 p-3 border rounded bg-light">
@@ -350,7 +353,41 @@
                                     <div class="col-md-4">
                                         <strong>Color:</strong> {{ $selectedCar->color ?? 'N/A' }}
                                     </div>
+                                    <div class="col-md-4 mt-2">
+                                        <strong>Fleet Status:</strong>
+                                        <span class="badge bg-label-{{ $selectedCar->availability ? 'success' : 'danger' }}">
+                                            {{ $selectedCar->availability ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </div>
+                                    <div class="col-md-4 mt-2">
+                                        <strong>Internal Status:</strong>
+                                        <span class="badge bg-label-secondary text-uppercase">
+                                            {{ str_replace('_', ' ', $selectedCar->status) }}
+                                        </span>
+                                    </div>
                                 </div>
+                                @if ($selectedCar->currentContract)
+                                    @php
+                                        $activeContract = $selectedCar->currentContract;
+                                        $statusLabel = App\Support\ContractStatus::label($activeContract->current_status);
+                                    @endphp
+                                    <div class="row mt-2">
+                                        <div class="col-md-12">
+                                            <strong>Active Contract:</strong>
+                                            <div class="alert alert-warning py-2 mb-0">
+                                                <div class="fw-semibold">#{{ $activeContract->id }} · {{ $statusLabel }}</div>
+                                                <div class="small text-muted">
+                                                    {{ optional($activeContract->pickup_date)->format('Y-m-d H:i') ?? '—' }}
+                                                    →
+                                                    {{ optional($activeContract->return_date)->format('Y-m-d H:i') ?? '—' }}
+                                                    @if ($activeContract->customer)
+                                                        · {{ $activeContract->customer->fullName() }}
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                                 <div class="row mt-2">
                                     <div class="col-md-12">
                                         <strong>Price Tiers:</strong>
@@ -398,6 +435,7 @@
                                                             <th>From</th>
                                                             <th>To</th>
                                                             <th>Status</th>
+                                                            <th>Contract</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -418,12 +456,18 @@
                                                                 <td>{{ $reservation['pickup_date'] }}</td>
                                                                 <td>{{ $reservation['return_date'] }}</td>
                                                                 <td>
+                                                                    @php
+                                                                        $statusLabel = App\Support\ContractStatus::label($reservation['status']);
+                                                                        $statusBadge = App\Support\ContractStatus::badgeClass($reservation['status']);
+                                                                    @endphp
+                                                                    <span class="badge {{ $statusBadge }}">{{ $statusLabel }}</span>
+                                                                </td>
+                                                                <td class="text-nowrap">
+                                                                    <span class="fw-semibold">#{{ $reservation['id'] }}</span>
                                                                     @if ($isCurrent)
-                                                                        <span class="badge bg-danger">Currently
-                                                                            Booking</span>
+                                                                        <span class="badge bg-danger ms-2">In Progress</span>
                                                                     @else
-                                                                        <span class="badge bg-warning">Future
-                                                                            Reservation</span>
+                                                                        <span class="badge bg-warning text-dark ms-2">Scheduled</span>
                                                                     @endif
                                                                 </td>
                                                             </tr>
