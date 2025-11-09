@@ -68,7 +68,7 @@ class RentalRequestCreate extends Component
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
-        'UAE/Dubai/Downtown' => ['under_3' => 45, 'over_3' => 45],
+        'UAE/Dubai/Downtown' => ['under_3' => 50, 'over_3' => 50],
         'UAE/Dubai/Deira' => ['under_3' => 45, 'over_3' => 45], // اضافه‌شده
         'UAE/Dubai/Dubai Airport/Terminal 1' => ['under_3' => 50, 'over_3' => 0],
         'UAE/Dubai/Dubai Airport/Terminal 2' => ['under_3' => 50, 'over_3' => 0],
@@ -79,7 +79,19 @@ class RentalRequestCreate extends Component
         'UAE/Dubai/Marina' => ['under_3' => 50, 'over_3' => 50],
         'UAE/Dubai/JLT' => ['under_3' => 50, 'over_3' => 50],
         'UAE/Dubai/JVC' => ['under_3' => 60, 'over_3' => 60],
+        'UAE/Dubai/Business Bay' => ['under_3' => 50, 'over_3' => 50],
+        'UAE/Dubai/Sheikh Zayed Road' => ['under_3' => 50, 'over_3' => 50],
+        'UAE/Dubai/Mohammad Bin Zayed Road' => ['under_3' => 70, 'over_3' => 70],
         'UAE/Dubai/Damac Hills' => ['under_3' => 60, 'over_3' => 60],
+        'UAE/Dubai/Damac Hills 2' => ['under_3' => 70, 'over_3' => 70],
+        'UAE/Dubai/Arjan' => ['under_3' => 70, 'over_3' => 70],
+        'UAE/Dubai/Al Warqa' => ['under_3' => 50, 'over_3' => 50],
+        'UAE/Dubai/Creek Harbour' => ['under_3' => 50, 'over_3' => 50],
+        'UAE/Dubai/Ras Al Khor' => ['under_3' => 50, 'over_3' => 50],
+        'UAE/Dubai/Al Quoz' => ['under_3' => 50, 'over_3' => 50],
+        'UAE/Dubai/Al Qusais' => ['under_3' => 50, 'over_3' => 50],
+        'UAE/Dubai/Global Village' => ['under_3' => 70, 'over_3' => 70],
+        'UAE/Dubai/Miracle Garden' => ['under_3' => 70, 'over_3' => 70],
         'UAE/Dubai/Palm' => ['under_3' => 70, 'over_3' => 70],
         'UAE/Dubai/Jebel Ali – Ibn Battuta – Hatta & more' => ['under_3' => 70, 'over_3' => 70],
         'UAE/Dubai/Hatta' => ['under_3' => 150, 'over_3' => 150],
