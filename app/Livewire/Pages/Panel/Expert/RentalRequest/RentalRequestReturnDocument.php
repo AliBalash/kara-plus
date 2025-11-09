@@ -365,14 +365,12 @@ class RentalRequestReturnDocument extends Component
 
     public function updatedCarInsidePhotos($photos): void
     {
-        $this->carInsidePhotos = $this->mergePendingUploads($this->pendingInsideUploads, $photos);
-        $this->pendingInsideUploads = $this->carInsidePhotos;
+        $this->syncGalleryUploads('carInsidePhotos', 'pendingInsideUploads', $photos);
     }
 
     public function updatedCarOutsidePhotos($photos): void
     {
-        $this->carOutsidePhotos = $this->mergePendingUploads($this->pendingOutsideUploads, $photos);
-        $this->pendingOutsideUploads = $this->carOutsidePhotos;
+        $this->syncGalleryUploads('carOutsidePhotos', 'pendingOutsideUploads', $photos);
     }
 
     private function mergePendingUploads(array $current, $incoming): array
@@ -385,6 +383,14 @@ class RentalRequestReturnDocument extends Component
         $existing = collect($current)->filter(fn ($file) => $file instanceof TemporaryUploadedFile);
 
         return $existing->merge($incomingFiles)->values()->all();
+    }
+
+    private function syncGalleryUploads(string $property, string $pendingProperty, $incoming): void
+    {
+        $merged = $this->mergePendingUploads($this->$pendingProperty, $incoming);
+
+        $this->$property = $merged;
+        $this->$pendingProperty = $merged;
     }
 
     private function validateWithScroll(array $rules): void
