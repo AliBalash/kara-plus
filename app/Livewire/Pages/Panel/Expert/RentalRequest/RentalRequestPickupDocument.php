@@ -86,7 +86,7 @@ class RentalRequestPickupDocument extends Component
         'carOutsidePhotos.*.image' => 'Every exterior photo must be a valid image.',
         'carOutsidePhotos.*.mimes' => 'Exterior photos must be JPG, PNG, or WEBP files.',
         'agreement_number.required' => 'Agreement number is required.',
-        'agreement_number.digits_between' => 'Agreement number must contain only digits and be at most 30 characters.',
+        'agreement_number.regex' => 'Agreement number may only contain letters and numbers and must be at most 30 characters.',
     ];
 
     protected array $validationAttributes = [
@@ -169,8 +169,12 @@ class RentalRequestPickupDocument extends Component
         ];
 
         $this->agreement_number = $this->agreement_number !== null
-            ? trim((string) $this->agreement_number)
+            ? Str::upper(trim((string) $this->agreement_number))
             : null;
+
+        if ($this->agreement_number === '') {
+            $this->agreement_number = null;
+        }
 
         // Tars Contract Validation
         if ($this->tarsContract || empty($this->existingFiles['tarsContract'])) {
@@ -182,11 +186,11 @@ class RentalRequestPickupDocument extends Component
             if ($this->kardoContract || empty($this->existingFiles['kardoContract'])) {
                 $validationRules['kardoContract'] = 'required|image|max:8048';
             }
-            $validationRules['agreement_number'] = ['required', 'regex:/^\d{1,30}$/'];
+            $validationRules['agreement_number'] = ['required', 'regex:/^[A-Za-z0-9]{1,30}$/'];
         } elseif ($this->kardoContract) {
             $validationRules['kardoContract'] = 'image|max:8048';
             if (! empty($this->agreement_number)) {
-                $validationRules['agreement_number'] = ['nullable', 'regex:/^\d{1,30}$/'];
+                $validationRules['agreement_number'] = ['nullable', 'regex:/^[A-Za-z0-9]{1,30}$/'];
             }
         }
         if (! $this->contract->kardo_required && empty($validationRules['agreement_number'])) {
@@ -275,7 +279,7 @@ class RentalRequestPickupDocument extends Component
             $pickupDocument->mileage = $this->mileage;
             $pickupDocument->note = $this->note;
             $pickupDocument->driver_note = $this->driverNote;
-            $pickupDocument->agreement_number =$this->agreement_number;
+            $pickupDocument->agreement_number = $this->agreement_number;
 
             // Tars Contract Upload
             if ($this->tarsContract) {

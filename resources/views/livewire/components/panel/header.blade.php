@@ -393,7 +393,7 @@
                     @if ($agreementQueryLength <= 1)
                         <div class="search-placeholder text-center text-muted py-4" role="status">
                             <i class="bx bx-file-find display-6 d-block mb-2"></i>
-                            <p class="mb-0">Enter at least 2 digits to search agreements.</p>
+                            <p class="mb-0">Enter at least 2 characters to search agreements.</p>
                         </div>
                     @else
                         @forelse ($agreementResults as $contract)
