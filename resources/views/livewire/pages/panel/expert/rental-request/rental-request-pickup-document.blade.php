@@ -136,9 +136,9 @@
                                 </label>
                                 <input id="agreementNumberInput" type="text"
                                     class="form-control @error('agreement_number') is-invalid @enderror"
-                                    placeholder="Enter agreement number" wire:model="agreement_number" inputmode="numeric" pattern="[0-9]*"
+                                    placeholder="Enter agreement number" wire:model="agreement_number"
                                     @if ($contract->kardo_required) aria-required="true" @endif>
-                                <small class="text-muted d-block">Digits only, up to 30 characters.</small>
+                                <small class="text-muted d-block">Letters and numbers only, up to 30 characters.</small>
                                 @error('agreement_number')
                                     <span class="text-danger small d-block">{{ $message }}</span>
                                 @enderror
