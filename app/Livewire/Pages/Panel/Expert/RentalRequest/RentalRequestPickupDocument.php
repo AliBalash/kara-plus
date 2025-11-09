@@ -32,6 +32,8 @@ class RentalRequestPickupDocument extends Component
         'inside' => [],
         'outside' => [],
     ];
+    public array $pendingInsideUploads = [];
+    public array $pendingOutsideUploads = [];
     public $fuelLevel  = 50;
     public $mileage;
     public $note;
@@ -146,6 +148,8 @@ class RentalRequestPickupDocument extends Component
 
         $this->carInsidePhotos = [];
         $this->carOutsidePhotos = [];
+        $this->pendingInsideUploads = [];
+        $this->pendingOutsideUploads = [];
 
         $payments = $this->contract->relationLoaded('payments') ? $this->contract->payments : null;
         $this->remainingBalance = $this->contract->calculateRemainingBalance($payments);
@@ -485,21 +489,32 @@ class RentalRequestPickupDocument extends Component
 
     public function updatedCarInsidePhotos($photos): void
     {
-        $this->carInsidePhotos = $this->normalizeUploadSelection($photos);
+        $this->syncGalleryUploads('carInsidePhotos', 'pendingInsideUploads', $photos);
     }
 
     public function updatedCarOutsidePhotos($photos): void
     {
-        $this->carOutsidePhotos = $this->normalizeUploadSelection($photos);
+        $this->syncGalleryUploads('carOutsidePhotos', 'pendingOutsideUploads', $photos);
     }
 
-    private function normalizeUploadSelection($value): array
+    private function mergePendingUploads(array $current, $incoming): array
     {
-        return collect(is_array($value) ? $value : [])
+        $incomingFiles = collect(is_array($incoming) ? $incoming : [])
             ->filter(fn ($file) => $file instanceof TemporaryUploadedFile)
             ->unique(fn (TemporaryUploadedFile $file) => $file->getFilename())
-            ->values()
-            ->all();
+            ->values();
+
+        $existing = collect($current)->filter(fn ($file) => $file instanceof TemporaryUploadedFile);
+
+        return $existing->merge($incomingFiles)->values()->all();
+    }
+
+    private function syncGalleryUploads(string $property, string $pendingProperty, $incoming): void
+    {
+        $merged = $this->mergePendingUploads($this->$pendingProperty, $incoming);
+
+        $this->$property = $merged;
+        $this->$pendingProperty = $merged;
     }
 
     private function validateWithScroll(array $rules): void
