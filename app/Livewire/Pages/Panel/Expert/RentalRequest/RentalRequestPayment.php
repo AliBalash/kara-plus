@@ -9,6 +9,7 @@ use App\Services\Media\OptimizedUploadService;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -42,6 +43,14 @@ class RentalRequestPayment extends Component
     public $parkingPaid;
     public $damagePaid;
     public $salik;
+    public $salik_trip_count = '';
+    public $salikFourTripsTotal = 0;
+    public $salikSixTripsTotal = 0;
+    public $salikTripChargesTotal = 0;
+    public $salikOtherRevenueTotal = 0;
+    public $salikOtherTripsTotal = 0;
+    public $legacySalikTotal = 0;
+    public $salik_other_revenue_preview = 0;
     public $discounts;
     public $security_deposit;
     public $payment_back;
@@ -54,6 +63,7 @@ class RentalRequestPayment extends Component
     public $contractMeta = [];
     public $payment_method = 'cash';
     protected OptimizedUploadService $imageUploader;
+    protected int $currentSalikTripCount = 0;
 
     protected array $messages = [
         'amount.required' => 'Payment amount is required.',
@@ -74,6 +84,9 @@ class RentalRequestPayment extends Component
         'receipt.image' => 'Receipt must be an image file.',
         'receipt.mimes' => 'Receipt must be a JPG, JPEG, PNG, or WEBP file.',
         'receipt.max' => 'Receipt may not be greater than 2MB.',
+        'salik_trip_count.required_if' => 'Please enter the number of salik trips.',
+        'salik_trip_count.integer' => 'Salik trips must be a whole number.',
+        'salik_trip_count.min' => 'Salik trips cannot be negative.',
     ];
 
     protected array $validationAttributes = [
@@ -85,6 +98,7 @@ class RentalRequestPayment extends Component
         'is_refundable' => 'refundable selection',
         'rate' => 'exchange rate',
         'receipt' => 'receipt upload',
+        'salik_trip_count' => 'Salik trips',
     ];
 
 
@@ -100,6 +114,9 @@ class RentalRequestPayment extends Component
         'rental_fee',
         'security_deposit',
         'salik',
+        'salik_4_aed',
+        'salik_6_aed',
+        'salik_other_revenue',
         'fine',
         'parking',
         'damage',
@@ -112,7 +129,14 @@ class RentalRequestPayment extends Component
     protected function rules(): array
     {
         return [
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                Rule::requiredIf(fn () => $this->payment_type !== null
+                    && $this->payment_type !== ''
+                    && ! in_array($this->payment_type, ['salik', 'salik_4_aed', 'salik_6_aed'], true)),
+            ],
             'currency' => ['required', Rule::in(['IRR', 'USD', 'AED', 'EUR'])],
             'payment_type' => ['required', Rule::in(self::PAYMENT_TYPES)],
             'payment_date' => ['required', 'date'],
@@ -120,6 +144,7 @@ class RentalRequestPayment extends Component
             'is_refundable' => ['required', 'boolean'],
             'rate' => ['nullable', 'numeric', 'min:0.0001'],
             'receipt' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], // optional receipt image
+            'salik_trip_count' => ['required_if:payment_type,salik_4_aed,salik_6_aed', 'integer', 'min:0'],
         ];
     }
 
@@ -160,9 +185,25 @@ class RentalRequestPayment extends Component
             ->where('payment_type', 'damage')
             ->sum('amount_in_aed');
 
-        $this->salik = $this->existingPayments
-            ->where('payment_type', 'salik')
-            ->sum('amount_in_aed');
+        $legacySalikPayments = $this->existingPayments
+            ->where('payment_type', 'salik');
+
+        $salikFourPayments = $this->existingPayments
+            ->where('payment_type', 'salik_4_aed');
+
+        $salikSixPayments = $this->existingPayments
+            ->where('payment_type', 'salik_6_aed');
+
+        $salikOtherPayments = $this->existingPayments
+            ->where('payment_type', 'salik_other_revenue');
+
+        $this->salikFourTripsTotal = $salikFourPayments->sum(fn($payment) => $payment->salikTripCount());
+        $this->salikSixTripsTotal = $salikSixPayments->sum(fn($payment) => $payment->salikTripCount());
+        $this->salikTripChargesTotal = $salikFourPayments->sum('amount_in_aed') + $salikSixPayments->sum('amount_in_aed');
+        $this->salikOtherRevenueTotal = $salikOtherPayments->sum('amount_in_aed');
+        $this->salikOtherTripsTotal = $salikOtherPayments->sum(fn($payment) => $payment->salikTripCount());
+        $this->legacySalikTotal = $legacySalikPayments->sum('amount_in_aed');
+        $this->salik = $this->salikTripChargesTotal + $this->salikOtherRevenueTotal + $this->legacySalikTotal;
 
         $this->discounts = $this->existingPayments
             ->where('payment_type', 'discount')
@@ -194,7 +235,10 @@ class RentalRequestPayment extends Component
         return [
             'rental_fee' => 'Rental Fee',
             'security_deposit' => 'Security Deposit',
-            'salik' => 'Salik',
+            'salik' => 'Salik (Legacy)',
+            'salik_4_aed' => 'Salik (4 AED)',
+            'salik_6_aed' => 'Salik (6 AED)',
+            'salik_other_revenue' => 'Salik Other Revenue (Auto)',
             'fine' => 'Fine',
             'parking' => 'Parking',
             'damage' => 'Damage',
@@ -217,6 +261,12 @@ class RentalRequestPayment extends Component
             $this->payment_method = self::PAYMENT_METHODS[0];
         }
 
+        if (in_array($this->payment_type, ['salik', 'salik_4_aed', 'salik_6_aed'], true) && $this->amount === '') {
+            $this->amount = 0;
+        } elseif ($this->amount === '') {
+            $this->amount = null;
+        }
+
         $this->validateWithScroll();
         if ($this->currency !== 'AED' && empty($this->rate)) {
             $this->addError('rate', 'Exchange rate is required for non-AED currencies.');
@@ -230,11 +280,21 @@ class RentalRequestPayment extends Component
             return;
         }
 
-        $aedAmount = match ($this->currency) {
-            'AED' => $this->amount,
-            'IRR' => round($this->amount / $this->rate, 2), // ریال باید تقسیم بشه
-            default => round($this->amount * $this->rate, 2), // USD, EUR و سایر ارزها ضرب میشن
-        };
+        $salikTrips = 0;
+
+        if (in_array($this->payment_type, ['salik', 'salik_4_aed', 'salik_6_aed'], true)) {
+            $aedAmount = $this->resolveSalikAmount();
+            $this->amount = $aedAmount;
+            $this->currency = 'AED';
+            $this->rate = null;
+            $salikTrips = $this->currentSalikTripCount;
+        } else {
+            $aedAmount = match ($this->currency) {
+                'AED' => $this->amount,
+                'IRR' => round($this->amount / $this->rate, 2), // ریال باید تقسیم بشه
+                default => round($this->amount * $this->rate, 2), // USD, EUR و سایر ارزها ضرب میشن
+            };
+        }
 
 
         try {
@@ -250,22 +310,28 @@ class RentalRequestPayment extends Component
                 );
             }
 
-            Payment::create([
-                'contract_id' => $this->contractId,
-                'customer_id' => $this->customerId,
-                'user_id' => Auth::id(),
-                'amount' => $this->amount,
-                'currency' => $this->currency,
-                'rate' => $this->currency !== 'AED' ? $this->rate : null,
-                'amount_in_aed' => $aedAmount,
-                'payment_type' => $this->payment_type,
-                'payment_method' => $this->payment_method,
-                'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
-                'is_paid' => false,
-                'is_refundable' => $this->is_refundable,
-                'receipt' => $receiptPath,
-                'approval_status' => 'pending',
-            ]);
+            DB::transaction(function () use ($aedAmount, $receiptPath, $salikTrips) {
+                $payment = Payment::create([
+                    'contract_id' => $this->contractId,
+                    'customer_id' => $this->customerId,
+                    'user_id' => Auth::id(),
+                    'amount' => $this->amount,
+                    'currency' => $this->currency,
+                    'rate' => $this->currency !== 'AED' ? $this->rate : null,
+                    'amount_in_aed' => $aedAmount,
+                    'payment_type' => $this->payment_type,
+                    'payment_method' => $this->payment_method,
+                    'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
+                    'is_paid' => false,
+                    'is_refundable' => $this->is_refundable,
+                    'receipt' => $receiptPath,
+                    'approval_status' => 'pending',
+                ]);
+
+                if (in_array($this->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {
+                    $payment->syncAutoGeneratedOtherRevenue($salikTrips);
+                }
+            });
 
             $this->toast('success', 'Payment was successfully added!');
             $this->resetForm();
@@ -331,6 +397,64 @@ class RentalRequestPayment extends Component
         $this->rate = '';
         $this->receipt = '';
         $this->is_refundable = false;
+        $this->salik_trip_count = '';
+        $this->salik_other_revenue_preview = 0;
+        $this->currentSalikTripCount = 0;
+    }
+
+    public function updatedPaymentType($value): void
+    {
+        if (blank($value)) {
+            $this->amount = null;
+            $this->salik_trip_count = '';
+            $this->salik_other_revenue_preview = 0;
+            $this->currentSalikTripCount = 0;
+        }
+
+        if (in_array($value, ['salik', 'salik_4_aed', 'salik_6_aed'], true)) {
+            $this->currency = 'AED';
+            $this->rate = null;
+
+            if ($value !== 'salik') {
+                $this->salik_trip_count = '';
+            }
+        } elseif (! blank($value)) {
+            $this->salik_trip_count = '';
+            $this->salik_other_revenue_preview = 0;
+            $this->currentSalikTripCount = 0;
+        }
+
+        $this->refreshSalikDerivedFields();
+    }
+
+    public function updatedSalikTripCount($value): void
+    {
+        $this->refreshSalikDerivedFields();
+    }
+
+    private function resolveSalikAmount(): float
+    {
+        if ($this->payment_type === 'salik') {
+            $this->currentSalikTripCount = 0;
+            return (float) $this->amount;
+        }
+
+        $trips = $this->getSanitizedSalikTripCount();
+        $this->currentSalikTripCount = $trips;
+
+        if ($trips < 0) {
+            throw ValidationException::withMessages([
+                'salik_trip_count' => 'Trip count cannot be negative.',
+            ]);
+        }
+
+        $unit = match ($this->payment_type) {
+            'salik_4_aed' => 4,
+            'salik_6_aed' => 6,
+            default => 0,
+        };
+
+        return $trips * $unit;
     }
 
     public function deletePayment($paymentId)
@@ -344,7 +468,13 @@ class RentalRequestPayment extends Component
             Storage::disk('myimage')->delete($payment->receipt);
         }
 
-        $payment->delete();
+        DB::transaction(function () use ($payment) {
+            if (in_array($payment->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {
+                $payment->syncAutoGeneratedOtherRevenue(0);
+            }
+
+            $payment->delete();
+        });
 
         $this->toast('success', 'Payment deleted successfully.');
         $this->loadData();
@@ -354,5 +484,33 @@ class RentalRequestPayment extends Component
     public function render()
     {
         return view('livewire.pages.panel.expert.rental-request.rental-request-payment');
+    }
+
+    private function refreshSalikDerivedFields(): void
+    {
+        if (! in_array($this->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {
+            $this->salik_other_revenue_preview = 0;
+            $this->currentSalikTripCount = 0;
+
+            return;
+        }
+
+        $trips = $this->getSanitizedSalikTripCount();
+        $this->currentSalikTripCount = $trips;
+        $this->salik_other_revenue_preview = $trips;
+
+        $unit = $this->payment_type === 'salik_4_aed' ? 4 : 6;
+        $this->amount = $trips * $unit;
+    }
+
+    private function getSanitizedSalikTripCount(): int
+    {
+        $trips = (int) ($this->salik_trip_count ?? 0);
+
+        if ($trips < 0) {
+            return 0;
+        }
+
+        return $trips;
     }
 }

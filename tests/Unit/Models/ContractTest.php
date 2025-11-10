@@ -40,7 +40,10 @@ class ContractTest extends TestCase
             ['payment_type' => 'discount', 'amount_in_aed' => 100],
             ['payment_type' => 'security_deposit', 'amount_in_aed' => 200],
             ['payment_type' => 'fine', 'amount_in_aed' => 150],
-            ['payment_type' => 'salik', 'amount_in_aed' => 50],
+            ['payment_type' => 'salik_4_aed', 'amount_in_aed' => 20], // 5 trips
+            ['payment_type' => 'salik_6_aed', 'amount_in_aed' => 18], // 3 trips
+            ['payment_type' => 'salik_other_revenue', 'amount_in_aed' => 8],
+            ['payment_type' => 'salik', 'amount_in_aed' => 40],
             ['payment_type' => 'parking', 'amount_in_aed' => 30],
             ['payment_type' => 'damage', 'amount_in_aed' => 70],
             ['payment_type' => 'payment_back', 'amount_in_aed' => 50],
@@ -61,8 +64,12 @@ class ContractTest extends TestCase
         });
 
         $effectivePaid = 600 - 50;
+        $salikTripCharges = 20 + 18; // 38 AED from salik 4/6 entries
+        $salikOtherRevenue = 8;
+        $legacySalik = 40;
+
         $expectedBalance = 1500 - ($effectivePaid + 100 + 200)
-            + (150 + 50 + 25 + 40 + 30 + 70);
+            + (150 + $salikTripCharges + $salikOtherRevenue + $legacySalik + 25 + 40 + 30 + 70);
 
         $this->assertEquals($expectedBalance, $contract->fresh()->calculateRemainingBalance());
 
