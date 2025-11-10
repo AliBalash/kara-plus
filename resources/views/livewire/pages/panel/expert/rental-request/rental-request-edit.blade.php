@@ -720,50 +720,117 @@
 
         <!-- Cost Breakdown -->
         <div class="my-4">
-            <h5 class="text-primary mb-3">Cost Breakdown</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered shadow-sm">
-                    <tr>
-                        <th>Daily Rate (after discount if applied)</th>
-                        <td>{{ number_format($dailyRate) }} AED</td>
-                    </tr>
-                    <tr>
-                        <th>Base Rental Cost
-                            @if ($rental_days)
-                                ({{ $rental_days }} days)
-                            @endif
-                        </th>
-                        <td>{{ number_format($base_price) }} AED</td>
-                    </tr>
-                    <tr>
-                        <th>Pickup Transfer Cost</th>
-                        <td>{{ number_format($transfer_costs['pickup']) }} AED</td>
-                    </tr>
-                    <tr>
-                        <th>Return Transfer Cost</th>
-                        <td>{{ number_format($transfer_costs['return']) }} AED</td>
-                    </tr>
-                    <tr>
-                        <th>Additional Services</th>
-                        <td>{{ number_format($services_total) }} AED</td>
-                    </tr>
-                    <tr>
-                        <th>Insurance</th>
-                        <td>{{ number_format($insurance_total) }} AED</td>
-                    </tr>
-                    <tr class="table-secondary">
-                        <th>Subtotal</th>
-                        <td>{{ number_format($subtotal) }} AED</td>
-                    </tr>
-                    <tr>
-                        <th>Tax (5%)</th>
-                        <td>{{ number_format($tax_amount) }} AED</td>
-                    </tr>
-                    <tr class="table-primary">
-                        <th>Total Amount</th>
-                        <td>{{ number_format($final_total) }} AED</td>
-                    </tr>
-                </table>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div>
+                    <h5 class="text-primary mb-1">Cost Breakdown</h5>
+                    <p class="text-muted small mb-0">Monitor the live totals and compare them with the original contract values.</p>
+                </div>
+                <span class="badge bg-label-primary text-primary d-inline-flex align-items-center gap-1">
+                    <i class="bx bx-refresh"></i>
+                    Live update
+                </span>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header border-0 bg-transparent pb-0">
+                            <h6 class="fw-semibold text-primary mb-0">Updated Amounts</h6>
+                            <span class="text-muted small">Calculated from the current selections.</span>
+                        </div>
+                        <div class="card-body pb-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-borderless align-middle mb-0 cost-breakdown-table">
+                                    <tr>
+                                        <th>Daily Rate @if ($apply_discount)<span class="badge bg-label-warning text-warning ms-1">Discounted</span>@endif</th>
+                                        <td class="text-end">{{ number_format($dailyRate, 2) }} AED</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Base Rental Cost <span class="text-muted fw-normal">({{ $rental_days }} days)</span></th>
+                                        <td class="text-end">{{ number_format($base_price, 2) }} AED</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Pickup Transfer Cost</th>
+                                        <td class="text-end">{{ number_format($transfer_costs['pickup'], 2) }} AED</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Return Transfer Cost</th>
+                                        <td class="text-end">{{ number_format($transfer_costs['return'], 2) }} AED</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Additional Services</th>
+                                        <td class="text-end">{{ number_format($services_total, 2) }} AED</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Insurance</th>
+                                        <td class="text-end">{{ number_format($insurance_total, 2) }} AED</td>
+                                    </tr>
+                                    <tr class="fw-semibold text-primary">
+                                        <th>Subtotal</th>
+                                        <td class="text-end">{{ number_format($subtotal, 2) }} AED</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Tax (5%)</th>
+                                        <td class="text-end">{{ number_format($tax_amount, 2) }} AED</td>
+                                    </tr>
+                                    <tr class="table-total-row">
+                                        <th>Total Amount</th>
+                                        <td class="text-end">{{ number_format($final_total, 2) }} AED</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!empty($comparisonRows))
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header border-0 bg-transparent pb-0 d-flex justify-content-between align-items-start gap-2">
+                                <div>
+                                    <h6 class="fw-semibold text-primary mb-0">Change Summary</h6>
+                                    <span class="text-muted small">Original contract vs. current edits.</span>
+                                </div>
+                                <span class="badge bg-label-secondary text-muted">Comparative view</span>
+                            </div>
+                            <div class="card-body pb-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0 cost-comparison-table">
+                                        @foreach ($comparisonRows as $row)
+                                            <tr class="{{ $row['changed'] ? 'comparison-row--changed' : '' }}">
+                                                <th class="small text-uppercase text-muted fw-semibold">{{ $row['label'] }}</th>
+                                                <td class="text-muted">{{ $row['original'] }}</td>
+                                                <td class="text-end">
+                                                    <div class="d-flex flex-column align-items-end">
+                                                        <span class="fw-semibold">{{ $row['current'] }}</span>
+                                                        @if (!empty($row['change']))
+                                                            @php
+                                                                $changeType = $row['change']['type'];
+                                                                $changeText = $row['change']['text'];
+                                                            @endphp
+                                                            @if (in_array($changeType, ['increase', 'decrease', 'changed']))
+                                                                @php
+                                                                    $badgeClass = [
+                                                                        'increase' => 'bg-label-danger text-danger',
+                                                                        'decrease' => 'bg-label-success text-success',
+                                                                        'changed' => 'bg-label-primary text-primary',
+                                                                    ][$changeType] ?? 'bg-label-secondary text-muted';
+                                                                @endphp
+                                                                <span class="badge rounded-pill mt-1 {{ $badgeClass }}">{{ $changeText }}</span>
+                                                            @else
+                                                                <span class="small text-muted mt-1 text-end">{{ $changeText }}</span>
+                                                            @endif
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -853,6 +920,37 @@
             .btn-gradient-sunset:hover,
             .btn-gradient-ocean:hover {
                 color: #fff;
+            }
+
+            .cost-breakdown-table th,
+            .cost-breakdown-table td,
+            .cost-comparison-table th,
+            .cost-comparison-table td {
+                padding: 0.65rem 0.25rem;
+                border-bottom: 1px dashed #e5e9f2;
+            }
+
+            .cost-breakdown-table tr:last-child th,
+            .cost-breakdown-table tr:last-child td,
+            .cost-comparison-table tr:last-child th,
+            .cost-comparison-table tr:last-child td {
+                border-bottom: none;
+            }
+
+            .cost-comparison-table td {
+                min-width: 140px;
+            }
+
+            .comparison-row--changed th,
+            .comparison-row--changed td {
+                background: rgba(63, 136, 248, 0.06);
+            }
+
+            .table-total-row th,
+            .table-total-row td {
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: #3f50f6;
             }
 
             @media (max-width: 575.98px) {

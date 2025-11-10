@@ -71,6 +71,9 @@ class RentalRequestEdit extends Component
     public $carsForModel = [];
     public $ldw_daily_rate = 0;
     public $scdw_daily_rate = 0;
+    public $originalCosts = [];
+    public $originalSelections = [];
+    public $carNameCache = [];
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
@@ -122,6 +125,8 @@ class RentalRequestEdit extends Component
         $this->initializeFromContract();
         $this->loadChargesFromDatabase($contractId);
         $this->calculateCosts();
+        $this->originalSelections = $this->captureSelectionSnapshot();
+        $this->originalCosts = $this->captureCurrentCostSnapshot();
     }
 
     private function loadChargesFromDatabase($contractId)
@@ -194,6 +199,7 @@ class RentalRequestEdit extends Component
         $this->selectedModelId = $this->contract->car->car_model_id;
         $this->loadCars();
         $this->selectedCarId = $this->contract->car->id;
+        $this->carNameCache[$this->selectedCarId] = $this->contract->car->fullName();
 
         // Documents and payments
         $this->customerDocumentsCompleted = (bool)$this->contract->customerDocument;
@@ -474,6 +480,36 @@ class RentalRequestEdit extends Component
         if ($propertyName === 'selectedModelId') {
             $this->loadCars();
         }
+    }
+
+    private function captureSelectionSnapshot(): array
+    {
+        return [
+            'car_id' => $this->selectedCarId,
+            'car_label' => $this->getCarLabel($this->selectedCarId),
+            'pickup_location' => $this->pickup_location,
+            'return_location' => $this->return_location,
+            'pickup_date' => $this->pickup_date,
+            'return_date' => $this->return_date,
+            'selected_insurance' => $this->selected_insurance,
+            'selected_services' => $this->selected_services,
+        ];
+    }
+
+    private function captureCurrentCostSnapshot(): array
+    {
+        return [
+            'daily_rate' => $this->dailyRate,
+            'rental_days' => $this->rental_days,
+            'base_price' => $this->base_price,
+            'pickup_transfer' => $this->transfer_costs['pickup'] ?? 0,
+            'return_transfer' => $this->transfer_costs['return'] ?? 0,
+            'services_total' => $this->services_total,
+            'insurance_total' => $this->insurance_total,
+            'subtotal' => $this->subtotal,
+            'tax' => $this->tax_amount,
+            'total' => $this->final_total,
+        ];
     }
 
     private function isCostRelatedField($propertyName)
@@ -780,6 +816,7 @@ class RentalRequestEdit extends Component
         // Reset custom rate when car changes
         $this->custom_daily_rate = null;
         $this->apply_discount = false;
+        $this->getCarLabel($this->selectedCarId);
     }
 
     public function render()
@@ -803,6 +840,247 @@ class RentalRequestEdit extends Component
             'services' => $services,
             'ldw_daily_rate' => $this->ldw_daily_rate,
             'scdw_daily_rate' => $this->scdw_daily_rate,
+            'comparisonRows' => $this->costComparisonData,
         ]);
+    }
+
+    public function getCostComparisonDataProperty(): array
+    {
+        if (empty($this->originalCosts)) {
+            return [];
+        }
+
+        $rows = [];
+
+        $rows[] = $this->buildTextComparisonRow(
+            'Vehicle',
+            $this->originalSelections['car_label'] ?? '—',
+            $this->getCarLabel($this->selectedCarId)
+        );
+
+        $rows[] = $this->buildTextComparisonRow(
+            'Pickup Date',
+            $this->formatDateTime($this->originalSelections['pickup_date'] ?? null),
+            $this->formatDateTime($this->pickup_date)
+        );
+
+        $rows[] = $this->buildTextComparisonRow(
+            'Return Date',
+            $this->formatDateTime($this->originalSelections['return_date'] ?? null),
+            $this->formatDateTime($this->return_date)
+        );
+
+        $rows[] = $this->buildNumericComparisonRow(
+            'Rental Days',
+            (float) ($this->originalCosts['rental_days'] ?? $this->rental_days),
+            (float) $this->rental_days,
+            ' days',
+            0
+        );
+
+        $rows[] = $this->buildTextComparisonRow(
+            'Pickup Location',
+            $this->originalSelections['pickup_location'] ?? '—',
+            $this->pickup_location
+        );
+
+        $rows[] = $this->buildTextComparisonRow(
+            'Return Location',
+            $this->originalSelections['return_location'] ?? '—',
+            $this->return_location
+        );
+
+        $rows[] = $this->buildTextComparisonRow(
+            'Insurance',
+            $this->formatInsuranceLabel($this->originalSelections['selected_insurance'] ?? null),
+            $this->formatInsuranceLabel($this->selected_insurance)
+        );
+
+        $rows[] = $this->buildTextComparisonRow(
+            'Add-ons Selected',
+            $this->formatServiceList($this->originalSelections['selected_services'] ?? []),
+            $this->formatServiceList($this->selected_services ?? []),
+            $this->describeServiceChanges($this->originalSelections['selected_services'] ?? [], $this->selected_services ?? [])
+        );
+
+        $rows[] = $this->buildNumericComparisonRow('Daily Rate', (float) ($this->originalCosts['daily_rate'] ?? 0), (float) $this->dailyRate, ' AED/day');
+        $rows[] = $this->buildNumericComparisonRow('Base Rental Cost', (float) ($this->originalCosts['base_price'] ?? 0), (float) $this->base_price, ' AED');
+        $rows[] = $this->buildNumericComparisonRow('Pickup Transfer Cost', (float) ($this->originalCosts['pickup_transfer'] ?? 0), (float) ($this->transfer_costs['pickup'] ?? 0), ' AED');
+        $rows[] = $this->buildNumericComparisonRow('Return Transfer Cost', (float) ($this->originalCosts['return_transfer'] ?? 0), (float) ($this->transfer_costs['return'] ?? 0), ' AED');
+        $rows[] = $this->buildNumericComparisonRow('Add-on Total', (float) ($this->originalCosts['services_total'] ?? 0), (float) $this->services_total, ' AED');
+        $rows[] = $this->buildNumericComparisonRow('Insurance Total', (float) ($this->originalCosts['insurance_total'] ?? 0), (float) $this->insurance_total, ' AED');
+        $rows[] = $this->buildNumericComparisonRow('Subtotal', (float) ($this->originalCosts['subtotal'] ?? 0), (float) $this->subtotal, ' AED');
+        $rows[] = $this->buildNumericComparisonRow('Tax (5%)', (float) ($this->originalCosts['tax'] ?? 0), (float) $this->tax_amount, ' AED');
+        $rows[] = $this->buildNumericComparisonRow('Total Amount', (float) ($this->originalCosts['total'] ?? 0), (float) $this->final_total, ' AED');
+
+        return $rows;
+    }
+
+    private function buildNumericComparisonRow(string $label, float $original, float $current, string $suffix = '', int $precision = 2): array
+    {
+        $delta = $current - $original;
+        $threshold = $precision === 0 ? 1 : 0.01;
+        $changed = abs($delta) >= $threshold;
+
+        return [
+            'label' => $label,
+            'original' => $this->formatNumber($original, $precision) . $suffix,
+            'current' => $this->formatNumber($current, $precision) . $suffix,
+            'change' => $changed ? [
+                'type' => $delta > 0 ? 'increase' : 'decrease',
+                'text' => ($delta > 0 ? '+' : '-') . $this->formatNumber(abs($delta), $precision) . $suffix,
+            ] : null,
+            'changed' => $changed,
+        ];
+    }
+
+    private function buildTextComparisonRow(string $label, string $original, string $current, ?string $note = null): array
+    {
+        $normalizedOriginal = trim((string) $original) !== '' ? $original : '—';
+        $normalizedCurrent = trim((string) $current) !== '' ? $current : '—';
+        $changed = $normalizedOriginal !== $normalizedCurrent || !empty($note);
+        $change = null;
+
+        if (!empty($note)) {
+            $change = ['type' => 'note', 'text' => $note];
+        } elseif ($changed) {
+            $change = ['type' => 'changed', 'text' => 'Changed'];
+        }
+
+        return [
+            'label' => $label,
+            'original' => $normalizedOriginal,
+            'current' => $normalizedCurrent,
+            'change' => $change,
+            'changed' => $changed,
+        ];
+    }
+
+    private function formatNumber(float $value, int $precision = 2): string
+    {
+        return number_format($value, $precision, '.', ',');
+    }
+
+    private function formatServiceList(array $services): string
+    {
+        $labels = [];
+
+        foreach ($services as $serviceId) {
+            $resolved = $this->resolveServiceId((string) $serviceId);
+
+            if ($resolved && isset($this->services[$resolved])) {
+                $labels[$resolved] = $this->services[$resolved]['label_en'] ?? Str::headline(str_replace('_', ' ', $resolved));
+            }
+        }
+
+        if (empty($labels)) {
+            return '—';
+        }
+
+        ksort($labels);
+
+        return implode(', ', array_values($labels));
+    }
+
+    private function describeServiceChanges(array $original, array $current): ?string
+    {
+        $originalNormalized = $this->normalizeServiceLabels($original);
+        $currentNormalized = $this->normalizeServiceLabels($current);
+
+        $added = array_diff_key($currentNormalized, $originalNormalized);
+        $removed = array_diff_key($originalNormalized, $currentNormalized);
+
+        if (empty($added) && empty($removed)) {
+            return null;
+        }
+
+        $changes = [];
+
+        if (!empty($added)) {
+            $changes[] = 'Added: ' . implode(', ', array_values($added));
+        }
+
+        if (!empty($removed)) {
+            $changes[] = 'Removed: ' . implode(', ', array_values($removed));
+        }
+
+        return implode(' • ', $changes);
+    }
+
+    private function normalizeServiceLabels(array $services): array
+    {
+        $normalized = [];
+
+        foreach ($services as $serviceId) {
+            $resolved = $this->resolveServiceId((string) $serviceId);
+
+            if ($resolved && isset($this->services[$resolved])) {
+                $normalized[$resolved] = $this->services[$resolved]['label_en'] ?? Str::headline(str_replace('_', ' ', $resolved));
+            }
+        }
+
+        ksort($normalized);
+
+        return $normalized;
+    }
+
+    private function formatInsuranceLabel($insuranceId): string
+    {
+        if (!$insuranceId || $insuranceId === 'basic_insurance') {
+            return 'Basic Insurance (Included)';
+        }
+
+        $resolved = $this->resolveServiceId((string) $insuranceId);
+
+        if ($resolved && isset($this->services[$resolved])) {
+            return $this->services[$resolved]['label_en'] ?? Str::headline(str_replace('_', ' ', $resolved));
+        }
+
+        return Str::headline(str_replace('_', ' ', (string) $insuranceId));
+    }
+
+    private function getCarLabel($carId): string
+    {
+        if (!$carId) {
+            return '—';
+        }
+
+        if (isset($this->carNameCache[$carId])) {
+            return $this->carNameCache[$carId];
+        }
+
+        if ($this->contract && (int) $this->contract->car_id === (int) $carId) {
+            $this->carNameCache[$carId] = $this->contract->car?->fullName() ?? '—';
+
+            return $this->carNameCache[$carId];
+        }
+
+        if (is_iterable($this->carsForModel)) {
+            foreach ($this->carsForModel as $car) {
+                if ((int) $car->id === (int) $carId) {
+                    $this->carNameCache[$carId] = $car->fullName();
+
+                    return $this->carNameCache[$carId];
+                }
+            }
+        }
+
+        $car = Car::with('carModel')->find($carId);
+        $this->carNameCache[$carId] = $car?->fullName() ?? '—';
+
+        return $this->carNameCache[$carId];
+    }
+
+    private function formatDateTime(?string $value): string
+    {
+        if (!$value) {
+            return '—';
+        }
+
+        try {
+            return Carbon::parse($value)->format('d M Y H:i');
+        } catch (\Exception $exception) {
+            return $value;
+        }
     }
 }
