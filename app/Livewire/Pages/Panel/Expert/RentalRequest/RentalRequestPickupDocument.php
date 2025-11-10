@@ -86,7 +86,6 @@ class RentalRequestPickupDocument extends Component
         'carOutsidePhotos.*.image' => 'Every exterior photo must be a valid image.',
         'carOutsidePhotos.*.mimes' => 'Exterior photos must be JPG, PNG, or WEBP files.',
         'agreement_number.required' => 'Agreement number is required.',
-        'agreement_number.regex' => 'Agreement number may only contain letters and numbers and must be at most 30 characters.',
     ];
 
     protected array $validationAttributes = [
@@ -186,11 +185,11 @@ class RentalRequestPickupDocument extends Component
             if ($this->kardoContract || empty($this->existingFiles['kardoContract'])) {
                 $validationRules['kardoContract'] = 'required|image|max:8048';
             }
-            $validationRules['agreement_number'] = ['required', 'regex:/^[A-Za-z0-9]{1,30}$/'];
+            $validationRules['agreement_number'] = ['required'];
         } elseif ($this->kardoContract) {
             $validationRules['kardoContract'] = 'image|max:8048';
             if (! empty($this->agreement_number)) {
-                $validationRules['agreement_number'] = ['nullable', 'regex:/^[A-Za-z0-9]{1,30}$/'];
+                $validationRules['agreement_number'] = ['nullable'];
             }
         }
         if (! $this->contract->kardo_required && empty($validationRules['agreement_number'])) {
