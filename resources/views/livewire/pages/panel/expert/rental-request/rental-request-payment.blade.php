@@ -16,21 +16,69 @@
         <div class="card-body">
             <form wire:submit.prevent="submitPayment">
                 <div class="row">
+                    <div class="col-md-4 mb-3" data-validation-field="payment_type">
+                        <label class="form-label fw-semibold" for="paymentTypeInput">Payment Type <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                        <select id="paymentTypeInput" class="form-control" wire:model.lazy="payment_type" aria-required="true">
+                            <option value="">Select Payment Type</option>
+                            @foreach ($this->paymentTypeOptions as $value => $label)
+                                @php
+                                    $autoOption = $value === 'salik_other_revenue';
+                                    $skipOption = $autoOption && $payment_type !== 'salik_other_revenue';
+                                @endphp
+
+                                @if ($skipOption)
+                                    @continue
+                                @endif
+
+                                <option value="{{ $value }}" @if ($autoOption) disabled @endif>
+                                    {{ $label }}@if ($autoOption)
+                                        (Auto)
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('payment_type')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+
                     <div class="col-md-4 mb-3" data-validation-field="amount">
-                        <label class="form-label fw-semibold" for="paymentAmountInput">Amount <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
-                        <input id="paymentAmountInput" type="number" class="form-control" wire:model="amount" step="0.01" placeholder="$" aria-required="true">
+                        <label class="form-label fw-semibold" for="paymentAmountInput">
+                            Amount
+                            @if (in_array($payment_type, ['salik_4_aed', 'salik_6_aed']))
+                                <span class="badge bg-info-subtle text-info ms-2">Auto</span>
+                            @elseif (!blank($payment_type))
+                                <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            @endif
+                        </label>
+                        <input id="paymentAmountInput" type="number" class="form-control" wire:model="amount" step="0.01"
+                            placeholder="$" aria-required="true"
+                            @disabled(blank($payment_type) || in_array($payment_type, ['salik_4_aed', 'salik_6_aed']))>
+                        @if (blank($payment_type))
+                            <small class="text-muted">Select a payment type to enter the amount.</small>
+                        @elseif (in_array($payment_type, ['salik_4_aed', 'salik_6_aed']))
+                            @php
+                                $salikUnit = $payment_type === 'salik_4_aed' ? 4 : 6;
+                            @endphp
+                            <small class="text-muted">Calculated automatically: {{ (int) ($salik_trip_count ?: 0) }} trips ×
+                                {{ $salikUnit }} AED = {{ number_format($amount ?? 0, 2) }} AED</small>
+                        @endif
                         @error('amount')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
                     <div class="col-md-4 mb-3" data-validation-field="currency">
                         <label class="form-label fw-semibold" for="paymentCurrencyInput">Currency <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
-                        <select id="paymentCurrencyInput" class="form-control" wire:model.live="currency" aria-required="true">
+                        <select id="paymentCurrencyInput" class="form-control" wire:model.live="currency" aria-required="true"
+                            @disabled(blank($payment_type) || in_array($payment_type, ['salik', 'salik_4_aed', 'salik_6_aed']))>
                             <option value="IRR">Rial</option>
                             <option value="USD">Dollar</option>
                             <option value="AED">Dirham</option>
                             <option value="EUR">Euro</option>
                         </select>
+                        @if (in_array($payment_type, ['salik', 'salik_4_aed', 'salik_6_aed']))
+                            <small class="text-muted">Salik payments are always billed in AED.</small>
+                        @endif
                         @error('currency')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
@@ -49,20 +97,48 @@
                         </div>
                     @endif
 
-
-
-                    <div class="col-md-4 mb-3" data-validation-field="payment_type">
-                        <label class="form-label fw-semibold" for="paymentTypeInput">Payment Type <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
-                        <select id="paymentTypeInput" class="form-control" wire:model="payment_type" aria-required="true">
-                            <option value="">Select Payment Type</option>
-                            @foreach ($this->paymentTypeOptions as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        @error('payment_type')
-                            <span class="text-danger">{{ $message }}</span>
-                        @enderror
-                    </div>
+                    @if (in_array($payment_type, ['salik_4_aed', 'salik_6_aed']))
+                        <div class="col-md-4 mb-3" data-validation-field="salik_trip_count">
+                            <label class="form-label fw-semibold">
+                                @switch($payment_type)
+                                    @case('salik_4_aed')
+                                        Salik (4 AED) Trips
+                                        @break
+                                    @case('salik_6_aed')
+                                        Salik (6 AED) Trips
+                                        @break
+                                @endswitch
+                                <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <input type="number" min="0" class="form-control" wire:model.lazy="salik_trip_count">
+                            <small class="text-muted">
+                                Amount will be calculated automatically as trips ×
+                                @switch($payment_type)
+                                    @case('salik_4_aed')
+                                        4 AED
+                                        @break
+                                    @case('salik_6_aed')
+                                        6 AED
+                                        @break
+                                @endswitch
+                            </small>
+                            @error('salik_trip_count')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Other Revenue (Auto)</label>
+                            <input type="text" class="form-control"
+                                value="{{ number_format($salik_other_revenue_preview, 2) }} AED" disabled>
+                            <small class="text-muted">Added automatically as 1 AED per salik trip.</small>
+                        </div>
+                    @elseif ($payment_type === 'salik')
+                        <div class="col-12 mb-3">
+                            <div class="alert alert-info mb-0">
+                                Legacy salik payments keep their manually entered amount.
+                            </div>
+                        </div>
+                    @endif
 
                     <div class="col-md-4 mb-3" data-validation-field="payment_method">
                         <label class="form-label fw-semibold" for="paymentMethodInput">Payment Method <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
@@ -201,7 +277,29 @@
 
         $additionItems = [
             ['label' => 'Fines', 'value' => $finePaid],
-            ['label' => 'Salik', 'value' => $salik],
+            [
+                'label' => 'Salik (4 & 6 AED)',
+                'value' => $salikTripChargesTotal,
+                'detail' => [
+                    'four_trips' => $salikFourTripsTotal,
+                    'six_trips' => $salikSixTripsTotal,
+                ],
+            ],
+            [
+                'label' => 'Salik Other Revenue (Auto)',
+                'value' => $salikOtherRevenueTotal,
+                'detail' => [
+                    'total_trips' => $salikOtherTripsTotal,
+                    'amount' => $salikOtherRevenueTotal,
+                ],
+            ],
+            [
+                'label' => 'Legacy Salik Total',
+                'value' => $legacySalikTotal,
+                'detail' => [
+                    'note' => 'Legacy entries without trip breakdown',
+                ],
+            ],
             ['label' => 'Carwash', 'value' => $carwash],
             ['label' => 'Fuel', 'value' => $fuel],
             ['label' => 'Parking', 'value' => $parkingPaid],
@@ -318,7 +416,28 @@
                         </div>
                         @foreach ($additionItems as $item)
                             <div class="formula-panel-item">
-                                <div class="fw-semibold">{{ $item['label'] }}</div>
+                                <div>
+                                    <div class="fw-semibold">{{ $item['label'] }}</div>
+                                    @if (!empty($item['detail']))
+                                        <div class="formula-panel-detail text-muted small">
+                                            @if (isset($item['detail']['four_trips']) || isset($item['detail']['six_trips']))
+                                                <div>
+                                                    <span class="me-3">4 AED Trips: {{ $item['detail']['four_trips'] ?? 0 }}</span>
+                                                    <span>6 AED Trips: {{ $item['detail']['six_trips'] ?? 0 }}</span>
+                                                </div>
+                                            @endif
+                                            @if (isset($item['detail']['total_trips']))
+                                                <div>Total Trips: {{ $item['detail']['total_trips'] }}</div>
+                                            @endif
+                                            @if (isset($item['detail']['amount']))
+                                                <div>Other Revenue Amount: {{ number_format($item['detail']['amount'], 2) }} AED</div>
+                                            @endif
+                                            @if (isset($item['detail']['note']))
+                                                <div>{{ $item['detail']['note'] }}</div>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
                                 <span class="formula-panel-value text-success">+{{ number_format($item['value'], 2) }}</span>
                             </div>
                         @endforeach
@@ -369,6 +488,14 @@
                                 Salik
                             @else
                                 {{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}
+                                @if ($payment->isSalikBreakdownEntry())
+                                    <div class="small text-muted mt-1">
+                                        Trips: {{ $payment->salikTripCount() }},
+                                        Amount: {{ number_format($payment->salikBreakdownAmount(), 2) }} AED
+                                    </div>
+                                @elseif ($payment->payment_type === 'salik')
+                                    <div class="small text-muted mt-1">Legacy salik entry without breakdown</div>
+                                @endif
                             @endif
                         </td>
                         <td>{{ ucfirst($payment->payment_method) }}</td>

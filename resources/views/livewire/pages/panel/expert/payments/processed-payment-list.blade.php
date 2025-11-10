@@ -81,7 +81,10 @@
                 <option value="">All Types</option>
                 <option value="rental_fee">Rental Fee</option>
                 <option value="security_deposit">Security deposit</option>
-                <option value="salik">Salik</option>
+                <option value="salik">Salik (Legacy)</option>
+                <option value="salik_4_aed">Salik (4 AED)</option>
+                <option value="salik_6_aed">Salik (6 AED)</option>
+                <option value="salik_other_revenue">Salik Other Revenue (Auto)</option>
                 <option value="fine">Fine</option>
                 <option value="parking">Parking</option>
                 <option value="damage">Damage</option>
@@ -150,7 +153,17 @@
                                             <td>{{ $payment->contract?->car?->fullName() ?? '-' }}</td>
                                             <td>{{ number_format($payment->amount, 2) }}</td>
                                             <td>{{ $payment->currency }}</td>
-                                            <td>{{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}</td>
+                                            <td>
+                                                {{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}
+                                                @if ($payment->isSalikBreakdownEntry())
+                                                    <div class="small text-muted mt-1">
+                                                        Trips: {{ $payment->salikTripCount() }},
+                                                        Amount: {{ number_format($payment->salikBreakdownAmount(), 2) }} AED
+                                                    </div>
+                                                @elseif ($payment->payment_type === 'salik')
+                                                    <div class="small text-muted mt-1">Legacy salik entry without breakdown</div>
+                                                @endif
+                                            </td>
                                             <td>{{ $payment->payment_date }}</td>
                                             <td>
                                                 @switch($payment->approval_status)

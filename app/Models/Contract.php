@@ -139,7 +139,14 @@ class Contract extends Model
         $discounts = $payments->where('payment_type', 'discount')->sum('amount_in_aed');
         $securityDeposit = $payments->where('payment_type', 'security_deposit')->sum('amount_in_aed');
         $finePaid = $payments->where('payment_type', 'fine')->sum('amount_in_aed');
-        $salik = $payments->where('payment_type', 'salik')->sum('amount_in_aed');
+        $legacySalik = $payments->where('payment_type', 'salik')->sum('amount_in_aed');
+        $salikFour = $payments->where('payment_type', 'salik_4_aed');
+        $salikSix = $payments->where('payment_type', 'salik_6_aed');
+        $salikOther = $payments->where('payment_type', 'salik_other_revenue');
+
+        $salikTripCharges = $salikFour->sum('amount_in_aed') + $salikSix->sum('amount_in_aed');
+        $salikOtherRevenue = $salikOther->sum('amount_in_aed');
+        $salik = $salikTripCharges + $legacySalik;
         $parking = $payments->where('payment_type', 'parking')->sum('amount_in_aed');
         $damage = $payments->where('payment_type', 'damage')->sum('amount_in_aed');
         $paymentBack = $payments->where('payment_type', 'payment_back')->sum('amount_in_aed');
@@ -150,7 +157,7 @@ class Contract extends Model
 
         return $this->total_price
             - ($effectivePaid + $discounts + $securityDeposit)
-            + $finePaid + $salik + $parking + $damage + $carwash + $fuel;
+            + $finePaid + $salik + $salikOtherRevenue + $parking + $damage + $carwash + $fuel;
     }
 
 
