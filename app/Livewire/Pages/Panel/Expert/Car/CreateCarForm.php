@@ -215,15 +215,15 @@ class CreateCarForm extends Component
         $this->status = 'available';
         $this->availability = true;
         $this->mileage = 0;
-        $this->price_per_day_short = 0;
-        $this->price_per_day_mid = 0;
-        $this->price_per_day_long = 0;
-        $this->ldw_price_short = 0;
-        $this->ldw_price_mid = 0;
-        $this->ldw_price_long = 0;
-        $this->scdw_price_short = 0;
-        $this->scdw_price_mid = 0;
-        $this->scdw_price_long = 0;
+        $this->price_per_day_short = $this->formatDecimalValue(0);
+        $this->price_per_day_mid = $this->formatDecimalValue(0);
+        $this->price_per_day_long = $this->formatDecimalValue(0);
+        $this->ldw_price_short = $this->formatDecimalValue(0);
+        $this->ldw_price_mid = $this->formatDecimalValue(0);
+        $this->ldw_price_long = $this->formatDecimalValue(0);
+        $this->scdw_price_short = $this->formatDecimalValue(0);
+        $this->scdw_price_mid = $this->formatDecimalValue(0);
+        $this->scdw_price_long = $this->formatDecimalValue(0);
         $this->service_due_date = null;
         $this->damage_report = '';
         $this->manufacturing_year = '';
@@ -255,6 +255,11 @@ class CreateCarForm extends Component
         ];
     }
 
+    private function formatDecimalValue($value): string
+    {
+        return number_format((float) ($value ?? 0), 2, '.', '');
+    }
+
     protected function prepareForValidation($attributes)
     {
         $decimalFields = [
@@ -272,6 +277,8 @@ class CreateCarForm extends Component
         foreach ($decimalFields as $field) {
             if ($attributes[$field] === '' || $attributes[$field] === null) {
                 $attributes[$field] = 0;
+            } else {
+                $attributes[$field] = round((float) $attributes[$field], 2);
             }
         }
 
@@ -311,6 +318,22 @@ class CreateCarForm extends Component
     public function submit()
     {
         $validated = $this->validate();
+
+        $decimalFields = [
+            'price_per_day_short',
+            'price_per_day_mid',
+            'price_per_day_long',
+            'ldw_price_short',
+            'ldw_price_mid',
+            'ldw_price_long',
+            'scdw_price_short',
+            'scdw_price_mid',
+            'scdw_price_long',
+        ];
+
+        foreach ($decimalFields as $field) {
+            $validated[$field] = round((float) $validated[$field], 2);
+        }
 
         $car = Car::create([
             'car_model_id' => $validated['selectedModelId'],

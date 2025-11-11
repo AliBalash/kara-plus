@@ -393,11 +393,11 @@
                                         <strong>Price Tiers:</strong>
                                         <div class="d-flex flex-wrap">
                                             <span class="badge bg-secondary m-1">1-6 days:
-                                                {{ $selectedCar->price_per_day_short }} AED</span>
+                                                {{ number_format((float) $selectedCar->price_per_day_short, 2) }} AED</span>
                                             <span class="badge bg-secondary m-1">7-28 days:
-                                                {{ $selectedCar->price_per_day_mid }} AED</span>
+                                                {{ number_format((float) $selectedCar->price_per_day_mid, 2) }} AED</span>
                                             <span class="badge bg-secondary m-1">28+ days:
-                                                {{ $selectedCar->price_per_day_long }} AED</span>
+                                                {{ number_format((float) $selectedCar->price_per_day_long, 2) }} AED</span>
                                         </div>
                                     </div>
                                 </div>
@@ -566,7 +566,7 @@
 
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-money"></i></span>
-                            <input type="text" class="form-control" value="{{ number_format($final_total) }} AED"
+                            <input type="text" class="form-control" value="{{ number_format($final_total, 2) }} AED"
                                 disabled data-bs-toggle="tooltip" title="Total contract amount">
                         </div>
 
@@ -621,7 +621,7 @@
                                                 <i class="fa {{ $service['icon'] }} me-2"></i>
                                                 {{ $service['label_en'] }} -
                                                 @if ($service['amount'] > 0)
-                                                    {{ number_format($service['amount']) }} AED
+                                                    {{ number_format($service['amount'], 2) }} AED
                                                     @if ($service['per_day'])
                                                         /day
                                                     @endif
@@ -664,7 +664,7 @@
                                         <i class="fa {{ $services['ldw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['ldw_insurance']['label_en'] }} -
                                         @if ($selectedCarId && $ldw_daily_rate > 0)
-                                            {{ number_format($ldw_daily_rate) }} AED/day
+                                            {{ number_format($ldw_daily_rate, 2) }} AED/day
                                         @else
                                             --
                                         @endif
@@ -679,7 +679,7 @@
                                         <i class="fa {{ $services['scdw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['scdw_insurance']['label_en'] }} -
                                         @if ($selectedCarId && $scdw_daily_rate > 0)
-                                            {{ number_format($scdw_daily_rate) }} AED/day
+                                            {{ number_format($scdw_daily_rate, 2) }} AED/day
                                         @else
                                             --
                                         @endif
@@ -699,7 +699,7 @@
                 <table class="table table-bordered shadow-sm">
                     <tr>
                         <th>Daily Rate (after discount if applied)</th>
-                        <td>{{ number_format($dailyRate) }} AED</td>
+                        <td>{{ number_format($dailyRate, 2) }} AED</td>
                     </tr>
                     <tr>
                         <th>Base Rental Cost
@@ -707,35 +707,35 @@
                                 ({{ $rental_days }} days)
                             @endif
                         </th>
-                        <td>{{ number_format($base_price) }} AED</td>
+                        <td>{{ number_format($base_price, 2) }} AED</td>
                     </tr>
                     <tr>
                         <th>Pickup Transfer Cost</th>
-                        <td>{{ number_format($transfer_costs['pickup']) }} AED</td>
+                        <td>{{ number_format($transfer_costs['pickup'], 2) }} AED</td>
                     </tr>
                     <tr>
                         <th>Return Transfer Cost</th>
-                        <td>{{ number_format($transfer_costs['return']) }} AED</td>
+                        <td>{{ number_format($transfer_costs['return'], 2) }} AED</td>
                     </tr>
                     <tr>
                         <th>Additional Services</th>
-                        <td>{{ number_format($services_total) }} AED</td>
+                        <td>{{ number_format($services_total, 2) }} AED</td>
                     </tr>
                     <tr>
                         <th>Insurance</th>
-                        <td>{{ number_format($insurance_total) }} AED</td>
+                        <td>{{ number_format($insurance_total, 2) }} AED</td>
                     </tr>
                     <tr class="table-secondary">
                         <th>Subtotal</th>
-                        <td>{{ number_format($subtotal) }} AED</td>
+                        <td>{{ number_format($subtotal, 2) }} AED</td>
                     </tr>
                     <tr>
                         <th>Tax (5%)</th>
-                        <td>{{ number_format($tax_amount) }} AED</td>
+                        <td>{{ number_format($tax_amount, 2) }} AED</td>
                     </tr>
                     <tr class="table-primary">
                         <th>Total Amount</th>
-                        <td>{{ number_format($final_total) }} AED</td>
+                        <td>{{ number_format($final_total, 2) }} AED</td>
                     </tr>
                 </table>
             </div>

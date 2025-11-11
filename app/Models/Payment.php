@@ -29,6 +29,8 @@ class Payment extends Model
     ];
 
     protected $casts = [
+        'amount' => 'decimal:2',
+        'amount_in_aed' => 'decimal:2',
         'payment_date' => 'date',
         'is_refundable' => 'boolean',
         'is_paid' => 'boolean',

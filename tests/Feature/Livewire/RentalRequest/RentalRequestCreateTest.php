@@ -33,15 +33,15 @@ class RentalRequestCreateTest extends TestCase
 
         $car = Car::factory()->create([
             'car_model_id' => $carModel->id,
-            'price_per_day_short' => 200,
-            'price_per_day_mid' => 180,
-            'price_per_day_long' => 150,
-            'ldw_price_short' => 25,
-            'ldw_price_mid' => 20,
-            'ldw_price_long' => 18,
-            'scdw_price_short' => 35,
-            'scdw_price_mid' => 28,
-            'scdw_price_long' => 25,
+            'price_per_day_short' => 200.45,
+            'price_per_day_mid' => 180.35,
+            'price_per_day_long' => 150.25,
+            'ldw_price_short' => 25.15,
+            'ldw_price_mid' => 20.05,
+            'ldw_price_long' => 18.95,
+            'scdw_price_short' => 35.55,
+            'scdw_price_mid' => 28.45,
+            'scdw_price_long' => 25.35,
             'status' => 'available',
             'availability' => true,
         ]);
@@ -129,9 +129,10 @@ class RentalRequestCreateTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $charges->count());
 
         $expectedDays = $pickup->diffInDays($return, false);
-        $expectedSubtotal = ($expectedDays * 200) + ($expectedDays * 20);
-        $expectedTax = round($expectedSubtotal * 0.05);
-        $this->assertEquals($expectedSubtotal + $expectedTax, (int) $contract->total_price);
+        $expectedSubtotal = ($expectedDays * 200.45) + ($expectedDays * 20.05);
+        $expectedSubtotal = round($expectedSubtotal, 2);
+        $expectedTax = round($expectedSubtotal * 0.05, 2);
+        $this->assertEqualsWithDelta($expectedSubtotal + $expectedTax, (float) $contract->total_price, 0.01);
 
         $this->assertEquals('Contract created successfully!', session('success'));
     }

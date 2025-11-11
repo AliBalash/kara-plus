@@ -237,18 +237,18 @@ class RentalRequestEdit extends Component
     {
         if ($this->selectedCarId && $this->rental_days) {
             $car = Car::find($this->selectedCarId);
-            $standardRate = $this->getCarDailyRate($car, $this->rental_days);
+            $standardRate = $this->roundCurrency($this->getCarDailyRate($car, $this->rental_days));
             $this->dailyRate = $this->apply_discount && $this->custom_daily_rate
-                ? $this->custom_daily_rate
-                : ($this->contract->used_daily_rate ?? $standardRate);
-            $this->base_price = round($this->dailyRate * $this->rental_days, 2);
-            $this->ldw_daily_rate = $this->getInsuranceDailyRate($car, 'ldw', $this->rental_days);
-            $this->scdw_daily_rate = $this->getInsuranceDailyRate($car, 'scdw', $this->rental_days);
+                ? $this->roundCurrency((float) $this->custom_daily_rate)
+                : $this->roundCurrency($this->contract->used_daily_rate ?? $standardRate);
+            $this->base_price = $this->roundCurrency($this->dailyRate * $this->rental_days);
+            $this->ldw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'ldw', $this->rental_days));
+            $this->scdw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'scdw', $this->rental_days));
         } else {
-            $this->dailyRate = 0;
-            $this->base_price = 0;
-            $this->ldw_daily_rate = 0;
-            $this->scdw_daily_rate = 0;
+            $this->dailyRate = $this->roundCurrency(0);
+            $this->base_price = $this->roundCurrency(0);
+            $this->ldw_daily_rate = $this->roundCurrency(0);
+            $this->scdw_daily_rate = $this->roundCurrency(0);
         }
     }
 
@@ -274,18 +274,20 @@ class RentalRequestEdit extends Component
 
     private function calculateTransferCosts()
     {
+        $pickup = $this->roundCurrency($this->calculateLocationFee($this->pickup_location, $this->rental_days));
+        $return = $this->roundCurrency($this->calculateLocationFee($this->return_location, $this->rental_days));
+
         $this->transfer_costs = [
-            'pickup' => $this->calculateLocationFee($this->pickup_location, $this->rental_days),
-            'return' => $this->calculateLocationFee($this->return_location, $this->rental_days),
-            'total' => 0
+            'pickup' => $pickup,
+            'return' => $return,
+            'total' => $this->roundCurrency($pickup + $return)
         ];
-        $this->transfer_costs['total'] = $this->transfer_costs['pickup'] + $this->transfer_costs['return'];
     }
 
     private function calculateLocationFee($location, $days)
     {
         $feeType = ($days < 3) ? 'under_3' : 'over_3';
-        return $this->locationCosts[$location][$feeType] ?? 0;
+        return (float) ($this->locationCosts[$location][$feeType] ?? 0);
     }
 
     private function calculateServicesTotal()
@@ -300,7 +302,7 @@ class RentalRequestEdit extends Component
                 continue;
             }
 
-            $servicesTotal += $this->calculateServiceAmount($service, $days);
+            $servicesTotal += $this->roundCurrency($this->calculateServiceAmount($service, $days));
         }
 
         if ($this->selected_insurance && in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance']) && $this->selectedCarId) {
@@ -309,19 +311,21 @@ class RentalRequestEdit extends Component
                 $insuranceDaily = $this->selected_insurance === 'ldw_insurance'
                     ? $this->getInsuranceDailyRate($car, 'ldw', $days)
                     : $this->getInsuranceDailyRate($car, 'scdw', $days);
-                $insuranceTotal += $insuranceDaily * $days;
+                $insuranceTotal += $this->roundCurrency($insuranceDaily * $days);
             }
         }
 
-        $this->services_total = $servicesTotal;
-        $this->insurance_total = $insuranceTotal;
+        $this->services_total = $this->roundCurrency($servicesTotal);
+        $this->insurance_total = $this->roundCurrency($insuranceTotal);
     }
 
     private function calculateTaxAndTotal()
     {
-        $this->subtotal = $this->base_price + $this->services_total + $this->insurance_total + $this->transfer_costs['total'];
-        $this->tax_amount = round($this->subtotal * $this->tax_rate);
-        $this->final_total = $this->subtotal + $this->tax_amount;
+        $this->subtotal = $this->roundCurrency(
+            $this->base_price + $this->services_total + $this->insurance_total + $this->transfer_costs['total']
+        );
+        $this->tax_amount = $this->roundCurrency($this->subtotal * $this->tax_rate);
+        $this->final_total = $this->roundCurrency($this->subtotal + $this->tax_amount);
     }
 
     protected function rules()
@@ -580,7 +584,7 @@ class RentalRequestEdit extends Component
         ContractCharges::create([
             'contract_id' => $contract->id,
             'title' => 'base_rental',
-            'amount' => $this->base_price,
+            'amount' => $this->roundCurrency($this->base_price),
             'type' => 'base',
             'description' => ((int)$this->rental_days) . " روز × " . number_format($this->dailyRate, 2) . " درهم" . ($this->apply_discount ? ' (with discount)' : ''),
         ]);
@@ -589,7 +593,7 @@ class RentalRequestEdit extends Component
             ContractCharges::create([
                 'contract_id' => $contract->id,
                 'title' => 'pickup_transfer',
-                'amount' => $this->transfer_costs['pickup'],
+                'amount' => $this->roundCurrency($this->transfer_costs['pickup']),
                 'type' => 'location_fee',
                 'description' => $this->pickup_location
             ]);
@@ -599,7 +603,7 @@ class RentalRequestEdit extends Component
             ContractCharges::create([
                 'contract_id' => $contract->id,
                 'title' => 'return_transfer',
-                'amount' => $this->transfer_costs['return'],
+                'amount' => $this->roundCurrency($this->transfer_costs['return']),
                 'type' => 'location_fee',
                 'description' => $this->return_location
             ]);
@@ -619,7 +623,7 @@ class RentalRequestEdit extends Component
             ContractCharges::create([
                 'contract_id' => $contract->id,
                 'title' => $resolvedId,
-                'amount' => $this->calculateServiceAmount($service, $this->rental_days),
+                'amount' => $this->roundCurrency($this->calculateServiceAmount($service, $this->rental_days)),
                 'type' => 'addon',
                 'description' => $this->buildServiceDescription($service, $this->rental_days)
             ]);
@@ -630,14 +634,14 @@ class RentalRequestEdit extends Component
             $car = Car::find($this->selectedCarId);
             if ($car) {
                 $insuranceDaily = $this->getInsuranceDailyRate($car, str_replace('_insurance', '', $this->selected_insurance), $this->rental_days);
-                $insuranceAmount = $insuranceDaily * $this->rental_days;
+                $insuranceAmount = $this->roundCurrency($insuranceDaily * $this->rental_days);
             }
 
             if ($insuranceAmount > 0) {
                 ContractCharges::create([
                     'contract_id' => $contract->id,
                     'title' => $this->selected_insurance,
-                    'amount' => $insuranceAmount,
+                    'amount' => $this->roundCurrency($insuranceAmount),
                     'type' => 'insurance',
                     'description' => "{$this->rental_days} روز"
                 ]);
@@ -648,7 +652,7 @@ class RentalRequestEdit extends Component
             ContractCharges::create([
                 'contract_id' => $contract->id,
                 'title' => 'tax',
-                'amount' => $this->tax_amount,
+                'amount' => $this->roundCurrency($this->tax_amount),
                 'type' => 'tax',
                 'description' => '۵٪ مالیات بر ارزش افزوده'
             ]);
@@ -686,7 +690,7 @@ class RentalRequestEdit extends Component
 
         $contractData = [
             'car_id' => $this->selectedCarId,
-            'total_price' => $this->final_total,
+            'total_price' => $this->roundCurrency($this->final_total),
             'agent_sale' => $this->agent_sale,
             'pickup_location' => $this->pickup_location,
             'return_location' => $this->return_location,
@@ -696,7 +700,7 @@ class RentalRequestEdit extends Component
             'selected_insurance' => $this->selected_insurance,
             'notes' => $this->notes,
             'kardo_required' => $this->kardo_required,
-            'used_daily_rate' => $this->dailyRate,
+            'used_daily_rate' => $this->roundCurrency($this->dailyRate),
             'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
             'payment_on_delivery' => $this->payment_on_delivery ?? true,
             'meta' => !empty($meta) ? $meta : null,
@@ -1082,5 +1086,10 @@ class RentalRequestEdit extends Component
         } catch (\Exception $exception) {
             return $value;
         }
+    }
+
+    private function roundCurrency($value): float
+    {
+        return round((float) $value, 2);
     }
 }

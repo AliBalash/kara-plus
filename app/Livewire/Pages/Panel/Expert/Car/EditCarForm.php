@@ -173,15 +173,15 @@ class EditCarForm extends Component
         $this->status = $this->car->status;
         $this->availability = $this->car->availability;
         $this->mileage = $this->car->mileage;
-        $this->price_per_day_short = $this->car->price_per_day_short ?? 0;
-        $this->price_per_day_mid = $this->car->price_per_day_mid ?? 0;
-        $this->price_per_day_long = $this->car->price_per_day_long ?? 0;
-        $this->ldw_price_short = $this->car->ldw_price_short ?? 0;
-        $this->ldw_price_mid = $this->car->ldw_price_mid ?? 0;
-        $this->ldw_price_long = $this->car->ldw_price_long ?? 0;
-        $this->scdw_price_short = $this->car->scdw_price_short ?? 0;
-        $this->scdw_price_mid = $this->car->scdw_price_mid ?? 0;
-        $this->scdw_price_long = $this->car->scdw_price_long ?? 0;
+        $this->price_per_day_short = $this->formatDecimalValue($this->car->price_per_day_short);
+        $this->price_per_day_mid = $this->formatDecimalValue($this->car->price_per_day_mid);
+        $this->price_per_day_long = $this->formatDecimalValue($this->car->price_per_day_long);
+        $this->ldw_price_short = $this->formatDecimalValue($this->car->ldw_price_short);
+        $this->ldw_price_mid = $this->formatDecimalValue($this->car->ldw_price_mid);
+        $this->ldw_price_long = $this->formatDecimalValue($this->car->ldw_price_long);
+        $this->scdw_price_short = $this->formatDecimalValue($this->car->scdw_price_short);
+        $this->scdw_price_mid = $this->formatDecimalValue($this->car->scdw_price_mid);
+        $this->scdw_price_long = $this->formatDecimalValue($this->car->scdw_price_long);
         $this->service_due_date = $this->car->service_due_date;
         $this->damage_report = $this->car->damage_report;
         $this->manufacturing_year = $this->car->manufacturing_year;
@@ -266,12 +266,36 @@ class EditCarForm extends Component
             }
         }
 
+        foreach ($decimalFields as $field) {
+            if ($attributes[$field] === '' || $attributes[$field] === null) {
+                $attributes[$field] = 0;
+            } else {
+                $attributes[$field] = round((float) $attributes[$field], 2);
+            }
+        }
+
         return $attributes;
     }
 
     public function submit()
     {
         $validated = $this->validate();
+
+        $decimalFields = [
+            'price_per_day_short',
+            'price_per_day_mid',
+            'price_per_day_long',
+            'ldw_price_short',
+            'ldw_price_mid',
+            'ldw_price_long',
+            'scdw_price_short',
+            'scdw_price_mid',
+            'scdw_price_long',
+        ];
+
+        foreach ($decimalFields as $field) {
+            $validated[$field] = round((float) $validated[$field], 2);
+        }
 
         $this->car->update([
             'plate_number' => $validated['plate_number'],
@@ -322,5 +346,10 @@ class EditCarForm extends Component
     public function render()
     {
         return view('livewire.pages.panel.expert.car.edit-car-form');
+    }
+
+    private function formatDecimalValue($value): string
+    {
+        return number_format((float) ($value ?? 0), 2, '.', '');
     }
 }
