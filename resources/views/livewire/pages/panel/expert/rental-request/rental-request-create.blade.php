@@ -687,6 +687,38 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="mt-4">
+                            <h6 class="text-primary mb-3">Driver Service (Optional)</h6>
+                            <div class="row g-3 align-items-start">
+                                <div class="col-md-6" data-validation-field="driver_hours">
+                                    <label class="form-label fw-semibold mb-1" for="driverHoursInput">
+                                        Driver Hours
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bx bx-time-five"></i></span>
+                                        <input id="driverHoursInput" type="number" step="0.5" min="0"
+                                            class="form-control @error('driver_hours') is-invalid @enderror"
+                                            placeholder="e.g. 6 or 10" wire:model.live="driver_hours"
+                                            data-bs-toggle="tooltip"
+                                            title="Enter the total number of hours the driver is required">
+                                    </div>
+                                    @error('driver_hours')
+                                        <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="alert alert-info shadow-sm mb-0">
+                                        <div class="fw-semibold text-primary">Pricing details</div>
+                                        <div class="small text-muted">
+                                            First 8 hours cost 250 AED. Each extra hour adds 40 AED.
+                                            Current driver charge:
+                                            <span class="fw-semibold text-dark">{{ number_format($driver_cost, 2) }} AED</span>.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -724,6 +756,10 @@
                     <tr>
                         <th>Insurance</th>
                         <td>{{ number_format($insurance_total, 2) }} AED</td>
+                    </tr>
+                    <tr>
+                        <th>Driver Service</th>
+                        <td>{{ number_format($driver_cost, 2) }} AED</td>
                     </tr>
                     <tr class="table-secondary">
                         <th>Subtotal</th>

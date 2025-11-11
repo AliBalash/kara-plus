@@ -46,6 +46,8 @@ class RentalRequestCreate extends Component
     public $selected_insurance = 'basic_insurance';
     public $services_total = 0;
     public $insurance_total = 0;
+    public $driver_hours = 0;
+    public $driver_cost = 0;
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
     public $tax_rate = 0.05;
     public $tax_amount = 0;
@@ -143,6 +145,7 @@ class RentalRequestCreate extends Component
             'return_location',
             'selected_services',
             'selected_insurance',
+            'driver_hours',
         ];
         return in_array($propertyName, $costRelatedFields) ||
             Str::startsWith($propertyName, 'selected_services.');
@@ -197,6 +200,7 @@ class RentalRequestCreate extends Component
         $this->calculateBasePrice();
         $this->calculateTransferCosts();
         $this->calculateServicesTotal();
+        $this->calculateDriverServiceCost();
         $this->calculateTaxAndTotal();
     }
 
@@ -298,10 +302,45 @@ class RentalRequestCreate extends Component
         $this->insurance_total = $this->roundCurrency($insuranceTotal);
     }
 
+    private function calculateDriverServiceCost(): void
+    {
+        $hours = (float) ($this->driver_hours ?? 0);
+
+        if ($hours <= 0) {
+            $this->driver_cost = $this->roundCurrency(0);
+            return;
+        }
+
+        $totalMinutes = (int) ceil($hours * 60);
+
+        if ($totalMinutes <= 0) {
+            $this->driver_cost = $this->roundCurrency(0);
+            return;
+        }
+
+        $baseCost = 250;
+        $includedMinutes = 8 * 60;
+
+        if ($totalMinutes <= $includedMinutes) {
+            $this->driver_cost = $this->roundCurrency($baseCost);
+            return;
+        }
+
+        $extraMinutes = $totalMinutes - $includedMinutes;
+        $extraHours = (int) ceil($extraMinutes / 60);
+        $additionalCost = $extraHours * 40;
+
+        $this->driver_cost = $this->roundCurrency($baseCost + $additionalCost);
+    }
+
     private function calculateTaxAndTotal()
     {
         $this->subtotal = $this->roundCurrency(
-            $this->base_price + $this->services_total + $this->insurance_total + $this->transfer_costs['total']
+            $this->base_price
+            + $this->services_total
+            + $this->insurance_total
+            + $this->transfer_costs['total']
+            + $this->driver_cost
         );
         $this->tax_amount = $this->roundCurrency($this->subtotal * $this->tax_rate);
         $this->final_total = $this->roundCurrency($this->subtotal + $this->tax_amount);
@@ -407,6 +446,7 @@ class RentalRequestCreate extends Component
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
+            'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -454,6 +494,8 @@ class RentalRequestCreate extends Component
         'license_number.max' => 'License Number cannot be longer than 50 characters.',
         'selected_insurance.in' => 'The selected insurance option is invalid.',
         'payment_on_delivery.boolean' => 'The payment on delivery field must be a boolean value.',
+        'driver_hours.numeric' => 'Driver service hours must be a number.',
+        'driver_hours.min' => 'Driver service hours cannot be negative.',
     ];
 
     protected array $validationAttributes = [
@@ -476,6 +518,7 @@ class RentalRequestCreate extends Component
         'nationality' => 'nationality',
         'license_number' => 'license number',
         'selected_insurance' => 'insurance selection',
+        'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
         'custom_daily_rate' => 'custom daily rate',
     ];
@@ -562,13 +605,14 @@ class RentalRequestCreate extends Component
 
     private function prepareContractMeta(): ?array
     {
-        if (!$this->payment_on_delivery) {
-            return null;
-        }
-
         $meta = [];
 
-        if (!is_null($this->driver_note) && trim((string) $this->driver_note) !== '') {
+        if (($this->driver_hours ?? 0) > 0) {
+            $meta['driver_hours'] = (float) $this->driver_hours;
+            $meta['driver_service_cost'] = $this->roundCurrency($this->driver_cost);
+        }
+
+        if ($this->payment_on_delivery && !is_null($this->driver_note) && trim((string) $this->driver_note) !== '') {
             $meta['driver_note'] = $this->driver_note;
         }
 
@@ -620,6 +664,16 @@ class RentalRequestCreate extends Component
             ]);
         }
 
+        if ($this->driver_cost > 0) {
+            ContractCharges::create([
+                'contract_id' => $contract->id,
+                'title' => 'driver_service',
+                'amount' => $this->roundCurrency($this->driver_cost),
+                'type' => 'service',
+                'description' => $this->buildDriverChargeDescription(),
+            ]);
+        }
+
         foreach ($this->selected_services as $serviceId) {
             $resolvedId = $this->resolveServiceId($serviceId);
             if (!$resolvedId) {
@@ -668,6 +722,31 @@ class RentalRequestCreate extends Component
                 'description' => '۵٪ مالیات بر ارزش افزوده',
             ]);
         }
+    }
+
+    private function buildDriverChargeDescription(): string
+    {
+        $hours = max(0, (float) ($this->driver_hours ?? 0));
+        $minutes = (int) ceil($hours * 60);
+
+        if ($minutes <= 0) {
+            return 'Driver service not requested';
+        }
+
+        $formattedHours = $hours == floor($hours)
+            ? (string) (int) $hours
+            : number_format($hours, 2);
+
+        $includedMinutes = 8 * 60;
+        $extraDescription = 'Includes first 8 hours at 250 AED';
+
+        if ($minutes > $includedMinutes) {
+            $extraMinutes = $minutes - $includedMinutes;
+            $extraHours = (int) ceil($extraMinutes / 60);
+            $extraDescription .= " + {$extraHours} extra hour(s) at 40 AED each";
+        }
+
+        return "Driver service for {$formattedHours} hour(s) — {$extraDescription}";
     }
 
     public function changeStatusToReserve($contractId)
