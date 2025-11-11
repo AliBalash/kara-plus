@@ -51,6 +51,8 @@ class RentalRequestEdit extends Component
     public $selected_insurance = 'basic_insurance';
     public $services_total = 0;
     public $insurance_total = 0;
+    public $driver_hours = 0;
+    public $driver_cost = 0;
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
     public $tax_rate = 0.05;
     public $tax_amount = 0;
@@ -134,9 +136,13 @@ class RentalRequestEdit extends Component
         $charges = ContractCharges::where('contract_id', $contractId)->get();
         $this->selected_services = [];
         $this->selected_insurance = null; // Default to null for "No Additional Insurance"
+        $driverCharge = null;
 
         foreach ($charges as $charge) {
             if (!in_array($charge->type, ['addon', 'insurance'], true)) {
+                if ($charge->title === 'driver_service') {
+                    $driverCharge = $charge;
+                }
                 continue;
             }
 
@@ -154,6 +160,10 @@ class RentalRequestEdit extends Component
             if ($resolvedId !== 'basic_insurance') {
                 $this->selected_services[] = $resolvedId;
             }
+        }
+
+        if ($driverCharge && ($this->driver_hours ?? 0) <= 0) {
+            $this->driver_hours = $this->inferDriverHoursFromCharge($driverCharge);
         }
 
         $this->canonicalizeSelectedServices();
@@ -177,7 +187,10 @@ class RentalRequestEdit extends Component
         $this->notes = $this->contract->notes;
         $this->kardo_required = $this->contract->kardo_required;
         $this->payment_on_delivery = $this->contract->payment_on_delivery;
-        $this->driver_note = $this->contract->meta['driver_note'] ?? null;
+
+        $meta = $this->contract->meta ?? [];
+        $this->driver_note = $meta['driver_note'] ?? null;
+        $this->driver_hours = isset($meta['driver_hours']) ? (float) $meta['driver_hours'] : 0;
 
         // Customer data
         $customer = $this->contract->customer()->firstOrFail();
@@ -213,6 +226,7 @@ class RentalRequestEdit extends Component
         $this->calculateBasePrice();
         $this->calculateTransferCosts();
         $this->calculateServicesTotal();
+        $this->calculateDriverServiceCost();
         $this->calculateTaxAndTotal();
     }
 
@@ -319,10 +333,45 @@ class RentalRequestEdit extends Component
         $this->insurance_total = $this->roundCurrency($insuranceTotal);
     }
 
+    private function calculateDriverServiceCost(): void
+    {
+        $hours = (float) ($this->driver_hours ?? 0);
+
+        if ($hours <= 0) {
+            $this->driver_cost = $this->roundCurrency(0);
+            return;
+        }
+
+        $totalMinutes = (int) ceil($hours * 60);
+
+        if ($totalMinutes <= 0) {
+            $this->driver_cost = $this->roundCurrency(0);
+            return;
+        }
+
+        $baseCost = 250;
+        $includedMinutes = 8 * 60;
+
+        if ($totalMinutes <= $includedMinutes) {
+            $this->driver_cost = $this->roundCurrency($baseCost);
+            return;
+        }
+
+        $extraMinutes = $totalMinutes - $includedMinutes;
+        $extraHours = (int) ceil($extraMinutes / 60);
+        $additionalCost = $extraHours * 40;
+
+        $this->driver_cost = $this->roundCurrency($baseCost + $additionalCost);
+    }
+
     private function calculateTaxAndTotal()
     {
         $this->subtotal = $this->roundCurrency(
-            $this->base_price + $this->services_total + $this->insurance_total + $this->transfer_costs['total']
+            $this->base_price
+            + $this->services_total
+            + $this->insurance_total
+            + $this->transfer_costs['total']
+            + $this->driver_cost
         );
         $this->tax_amount = $this->roundCurrency($this->subtotal * $this->tax_rate);
         $this->final_total = $this->roundCurrency($this->subtotal + $this->tax_amount);
@@ -398,6 +447,7 @@ class RentalRequestEdit extends Component
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
+            'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -449,6 +499,8 @@ class RentalRequestEdit extends Component
         'apply_discount.boolean' => 'The apply discount field must be a boolean value.',
         'custom_daily_rate.numeric' => 'The custom daily rate must be a number.',
         'custom_daily_rate.min' => 'The custom daily rate cannot be negative.',
+        'driver_hours.numeric' => 'Driver service hours must be a number.',
+        'driver_hours.min' => 'Driver service hours cannot be negative.',
     ];
 
     protected array $validationAttributes = [
@@ -471,6 +523,7 @@ class RentalRequestEdit extends Component
         'nationality' => 'nationality',
         'license_number' => 'license number',
         'selected_insurance' => 'insurance selection',
+        'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
         'custom_daily_rate' => 'custom daily rate',
     ];
@@ -497,6 +550,7 @@ class RentalRequestEdit extends Component
             'return_date' => $this->return_date,
             'selected_insurance' => $this->selected_insurance,
             'selected_services' => $this->selected_services,
+            'driver_hours' => $this->driver_hours,
         ];
     }
 
@@ -510,6 +564,8 @@ class RentalRequestEdit extends Component
             'return_transfer' => $this->transfer_costs['return'] ?? 0,
             'services_total' => $this->services_total,
             'insurance_total' => $this->insurance_total,
+            'driver_hours' => $this->driver_hours,
+            'driver_cost' => $this->driver_cost,
             'subtotal' => $this->subtotal,
             'tax' => $this->tax_amount,
             'total' => $this->final_total,
@@ -525,7 +581,8 @@ class RentalRequestEdit extends Component
             'pickup_location',
             'return_location',
             'selected_services',
-            'selected_insurance'
+            'selected_insurance',
+            'driver_hours',
         ];
         return in_array($propertyName, $costRelatedFields) ||
             Str::startsWith($propertyName, 'selected_services.');
@@ -609,6 +666,16 @@ class RentalRequestEdit extends Component
             ]);
         }
 
+        if ($this->driver_cost > 0) {
+            ContractCharges::create([
+                'contract_id' => $contract->id,
+                'title' => 'driver_service',
+                'amount' => $this->roundCurrency($this->driver_cost),
+                'type' => 'service',
+                'description' => $this->buildDriverChargeDescription(),
+            ]);
+        }
+
         foreach ($this->selected_services as $serviceId) {
             $resolvedId = $this->resolveServiceId($serviceId);
             if (!$resolvedId) {
@@ -680,6 +747,15 @@ class RentalRequestEdit extends Component
     private function updateContract()
     {
         $meta = $this->contract->meta ?? [];
+        $meta = is_array($meta) ? $meta : [];
+
+        if (($this->driver_hours ?? 0) > 0) {
+            $meta['driver_hours'] = (float) $this->driver_hours;
+            $meta['driver_service_cost'] = $this->roundCurrency($this->driver_cost);
+        } else {
+            unset($meta['driver_hours'], $meta['driver_service_cost']);
+        }
+
         $driverNote = $this->payment_on_delivery ? $this->driver_note : null;
 
         if (!is_null($driverNote) && trim((string) $driverNote) !== '') {
@@ -907,6 +983,21 @@ class RentalRequestEdit extends Component
             $this->describeServiceChanges($this->originalSelections['selected_services'] ?? [], $this->selected_services ?? [])
         );
 
+        $rows[] = $this->buildNumericComparisonRow(
+            'Driver Service Hours',
+            (float) ($this->originalSelections['driver_hours'] ?? 0),
+            (float) ($this->driver_hours ?? 0),
+            ' h',
+            1
+        );
+
+        $rows[] = $this->buildNumericComparisonRow(
+            'Driver Service Cost',
+            (float) ($this->originalCosts['driver_cost'] ?? 0),
+            (float) ($this->driver_cost ?? 0),
+            ' AED'
+        );
+
         $rows[] = $this->buildNumericComparisonRow('Daily Rate', (float) ($this->originalCosts['daily_rate'] ?? 0), (float) $this->dailyRate, ' AED/day');
         $rows[] = $this->buildNumericComparisonRow('Base Rental Cost', (float) ($this->originalCosts['base_price'] ?? 0), (float) $this->base_price, ' AED');
         $rows[] = $this->buildNumericComparisonRow('Pickup Transfer Cost', (float) ($this->originalCosts['pickup_transfer'] ?? 0), (float) ($this->transfer_costs['pickup'] ?? 0), ' AED');
@@ -1086,6 +1177,53 @@ class RentalRequestEdit extends Component
         } catch (\Exception $exception) {
             return $value;
         }
+    }
+
+    private function buildDriverChargeDescription(): string
+    {
+        $hours = max(0, (float) ($this->driver_hours ?? 0));
+        $minutes = (int) ceil($hours * 60);
+
+        if ($minutes <= 0) {
+            return 'Driver service not requested';
+        }
+
+        $formattedHours = $hours == floor($hours)
+            ? (string) (int) $hours
+            : number_format($hours, 2);
+
+        $includedMinutes = 8 * 60;
+        $extraDescription = 'Includes first 8 hours at 250 AED';
+
+        if ($minutes > $includedMinutes) {
+            $extraMinutes = $minutes - $includedMinutes;
+            $extraHours = (int) ceil($extraMinutes / 60);
+            $extraDescription .= " + {$extraHours} extra hour(s) at 40 AED each";
+        }
+
+        return "Driver service for {$formattedHours} hour(s) — {$extraDescription}";
+    }
+
+    private function inferDriverHoursFromCharge(ContractCharges $charge): float
+    {
+        if (isset($this->contract->meta['driver_hours'])) {
+            return (float) $this->contract->meta['driver_hours'];
+        }
+
+        $amount = (float) $charge->amount;
+
+        if ($amount <= 0) {
+            return 0;
+        }
+
+        if ($amount <= 250) {
+            return 8.0;
+        }
+
+        $extraCost = $amount - 250;
+        $extraHours = max(0, (int) round($extraCost / 40));
+
+        return 8 + $extraHours;
     }
 
     private function roundCurrency($value): float
