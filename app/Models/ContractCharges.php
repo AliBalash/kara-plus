@@ -14,6 +14,10 @@ class ContractCharges extends Model
         'description',
     ];
 
+    protected $casts = [
+        'amount' => 'decimal:2',
+    ];
+
     // رابطه با قرارداد
     public function contract()
     {

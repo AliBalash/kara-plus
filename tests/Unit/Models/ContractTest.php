@@ -70,13 +70,15 @@ class ContractTest extends TestCase
 
         $expectedBalance = 1500 - ($effectivePaid + 100 + 200)
             + (150 + $salikTripCharges + $salikOtherRevenue + $legacySalik + 25 + 40 + 30 + 70);
+        $expectedBalance = round($expectedBalance, 2);
 
-        $this->assertEquals($expectedBalance, $contract->fresh()->calculateRemainingBalance());
+        $this->assertEqualsWithDelta($expectedBalance, $contract->fresh()->calculateRemainingBalance(), 0.01);
 
         $contractWithPayments = $contract->fresh()->load('payments');
-        $this->assertEquals(
+        $this->assertEqualsWithDelta(
             $expectedBalance,
-            $contractWithPayments->calculateRemainingBalance($contractWithPayments->payments)
+            $contractWithPayments->calculateRemainingBalance($contractWithPayments->payments),
+            0.01
         );
     }
 
@@ -139,7 +141,7 @@ class ContractTest extends TestCase
         $contract->setRelation('car', $contract->car);
         $contract->car->setAttribute('price_per_day', 250);
 
-        $this->assertEquals(3 * 250, $contract->calculateTotalPrice());
+        $this->assertEqualsWithDelta(3 * 250, $contract->calculateTotalPrice(), 0.01);
 
         Carbon::setTestNow();
     }

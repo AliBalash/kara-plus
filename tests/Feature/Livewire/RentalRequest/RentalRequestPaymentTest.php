@@ -35,7 +35,7 @@ class RentalRequestPaymentTest extends TestCase
             ->for($customer)
             ->for(Car::factory())
             ->status('payment')
-            ->create(['total_price' => 1500, 'meta' => []]);
+            ->create(['total_price' => 1500.75, 'meta' => []]);
 
         CustomerDocument::factory()->for($customer)->for($contract)->create();
 
@@ -43,7 +43,7 @@ class RentalRequestPaymentTest extends TestCase
         $component->shouldAllowMockingProtectedMethods();
         $component->mount($contract->id, $customer->id);
 
-        $component->amount = 500;
+        $component->amount = 500.5;
         $component->currency = 'AED';
         $component->payment_type = 'rental_fee';
         $component->payment_date = now()->toDateString();
@@ -53,7 +53,7 @@ class RentalRequestPaymentTest extends TestCase
         $component->receipt = null;
 
         $component->shouldReceive('validate')->once()->andReturn([
-            'amount' => 500,
+            'amount' => 500.5,
             'currency' => 'AED',
             'payment_type' => 'rental_fee',
             'payment_date' => now()->toDateString(),
@@ -67,7 +67,7 @@ class RentalRequestPaymentTest extends TestCase
 
         $payment = Payment::where('contract_id', $contract->id)->first();
         $this->assertNotNull($payment);
-        $this->assertEquals(500, (float) $payment->amount);
+        $this->assertEqualsWithDelta(500.5, (float) $payment->amount, 0.01);
         $this->assertEquals('AED', $payment->currency);
         $this->assertEquals($user->id, $payment->user_id);
         $this->assertEquals('pending', $payment->approval_status);

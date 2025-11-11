@@ -75,7 +75,7 @@
                             <!-- Price for 1-6 Days -->
                             <div class="input-group">
                                 <span class="input-group-text">Price (1-6 days)</span>
-                                <input type="number"
+                                <input type="number" step="0.01"
                                     class="form-control @error('price_per_day_short') is-invalid @enderror"
                                     wire:model="price_per_day_short" placeholder="Price for short-term (درهم)"
                                     min="0" required>
@@ -87,7 +87,7 @@
                             <!-- Price for 7-28 Days -->
                             <div class="input-group">
                                 <span class="input-group-text">Price (7-28 days)</span>
-                                <input type="number"
+                                <input type="number" step="0.01"
                                     class="form-control @error('price_per_day_mid') is-invalid @enderror"
                                     wire:model="price_per_day_mid" placeholder="Price for mid-term (درهم)"
                                     min="0" required>
@@ -99,7 +99,7 @@
                             <!-- Price for 28+ Days -->
                             <div class="input-group">
                                 <span class="input-group-text">Price (28+ days)</span>
-                                <input type="number"
+                                <input type="number" step="0.01"
                                     class="form-control @error('price_per_day_long') is-invalid @enderror"
                                     wire:model="price_per_day_long" placeholder="Price for long-term (درهم)"
                                     min="0" required>
@@ -111,7 +111,7 @@
                             <!-- LDW Insurance Short -->
                             <div class="input-group">
                                 <span class="input-group-text">LDW Insurance (1-6 days)</span>
-                                <input type="number"
+                                <input type="number" step="0.01"
                                     class="form-control @error('ldw_price_short') is-invalid @enderror"
                                     wire:model="ldw_price_short" placeholder="LDW short-term daily price" min="0"
                                     required>
@@ -123,7 +123,7 @@
                             <!-- LDW Insurance Mid -->
                             <div class="input-group">
                                 <span class="input-group-text">LDW Insurance (7-28 days)</span>
-                                <input type="number" class="form-control @error('ldw_price_mid') is-invalid @enderror"
+                                <input type="number" step="0.01" class="form-control @error('ldw_price_mid') is-invalid @enderror"
                                     wire:model="ldw_price_mid" placeholder="LDW mid-term daily price" min="0"
                                     required>
                                 @error('ldw_price_mid')
@@ -134,7 +134,7 @@
                             <!-- LDW Insurance Long -->
                             <div class="input-group">
                                 <span class="input-group-text">LDW Insurance (28+ days)</span>
-                                <input type="number" class="form-control @error('ldw_price_long') is-invalid @enderror"
+                                <input type="number" step="0.01" class="form-control @error('ldw_price_long') is-invalid @enderror"
                                     wire:model="ldw_price_long" placeholder="LDW long-term daily price" min="0"
                                     required>
                                 @error('ldw_price_long')
@@ -145,7 +145,7 @@
                             <!-- SCDW Insurance Short -->
                             <div class="input-group">
                                 <span class="input-group-text">SCDW Insurance (1-6 days)</span>
-                                <input type="number"
+                                <input type="number" step="0.01"
                                     class="form-control @error('scdw_price_short') is-invalid @enderror"
                                     wire:model="scdw_price_short" placeholder="SCDW short-term daily price"
                                     min="0" required>
@@ -157,7 +157,7 @@
                             <!-- SCDW Insurance Mid -->
                             <div class="input-group">
                                 <span class="input-group-text">SCDW Insurance (7-28 days)</span>
-                                <input type="number"
+                                <input type="number" step="0.01"
                                     class="form-control @error('scdw_price_mid') is-invalid @enderror"
                                     wire:model="scdw_price_mid" placeholder="SCDW mid-term daily price"
                                     min="0" required>
@@ -169,7 +169,7 @@
                             <!-- SCDW Insurance Long -->
                             <div class="input-group">
                                 <span class="input-group-text">SCDW Insurance (28+ days)</span>
-                                <input type="number"
+                                <input type="number" step="0.01"
                                     class="form-control @error('scdw_price_long') is-invalid @enderror"
                                     wire:model="scdw_price_long" placeholder="SCDW long-term daily price"
                                     min="0" required>

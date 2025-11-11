@@ -163,27 +163,27 @@ class RentalRequestPayment extends Component
     {
         $this->contract = Contract::with('payments')->findOrFail($this->contractId);
         $this->contractMeta = $this->contract->meta ?? [];
-        $this->totalPrice = $this->contract->total_price ?? 0;
+        $this->totalPrice = $this->roundCurrency($this->contract->total_price ?? 0);
 
         $allPayments = $this->contract->payments;
         $this->existingPayments = $allPayments->where('customer_id', $this->customerId);
         $this->hasPayments = $allPayments->isNotEmpty();
 
-        $this->rentalPaid = $this->existingPayments
+        $this->rentalPaid = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'rental_fee')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
-        $this->finePaid = $this->existingPayments
+        $this->finePaid = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'fine')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
-        $this->parkingPaid = $this->existingPayments
+        $this->parkingPaid = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'parking')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
-        $this->damagePaid = $this->existingPayments
+        $this->damagePaid = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'damage')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
         $legacySalikPayments = $this->existingPayments
             ->where('payment_type', 'salik');
@@ -199,35 +199,41 @@ class RentalRequestPayment extends Component
 
         $this->salikFourTripsTotal = $salikFourPayments->sum(fn($payment) => $payment->salikTripCount());
         $this->salikSixTripsTotal = $salikSixPayments->sum(fn($payment) => $payment->salikTripCount());
-        $this->salikTripChargesTotal = $salikFourPayments->sum('amount_in_aed') + $salikSixPayments->sum('amount_in_aed');
-        $this->salikOtherRevenueTotal = $salikOtherPayments->sum('amount_in_aed');
+        $this->salikTripChargesTotal = $this->roundCurrency(
+            (float) $salikFourPayments->sum('amount_in_aed') + (float) $salikSixPayments->sum('amount_in_aed')
+        );
+        $this->salikOtherRevenueTotal = $this->roundCurrency((float) $salikOtherPayments->sum('amount_in_aed'));
         $this->salikOtherTripsTotal = $salikOtherPayments->sum(fn($payment) => $payment->salikTripCount());
-        $this->legacySalikTotal = $legacySalikPayments->sum('amount_in_aed');
-        $this->salik = $this->salikTripChargesTotal + $this->salikOtherRevenueTotal + $this->legacySalikTotal;
+        $this->legacySalikTotal = $this->roundCurrency((float) $legacySalikPayments->sum('amount_in_aed'));
+        $this->salik = $this->roundCurrency(
+            $this->salikTripChargesTotal + $this->salikOtherRevenueTotal + $this->legacySalikTotal
+        );
 
-        $this->discounts = $this->existingPayments
+        $this->discounts = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'discount')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
-        $this->security_deposit = $this->existingPayments
+        $this->security_deposit = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'security_deposit')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
-        $this->payment_back = $this->existingPayments
+        $this->payment_back = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'payment_back')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
-        $this->carwash = $this->existingPayments
+        $this->carwash = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'carwash')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
-        $this->fuel = $this->existingPayments
+        $this->fuel = $this->roundCurrency((float) $this->existingPayments
             ->where('payment_type', 'fuel')
-            ->sum('amount_in_aed');
+            ->sum('amount_in_aed'));
 
-        $this->effectivePaid = $this->rentalPaid - $this->payment_back;
+        $this->effectivePaid = $this->roundCurrency($this->rentalPaid - $this->payment_back);
 
-        $this->remainingBalance = $this->contract->calculateRemainingBalance($allPayments);
+        $this->remainingBalance = $this->roundCurrency(
+            $this->contract->calculateRemainingBalance($allPayments)
+        );
     }
 
     public function getPaymentTypeOptionsProperty(): array
@@ -296,6 +302,11 @@ class RentalRequestPayment extends Component
             };
         }
 
+        if ($this->amount !== null && $this->amount !== '') {
+            $this->amount = $this->roundCurrency($this->amount);
+        }
+        $aedAmount = $this->roundCurrency($aedAmount);
+
 
         try {
             $receiptPath = null;
@@ -315,7 +326,7 @@ class RentalRequestPayment extends Component
                     'contract_id' => $this->contractId,
                     'customer_id' => $this->customerId,
                     'user_id' => Auth::id(),
-                    'amount' => $this->amount,
+                    'amount' => $this->amount === null || $this->amount === '' ? null : $this->roundCurrency($this->amount),
                     'currency' => $this->currency,
                     'rate' => $this->currency !== 'AED' ? $this->rate : null,
                     'amount_in_aed' => $aedAmount,
@@ -454,7 +465,7 @@ class RentalRequestPayment extends Component
             default => 0,
         };
 
-        return $trips * $unit;
+        return $this->roundCurrency($trips * $unit);
     }
 
     public function deletePayment($paymentId)
@@ -500,7 +511,7 @@ class RentalRequestPayment extends Component
         $this->salik_other_revenue_preview = $trips;
 
         $unit = $this->payment_type === 'salik_4_aed' ? 4 : 6;
-        $this->amount = $trips * $unit;
+        $this->amount = $this->roundCurrency($trips * $unit);
     }
 
     private function getSanitizedSalikTripCount(): int
@@ -512,5 +523,10 @@ class RentalRequestPayment extends Component
         }
 
         return $trips;
+    }
+
+    private function roundCurrency($value): float
+    {
+        return round((float) $value, 2);
     }
 }

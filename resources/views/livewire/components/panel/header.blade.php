@@ -179,7 +179,7 @@
                                 $plate = $car->plate_number ?? 'Plate TBD';
                                 $year = $car->manufacturing_year ?? 'Year —';
                                 $mileage = $car->mileage !== null ? number_format($car->mileage) . ' km' : 'Mileage —';
-                                $price = $car->price_per_day !== null ? number_format($car->price_per_day) . ' AED / day' : 'Rate —';
+                                $price = $car->price_per_day !== null ? number_format($car->price_per_day, 2) . ' AED / day' : 'Rate —';
                             @endphp
                             <article class="result-card" role="listitem"
                                 wire:key="search-result-{{ $car->id }}">

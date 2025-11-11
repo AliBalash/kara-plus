@@ -35,7 +35,9 @@ trait HandlesServicePricing
     {
         $amount = (float) ($service['amount'] ?? 0);
 
-        return !empty($service['per_day']) ? $amount * max($days, 1) : $amount;
+        $value = !empty($service['per_day']) ? $amount * max($days, 1) : $amount;
+
+        return round($value, 2);
     }
 
     protected function buildServiceDescription(array $service, int $days): string

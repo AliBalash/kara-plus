@@ -155,9 +155,11 @@ class Contract extends Model
 
         $effectivePaid = $rentalPaid - $paymentBack;
 
-        return $this->total_price
+        $balance = (float) $this->total_price
             - ($effectivePaid + $discounts + $securityDeposit)
             + $finePaid + $salik + $salikOtherRevenue + $parking + $damage + $carwash + $fuel;
+
+        return round($balance, 2);
     }
 
 
@@ -176,7 +178,9 @@ class Contract extends Model
     public function calculateTotalPrice(): float
     {
         $days = $this->pickup_date->diffInDays($this->return_date ?? now());
-        return $days * $this->car->price_per_day;
+        $dailyRate = (float) ($this->car->price_per_day ?? 0);
+
+        return round($days * $dailyRate, 2);
     }
 
     // Relationship with CustomerDocument model

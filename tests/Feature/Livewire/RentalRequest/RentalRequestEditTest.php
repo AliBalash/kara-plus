@@ -32,15 +32,15 @@ class RentalRequestEditTest extends TestCase
 
         $car = Car::factory()->create([
             'car_model_id' => $carModel->id,
-            'price_per_day_short' => 350,
-            'price_per_day_mid' => 320,
-            'price_per_day_long' => 300,
-            'ldw_price_short' => 40,
-            'ldw_price_mid' => 35,
-            'ldw_price_long' => 30,
-            'scdw_price_short' => 55,
-            'scdw_price_mid' => 50,
-            'scdw_price_long' => 45,
+            'price_per_day_short' => 350.9,
+            'price_per_day_mid' => 320.8,
+            'price_per_day_long' => 300.7,
+            'ldw_price_short' => 40.6,
+            'ldw_price_mid' => 35.5,
+            'ldw_price_long' => 30.4,
+            'scdw_price_short' => 55.3,
+            'scdw_price_mid' => 50.2,
+            'scdw_price_long' => 45.1,
         ]);
 
         $customer = Customer::factory()->create([
@@ -61,7 +61,7 @@ class RentalRequestEditTest extends TestCase
                 'pickup_date' => '2025-03-05 10:00:00',
                 'return_date' => '2025-03-08 10:00:00',
                 'notes' => 'Original notes',
-                'total_price' => 1000,
+                'total_price' => 1000.55,
                 'kardo_required' => true,
                 'payment_on_delivery' => true,
                 'meta' => ['driver_note' => 'Initial driver note'],
@@ -83,7 +83,7 @@ class RentalRequestEditTest extends TestCase
         $component->selected_services = ['additional_driver', 'child_seat'];
         $component->selected_insurance = 'ldw_insurance';
         $component->apply_discount = true;
-        $component->custom_daily_rate = 300;
+        $component->custom_daily_rate = 300.65;
         $component->kardo_required = false;
         $component->pickup_location = 'UAE/Dubai/JBR';
         $component->return_location = 'UAE/Dubai/JBR';
@@ -108,15 +108,15 @@ class RentalRequestEditTest extends TestCase
             'status' => $contract->car->status,
             'availability' => $contract->car->availability,
             'mileage' => 1500,
-            'price_per_day_short' => 320,
-            'price_per_day_mid' => 280,
-            'price_per_day_long' => 240,
-            'ldw_price_short' => 25,
-            'ldw_price_mid' => 20,
-            'ldw_price_long' => 18,
-            'scdw_price_short' => 30,
-            'scdw_price_mid' => 26,
-            'scdw_price_long' => 24,
+            'price_per_day_short' => 320.4,
+            'price_per_day_mid' => 280.3,
+            'price_per_day_long' => 240.2,
+            'ldw_price_short' => 25.1,
+            'ldw_price_mid' => 20.2,
+            'ldw_price_long' => 18.3,
+            'scdw_price_short' => 30.4,
+            'scdw_price_mid' => 26.5,
+            'scdw_price_long' => 24.6,
             'service_due_date' => $contract->car->service_due_date,
             'damage_report' => 'Updated notes',
             'manufacturing_year' => $contract->car->manufacturing_year,
@@ -166,10 +166,11 @@ class RentalRequestEditTest extends TestCase
 
         $expectedDays = $newPickup->diffInDays($newReturn, false);
         $transferFees = 50 * 2; // pickup and return location fees for JBR
-        $expectedSubtotal = ($expectedDays * 300) + ($expectedDays * 20) + 20 + ($expectedDays * 40) + $transferFees;
-        $expectedTax = round($expectedSubtotal * 0.05);
-        $this->assertEquals($expectedDays * 20, (float) ($chargesArray['child_seat'] ?? 0));
-        $this->assertEquals($expectedSubtotal + $expectedTax, (float) $contract->total_price);
+        $expectedSubtotal = ($expectedDays * 300.65) + ($expectedDays * 20) + 20 + ($expectedDays * 40.6) + $transferFees;
+        $expectedSubtotal = round($expectedSubtotal, 2);
+        $expectedTax = round($expectedSubtotal * 0.05, 2);
+        $this->assertEqualsWithDelta($expectedDays * 20, (float) ($chargesArray['child_seat'] ?? 0), 0.01);
+        $this->assertEqualsWithDelta($expectedSubtotal + $expectedTax, (float) $contract->total_price, 0.01);
         $this->assertEquals('Contract Updated successfully!', session('info'));
     }
 

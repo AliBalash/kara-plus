@@ -413,11 +413,11 @@
                                         <strong>Price Tiers:</strong>
                                         <div class="d-flex flex-wrap">
                                             <span class="badge bg-secondary m-1">1-6 days:
-                                                {{ $selectedCar->price_per_day_short }} AED</span>
+                                                {{ number_format((float) $selectedCar->price_per_day_short, 2) }} AED</span>
                                             <span class="badge bg-secondary m-1">7-28 days:
-                                                {{ $selectedCar->price_per_day_mid }} AED</span>
+                                                {{ number_format((float) $selectedCar->price_per_day_mid, 2) }} AED</span>
                                             <span class="badge bg-secondary m-1">28+ days:
-                                                {{ $selectedCar->price_per_day_long }} AED</span>
+                                                {{ number_format((float) $selectedCar->price_per_day_long, 2) }} AED</span>
                                         </div>
                                     </div>
                                 </div>
@@ -591,7 +591,7 @@
 
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-money"></i></span>
-                            <input type="text" class="form-control" value="{{ number_format($final_total) }} AED"
+                            <input type="text" class="form-control" value="{{ number_format($final_total, 2) }} AED"
                                 disabled data-bs-toggle="tooltip" title="Total contract amount">
                         </div>
 
@@ -647,7 +647,7 @@
                                                 <i class="fa {{ $service['icon'] }} me-2"></i>
                                                 {{ $service['label_en'] }} -
                                                 @if ($service['amount'] > 0)
-                                                    {{ number_format($service['amount']) }} AED
+                                                    {{ number_format($service['amount'], 2) }} AED
                                                     @if ($service['per_day'])
                                                         /day
                                                     @endif
@@ -690,7 +690,7 @@
                                         <i class="fa {{ $services['ldw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['ldw_insurance']['label_en'] }} -
                                         @if ($selectedCarId && $ldw_daily_rate > 0)
-                                            {{ number_format($ldw_daily_rate) }} AED/day
+                                            {{ number_format($ldw_daily_rate, 2) }} AED/day
                                         @else
                                             --
                                         @endif
@@ -705,7 +705,7 @@
                                         <i class="fa {{ $services['scdw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['scdw_insurance']['label_en'] }} -
                                         @if ($selectedCarId && $scdw_daily_rate > 0)
-                                            {{ number_format($scdw_daily_rate) }} AED/day
+                                            {{ number_format($scdw_daily_rate, 2) }} AED/day
                                         @else
                                             --
                                         @endif
