@@ -107,6 +107,16 @@
                                     @enderror
                                 </div>
 
+                                <!-- Birth Date -->
+                                <div class="mb-3 col-md-6">
+                                    <label class="form-label">Birth Date</label>
+                                    <input type="date" class="form-control" wire:model.defer="customer.birth_date"
+                                        max="{{ \Carbon\Carbon::now()->format('Y-m-d') }}">
+                                    @error('customer.birth_date')
+                                        <span class="text-danger">{{ $message }}</span>
+                                    @enderror
+                                </div>
+
                                 <!-- License Number -->
                                 <div class="mb-3 col-md-6">
                                     <label class="form-label">License Number</label>

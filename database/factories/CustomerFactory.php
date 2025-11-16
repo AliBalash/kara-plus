@@ -20,6 +20,7 @@ class CustomerFactory extends Factory
             'phone' => $this->faker->phoneNumber,
             'messenger_phone' => $this->faker->phoneNumber,
             'address' => $this->faker->address,
+            'birth_date' => $this->faker->dateTimeBetween('-70 years', '-18 years')->format('Y-m-d'),
             'passport_number' => $this->faker->unique()->bothify('???#####'),
             'passport_expiry_date' => $this->faker->date('Y-m-d', '+5 years'),
             'nationality' => $this->faker->country,

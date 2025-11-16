@@ -25,6 +25,7 @@ class CustomerDetail extends Component
         'customer.email' => 'required|nullable|email|max:255',
         'customer.phone' => 'required|nullable|string|max:20',
         'customer.address' => 'nullable|string|max:500',
+        'customer.birth_date' => 'nullable|date',
         'customer.passport_number' => 'nullable|string|max:50',
         'customer.passport_expiry_date' => 'nullable|date',
         'customer.nationality' => 'nullable|string|max:100',

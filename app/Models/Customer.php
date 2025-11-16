@@ -25,6 +25,7 @@ class Customer extends Model
         'phone',
         'messenger_phone',
         'address',
+        'birth_date',
         'passport_number',
         'passport_expiry_date',
         'nationality',
@@ -46,6 +47,7 @@ class Customer extends Model
      * @var array
      */
     protected $casts = [
+        'birth_date' => 'date',
         'passport_expiry_date' => 'date',
         'registration_date' => 'date',
     ];
