@@ -31,6 +31,27 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertFalse($car->availability);
     }
 
+    public function test_awaiting_return_contract_keeps_car_reserved(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        Contract::factory()
+            ->for(User::factory())
+            ->for(Customer::factory())
+            ->for($car)
+            ->status('awaiting_return')
+            ->state([
+                'pickup_date' => Carbon::now()->subDays(2),
+                'return_date' => null,
+            ])
+            ->create();
+
+        $car->refresh();
+
+        $this->assertEquals('reserved', $car->status);
+        $this->assertFalse($car->availability);
+    }
+
     public function test_upcoming_contract_marks_car_pre_reserved(): void
     {
         $car = Car::factory()->available()->create();
@@ -102,6 +123,30 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertEquals('reserved', $car->status);
         $this->assertFalse($car->availability);
         $this->assertEquals('reserved', $activeContract->fresh()->current_status);
+    }
+
+    public function test_payment_status_releases_car(): void
+    {
+        $car = Car::factory()->create(['status' => 'reserved', 'availability' => false]);
+        $user = User::factory()->create();
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for($car)
+            ->status('awaiting_return')
+            ->state([
+                'pickup_date' => Carbon::now()->subDays(3),
+                'return_date' => null,
+            ])
+            ->create();
+
+        $contract->changeStatus('payment', $user->id);
+
+        $car->refresh();
+
+        $this->assertEquals('available', $car->status);
+        $this->assertTrue($car->availability);
     }
 
     public function test_deleting_contract_releases_car_when_no_active_contract_remains(): void

@@ -447,6 +447,9 @@ class RentalRequestReturnDocument extends Component
 
         DB::beginTransaction();
         try {
+            if ($contract->return_date === null) {
+                $contract->update(['return_date' => now()]);
+            }
 
             $contract->changeStatus('returned', auth()->id());
             // سپس به payment

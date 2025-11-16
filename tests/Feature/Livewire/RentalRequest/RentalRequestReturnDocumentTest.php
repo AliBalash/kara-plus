@@ -39,6 +39,9 @@ class RentalRequestReturnDocumentTest extends TestCase
 
         $contract->refresh();
         $this->assertEquals('payment', $contract->current_status);
+        $this->assertNotNull($contract->return_date);
+        $this->assertEquals('available', $contract->car->status);
+        $this->assertTrue($contract->car->availability);
 
         $statuses = $contract->statuses()->latest('id')->take(2)->pluck('status');
         $this->assertTrue($statuses->contains('returned'));
