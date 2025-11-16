@@ -37,6 +37,7 @@ class RentalRequestCreate extends Component
     public $phone;
     public $messenger_phone;
     public $address;
+    public $birth_date;
     public $national_code;
     public $passport_number;
     public $passport_expiry_date;
@@ -436,6 +437,7 @@ class RentalRequestCreate extends Component
             'phone' => ['required', 'max:15'],
             'messenger_phone' => ['required', 'max:15'],
             'address' => ['nullable', 'string', 'max:255'],
+            'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'national_code' => ['required'],
             'passport_number' => ['nullable', 'string', 'max:50', Rule::unique('customers')],
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
@@ -481,6 +483,8 @@ class RentalRequestCreate extends Component
         'messenger_phone.max' => 'Messenger phone number cannot be longer than 15 characters.',
         'address.string' => 'Address must be a string.',
         'address.max' => 'Address cannot be longer than 255 characters.',
+        'birth_date.date' => 'Please provide a valid birth date.',
+        'birth_date.before_or_equal' => 'Birth date cannot be in the future.',
         'national_code.required' => 'National Code is required.',
         'passport_number.string' => 'Passport Number must be a string.',
         'passport_number.max' => 'Passport Number cannot be longer than 50 characters.',
@@ -512,6 +516,7 @@ class RentalRequestCreate extends Component
         'phone' => 'phone number',
         'messenger_phone' => 'messenger phone number',
         'address' => 'address',
+        'birth_date' => 'birth date',
         'national_code' => 'national code',
         'passport_number' => 'passport number',
         'passport_expiry_date' => 'passport expiry date',
@@ -541,6 +546,7 @@ class RentalRequestCreate extends Component
                     'phone' => $this->phone,
                     'messenger_phone' => $this->messenger_phone,
                     'address' => $this->address,
+                    'birth_date' => $this->birth_date,
                     'passport_number' => $this->passport_number,
                     'passport_expiry_date' => $this->passport_expiry_date,
                     'nationality' => $this->nationality,

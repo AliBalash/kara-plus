@@ -164,6 +164,20 @@
                             @enderror
                         </div>
 
+                        <div class="mb-3" data-validation-field="birth_date">
+                            <label class="form-label fw-semibold mb-1" for="editBirthDateInput">Birth Date</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-calendar"></i></span>
+                                <input id="editBirthDateInput" type="date"
+                                    class="form-control @error('birth_date') is-invalid @enderror"
+                                    max="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" wire:model="birth_date"
+                                    data-bs-toggle="tooltip" title="Enter customer's birth date">
+                            </div>
+                            @error('birth_date')
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         <div class="mb-3" data-validation-field="national_code">
                             <label class="form-label fw-semibold mb-1" for="editNationalCodeInput">
                                 National Code <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
