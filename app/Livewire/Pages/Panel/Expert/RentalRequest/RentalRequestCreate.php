@@ -68,6 +68,7 @@ class RentalRequestCreate extends Component
     public $custom_daily_rate = null;
     public $ldw_daily_rate = 0;
     public $scdw_daily_rate = 0;
+    public array $salesAgents = [];
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
@@ -108,6 +109,7 @@ class RentalRequestCreate extends Component
         $this->services = config('carservices');
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->submitted_by_name = $this->determineDefaultSubmitterName();
+        $this->salesAgents = config('agents.sales_agents', []);
     }
 
     public function assignToMe($contractId)

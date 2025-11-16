@@ -26,6 +26,9 @@ class RentalRequestPaymentList extends Component
     public $pickupTo;
     public $returnFrom;
     public $returnTo;
+    public $agentFilter = '';
+    public $kardoFilter = '';
+    public array $salesAgents = [];
     protected $paymentContracts;
 
     protected $listeners = [
@@ -55,6 +58,8 @@ class RentalRequestPaymentList extends Component
         'pickupTo' => ['except' => null],
         'returnFrom' => ['except' => null],
         'returnTo' => ['except' => null],
+        'agentFilter' => ['except' => ''],
+        'kardoFilter' => ['except' => ''],
         'sortField' => ['except' => 'pickup_date'],
         'sortDirection' => ['except' => 'desc'],
     ];
@@ -62,6 +67,7 @@ class RentalRequestPaymentList extends Component
     public function mount()
     {
         $this->searchInput = $this->search;
+        $this->salesAgents = config('agents.sales_agents', []);
     }
 
     public function changeStatusToComplete($contractId)
@@ -83,6 +89,8 @@ class RentalRequestPaymentList extends Component
             'pickupTo',
             'returnFrom',
             'returnTo',
+            'agentFilter',
+            'kardoFilter',
             'sortField',
             'sortDirection',
         ]);
@@ -130,6 +138,10 @@ class RentalRequestPaymentList extends Component
             ->when($this->pickupTo, fn($query) => $query->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($query) => $query->where('return_date', '>=', $this->returnFrom))
             ->when($this->returnTo, fn($query) => $query->where('return_date', '<=', $this->returnTo))
+            ->when($this->agentFilter === 'none', fn($query) => $query->whereNull('agent_sale'))
+            ->when($this->agentFilter && $this->agentFilter !== 'none', fn($query) => $query->where('agent_sale', $this->agentFilter))
+            ->when($this->kardoFilter === 'required', fn($query) => $query->where('kardo_required', true))
+            ->when($this->kardoFilter === 'not_required', fn($query) => $query->where('kardo_required', false))
             ->orderBy($sortField, $sortDirection)
             ->paginate(10);
 
