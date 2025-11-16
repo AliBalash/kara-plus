@@ -439,11 +439,6 @@ class RentalRequestReturnDocument extends Component
     {
         $contract = Contract::findOrFail($contractId);
 
-        // اگر کنترکت قبلاً وضعیت payment دارد، کاری نکن
-        if ($contract->current_status === 'payment') {
-            $this->toast('success', 'Contract is already in payment status.');
-            return;
-        }
 
         DB::beginTransaction();
         try {
