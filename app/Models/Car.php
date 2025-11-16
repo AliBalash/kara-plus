@@ -176,7 +176,6 @@ class Car extends Model
             'inspection',
             'agreement_inspection',
             'awaiting_return',
-            'payment',
         ];
     }
 

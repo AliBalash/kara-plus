@@ -282,7 +282,7 @@ class Contract extends Model
             return;
         }
 
-        $inactiveStatuses = ['complete', 'cancelled', 'rejected'];
+        $inactiveStatuses = ['complete', 'cancelled', 'rejected', 'returned', 'payment'];
         $now = now();
 
         $relevantContracts = self::where('car_id', $carId)
