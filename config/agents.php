@@ -1,0 +1,31 @@
+<?php
+
+return [
+    'sales_agents' => [
+        'Website',
+        'Alireza bakhshi',
+        'Mohammadreza bakhshi',
+        'TACI',
+        'Foad sharifian',
+        'Shahrokh gasht',
+        'Zaman parvaz',
+        'Hotel review global',
+        'Dubai discount',
+        'Mrs Saei',
+        'Dubai offer',
+        'Mr Navid',
+        'Mrs khorrami',
+        'Mr soleimani',
+        'Mrs shams',
+        'Mrs hashempour',
+        'Sepris',
+        'Javed',
+        'Arkarsh',
+        'Aftab Talayi',
+        'Sahar Ravi',
+        'Elahe Dezfuli',
+        'Omid mardan',
+        'Ahmad',
+        'Iman Hoseini',
+    ],
+];

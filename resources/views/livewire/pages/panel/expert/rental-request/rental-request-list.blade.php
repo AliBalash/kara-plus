@@ -56,6 +56,30 @@
 
         <div class="col-md-2">
             <div class="filter-field">
+                <label class="filter-label" for="rentalListAgent">Sales Agent</label>
+                <select id="rentalListAgent" class="form-select" wire:model.live="agentFilter">
+                    <option value="">All Agents</option>
+                    <option value="none">No Agent</option>
+                    @foreach ($salesAgents as $agent)
+                        <option value="{{ $agent }}">{{ $agent }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="filter-field">
+                <label class="filter-label" for="rentalListKardo">KARDO</label>
+                <select id="rentalListKardo" class="form-select" wire:model.live="kardoFilter">
+                    <option value="">All Contracts</option>
+                    <option value="required">Requires KARDO</option>
+                    <option value="not_required">KARDO Not Required</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="filter-field">
                 <label class="filter-label" for="rentalListPickupFrom">Pickup From</label>
                 <input id="rentalListPickupFrom" type="date" class="form-control" wire:model.live="pickupFrom">
             </div>

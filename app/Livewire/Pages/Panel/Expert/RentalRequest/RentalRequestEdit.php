@@ -77,6 +77,7 @@ class RentalRequestEdit extends Component
     public $originalCosts = [];
     public $originalSelections = [];
     public $carNameCache = [];
+    public array $salesAgents = [];
 
     private $locationCosts = [
         'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
@@ -117,6 +118,7 @@ class RentalRequestEdit extends Component
     public function mount($contractId)
     {
         $this->services = config('carservices');
+        $this->salesAgents = config('agents.sales_agents', []);
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->contract = Contract::findOrFail($contractId);
 

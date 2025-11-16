@@ -26,6 +26,9 @@ class RentalRequestList extends Component
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
     public $searchInput = '';
+    public $agentFilter = '';
+    public $kardoFilter = '';
+    public array $salesAgents = [];
 
     protected $listeners = ['refreshContracts' => '$refresh'];
     protected $queryString = [
@@ -36,6 +39,8 @@ class RentalRequestList extends Component
         'pickupTo',
         'returnFrom',
         'returnTo',
+        'agentFilter',
+        'kardoFilter',
         'sortField',
         'sortDirection'
     ];
@@ -43,6 +48,7 @@ class RentalRequestList extends Component
     public function mount(): void
     {
         $this->searchInput = $this->search;
+        $this->salesAgents = config('agents.sales_agents', []);
     }
 
     public function sortBy($field)
@@ -57,7 +63,17 @@ class RentalRequestList extends Component
 
     public function clearFilters()
     {
-        $this->reset(['search', 'statusFilter', 'userFilter', 'pickupFrom', 'pickupTo', 'returnFrom', 'returnTo']);
+        $this->reset([
+            'search',
+            'statusFilter',
+            'userFilter',
+            'pickupFrom',
+            'pickupTo',
+            'returnFrom',
+            'returnTo',
+            'agentFilter',
+            'kardoFilter',
+        ]);
         $this->searchInput = '';
         $this->resetPage();
     }
@@ -114,6 +130,10 @@ class RentalRequestList extends Component
             ->when($this->pickupTo, fn($q) => $q->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($q) => $q->where('return_date', '>=', $this->returnFrom))
             ->when($this->returnTo, fn($q) => $q->where('return_date', '<=', $this->returnTo))
+            ->when($this->agentFilter === 'none', fn($q) => $q->whereNull('agent_sale'))
+            ->when($this->agentFilter && $this->agentFilter !== 'none', fn($q) => $q->where('agent_sale', $this->agentFilter))
+            ->when($this->kardoFilter === 'required', fn($q) => $q->where('kardo_required', true))
+            ->when($this->kardoFilter === 'not_required', fn($q) => $q->where('kardo_required', false))
             ->orderByRaw("FIELD(current_status, 'pending') DESC") // Pending همیشه بالا
             ->when(!in_array($this->sortField, ['customer', 'car']), fn($q) => $q->orderBy($this->sortField, $this->sortDirection))
             ->paginate(10);
