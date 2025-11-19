@@ -83,6 +83,7 @@ class RentalRequestCreate extends Component
         'UAE/Dubai/Marina' => ['under_3' => 50, 'over_3' => 50],
         'UAE/Dubai/JLT' => ['under_3' => 50, 'over_3' => 50],
         'UAE/Dubai/JVC' => ['under_3' => 60, 'over_3' => 60],
+        'UAE/Dubai/Al Barsha' => ['under_3' => 50, 'over_3' => 50],
         'UAE/Dubai/Business Bay' => ['under_3' => 50, 'over_3' => 50],
         'UAE/Dubai/Sheikh Zayed Road' => ['under_3' => 50, 'over_3' => 50],
         'UAE/Dubai/Mohammad Bin Zayed Road' => ['under_3' => 70, 'over_3' => 70],
