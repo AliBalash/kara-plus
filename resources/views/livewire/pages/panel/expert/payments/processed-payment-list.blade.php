@@ -92,6 +92,7 @@
                 <option value="payment_back">Payment Back</option>
                 <option value="carwash">Carwash</option>
                 <option value="fuel">Fuel</option>
+                <option value="no_deposit_fee">No Deposit Fee</option>
             </select>
         </div>
 

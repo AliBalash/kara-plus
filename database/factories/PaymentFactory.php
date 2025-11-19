@@ -29,6 +29,7 @@ class PaymentFactory extends Factory
             'payment_back',
             'carwash',
             'fuel',
+            'no_deposit_fee',
         ]);
 
         $amountInAed = $this->faker->randomFloat(2, 100, 2000);

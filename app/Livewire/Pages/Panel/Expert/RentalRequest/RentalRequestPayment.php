@@ -56,6 +56,7 @@ class RentalRequestPayment extends Component
     public $payment_back;
     public $carwash;
     public $fuel;
+    public $no_deposit_fee;
     public $effectivePaid;
     public $rate;
     public $security_note = '';
@@ -124,6 +125,7 @@ class RentalRequestPayment extends Component
         'payment_back',
         'carwash',
         'fuel',
+        'no_deposit_fee',
     ];
 
     protected function rules(): array
@@ -229,6 +231,10 @@ class RentalRequestPayment extends Component
             ->where('payment_type', 'fuel')
             ->sum('amount_in_aed'));
 
+        $this->no_deposit_fee = $this->roundCurrency((float) $this->existingPayments
+            ->where('payment_type', 'no_deposit_fee')
+            ->sum('amount_in_aed'));
+
         $this->effectivePaid = $this->roundCurrency($this->rentalPaid - $this->payment_back);
 
         $this->remainingBalance = $this->roundCurrency(
@@ -252,6 +258,7 @@ class RentalRequestPayment extends Component
             'payment_back' => 'Payment Back',
             'carwash' => 'Carwash',
             'fuel' => 'Fuel',
+            'no_deposit_fee' => 'No Deposit Fee',
         ];
     }
 
