@@ -449,6 +449,14 @@ class RentalRequestReturnDocument extends Component
             $contract->changeStatus('returned', auth()->id());
             // سپس به payment
             $contract->changeStatus('payment', auth()->id());
+
+            if ($contract->car) {
+                $contract->car->update([
+                    'availability' => true,
+                    'status' => 'available',
+                ]);
+            }
+
             DB::commit();
             $this->toast('success', 'Status changed to Returned then Payment successfully.');
         } catch (\Exception $e) {
