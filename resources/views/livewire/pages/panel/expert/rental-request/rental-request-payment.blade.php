@@ -304,6 +304,7 @@
             ['label' => 'Fuel', 'value' => $fuel],
             ['label' => 'Parking', 'value' => $parkingPaid],
             ['label' => 'Damage', 'value' => $damagePaid],
+            ['label' => 'No Deposit Fee', 'value' => $no_deposit_fee],
         ];
     @endphp
 

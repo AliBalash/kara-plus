@@ -152,12 +152,13 @@ class Contract extends Model
         $paymentBack = $payments->where('payment_type', 'payment_back')->sum('amount_in_aed');
         $carwash = $payments->where('payment_type', 'carwash')->sum('amount_in_aed');
         $fuel = $payments->where('payment_type', 'fuel')->sum('amount_in_aed');
+        $noDepositFee = $payments->where('payment_type', 'no_deposit_fee')->sum('amount_in_aed');
 
         $effectivePaid = $rentalPaid - $paymentBack;
 
         $balance = (float) $this->total_price
             - ($effectivePaid + $discounts + $securityDeposit)
-            + $finePaid + $salik + $salikOtherRevenue + $parking + $damage + $carwash + $fuel;
+            + $finePaid + $salik + $salikOtherRevenue + $parking + $damage + $carwash + $fuel + $noDepositFee;
 
         return round($balance, 2);
     }

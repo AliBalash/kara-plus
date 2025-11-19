@@ -49,6 +49,7 @@ class ContractTest extends TestCase
             ['payment_type' => 'payment_back', 'amount_in_aed' => 50],
             ['payment_type' => 'carwash', 'amount_in_aed' => 25],
             ['payment_type' => 'fuel', 'amount_in_aed' => 40],
+            ['payment_type' => 'no_deposit_fee', 'amount_in_aed' => 60],
         ]);
 
         $payments->each(function (array $attributes) use ($contract, $customer, $car, $user) {
@@ -69,7 +70,7 @@ class ContractTest extends TestCase
         $legacySalik = 40;
 
         $expectedBalance = 1500 - ($effectivePaid + 100 + 200)
-            + (150 + $salikTripCharges + $salikOtherRevenue + $legacySalik + 25 + 40 + 30 + 70);
+            + (150 + $salikTripCharges + $salikOtherRevenue + $legacySalik + 25 + 40 + 30 + 70 + 60);
         $expectedBalance = round($expectedBalance, 2);
 
         $this->assertEqualsWithDelta($expectedBalance, $contract->fresh()->calculateRemainingBalance(), 0.01);

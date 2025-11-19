@@ -58,6 +58,7 @@ class PaymentEdit extends Component
         'payment_back',
         'carwash',
         'fuel',
+        'no_deposit_fee',
     ];
 
     protected function rules(): array
@@ -138,6 +139,7 @@ class PaymentEdit extends Component
             'payment_back' => 'Payment Back',
             'carwash' => 'Carwash',
             'fuel' => 'Fuel',
+            'no_deposit_fee' => 'No Deposit Fee',
         ];
     }
 
