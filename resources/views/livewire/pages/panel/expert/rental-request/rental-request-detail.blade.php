@@ -241,6 +241,10 @@
                             <span class="text-muted text-uppercase small">License number</span>
                             <div class="fw-semibold text-body">{{ $contract->customer->license_number ?? '—' }}</div>
                         </div>
+                        <div class="col">
+                            <span class="text-muted text-uppercase small">Licensed driver name</span>
+                            <div class="fw-semibold text-body">{{ $contract->licensed_driver_name ?? '—' }}</div>
+                        </div>
                         <div class="col-12">
                             <span class="text-muted text-uppercase small">Address</span>
                             <div class="fw-semibold text-body">{{ $contract->customer->address ?? '—' }}</div>
