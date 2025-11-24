@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('phone')->nullable(); // شماره تماس (اختیاری)
             $table->string('avatar')->nullable(); // تصویر پروفایل
             $table->string('password'); // رمز عبور
+            $table->rem;
             $table->enum('status', ['active', 'inactive'])->default('active'); // وضعیت
             $table->timestamp('last_login')->nullable(); // آخرین ورود
             $table->string('national_code', 10)->nullable(); // کد ملی (اختیاری)

@@ -14,40 +14,26 @@ class Login extends Component
     public function render()
     {
 
-        // ذخیره رمز عبور هش‌شده
-        // $user = User::find(1);
-        // $user->password = bcrypt('12345678');
-        // $user->save(); // ذخیره در دیتابیس
-
-
-        // $this->password = '12345678';
-        // dd(Hash::check($this->password , $user->password));
-        // dd($user->password ,$user->password);
-
-        // if (Auth::guard('web')->attempt($credentials)) {
-
-
-
-
-
         return view('livewire.pages.panel.auth.login')
             ->layout('layouts.auth');
     }
 
     public $phone;
     public $password;
+    public $remember = false;
 
     public function login()
     {
         $this->validate([
             'phone' => 'required',
             'password' => 'required',
+            'remember' => 'boolean',
         ]);
 
         // تبدیل شماره تلفن ورودی به فرمت استاندارد
         $normalizedPhone = $this->normalizePhoneNumber($this->phone);
 
-        if (Auth::attempt(['phone' => $normalizedPhone, 'password' => $this->password])) {
+        if (Auth::attempt(['phone' => $normalizedPhone, 'password' => $this->password], $this->remember)) {
             session()->regenerate(); // بازسازی نشست برای امنیت بیشتر
 
             // دریافت کاربر و آپدیت زمان آخرین ورود
