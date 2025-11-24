@@ -515,7 +515,7 @@
                                     wire:model.live="pickup_location" aria-required="true" data-bs-toggle="tooltip"
                                     title="Select pickup location">
                                     <option value="">Pickup Location</option>
-                                    @foreach (array_keys($this->locationCosts) as $location)
+                                    @foreach ($locationOptions as $location)
                                         <option value="{{ $location }}">{{ $location }}</option>
                                     @endforeach
                                 </select>
@@ -536,7 +536,7 @@
                                     wire:model.live="return_location" aria-required="true" data-bs-toggle="tooltip"
                                     title="Select return location">
                                     <option value="">Return Location</option>
-                                    @foreach (array_keys($this->locationCosts) as $location)
+                                    @foreach ($locationOptions as $location)
                                         <option value="{{ $location }}">{{ $location }}</option>
                                     @endforeach
                                 </select>

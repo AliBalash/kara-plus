@@ -90,12 +90,12 @@
                             </a>
                         </li>
 
-                            <li
-                                class="menu-item {{ Request::routeIs('rental-requests.kardo-inspection-list', 'rental-requests.kardo-approval') ? 'active' : '' }}">
-                                <a href="{{ route('rental-requests.kardo-inspection-list') }}" class="menu-link">
-                                    <div data-i18n="Without menu">Inspection Contracts (KARDO)</div>
-                                </a>
-                            </li>
+                        <li
+                            class="menu-item {{ Request::routeIs('rental-requests.kardo-inspection-list', 'rental-requests.kardo-approval') ? 'active' : '' }}">
+                            <a href="{{ route('rental-requests.kardo-inspection-list') }}" class="menu-link">
+                                <div data-i18n="Without menu">Inspection Contracts (KARDO)</div>
+                            </a>
+                        </li>
 
                         <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.return') ? 'active' : '' }}">
                             <a href="{{ route('rental-requests.awaiting.return') }}" class="menu-link">
@@ -122,8 +122,7 @@
                             </a>
                         </li>
 
-                        <li
-                            class="menu-item {{ Request::routeIs('rental-requests.processed-payments') ? 'active' : '' }}">
+                        <li class="menu-item {{ Request::routeIs('rental-requests.processed-payments') ? 'active' : '' }}">
                             <a href="{{ route('rental-requests.processed-payments') }}" class="menu-link">
                                 <div data-i18n="Without menu">Processed Payments</div>
                             </a>
@@ -252,6 +251,12 @@
                         <a href="{{ route('users.create') }}" class="menu-link">
                             <i class="menu-icon tf-icons bx bx-user-plus"></i>
                             <div data-i18n="Analytics">Create user</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ Request::routeIs('location-costs.index') ? 'active' : '' }}">
+                        <a href="{{ route('location-costs.index') }}" class="menu-link">
+                            <i class="menu-icon tf-icons bx bx-map"></i>
+                            <div data-i18n="Analytics">Location Costs</div>
                         </a>
                     </li>
                     <li class="menu-item {{ Request::routeIs('users.roles') ? 'active' : '' }}">
