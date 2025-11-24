@@ -39,6 +39,7 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReserved;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReturnDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCancelledList;
 use App\Livewire\Pages\Panel\Expert\Payments\PaymentEdit;
+use App\Livewire\Pages\Panel\Expert\User\CreateUser;
 use App\Livewire\Pages\Panel\Expert\User\ManageUserRoles;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
 
@@ -126,6 +127,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
 
+    Route::get('/expert/users/create', CreateUser::class)->name('users.create');
     Route::get('/expert/users/roles', ManageUserRoles::class)->name('users.roles');
 
 
