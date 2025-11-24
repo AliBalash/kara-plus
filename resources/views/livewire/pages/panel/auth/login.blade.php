@@ -28,6 +28,13 @@
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
                         </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="remember"
+                                    wire:model.defer="remember">
+                                <label class="form-check-label" for="remember">Remember me</label>
+                            </div>
+                        </div>
                         <button type="submit" class="btn btn-primary d-grid w-100">Sign In</button>
                     </form>
                 </div>
