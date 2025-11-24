@@ -248,6 +248,12 @@
                 </li>
 
                 @role('super-admin')
+                    <li class="menu-item {{ Request::routeIs('users.create') ? 'active' : '' }}">
+                        <a href="{{ route('users.create') }}" class="menu-link">
+                            <i class="menu-icon tf-icons bx bx-user-plus"></i>
+                            <div data-i18n="Analytics">Create user</div>
+                        </a>
+                    </li>
                     <li class="menu-item {{ Request::routeIs('users.roles') ? 'active' : '' }}">
                         <a href="{{ route('users.roles') }}" class="menu-link">
                             <i class="menu-icon tf-icons bx bx-user-check"></i>
