@@ -7,6 +7,7 @@ use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
+use App\Models\LocationCost;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -70,40 +71,8 @@ class RentalRequestCreate extends Component
     public $scdw_daily_rate = 0;
     public array $salesAgents = [];
 
-    private $locationCosts = [
-        'UAE/Dubai/Clock Tower/Main Branch' => ['under_3' => 0, 'over_3' => 0],
-        'UAE/Dubai/Downtown' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Deira' => ['under_3' => 45, 'over_3' => 45], // اضافه‌شده
-        'UAE/Dubai/Dubai Airport/Terminal 1' => ['under_3' => 50, 'over_3' => 0],
-        'UAE/Dubai/Dubai Airport/Terminal 2' => ['under_3' => 50, 'over_3' => 0],
-        'UAE/Dubai/Dubai Airport/Terminal 3' => ['under_3' => 50, 'over_3' => 0],
-        'UAE/Dubai/Al Maktoum Airport' => ['under_3' => 190, 'over_3' => 190],
-        'UAE/Dubai/Jumeirah 1, 2, 3' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/JBR' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Marina' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/JLT' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/JVC' => ['under_3' => 60, 'over_3' => 60],
-        'UAE/Dubai/Al Barsha' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Business Bay' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Sheikh Zayed Road' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Mohammad Bin Zayed Road' => ['under_3' => 70, 'over_3' => 70],
-        'UAE/Dubai/Damac Hills' => ['under_3' => 60, 'over_3' => 60],
-        'UAE/Dubai/Damac Hills 2' => ['under_3' => 70, 'over_3' => 70],
-        'UAE/Dubai/Arjan' => ['under_3' => 70, 'over_3' => 70],
-        'UAE/Dubai/Al Warqa' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Creek Harbour' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Ras Al Khor' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Al Quoz' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Al Qusais' => ['under_3' => 50, 'over_3' => 50],
-        'UAE/Dubai/Global Village' => ['under_3' => 70, 'over_3' => 70],
-        'UAE/Dubai/Miracle Garden' => ['under_3' => 70, 'over_3' => 70],
-        'UAE/Dubai/Palm' => ['under_3' => 70, 'over_3' => 70],
-        'UAE/Dubai/Jebel Ali – Ibn Battuta – Hatta & more' => ['under_3' => 70, 'over_3' => 70],
-        'UAE/Dubai/Hatta' => ['under_3' => 150, 'over_3' => 150],
-        'UAE/Sharjah Airport' => ['under_3' => 70, 'over_3' => 70],
-        'UAE/Ajman' => ['under_3' => 100, 'over_3' => 100],
-        'UAE/Abu Dhabi Airport' => ['under_3' => 200, 'over_3' => 200],
-    ];
+    public array $locationCosts = [];
+    public array $locationOptions = [];
 
     public function mount()
     {
@@ -111,6 +80,40 @@ class RentalRequestCreate extends Component
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->submitted_by_name = $this->determineDefaultSubmitterName();
         $this->salesAgents = config('agents.sales_agents', []);
+        $this->loadLocationCosts();
+    }
+
+    private function loadLocationCosts(): void
+    {
+        $locations = LocationCost::orderBy('location')->get();
+
+        $this->locationCosts = $locations->mapWithKeys(function ($cost) {
+            return [
+                $cost->location => [
+                    'under_3' => (float) $cost->under_3_fee,
+                    'over_3' => (float) $cost->over_3_fee,
+                    'is_active' => (bool) $cost->is_active,
+                ],
+            ];
+        })->toArray();
+
+        $activeLocations = $locations->where('is_active', true)->pluck('location')->values()->all();
+
+        foreach ([$this->pickup_location, $this->return_location] as $selectedLocation) {
+            if ($selectedLocation && !isset($this->locationCosts[$selectedLocation])) {
+                $this->locationCosts[$selectedLocation] = [
+                    'under_3' => 0.0,
+                    'over_3' => 0.0,
+                    'is_active' => false,
+                ];
+            }
+
+            if ($selectedLocation && !in_array($selectedLocation, $activeLocations, true)) {
+                $activeLocations[] = $selectedLocation;
+            }
+        }
+
+        $this->locationOptions = $activeLocations;
     }
 
     public function assignToMe($contractId)
