@@ -29,5 +29,6 @@ return [
         'Iman Hoseini',
         'Respina',
         'Nil Seir Royaei',
+        'Medisa',
     ],
 ];
