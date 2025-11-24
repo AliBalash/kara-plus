@@ -230,6 +230,18 @@
                         </div>
 
                         <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="bx bx-user-check"></i></span>
+                            <input type="text"
+                                class="form-control @error('licensed_driver_name') is-invalid @enderror"
+                                placeholder="Licensed Driver Name" wire:model="licensed_driver_name"
+                                data-bs-toggle="tooltip"
+                                title="Enter the name of the licensed driver handling the booking">
+                            @error('licensed_driver_name')
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-check-circle"></i></span>
                             <div class="form-check form-check-inline mt-2 ms-2">
                                 <input type="checkbox" class="form-check-input" wire:model="kardo_required"

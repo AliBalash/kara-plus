@@ -44,6 +44,7 @@ class RentalRequestCreate extends Component
     public $passport_expiry_date;
     public $nationality;
     public $license_number;
+    public $licensed_driver_name;
     public $selected_services = [];
     public $selected_insurance = 'basic_insurance';
     public $services_total = 0;
@@ -449,6 +450,7 @@ class RentalRequestCreate extends Component
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
             'nationality' => ['required', 'string', 'max:100'],
             'license_number' => ['nullable', 'string', 'max:50'],
+            'licensed_driver_name' => ['nullable', 'string', 'max:255'],
             'selected_insurance' => ['nullable', Rule::in(['', 'basic_insurance', 'ldw_insurance', 'scdw_insurance'])],
             'kardo_required' => ['boolean'],
             'payment_on_delivery' => ['boolean'],
@@ -502,6 +504,8 @@ class RentalRequestCreate extends Component
         'nationality.max' => 'Nationality cannot be longer than 100 characters.',
         'license_number.string' => 'License Number must be a string.',
         'license_number.max' => 'License Number cannot be longer than 50 characters.',
+        'licensed_driver_name.string' => 'Licensed driver name must be a string.',
+        'licensed_driver_name.max' => 'Licensed driver name cannot be longer than 255 characters.',
         'selected_insurance.in' => 'The selected insurance option is invalid.',
         'payment_on_delivery.boolean' => 'The payment on delivery field must be a boolean value.',
         'driver_hours.numeric' => 'Driver service hours must be a number.',
@@ -528,6 +532,7 @@ class RentalRequestCreate extends Component
         'passport_expiry_date' => 'passport expiry date',
         'nationality' => 'nationality',
         'license_number' => 'license number',
+        'licensed_driver_name' => 'licensed driver name',
         'selected_insurance' => 'insurance selection',
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
@@ -573,6 +578,7 @@ class RentalRequestCreate extends Component
                 'return_date' => $this->return_date,
                 'selected_services' => $this->selected_services,
                 'selected_insurance' => $this->selected_insurance,
+                'licensed_driver_name' => $this->licensed_driver_name,
                 'notes' => $this->notes,
                 'kardo_required' => $this->kardo_required ?? true,
                 'used_daily_rate' => $this->roundCurrency($this->dailyRate),

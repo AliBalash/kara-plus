@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('delivery_driver_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('return_driver_id')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedBigInteger('customer_id'); // ارجاع به جدول مشتریان
+            $table->string('licensed_driver_name')->nullable();
             $table->unsignedBigInteger('car_id'); // ارجاع به جدول خودروها
             $table->string('agent_sale')->nullable(); // نام نماینده‌ی فروش
             $table->string('submitted_by_name')->nullable()->default('Website')->after('agent_sale');
