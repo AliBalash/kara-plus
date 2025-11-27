@@ -51,6 +51,9 @@ class RentalRequestEdit extends Component
     public $customerDocumentsCompleted = false;
     public $paymentsExist = false;
     public $selected_services = [];
+    public array $service_quantities = [
+        'child_seat' => 0,
+    ];
     public $selected_insurance = 'basic_insurance';
     public $services_total = 0;
     public $insurance_total = 0;
@@ -141,6 +144,15 @@ class RentalRequestEdit extends Component
 
     private function loadChargesFromDatabase($contractId)
     {
+        $this->calculateRentalDays();
+
+        $metaQuantities = $this->contract?->meta['service_quantities'] ?? [];
+
+        $this->service_quantities = $this->normalizedServiceQuantities(
+            is_array($metaQuantities) ? $metaQuantities : [],
+            true
+        );
+
         $charges = ContractCharges::where('contract_id', $contractId)->get();
         $this->selected_services = [];
         $this->selected_insurance = null; // Default to null for "No Additional Insurance"
@@ -160,6 +172,8 @@ class RentalRequestEdit extends Component
                 continue;
             }
 
+            $service = $this->services[$resolvedId] ?? null;
+
             if (in_array($resolvedId, ['ldw_insurance', 'scdw_insurance'], true)) {
                 $this->selected_insurance = $resolvedId;
                 continue;
@@ -168,6 +182,10 @@ class RentalRequestEdit extends Component
             if ($resolvedId !== 'basic_insurance') {
                 $this->selected_services[] = $resolvedId;
             }
+
+            if ($resolvedId === 'child_seat' && $service && $this->getServiceQuantity('child_seat') === 0) {
+                $this->service_quantities['child_seat'] = $this->inferServiceQuantityFromCharge($charge, $service);
+            }
         }
 
         if ($driverCharge && ($this->driver_hours ?? 0) <= 0) {
@@ -175,6 +193,7 @@ class RentalRequestEdit extends Component
         }
 
         $this->canonicalizeSelectedServices();
+        $this->service_quantities = $this->normalizedServiceQuantities(null, true);
 
         // If no insurance charge is found, set to null to reflect "No Additional Insurance"
         if (!$this->selected_insurance) {
@@ -199,6 +218,7 @@ class RentalRequestEdit extends Component
         $meta = $this->contract->meta ?? [];
         $this->driver_note = $meta['driver_note'] ?? null;
         $this->driver_hours = isset($meta['driver_hours']) ? (float) $meta['driver_hours'] : 0;
+        $this->service_quantities = $this->normalizedServiceQuantities($meta['service_quantities'] ?? [], true);
 
         // Customer data
         $customer = $this->contract->customer()->firstOrFail();
@@ -231,7 +251,9 @@ class RentalRequestEdit extends Component
 
     public function calculateCosts()
     {
+        $this->syncServiceSelectionWithQuantities();
         $this->canonicalizeSelectedServices();
+        $this->service_quantities = $this->normalizedServiceQuantities(null, true);
         $this->calculateRentalDays();
         $this->calculateBasePrice();
         $this->calculateTransferCosts();
@@ -318,7 +340,7 @@ class RentalRequestEdit extends Component
     {
         $servicesTotal = 0;
         $insuranceTotal = 0;
-        $days = $this->rental_days;
+        $days = max(1, (int) $this->rental_days);
 
         foreach ($this->selected_services as $serviceId) {
             $service = $this->resolveServiceDefinition($serviceId);
@@ -326,7 +348,13 @@ class RentalRequestEdit extends Component
                 continue;
             }
 
-            $servicesTotal += $this->roundCurrency($this->calculateServiceAmount($service, $days));
+            $quantity = $this->getServiceQuantity($serviceId);
+
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $servicesTotal += $this->roundCurrency($this->calculateServiceAmount($service, $days, $quantity));
         }
 
         if ($this->selected_insurance && in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance']) && $this->selectedCarId) {
@@ -461,6 +489,7 @@ class RentalRequestEdit extends Component
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
             'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
+            'service_quantities.child_seat' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -517,6 +546,8 @@ class RentalRequestEdit extends Component
         'custom_daily_rate.min' => 'The custom daily rate cannot be negative.',
         'driver_hours.numeric' => 'Driver service hours must be a number.',
         'driver_hours.min' => 'Driver service hours cannot be negative.',
+        'service_quantities.child_seat.integer' => 'Child seat quantity must be a whole number.',
+        'service_quantities.child_seat.min' => 'Child seat quantity cannot be negative.',
     ];
 
     protected array $validationAttributes = [
@@ -544,6 +575,7 @@ class RentalRequestEdit extends Component
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
         'custom_daily_rate' => 'custom daily rate',
+        'service_quantities.child_seat' => 'child seat quantity',
     ];
 
     public function updated($propertyName)
@@ -568,6 +600,7 @@ class RentalRequestEdit extends Component
             'return_date' => $this->return_date,
             'selected_insurance' => $this->selected_insurance,
             'selected_services' => $this->selected_services,
+            'service_quantities' => $this->service_quantities,
             'driver_hours' => $this->driver_hours,
         ];
     }
@@ -603,7 +636,8 @@ class RentalRequestEdit extends Component
             'driver_hours',
         ];
         return in_array($propertyName, $costRelatedFields) ||
-            Str::startsWith($propertyName, 'selected_services.');
+            Str::startsWith($propertyName, 'selected_services.') ||
+            Str::startsWith($propertyName, 'service_quantities.');
     }
 
     public function submit()
@@ -705,12 +739,18 @@ class RentalRequestEdit extends Component
                 continue;
             }
 
+            $quantity = $this->getServiceQuantity($resolvedId);
+
+            if ($quantity <= 0) {
+                continue;
+            }
+
             ContractCharges::create([
                 'contract_id' => $contract->id,
                 'title' => $resolvedId,
-                'amount' => $this->roundCurrency($this->calculateServiceAmount($service, $this->rental_days)),
+                'amount' => $this->roundCurrency($this->calculateServiceAmount($service, $this->rental_days, $quantity)),
                 'type' => 'addon',
-                'description' => $this->buildServiceDescription($service, $this->rental_days)
+                'description' => $this->buildServiceDescription($service, $this->rental_days, $quantity)
             ]);
         }
 
@@ -781,6 +821,14 @@ class RentalRequestEdit extends Component
             $meta['driver_note'] = $driverNote;
         } else {
             unset($meta['driver_note']);
+        }
+
+        $serviceQuantities = $this->normalizedServiceQuantities();
+
+        if (!empty($serviceQuantities)) {
+            $meta['service_quantities'] = $serviceQuantities;
+        } else {
+            unset($meta['service_quantities']);
         }
 
         $contractData = [
@@ -1004,6 +1052,14 @@ class RentalRequestEdit extends Component
         );
 
         $rows[] = $this->buildNumericComparisonRow(
+            'Child Seats',
+            (float) ($this->originalSelections['service_quantities']['child_seat'] ?? 0),
+            (float) ($this->service_quantities['child_seat'] ?? 0),
+            ' seat(s)',
+            0
+        );
+
+        $rows[] = $this->buildNumericComparisonRow(
             'Driver Service Hours',
             (float) ($this->originalSelections['driver_hours'] ?? 0),
             (float) ($this->driver_hours ?? 0),
@@ -1095,6 +1151,51 @@ class RentalRequestEdit extends Component
         ksort($labels);
 
         return implode(', ', array_values($labels));
+    }
+
+    private function normalizedServiceQuantities($source = null, bool $includeZeros = false): array
+    {
+        if ($source === true && $includeZeros === false) {
+            $includeZeros = true;
+            $source = null;
+        }
+
+        $data = $source ?? $this->service_quantities;
+
+        if (!is_array($data)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($data as $serviceId => $quantity) {
+            $resolvedId = $this->resolveServiceId((string) $serviceId);
+
+            if ($resolvedId === null) {
+                continue;
+            }
+
+            $count = max(0, (int) $quantity);
+
+            if ($count > 0 || $includeZeros) {
+                $normalized[$resolvedId] = $count;
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function inferServiceQuantityFromCharge(ContractCharges $charge, array $service): int
+    {
+        $unitAmount = $this->calculateServiceAmount($service, max(1, (int) $this->rental_days), 1);
+
+        if ($unitAmount <= 0) {
+            return 1;
+        }
+
+        $estimatedQuantity = (int) round($charge->amount / $unitAmount);
+
+        return max(1, $estimatedQuantity);
     }
 
     private function describeServiceChanges(array $original, array $current): ?string

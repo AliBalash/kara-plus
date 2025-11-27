@@ -621,25 +621,50 @@
                                 <h6 class="mb-2">Additional Services</h6>
                                 @foreach ($services as $key => $service)
                                     @if (!in_array($key, ['ldw_insurance', 'scdw_insurance']))
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox"
-                                                wire:model.live="selected_services" value="{{ $key }}"
-                                                id="service-{{ $key }}"
-                                                @if (in_array($key, $selected_services)) checked @endif
-                                                data-bs-toggle="tooltip" title="{{ $service['label_en'] }} details">
-                                            <label class="form-check-label" for="service-{{ $key }}">
-                                                <i class="fa {{ $service['icon'] }} me-2"></i>
-                                                {{ $service['label_en'] }} -
-                                                @if ($service['amount'] > 0)
-                                                    {{ number_format($service['amount'], 2) }} AED
-                                                    @if ($service['per_day'])
-                                                        /day
+                                        @if ($key === 'child_seat')
+                                            <div class="mb-3" data-validation-field="service_quantities.child_seat">
+                                                <label class="form-label fw-semibold mb-1" for="child-seat-quantity">
+                                                    <i class="fa {{ $service['icon'] }} me-2"></i>
+                                                    {{ $service['label_en'] }} (per day)
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="bx bx-child"></i></span>
+                                                    <input id="child-seat-quantity" type="number" min="0"
+                                                        class="form-control @error('service_quantities.child_seat') is-invalid @enderror"
+                                                        wire:model.live="service_quantities.child_seat" placeholder="0"
+                                                        data-bs-toggle="tooltip"
+                                                        title="Enter the number of child seats to include">
+                                                    <span class="input-group-text">AED/day</span>
+                                                </div>
+                                                <div class="small text-muted mt-1">
+                                                    Total for {{ max($rental_days, 1) }} day(s):
+                                                    <span class="fw-semibold">{{ number_format(($service_quantities['child_seat'] ?? 0) * $service['amount'] * max($rental_days, 1), 2) }} AED</span>
+                                                </div>
+                                                @error('service_quantities.child_seat')
+                                                    <div class="invalid-feedback d-block animate__animated animate__fadeIn">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        @else
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox"
+                                                    wire:model.live="selected_services" value="{{ $key }}"
+                                                    id="service-{{ $key }}"
+                                                    @if (in_array($key, $selected_services)) checked @endif
+                                                    data-bs-toggle="tooltip" title="{{ $service['label_en'] }} details">
+                                                <label class="form-check-label" for="service-{{ $key }}">
+                                                    <i class="fa {{ $service['icon'] }} me-2"></i>
+                                                    {{ $service['label_en'] }} -
+                                                    @if ($service['amount'] > 0)
+                                                        {{ number_format($service['amount'], 2) }} AED
+                                                        @if ($service['per_day'])
+                                                            /day
+                                                        @endif
+                                                    @else
+                                                        Free
                                                     @endif
-                                                @else
-                                                    Free
-                                                @endif
-                                            </label>
-                                        </div>
+                                                </label>
+                                            </div>
+                                        @endif
                                     @endif
                                 @endforeach
                             </div>
