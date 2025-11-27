@@ -6,6 +6,7 @@ use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -13,6 +14,7 @@ use Livewire\WithPagination;
 class CashierDashboard extends Component
 {
     use WithPagination;
+    use SearchesCustomerPhone;
 
     public $search = '';
     public $searchInput = '';
@@ -101,10 +103,11 @@ class CashierDashboard extends Component
             $search = trim($this->search);
             $numericSearch = $search !== '' && is_numeric($search) ? (int) $search : null;
             $likeSearch = '%' . $search . '%';
+            $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
             $filteredQuery = (clone $baseQuery)
-                ->when($search !== '', function ($query) use ($search, $numericSearch, $likeSearch) {
-                    $query->where(function ($inner) use ($numericSearch, $likeSearch) {
+                ->when($search !== '', function ($query) use ($search, $numericSearch, $likeSearch, $isPhoneSearch) {
+                    $query->where(function ($inner) use ($numericSearch, $likeSearch, $isPhoneSearch) {
                         if (!is_null($numericSearch)) {
                             $numericLike = '%' . $numericSearch . '%';
                             $inner->orWhere('id', $numericSearch)
@@ -120,10 +123,14 @@ class CashierDashboard extends Component
                                 $contractQuery->where('id', 'like', $likeSearch);
                             }
                         })
-                            ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                            ->orWhereHas('customer', function ($customerQuery) use ($likeSearch, $isPhoneSearch) {
                                 $customerQuery->where('first_name', 'like', $likeSearch)
                                     ->orWhere('last_name', 'like', $likeSearch)
                                     ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$likeSearch]);
+
+                                if ($isPhoneSearch) {
+                                    $customerQuery->orWhere('phone', 'like', $likeSearch);
+                                }
                             })
                             ->orWhere('description', 'like', $likeSearch);
                     });

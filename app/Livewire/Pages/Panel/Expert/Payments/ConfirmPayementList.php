@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Payments;
 use Livewire\Component;
 use App\Models\Payment;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -13,6 +14,7 @@ class ConfirmPayementList extends Component
 {
     use WithPagination;
     use InteractsWithToasts;
+    use SearchesCustomerPhone;
 
     public $search = '';
     public $searchInput = '';
@@ -100,11 +102,19 @@ class ConfirmPayementList extends Component
     {
         $statusMeta = $this->statusMeta();
         $search = trim($this->search);
+        $likeSearch = '%' . $search . '%';
         $isNumericSearch = is_numeric($search);
+        $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
         $baseQuery = Payment::query()
-            ->when($search !== '', function ($q) use ($search, $isNumericSearch) {
-                $likeSearch = '%' . $search . '%';
+            ->when($search !== '', function ($q) use ($search, $isNumericSearch, $isPhoneSearch, $likeSearch) {
+                if ($isPhoneSearch) {
+                    $q->whereHas('customer', function ($q2) use ($likeSearch) {
+                        $q2->where('phone', 'like', $likeSearch);
+                    });
+
+                    return;
+                }
 
                 if ($isNumericSearch) {
                     $numeric = (int) $search;

@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Livewire\Concerns\HandlesContractCancellation;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use App\Models\Contract;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ class RentalRequestInspectionList extends Component
 {
     use WithPagination;
     use HandlesContractCancellation;
+    use SearchesCustomerPhone;
 
     public $search = '';
     public $statusFilter = 'delivery';
@@ -123,6 +125,7 @@ class RentalRequestInspectionList extends Component
     {
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
+        $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
         $sortField = in_array($this->sortField, $this->allowedSortFields, true)
             ? $this->sortField
@@ -136,11 +139,15 @@ class RentalRequestInspectionList extends Component
 
         $contractsQuery = Contract::with(['customer', 'car.carModel', 'user', 'pickupDocument', 'latestStatus.user'])
             ->whereIn('current_status', $statuses)
-            ->when($search !== '', function ($query) use ($likeSearch) {
-                $query->where(function ($q) use ($likeSearch) {
-                    $q->whereHas('customer', function ($customerQuery) use ($likeSearch) {
+            ->when($search !== '', function ($query) use ($likeSearch, $isPhoneSearch) {
+                $query->where(function ($q) use ($likeSearch, $isPhoneSearch) {
+                    $q->whereHas('customer', function ($customerQuery) use ($likeSearch, $isPhoneSearch) {
                         $customerQuery->where('first_name', 'like', $likeSearch)
                             ->orWhere('last_name', 'like', $likeSearch);
+
+                        if ($isPhoneSearch) {
+                            $customerQuery->orWhere('phone', 'like', $likeSearch);
+                        }
                     })
                         ->orWhere('contracts.id', 'like', $likeSearch)
                         ->orWhereHas('car', function ($carQuery) use ($likeSearch) {

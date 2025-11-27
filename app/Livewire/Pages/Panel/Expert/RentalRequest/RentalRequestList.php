@@ -7,6 +7,7 @@ use Livewire\WithPagination;
 use App\Models\Contract;
 use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -15,6 +16,7 @@ class RentalRequestList extends Component
     use WithPagination;
     use HandlesContractCancellation;
     use InteractsWithToasts;
+    use SearchesCustomerPhone;
 
     public $search = '';
     public $statusFilter = '';
@@ -101,16 +103,21 @@ class RentalRequestList extends Component
     {
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
+        $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
         $contracts = Contract::with(['customer', 'car.carModel', 'user', 'latestStatus.user'])
-            ->when($search !== '', function ($query) use ($search, $likeSearch) {
-                $query->where(function ($scopedQuery) use ($search, $likeSearch) {
+            ->when($search !== '', function ($query) use ($search, $likeSearch, $isPhoneSearch) {
+                $query->where(function ($scopedQuery) use ($search, $likeSearch, $isPhoneSearch) {
                     $scopedQuery
                         ->where('contracts.id', 'like', $likeSearch)
-                        ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                        ->orWhereHas('customer', function ($customerQuery) use ($likeSearch, $isPhoneSearch) {
                             $customerQuery
                                 ->where('first_name', 'like', $likeSearch)
                                 ->orWhere('last_name', 'like', $likeSearch);
+
+                            if ($isPhoneSearch) {
+                                $customerQuery->orWhere('phone', 'like', $likeSearch);
+                            }
                         })
                         ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
                             $carQuery
