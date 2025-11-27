@@ -31,24 +31,34 @@ trait HandlesServicePricing
         return $resolvedId !== null ? $this->services[$resolvedId] : null;
     }
 
-    protected function calculateServiceAmount(array $service, int $days): float
+    protected function calculateServiceAmount(array $service, int $days, int $quantity = 1): float
     {
         $amount = (float) ($service['amount'] ?? 0);
+        $quantity = max(0, (int) $quantity);
+
+        if ($quantity === 0) {
+            return 0.0;
+        }
 
         $value = !empty($service['per_day']) ? $amount * max($days, 1) : $amount;
 
-        return round($value, 2);
+        return round($value * $quantity, 2);
     }
 
-    protected function buildServiceDescription(array $service, int $days): string
+    protected function buildServiceDescription(array $service, int $days, int $quantity = 1): string
     {
+        $quantity = max(1, (int) $quantity);
+
         if (!empty($service['per_day'])) {
             $dailyAmount = number_format((float) ($service['amount'] ?? 0), 2);
+            $quantityPrefix = $quantity > 1 ? ($quantity . ' × ') : '';
 
-            return sprintf('%d روز × %s درهم', max($days, 1), $dailyAmount);
+            return sprintf('%s%d روز × %s درهم', $quantityPrefix, max($days, 1), $dailyAmount);
         }
 
-        return 'یک‌بار هزینه';
+        $oneTime = 'یک‌بار هزینه';
+
+        return $quantity > 1 ? sprintf('%d × %s', $quantity, $oneTime) : $oneTime;
     }
 
     protected function canonicalizeSelectedServices(): void
@@ -66,5 +76,44 @@ trait HandlesServicePricing
         }
 
         $this->selected_services = $canonical;
+    }
+
+    protected function syncServiceSelectionWithQuantities(): void
+    {
+        if (!property_exists($this, 'service_quantities')) {
+            return;
+        }
+
+        $quantities = is_array($this->service_quantities) ? $this->service_quantities : [];
+        $selected = is_array($this->selected_services) ? $this->selected_services : [];
+
+        $childSeatQuantity = max(0, (int) ($quantities['child_seat'] ?? 0));
+        $quantities['child_seat'] = $childSeatQuantity;
+
+        if ($childSeatQuantity > 0) {
+            $selected[] = 'child_seat';
+        } else {
+            $selected = array_filter($selected, fn ($id) => $id !== 'child_seat');
+        }
+
+        $this->service_quantities = $quantities;
+        $this->selected_services = array_values(array_unique(array_map('strval', $selected)));
+    }
+
+    protected function getServiceQuantity(string $serviceId): int
+    {
+        if (!property_exists($this, 'service_quantities') || !is_array($this->service_quantities)) {
+            return 1;
+        }
+
+        $resolvedId = $this->resolveServiceId($serviceId);
+
+        if ($resolvedId === null) {
+            return 1;
+        }
+
+        $quantity = (int) ($this->service_quantities[$resolvedId] ?? ($resolvedId === 'child_seat' ? 0 : 1));
+
+        return max(0, $quantity);
     }
 }
