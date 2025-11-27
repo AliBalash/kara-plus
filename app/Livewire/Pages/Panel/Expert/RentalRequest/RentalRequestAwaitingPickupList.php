@@ -7,6 +7,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -16,6 +17,7 @@ class RentalRequestAwaitingPickupList extends Component
     use WithPagination;
     use HandlesContractCancellation;
     use InteractsWithToasts;
+    use SearchesCustomerPhone;
 
     public $search = '';
     public $searchInput = '';
@@ -79,6 +81,7 @@ class RentalRequestAwaitingPickupList extends Component
     {
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
+        $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
         $statuses = $this->statusFilter === 'all'
             ? $this->statusScope
@@ -87,12 +90,16 @@ class RentalRequestAwaitingPickupList extends Component
         $query = Contract::query()
             ->with(['customer', 'car.carModel', 'user', 'pickupDocument', 'deliveryDriver', 'latestStatus.user'])
             ->whereIn('current_status', $statuses)
-            ->when($search !== '', function ($q) use ($likeSearch) {
-                $q->where(function ($scoped) use ($likeSearch) {
+            ->when($search !== '', function ($q) use ($likeSearch, $isPhoneSearch) {
+                $q->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
                     $scoped->where('contracts.id', 'like', $likeSearch)
-                        ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                        ->orWhereHas('customer', function ($customerQuery) use ($likeSearch, $isPhoneSearch) {
                             $customerQuery->where('first_name', 'like', $likeSearch)
                                 ->orWhere('last_name', 'like', $likeSearch);
+
+                            if ($isPhoneSearch) {
+                                $customerQuery->orWhere('phone', 'like', $likeSearch);
+                            }
                         })
                         ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
                             $carQuery->where('plate_number', 'like', $likeSearch)

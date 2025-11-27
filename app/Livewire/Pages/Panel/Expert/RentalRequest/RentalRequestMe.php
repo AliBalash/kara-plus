@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Livewire\Concerns\HandlesContractCancellation;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -11,6 +12,7 @@ class RentalRequestMe extends Component
 {
     use HandlesContractCancellation;
     use WithPagination;
+    use SearchesCustomerPhone;
 
     public $search = '';
     public $searchInput = '';
@@ -122,17 +124,22 @@ class RentalRequestMe extends Component
     {
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
+        $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
         $query = Contract::query()
             ->where('user_id', auth()->id())
             ->with(['customer', 'car.carModel', 'user', 'latestStatus.user']);
 
         if ($search !== '') {
-            $query->where(function ($scoped) use ($likeSearch) {
+            $query->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
                 $scoped->where('contracts.id', 'like', $likeSearch)
-                    ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                    ->orWhereHas('customer', function ($customerQuery) use ($likeSearch, $isPhoneSearch) {
                         $customerQuery->where('first_name', 'like', $likeSearch)
                             ->orWhere('last_name', 'like', $likeSearch);
+
+                        if ($isPhoneSearch) {
+                            $customerQuery->orWhere('phone', 'like', $likeSearch);
+                        }
                     })
                     ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
                         $carQuery->where('plate_number', 'like', $likeSearch)

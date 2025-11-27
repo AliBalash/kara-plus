@@ -6,12 +6,14 @@ use App\Models\Payment;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class ProcessedPaymentList extends Component
 {
     use WithPagination;
+    use SearchesCustomerPhone;
 
     public $search = '';
     public $searchInput = '';
@@ -72,11 +74,19 @@ class ProcessedPaymentList extends Component
 
         try {
             $search = trim($this->search);
+            $likeSearch = '%' . $search . '%';
             $isNumericSearch = is_numeric($search);
+            $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
             $baseQuery = Payment::query()
-                ->when($search !== '', function ($q) use ($search, $isNumericSearch) {
-                    $likeSearch = '%' . $search . '%';
+                ->when($search !== '', function ($q) use ($search, $isNumericSearch, $isPhoneSearch, $likeSearch) {
+                    if ($isPhoneSearch) {
+                        $q->whereHas('customer', function ($q2) use ($likeSearch) {
+                            $q2->where('phone', 'like', $likeSearch);
+                        });
+
+                        return;
+                    }
 
                     if ($isNumericSearch) {
                         $numeric = (int) $search;
