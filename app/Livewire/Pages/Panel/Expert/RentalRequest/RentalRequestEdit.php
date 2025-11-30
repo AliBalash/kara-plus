@@ -16,6 +16,7 @@ use Livewire\Component;
 use Illuminate\Support\Str;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\Concerns\HandlesServicePricing;
+use App\Support\PhoneNumber;
 
 class RentalRequestEdit extends Component
 {
@@ -467,8 +468,8 @@ class RentalRequestEdit extends Component
                 'max:255',
                 Rule::unique('customers')->ignore($customerId),
             ],
-            'phone' => ['required', 'max:15'],
-            'messenger_phone' => ['required', 'max:15'],
+            'phone' => ['required', 'regex:/^\+\d{8,15}$/'],
+            'messenger_phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'address' => ['nullable', 'string', 'max:255'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'national_code' => ['required'],
@@ -518,9 +519,9 @@ class RentalRequestEdit extends Component
         'email.max' => 'Email cannot be longer than 255 characters.',
         'email.unique' => 'This email is already registered.',
         'phone.required' => 'Phone number is required.',
-        'phone.max' => 'Phone number cannot be longer than 15 characters.',
+        'phone.regex' => 'Phone number must start with + and include 8 to 15 digits.',
         'messenger_phone.required' => 'Messenger phone number is required.',
-        'messenger_phone.max' => 'Messenger phone number cannot be longer than 15 characters.',
+        'messenger_phone.regex' => 'Messenger phone must start with + and include 8 to 15 digits.',
         'address.string' => 'Address must be a string.',
         'address.max' => 'Address cannot be longer than 255 characters.',
         'birth_date.date' => 'Please provide a valid birth date.',
@@ -577,6 +578,12 @@ class RentalRequestEdit extends Component
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
     ];
+
+    private function normalizePhoneFields(): void
+    {
+        $this->phone = PhoneNumber::normalize($this->phone) ?? trim((string) $this->phone);
+        $this->messenger_phone = PhoneNumber::normalize($this->messenger_phone) ?? trim((string) $this->messenger_phone);
+    }
 
     public function updated($propertyName)
     {
@@ -642,6 +649,7 @@ class RentalRequestEdit extends Component
 
     public function submit()
     {
+        $this->normalizePhoneFields();
         $this->validateWithScroll();
         DB::beginTransaction();
 

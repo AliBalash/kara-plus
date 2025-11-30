@@ -43,6 +43,7 @@ use App\Livewire\Pages\Panel\Expert\User\CreateUser;
 use App\Livewire\Pages\Panel\Expert\User\ManageUserRoles;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
 use App\Livewire\Pages\Panel\Expert\LocationCost\LocationCostList;
+use App\Http\Controllers\MaintenanceController;
 
 Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
@@ -128,6 +129,9 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
     Route::get('/expert/location-costs', LocationCostList::class)->name('location-costs.index');
+
+    Route::get('/maintenance/normalize-phones', [MaintenanceController::class, 'normalizeCustomerPhones'])
+        ->name('maintenance.normalize-phones');
 
     Route::get('/expert/users/create', CreateUser::class)->name('users.create');
     Route::get('/expert/users/roles', ManageUserRoles::class)->name('users.roles');
