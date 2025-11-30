@@ -295,6 +295,16 @@
                                 @enderror
                             </div>
                         @endif
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="bx bx-shield"></i></span>
+                            <textarea class="form-control @error('deposit') is-invalid @enderror" rows="2" wire:model="deposit"
+                                placeholder="Deposit instructions" data-bs-toggle="tooltip"
+                                title="Notes about security deposit shown on pickup document"></textarea>
+                            @error('deposit')
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
             </div>

@@ -83,6 +83,7 @@ class RentalRequestEdit extends Component
     public $originalCosts = [];
     public $originalSelections = [];
     public $carNameCache = [];
+    public $deposit = null;
     public array $salesAgents = [];
 
     public array $locationCosts = [];
@@ -218,6 +219,7 @@ class RentalRequestEdit extends Component
 
         $meta = $this->contract->meta ?? [];
         $this->driver_note = $meta['driver_note'] ?? null;
+        $this->deposit = $this->contract->deposit;
         $this->driver_hours = isset($meta['driver_hours']) ? (float) $meta['driver_hours'] : 0;
         $this->service_quantities = $this->normalizedServiceQuantities($meta['service_quantities'] ?? [], true);
 
@@ -490,6 +492,7 @@ class RentalRequestEdit extends Component
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
             'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
+            'deposit' => ['nullable', 'string', 'max:1000'],
             'service_quantities.child_seat' => ['nullable', 'integer', 'min:0'],
         ];
     }
@@ -549,6 +552,7 @@ class RentalRequestEdit extends Component
         'driver_hours.min' => 'Driver service hours cannot be negative.',
         'service_quantities.child_seat.integer' => 'Child seat quantity must be a whole number.',
         'service_quantities.child_seat.min' => 'Child seat quantity cannot be negative.',
+        'deposit.max' => 'Deposit note may not be greater than 1000 characters.',
     ];
 
     protected array $validationAttributes = [
@@ -575,6 +579,7 @@ class RentalRequestEdit extends Component
         'selected_insurance' => 'insurance selection',
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
+        'deposit' => 'deposit note',
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
     ];
@@ -851,6 +856,7 @@ class RentalRequestEdit extends Component
             'selected_insurance' => $this->selected_insurance,
             'licensed_driver_name' => $this->licensed_driver_name,
             'notes' => $this->notes,
+            'deposit' => $this->normalizedDeposit(),
             'kardo_required' => $this->kardo_required,
             'used_daily_rate' => $this->roundCurrency($this->dailyRate),
             'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
@@ -1353,6 +1359,13 @@ class RentalRequestEdit extends Component
         $extraHours = max(0, (int) round($extraCost / 40));
 
         return 8 + $extraHours;
+    }
+
+    private function normalizedDeposit(): ?string
+    {
+        $deposit = is_string($this->deposit) ? trim($this->deposit) : null;
+
+        return $deposit !== '' ? $deposit : null;
     }
 
     private function roundCurrency($value): float

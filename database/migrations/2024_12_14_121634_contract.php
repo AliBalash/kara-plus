@@ -44,8 +44,9 @@ return new class extends Migration
                 'complete',
                 'cancelled',
                 'rejected'
-            ])->default('pending'); // وضعیت قرارداد
-            $table->text('notes')->nullable(); // یادداشت‌ها
+                ])->default('pending'); // وضعیت قرارداد
+                $table->text('notes')->nullable(); // یادداشت‌ها
+                $table->text('deposit')->nullable()->after('notes');
             $table->json('meta')->nullable();
 
             $table->timestamps();
