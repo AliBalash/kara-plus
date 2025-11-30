@@ -41,6 +41,7 @@ class RentalRequestPickupDocument extends Component
     public $existingFiles = [];
 
     public $remainingBalance = 0;
+    public $depositNote;
 
     public $contract;
     public array $customerDocuments = [
@@ -122,6 +123,7 @@ class RentalRequestPickupDocument extends Component
         $this->contractId = $contractId;
         $pickup = PickupDocument::where('contract_id', $contractId)->first();
         $contractMeta = $this->contract->meta ?? [];
+        $this->depositNote = $this->contract->deposit;
         if (!empty($pickup)) {
             $this->fuelLevel = $pickup->fuelLevel;
             $this->mileage = $pickup->mileage;

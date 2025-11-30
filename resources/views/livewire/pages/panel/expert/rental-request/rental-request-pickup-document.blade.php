@@ -483,88 +483,90 @@
                         </div>
                     </div>
 
-                    @if (!empty($costBreakdown))
+                    @if (!empty($costBreakdown) || !empty($depositNote))
                         <div class="col-12 col-xl-6">
                             <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="fw-semibold mb-0">Cost Breakdown</h6>
-                                        <span class="text-muted small">View pricing details</span>
-                                    </div>
-                                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#costBreakdownCollapse" aria-expanded="false"
-                                        aria-controls="costBreakdownCollapse">
-                                        Toggle
-                                    </button>
-                                </div>
-                                <div class="collapse mt-3" id="costBreakdownCollapse">
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-borderless align-middle mb-0">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Item</th>
-                                                    <th class="d-none d-md-table-cell">Details</th>
-                                                    <th class="text-end">Amount (AED)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($costBreakdown as $item)
-                                                    <tr>
-                                                        <td class="fw-semibold">{{ $item['label'] }}</td>
-                                                        <td class="text-muted small d-none d-md-table-cell">
-                                                            {{ $item['description'] ?? '—' }}
-                                                        </td>
-                                                        <td class="text-end fw-semibold">
-                                                            {{ number_format($item['amount'], 2) }}</td>
-                                                    </tr>
-                                                @endforeach
-                                                <tr class="table-light">
-                                                    <td class="fw-semibold">Subtotal</td>
-                                                    <td class="d-none d-md-table-cell"></td>
-                                                    <td class="text-end fw-semibold">
-                                                        {{ number_format($costSummary['subtotal'], 2) }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="fw-semibold">Tax</td>
-                                                    <td class="text-muted small d-none d-md-table-cell">5% VAT</td>
-                                                    <td class="text-end fw-semibold">
-                                                        {{ number_format($costSummary['tax'], 2) }}</td>
-                                                </tr>
-                                                <tr class="table-primary">
-                                                    <td class="fw-semibold">Total Amount</td>
-                                                    <td class="d-none d-md-table-cell"></td>
-                                                    <td class="text-end fw-bold">
-                                                        {{ number_format($costSummary['total'], 2) }}</td>
-                                                </tr>
-                                                <tr class="table-warning">
-                                                    <td class="fw-semibold">Remaining Balance</td>
-                                                    <td class="text-muted small d-none d-md-table-cell">After recorded
-                                                        payments</td>
-                                                    <td class="text-end fw-bold text-warning">
-                                                        {{ number_format($costSummary['remaining'], 2) }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                <div class="d-flex flex-column flex-lg-row align-items-stretch cost-breakdown-layout">
+                                    @if (!empty($costBreakdown))
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                                <div>
+                                                    <h6 class="fw-semibold mb-0">Cost Breakdown</h6>
+                                                    <span class="text-muted small">View pricing details</span>
+                                                </div>
+                                                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse"
+                                                    data-bs-target="#costBreakdownCollapse" aria-expanded="false"
+                                                    aria-controls="costBreakdownCollapse">
+                                                    Toggle
+                                                </button>
+                                            </div>
+                                            <div class="collapse mt-3" id="costBreakdownCollapse">
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-borderless align-middle mb-0">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>Item</th>
+                                                                <th class="d-none d-md-table-cell">Details</th>
+                                                                <th class="text-end">Amount (AED)</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach ($costBreakdown as $item)
+                                                                <tr>
+                                                                    <td class="fw-semibold">{{ $item['label'] }}</td>
+                                                                    <td class="text-muted small d-none d-md-table-cell">
+                                                                        {{ $item['description'] ?? '—' }}
+                                                                    </td>
+                                                                    <td class="text-end fw-semibold">
+                                                                        {{ number_format($item['amount'], 2) }}</td>
+                                                                </tr>
+                                                            @endforeach
+                                                            <tr class="table-light">
+                                                                <td class="fw-semibold">Subtotal</td>
+                                                                <td class="d-none d-md-table-cell"></td>
+                                                                <td class="text-end fw-semibold">
+                                                                    {{ number_format($costSummary['subtotal'], 2) }}</td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td class="fw-semibold">Tax</td>
+                                                                <td class="text-muted small d-none d-md-table-cell">5% VAT</td>
+                                                                <td class="text-end fw-semibold">
+                                                                    {{ number_format($costSummary['tax'], 2) }}</td>
+                                                            </tr>
+                                                            <tr class="table-primary">
+                                                                <td class="fw-semibold">Total Amount</td>
+                                                                <td class="d-none d-md-table-cell"></td>
+                                                                <td class="text-end fw-bold">
+                                                                    {{ number_format($costSummary['total'], 2) }}</td>
+                                                            </tr>
+                                                            <tr class="table-warning">
+                                                                <td class="fw-semibold">Remaining Balance</td>
+                                                                <td class="text-muted small d-none d-md-table-cell">After recorded
+                                                                    payments</td>
+                                                                <td class="text-end fw-bold text-warning">
+                                                                    {{ number_format($costSummary['remaining'], 2) }}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    @if (!empty($depositNote))
+                                        <div class="deposit-instructions-panel flex-lg-shrink-0 mt-3 mt-lg-0">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bx bx-shield-quarter text-primary me-2 fs-5"></i>
+                                                <div>
+                                                    <p class="fw-semibold mb-0">Deposit Instructions</p>
+                                                    <span class="text-muted small">Shown on pickup document</span>
+                                                </div>
+                                            </div>
+                                            <p class="deposit-instructions-text">{{ $depositNote }}</p>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
-
-                            {{-- @if ($contract->payment_on_delivery)
-                                <div
-                                    class="card shadow-sm border-{{ $remainingBalance > 0 ? 'warning' : 'success' }} mt-3">
-                                    <div class="card-body">
-                                        <h6 class="card-title fw-semibold mb-3">Payment on Delivery</h6>
-                                        @if ($remainingBalance > 0)
-                                            <p class="mb-1 text-muted">Remaining balance to collect:</p>
-                                            <p class="fw-bold text-warning mb-0">
-                                                {{ number_format($remainingBalance, 2) }} {{ $contract->currency }}
-                                            </p>
-                                        @else
-                                            <p class="mb-0 text-success fw-semibold">All payments are completed. ✅</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endif --}}
                         </div>
                     @elseif ($contract->payment_on_delivery)
                         <div class="col-12 col-lg-6 col-xl-4">
@@ -745,6 +747,31 @@
             justify-content: center;
             padding: 0.75rem;
             min-height: 220px;
+        }
+
+        .cost-breakdown-layout {
+            gap: 1.5rem;
+        }
+
+        .deposit-instructions-panel {
+            background: #fff8e6;
+            border: 1px solid #ffe0b3;
+            border-radius: 0.85rem;
+            padding: 1rem 1.2rem;
+        }
+
+        @media (min-width: 992px) {
+            .deposit-instructions-panel {
+                min-width: 240px;
+                max-width: 320px;
+            }
+        }
+
+        .deposit-instructions-text {
+            color: #6c757d;
+            margin-bottom: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
         .document-card .preview-wrapper img,

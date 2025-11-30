@@ -74,6 +74,7 @@ class RentalRequestCreate extends Component
     public $custom_daily_rate = null;
     public $ldw_daily_rate = 0;
     public $scdw_daily_rate = 0;
+    public $deposit = null;
     public array $salesAgents = [];
 
     public array $locationCosts = [];
@@ -471,6 +472,7 @@ class RentalRequestCreate extends Component
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
             'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
+            'deposit' => ['nullable', 'string', 'max:1000'],
             'service_quantities.child_seat' => ['nullable', 'integer', 'min:0'],
         ];
     }
@@ -526,6 +528,7 @@ class RentalRequestCreate extends Component
         'driver_hours.min' => 'Driver service hours cannot be negative.',
         'service_quantities.child_seat.integer' => 'Child seat quantity must be a whole number.',
         'service_quantities.child_seat.min' => 'Child seat quantity cannot be negative.',
+        'deposit.max' => 'Deposit note may not be greater than 1000 characters.',
     ];
 
     protected array $validationAttributes = [
@@ -552,6 +555,7 @@ class RentalRequestCreate extends Component
         'selected_insurance' => 'insurance selection',
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
+        'deposit' => 'deposit note',
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
     ];
@@ -604,6 +608,7 @@ class RentalRequestCreate extends Component
                 'selected_insurance' => $this->selected_insurance,
                 'licensed_driver_name' => $this->licensed_driver_name,
                 'notes' => $this->notes,
+                'deposit' => $this->normalizedDeposit(),
                 'kardo_required' => $this->kardo_required ?? true,
                 'used_daily_rate' => $this->roundCurrency($this->dailyRate),
                 'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
@@ -665,6 +670,13 @@ class RentalRequestCreate extends Component
         }
 
         return !empty($meta) ? $meta : null;
+    }
+
+    private function normalizedDeposit(): ?string
+    {
+        $deposit = is_string($this->deposit) ? trim($this->deposit) : null;
+
+        return $deposit !== '' ? $deposit : null;
     }
 
     private function normalizedServiceQuantities(bool $includeZeros = false): array
