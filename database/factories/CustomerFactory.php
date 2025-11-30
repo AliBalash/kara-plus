@@ -11,14 +11,16 @@ class CustomerFactory extends Factory
 
     public function definition(): array
     {
+        $uaePhone = '+9715' . $this->faker->numerify('########');
+
         return [
             'first_name' => $this->faker->firstName,
             'last_name' => $this->faker->lastName,
             'national_code' => $this->faker->unique()->numerify('##########'),
             'gender' => $this->faker->randomElement(['male', 'female', 'other']),
             'email' => $this->faker->unique()->safeEmail,
-            'phone' => $this->faker->phoneNumber,
-            'messenger_phone' => $this->faker->phoneNumber,
+            'phone' => $uaePhone,
+            'messenger_phone' => '+9715' . $this->faker->numerify('########'),
             'address' => $this->faker->address,
             'birth_date' => $this->faker->dateTimeBetween('-70 years', '-18 years')->format('Y-m-d'),
             'passport_number' => $this->faker->unique()->bothify('???#####'),

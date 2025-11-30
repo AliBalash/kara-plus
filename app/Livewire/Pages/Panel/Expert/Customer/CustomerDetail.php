@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Customer;
 use Livewire\Component;
 use App\Models\Customer;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Support\PhoneNumber;
 
 class CustomerDetail extends Component
 {
@@ -22,8 +23,9 @@ class CustomerDetail extends Component
         'customer.first_name' => 'required|string|max:255',
         'customer.last_name' => 'required|string|max:255',
         'customer.national_code' => 'nullable|string|max:20',
-        'customer.email' => 'required|nullable|email|max:255',
-        'customer.phone' => 'required|nullable|string|max:20',
+        'customer.email' => 'nullable|email|max:255',
+        'customer.phone' => 'required|string|regex:/^\+\d{8,15}$/',
+        'customer.messenger_phone' => 'required|string|regex:/^\+\d{8,15}$/',
         'customer.address' => 'nullable|string|max:500',
         'customer.birth_date' => 'nullable|date',
         'customer.passport_number' => 'nullable|string|max:50',
@@ -38,6 +40,7 @@ class CustomerDetail extends Component
 
     public function updateCustomer()
     {
+        $this->normalizePhoneFields();
         // Validate and update the customer details
         $this->validate();
         // Find the customer and update with the new data
@@ -50,5 +53,14 @@ class CustomerDetail extends Component
     public function render()
     {
         return view('livewire.pages.panel.expert.customer.customer-detail');
+    }
+
+    private function normalizePhoneFields(): void
+    {
+        $this->customer['phone'] = PhoneNumber::normalize($this->customer['phone'] ?? null) ?? trim((string) ($this->customer['phone'] ?? ''));
+
+        if (array_key_exists('messenger_phone', $this->customer)) {
+            $this->customer['messenger_phone'] = PhoneNumber::normalize($this->customer['messenger_phone']) ?? trim((string) ($this->customer['messenger_phone'] ?? ''));
+        }
     }
 }

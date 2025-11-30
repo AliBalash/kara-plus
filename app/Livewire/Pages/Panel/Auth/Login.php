@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Support\PhoneNumber;
 
 class Login extends Component
 {
@@ -31,7 +32,7 @@ class Login extends Component
         ]);
 
         // تبدیل شماره تلفن ورودی به فرمت استاندارد
-        $normalizedPhone = $this->normalizePhoneNumber($this->phone);
+        $normalizedPhone = PhoneNumber::normalize($this->phone) ?? trim((string) $this->phone);
 
         if (Auth::attempt(['phone' => $normalizedPhone, 'password' => $this->password], $this->remember)) {
             session()->regenerate(); // بازسازی نشست برای امنیت بیشتر
@@ -44,29 +45,5 @@ class Login extends Component
         }
 
         $this->toast('error', 'The number or password is incorrect.', false);
-    }
-
-    // تابع استاندارد‌سازی شماره تلفن
-    private function normalizePhoneNumber($phone)
-    {
-        $phone = trim($phone);
-
-        if (preg_match('/^09\d{9}$/', $phone)) {
-            return '+98' . substr($phone, 1);
-        }
-
-        if (preg_match('/^098\d{9}$/', $phone)) {
-            return '+98' . substr($phone, 2);
-        }
-
-        if (preg_match('/^0971\d{9,10}$/', $phone)) {
-            return '+971' . substr($phone, 4);
-        }
-
-        if (preg_match('/^971\d{9}$/', $phone)) {
-            return '+971' . substr($phone, 3);
-        }
-
-        return $phone; // اگر فرمت نامشخص بود، همان مقدار را برگرداند
     }
 }
