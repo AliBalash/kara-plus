@@ -64,81 +64,99 @@
         'subtitle' => 'We are syncing your latest changes. Hang tight for a moment.',
     ])
 
-    @php
-        $deliveryTooltip = trim(preg_replace('/\s+/', ' ', (string) $deliveryInformation));
-        $returnTooltip = trim(preg_replace('/\s+/', ' ', (string) $returnInformation));
-    @endphp
-
-    <div class="row g-3 mb-4">
-        <div class="col-xl-6">
-            <div class="card delivery-copy-card mb-0 border-0 shadow-sm h-100">
-                <div class="card-body d-flex flex-column gap-3">
-                    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 delivery-toolbar">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="avatar flex-shrink-0 avatar-md">
-                                <span class="avatar-initial rounded bg-label-info"><i class="bx bx-send"></i></span>
-                            </div>
-                            <div>
-                                <p class="text-uppercase text-muted fw-semibold small mb-1">Customer-ready</p>
-                                <h5 class="mb-1">Delivery Information</h5>
-                                <p class="text-muted mb-0 small">Hover the copy button to preview the delivery note.</p>
-                            </div>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-lg-end">
-                            
-                            <button type="button" id="copyDeliveryInfoButton"
-                                class="btn btn-gradient-ocean delivery-copy-action d-flex align-items-center gap-2"
-                                data-default-label="Copy delivery info" data-success-label="Copied!"
-                                data-empty-label="No delivery text yet" data-bs-toggle="tooltip" data-bs-placement="bottom"
-                                data-target="delivery"
-                                title="{{ $deliveryTooltip !== '' ? $deliveryTooltip : 'No delivery text yet' }}">
-                                <i class="bx bx-clipboard copy-icon"></i>
-                                <i class="bx bx-check-circle success-icon d-none"></i>
-                                <span class="status-text">Copy delivery info</span>
-                            </button>
-                        </div>
-                    </div>
-                    <textarea id="deliveryInformationText" class="visually-hidden" aria-hidden="true" readonly>{{ $deliveryInformation }}</textarea>
+    <div class="card info-launch-card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-lg-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="avatar flex-shrink-0 avatar-md">
+                    <span class="avatar-initial rounded bg-label-primary"><i class="bx bx-copy"></i></span>
+                </div>
+                <div>
+                    <p class="text-uppercase text-muted fw-semibold small mb-1">Customer-ready</p>
+                    <h5 class="mb-1">Delivery & Return Brief</h5>
+                    <p class="text-muted mb-0 small">Open the modal to review and copy the exact text we will share.</p>
                 </div>
             </div>
-        </div>
 
-        <div class="col-xl-6">
-            <div class="card delivery-copy-card delivery-copy-card--return mb-0 border-0 shadow-sm h-100">
-                <div class="card-body d-flex flex-column gap-3">
-                    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 delivery-toolbar">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="avatar flex-shrink-0 avatar-md">
-                                <span class="avatar-initial rounded bg-label-warning"><i class="bx bx-reset"></i></span>
-                            </div>
-                            <div>
-                                <p class="text-uppercase text-muted fw-semibold small mb-1">Customer-ready</p>
-                                <h5 class="mb-1">Return Information</h5>
-                                <p class="text-muted mb-0 small">Hover the copy button to preview the return note.</p>
-                            </div>
-                        </div>
+            <div class="d-flex align-items-center flex-wrap gap-2 justify-content-lg-end">
+                <button type="button" class="btn btn-outline-primary info-launch-action"
+                    data-bs-toggle="modal" data-bs-target="#infoPreviewModal" data-info-type="delivery"
+                    data-info-title="Delivery Information" data-info-source="#deliveryInfoSource"
+                    data-empty-label="No delivery text provided yet">
+                    <i class="bx bx-send"></i>
+                    <span>View delivery note</span>
+                </button>
 
-                        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-lg-end">
-                           
-                            <button type="button" id="copyReturnInfoButton"
-                                class="btn btn-gradient-sunset delivery-copy-action d-flex align-items-center gap-2"
-                                data-default-label="Copy return info" data-success-label="Copied!"
-                                data-empty-label="No return text yet" data-bs-toggle="tooltip" data-bs-placement="bottom"
-                                data-target="return"
-                                title="{{ $returnTooltip !== '' ? $returnTooltip : 'No return text yet' }}">
-                                <i class="bx bx-clipboard copy-icon"></i>
-                                <i class="bx bx-check-circle success-icon d-none"></i>
-                                <span class="status-text">Copy return info</span>
-                            </button>
-                        </div>
-                    </div>
-                    <textarea id="returnInformationText" class="visually-hidden" aria-hidden="true" readonly>{{ $returnInformation }}</textarea>
-                </div>
+                <button type="button" class="btn btn-outline-warning info-launch-action"
+                    data-bs-toggle="modal" data-bs-target="#infoPreviewModal" data-info-type="return"
+                    data-info-title="Return Information" data-info-source="#returnInfoSource"
+                    data-empty-label="No return text provided yet">
+                    <i class="bx bx-reset"></i>
+                    <span>View return note</span>
+                </button>
             </div>
         </div>
     </div>
 
+    <div class="visually-hidden" aria-hidden="true">
+        <div id="deliveryInfoSource">{{ e(trim((string) $deliveryInformation)) }}</div>
+        <div id="returnInfoSource">{{ e(trim((string) $returnInformation)) }}</div>
+    </div>
+
+    <div class="modal fade" id="infoPreviewModal" tabindex="-1" aria-labelledby="infoPreviewModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content shadow-lg border-0 rounded-3">
+                <div class="modal-header border-0 pb-0">
+                    <div>
+                        <p class="text-uppercase small text-muted fw-semibold mb-1">Customer-ready note</p>
+                        <h5 class="modal-title fw-bold mb-0" id="infoPreviewModalLabel">Information Preview</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div
+                        class="info-preview-topper p-3 rounded-3 mb-3 d-flex flex-wrap gap-3 align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <span
+                                class="badge rounded-pill bg-label-primary text-uppercase small fw-semibold info-preview-type"
+                                data-info-type-label>Delivery</span>
+                            <div class="text-muted small info-preview-meta">
+                                <span data-info-meta="length">0 chars</span>
+                                <span class="mx-2">•</span>
+                                <span data-info-meta="words">0 words</span>
+                            </div>
+                        </div>
+                        <span class="badge bg-label-secondary text-muted info-preview-state" data-info-state>Ready to share</span>
+                    </div>
+
+                    <div class="info-preview-box">
+                        <div class="info-empty-placeholder text-center p-4 d-none" data-info-empty>
+                            <div class="w-100">
+                                <i class="bx bx-chat text-warning fs-1 mb-2"></i>
+                                <p class="fw-semibold mb-1">No content available</p>
+                                <span class="text-muted small">Provide text to preview and copy.</span>
+                            </div>
+                        </div>
+                        <div class="info-preview-text" data-info-preview></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2 text-muted small">
+                        <i class="bx bx-info-circle"></i>
+                        <span>Text shown here matches what will be copied.</span>
+                    </div>
+                    <button type="button" id="copyInfoModalButton"
+                        class="btn btn-gradient-ocean d-flex align-items-center gap-2"
+                        data-default-label="Copy text" data-success-label="Copied!"
+                        data-empty-label="No text to copy">
+                        <i class="bx bx-clipboard copy-icon"></i>
+                        <i class="bx bx-check-circle success-icon d-none"></i>
+                        <span class="status-text">Copy text</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
     <form wire:submit.prevent="submit" novalidate>
@@ -1024,48 +1042,69 @@
                 font-weight: 600;
             }
 
-            .delivery-copy-card {
-                background: linear-gradient(135deg, #f4f9ff 0%, #f8fdff 35%, #f0f5ff 100%);
+            .info-launch-card {
+                background: linear-gradient(135deg, #f9fbff 0%, #f7f9ff 60%, #f2f5ff 100%);
                 border: 1px solid #e5ecfa;
             }
 
-            .delivery-copy-card--return {
-                background: linear-gradient(135deg, #fff7f2 0%, #fff2ed 32%, #ffe4d6 100%);
-                border: 1px solid #ffe2d5;
-            }
-
-            .delivery-copy-card .avatar.avatar-md {
+            .info-launch-card .avatar.avatar-md {
                 width: 56px;
                 height: 56px;
-                font-size: 1.35rem;
+                font-size: 1.25rem;
+                background: #eef2ff;
             }
 
-            .delivery-toolbar {
-                gap: 1rem;
-            }
-
-            .delivery-toolbar h5 {
-                display: flex;
+            .info-launch-action {
+                display: inline-flex;
                 align-items: center;
-                gap: 0.35rem;
+                gap: 0.5rem;
+                border-radius: 999px;
+                padding: 0.55rem 1rem;
+                font-weight: 600;
+                transition: all 0.16s ease;
+                box-shadow: 0 6px 18px rgba(63, 136, 248, 0.12);
             }
 
-            .delivery-toolbar h5 .badge {
-                letter-spacing: 0.02em;
-            }
-
-            .delivery-copy-action {
-                border: none;
-                box-shadow: 0 8px 30px rgba(25, 118, 210, 0.18);
-                transition: all 0.18s ease;
-            }
-
-            .delivery-copy-action:hover {
+            .info-launch-action:hover {
                 transform: translateY(-1px);
-                box-shadow: 0 10px 38px rgba(25, 118, 210, 0.28);
+                box-shadow: 0 10px 28px rgba(63, 136, 248, 0.16);
             }
 
-            .delivery-copy-action.is-copied {
+            .info-preview-box {
+                position: relative;
+                border: 1px solid #dfe6f7;
+                border-radius: 0.75rem;
+                background: linear-gradient(180deg, #f8f9ff 0%, #ffffff 40%);
+                min-height: 200px;
+                overflow: hidden;
+            }
+
+            .info-preview-text {
+                font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+                white-space: pre-wrap;
+                color: #2f3f68;
+                background: #fff;
+                padding: 1rem 1.25rem;
+                border-top: 1px dashed #d4ddf2;
+                min-height: 160px;
+            }
+
+            .info-empty-placeholder {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                border-radius: 0.75rem;
+                background: rgba(255, 193, 7, 0.04);
+            }
+
+            .info-preview-topper {
+                background: #f4f6ff;
+                border: 1px solid #e5eafe;
+            }
+
+            #copyInfoModalButton.is-copied {
                 background: linear-gradient(135deg, #28c76f, #48da89);
                 box-shadow: 0 10px 30px rgba(40, 199, 111, 0.32);
             }
@@ -1113,6 +1152,7 @@
 
             .btn-gradient-ocean {
                 background: linear-gradient(135deg, #3a86ff, #4361ee);
+                color: #00d4ff;
             }
 
             .btn-gradient-sunset {
@@ -1232,34 +1272,35 @@
 
             const initTooltips = () => {
                 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-                tooltipTriggerList.forEach(function(tooltipTriggerEl) {
-                    return new bootstrap.Tooltip(tooltipTriggerEl);
-                });
+                tooltipTriggerList.forEach((triggerEl) => new bootstrap.Tooltip(triggerEl));
             };
 
-            const setupCopyButton = (buttonId, textareaId) => {
-                const copyButton = document.getElementById(buttonId);
-                const textArea = document.getElementById(textareaId);
+            const getTextFromSource = (selector) => {
+                if (!selector) {
+                    return '';
+                }
 
-                if (!copyButton || !textArea) {
+                const node = document.querySelector(selector);
+                return (node?.textContent || '').trim();
+            };
+
+            const copyHandlerFactory = (button) => {
+                if (!button || button.dataset.bound === 'true') {
                     return;
                 }
 
-                if (copyButton.dataset.bound === 'true') {
-                    return;
-                }
+                button.dataset.bound = 'true';
+                button.dataset.defaultEmptyLabel = button.dataset.emptyLabel || 'No text to copy';
 
-                copyButton.dataset.bound = 'true';
-
-                const label = copyButton.querySelector('.status-text');
-                const copyIcon = copyButton.querySelector('.copy-icon');
-                const successIcon = copyButton.querySelector('.success-icon');
-                const defaultLabel = copyButton.dataset.defaultLabel || 'Copy';
-                const successLabel = copyButton.dataset.successLabel || 'Copied!';
-                const emptyLabel = copyButton.dataset.emptyLabel || 'Nothing to copy';
+                const label = button.querySelector('.status-text');
+                const copyIcon = button.querySelector('.copy-icon');
+                const successIcon = button.querySelector('.success-icon');
+                const defaultLabel = button.dataset.defaultLabel || 'Copy';
+                const successLabel = button.dataset.successLabel || 'Copied!';
+                const getEmptyLabel = () => button.dataset.emptyLabel || button.dataset.defaultEmptyLabel || 'Nothing to copy';
 
                 const setState = (state = 'default') => {
-                    copyButton.classList.remove('is-copied');
+                    button.classList.remove('is-copied');
                     copyIcon?.classList.remove('d-none');
                     successIcon?.classList.add('d-none');
 
@@ -1268,23 +1309,19 @@
                     }
 
                     if (state === 'copied') {
-                        copyButton.classList.add('is-copied');
+                        button.classList.add('is-copied');
                         copyIcon?.classList.add('d-none');
                         successIcon?.classList.remove('d-none');
                         label.textContent = successLabel;
                     } else if (state === 'empty') {
-                        label.textContent = emptyLabel;
+                        label.textContent = getEmptyLabel();
                     } else {
                         label.textContent = defaultLabel;
                     }
                 };
 
-                const getCopyText = () => {
-                    return (textArea.value || textArea.textContent || '').trim();
-                };
-
-                const copyToClipboard = () => {
-                    const text = getCopyText();
+                const copyCurrentText = () => {
+                    const text = (button.dataset.copyText || '').trim();
 
                     if (!text) {
                         setState('empty');
@@ -1317,17 +1354,113 @@
                     fallbackCopy();
                 };
 
-                copyButton.addEventListener('click', copyToClipboard);
+                button.addEventListener('click', copyCurrentText);
+                button.addEventListener('blur', () => setState('default'));
+                button._setCopyState = setState;
             };
 
-            const bootCopyUtilities = () => {
+            const updateModalContent = (modalEl, config) => {
+                const { type, title, sourceSelector, emptyLabel } = config;
+                const previewTarget = modalEl.querySelector('[data-info-preview]');
+                const emptyPlaceholder = modalEl.querySelector('[data-info-empty]');
+                const typeBadge = modalEl.querySelector('[data-info-type-label]');
+                const stateBadge = modalEl.querySelector('[data-info-state]');
+                const metaLength = modalEl.querySelector('[data-info-meta="length"]');
+                const metaWords = modalEl.querySelector('[data-info-meta="words"]');
+                const modalTitle = modalEl.querySelector('#infoPreviewModalLabel');
+                const copyButton = modalEl.querySelector('#copyInfoModalButton');
+
+                const text = getTextFromSource(sourceSelector);
+                const hasText = text.length > 0;
+                const wordCount = hasText ? text.split(/\s+/).filter(Boolean).length : 0;
+
+                if (modalTitle) {
+                    modalTitle.textContent = title || 'Information Preview';
+                }
+
+                if (typeBadge) {
+                    const isReturn = type === 'return';
+                    typeBadge.textContent = isReturn ? 'Return Note' : 'Delivery Note';
+                    typeBadge.classList.toggle('bg-label-warning', isReturn);
+                    typeBadge.classList.toggle('bg-label-primary', !isReturn);
+                }
+
+                if (stateBadge) {
+                    stateBadge.textContent = hasText ? 'Ready to share' : 'Waiting for content';
+                }
+
+                if (metaLength) {
+                    metaLength.textContent = `${text.length} chars`;
+                }
+
+                if (metaWords) {
+                    metaWords.textContent = `${wordCount} words`;
+                }
+
+                if (previewTarget) {
+                    previewTarget.textContent = text;
+                }
+
+                if (emptyPlaceholder) {
+                    emptyPlaceholder.classList.toggle('d-none', hasText);
+                }
+
+                if (copyButton) {
+                    copyButton.dataset.copyText = text;
+                    copyButton.dataset.emptyLabel = emptyLabel || copyButton.dataset.defaultEmptyLabel || 'No text to copy';
+                    copyButton._setCopyState?.('default');
+                }
+
+                return { text, hasText };
+            };
+
+            const handleModalShow = (event) => {
+                const trigger = event.relatedTarget;
+                const modalEl = event.target;
+
+                if (!trigger || !modalEl) {
+                    return;
+                }
+
+                const config = {
+                    type: trigger.getAttribute('data-info-type') || 'delivery',
+                    title: trigger.getAttribute('data-info-title') || 'Information Preview',
+                    sourceSelector: trigger.getAttribute('data-info-source'),
+                    emptyLabel: trigger.getAttribute('data-empty-label') || 'No text available',
+                };
+
+                updateModalContent(modalEl, config);
+            };
+
+            const handleModalHidden = (event) => {
+                const modalEl = event.target;
+                const copyButton = modalEl.querySelector('#copyInfoModalButton');
+
+                if (copyButton) {
+                    copyButton._setCopyState?.('default');
+                    copyButton.dataset.copyText = '';
+                }
+            };
+
+            const bootInfoPreview = () => {
                 initTooltips();
-                setupCopyButton('copyDeliveryInfoButton', 'deliveryInformationText');
-                setupCopyButton('copyReturnInfoButton', 'returnInformationText');
+
+                const modalEl = document.getElementById('infoPreviewModal');
+                if (!modalEl || modalEl.dataset.bound === 'true') {
+                    return;
+                }
+
+                modalEl.dataset.bound = 'true';
+
+                const copyButton = modalEl.querySelector('#copyInfoModalButton');
+                copyHandlerFactory(copyButton);
+
+                modalEl.addEventListener('show.bs.modal', handleModalShow);
+                modalEl.addEventListener('hidden.bs.modal', handleModalHidden);
             };
 
-            document.addEventListener('livewire:navigated', bootCopyUtilities);
-            onReady(bootCopyUtilities);
+            document.addEventListener('livewire:navigated', bootInfoPreview);
+            onReady(bootInfoPreview);
         })();
     </script>
 @endpush
