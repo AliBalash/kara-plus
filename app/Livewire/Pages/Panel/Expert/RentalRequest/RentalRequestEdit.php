@@ -96,7 +96,7 @@ class RentalRequestEdit extends Component
         $this->services = config('carservices');
         $this->salesAgents = config('agents.sales_agents', []);
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
-        $this->contract = Contract::findOrFail($contractId);
+        $this->contract = Contract::with(['customer', 'car.carModel', 'payments'])->findOrFail($contractId);
 
         if ($this->contract->used_daily_rate) {
             $this->custom_daily_rate = $this->contract->used_daily_rate;
@@ -409,10 +409,10 @@ class RentalRequestEdit extends Component
     {
         $this->subtotal = $this->roundCurrency(
             $this->base_price
-            + $this->services_total
-            + $this->insurance_total
-            + $this->transfer_costs['total']
-            + $this->driver_cost
+                + $this->services_total
+                + $this->insurance_total
+                + $this->transfer_costs['total']
+                + $this->driver_cost
         );
         $this->tax_amount = $this->roundCurrency($this->subtotal * $this->tax_rate);
         $this->final_total = $this->roundCurrency($this->subtotal + $this->tax_amount);
@@ -1003,7 +1003,160 @@ class RentalRequestEdit extends Component
             'ldw_daily_rate' => $this->ldw_daily_rate,
             'scdw_daily_rate' => $this->scdw_daily_rate,
             'comparisonRows' => $this->costComparisonData,
+            'deliveryInformation' => $this->deliveryInformationText,
+            'returnInformation' => $this->returnInformationText,
         ]);
+    }
+
+    public function getDeliveryInformationTextProperty(): string
+    {
+        $this->contract->loadMissing(['payments', 'customer', 'car.carModel', 'user']);
+
+        $payments = $this->contract->payments ?? collect();
+        $sumAmount = fn(string $type): float => (float) $payments->where('payment_type', $type)->sum('amount_in_aed');
+
+        $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
+        $phone = $this->phone ?: ($this->messenger_phone ?? '---');
+        $seller = optional($this->contract->user)->shortName() ?? '---';
+        $deliveryDate = $this->pickup_date ? Carbon::parse($this->pickup_date)->format('Y-m-d \A\T H:i') : '---';
+        $deliveryPlace = $this->pickup_location ?: '---';
+        $carName = $this->contract->car?->fullName() ?? $this->getCarLabel($this->selectedCarId);
+        $plate = $this->contract->car?->plate_number ?? '---';
+        $insurance = $this->formatInsuranceLabel($this->selected_insurance);
+        $childSeatQuantity = $this->getServiceQuantity('child_seat');
+        $childSeatText = $childSeatQuantity > 0 ? $childSeatQuantity . ' seat(s)' : '---';
+        $deliveryCharge = $this->formatCurrency($this->transfer_costs['pickup'] ?? ($this->transfer_costs['total'] ?? 0));
+        $guaranteeFee = $this->normalizedDeposit() ?: '---';
+        $securityHold = $sumAmount('security_deposit');
+        $debtInAdvance = $this->formatCurrency(max($this->contract->calculateRemainingBalance($payments), 0));
+        $cardooForm = $this->kardo_required ? 'YES' : 'NO';
+
+        $totalRent = $this->formatCurrency($this->subtotal);
+        $vatAmount = $this->formatCurrency($this->tax_amount);
+        $mustReceive = $this->formatCurrency($this->subtotal + $this->tax_amount + $securityHold);
+        $dailyRate = $this->formatDailyRate() . ' AED plus vat';
+
+        $carLine = trim("{$carName} {$plate}");
+
+        return trim(<<<TEXT
+            Seller: {$seller}
+            Name of Customer: {$customerName}
+            Mobile number: {$phone}
+            ----------------------------------------------------
+            Delivery Date & time: {$deliveryDate}
+            Place of delivery: {$deliveryPlace}
+            Car: *{$carLine}*
+            Days: {$this->rental_days}
+            Daily : {$dailyRate}
+            Supplementary Insurance Package : {$insurance}
+            Child Seat: {$childSeatText}
+            Charge delivery: {$deliveryCharge} AED
+            Guarantee fee: {$guaranteeFee}
+            ----------------------------------------------------
+            Total rent: {$totalRent}  AED
+            Vat: {$vatAmount} AED
+            Security hold: {$this->formatCurrency($securityHold)} AED
+            Debt in advance: {$debtInAdvance} AED
+            ----------------------------------------------------
+            Must get receive: {$mustReceive} AED 
+            ----------------------------------------------------
+            Cardoo form: {$cardooForm}
+            TEXT);
+    }
+
+    public function getReturnInformationTextProperty(): string
+    {
+        $this->contract->loadMissing(['payments', 'customer', 'car.carModel']);
+
+        $payments = $this->contract->payments ?? collect();
+
+        $sumAmount = fn(string $type): float => (float) $payments->where('payment_type', $type)->sum('amount_in_aed');
+        $sumTrips = fn(string $type): int => $payments->where('payment_type', $type)->sum(fn($payment) => $payment->salikTripCount());
+
+        $salik4Trips = $sumTrips('salik_4_aed');
+        $salik6Trips = $sumTrips('salik_6_aed');
+        $otherRevenueTrips = $payments
+            ->where('payment_type', 'salik_other_revenue')
+            ->sum(fn($payment) => $payment->salikTripCount() ?: (int) round((float) $payment->amount_in_aed));
+
+        $insuranceLabel = 'Supplementary Insurance Package (Daily)';
+        $insuranceDaily = 0.0;
+
+        if ($this->selected_insurance === 'ldw_insurance' && $this->ldw_daily_rate > 0) {
+            $insuranceDaily = (float) $this->ldw_daily_rate;
+        } elseif ($this->selected_insurance === 'scdw_insurance' && $this->scdw_daily_rate > 0) {
+            $insuranceDaily = (float) $this->scdw_daily_rate;
+        }
+
+        $childSeatQuantity = $this->getServiceQuantity('child_seat');
+        $childSeatAmount = $childSeatQuantity * ($this->services['child_seat']['amount'] ?? 0);
+
+        $securityHold = $sumAmount('security_deposit');
+        $customerPayments = (float) $payments->sum('amount_in_aed');
+        $balance = $this->contract->calculateRemainingBalance($payments);
+
+        $depositLabel = $this->normalizedDeposit() ?: 'No Deposit';
+        $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
+        $phone = $this->phone ?: ($this->messenger_phone ?? '---');
+        $carName = $this->contract->car?->fullName() ?? $this->getCarLabel($this->selectedCarId);
+        $plate = $this->contract->car?->plate_number ?? '---';
+
+        return trim(<<<TEXT
+            *This report is for the information of the customer and the settlement is not complete*
+            AG number: {$this->contract->id}
+            Customer Name: {$customerName}
+            Mobile number: {$phone}
+            Car name: *{$carName}*
+            Plate number: {$plate}
+            --------------------------------------------------
+            Days: {$this->rental_days}
+            Rate: {$this->formatDailyRate()} AED
+            Salik (4 AED): {$salik4Trips} Trips, {$this->formatCurrency($sumAmount('salik_4_aed'))} AED
+            Salik (6 AED): {$salik6Trips} Trips, {$this->formatCurrency($sumAmount('salik_6_aed'))} AED
+            Other revenue: {$otherRevenueTrips} Trips, {$this->formatCurrency($sumAmount('salik_other_revenue'))} AED
+            {$insuranceLabel}: {$this->formatCurrency($insuranceDaily)} AED
+            Baby seat: {$this->formatCurrency($childSeatAmount)} AED
+            Fine: {$this->formatCurrency($sumAmount('fine'))} AED
+            Delivery Charge: {$this->formatCurrency($this->transfer_costs['total'] ?? 0)} AED
+            No Deposite Fee: {$this->formatCurrency($sumAmount('no_deposit_fee'))} AED
+            Parking: {$this->formatCurrency($sumAmount('parking'))} AED
+            Petrol: {$this->formatCurrency($sumAmount('fuel'))} AED
+            Car wash: {$this->formatCurrency($sumAmount('carwash'))} AED
+            Scratch: {$this->formatCurrency($sumAmount('damage'))} AED
+            Debt: {$this->formatCurrency(max($balance, 0))} AED
+            ----------------------------------------------------
+            Total Costs: {$this->formatCurrency($this->final_total)} AED
+            vat: {$this->formatCurrency($this->tax_amount)} AED
+            Deposit: {$depositLabel}
+            Security Hold: {$this->formatCurrency($securityHold)} AED
+            Sub Total: {$this->formatCurrency($this->final_total +$securityHold)} AED
+            ----------------------------------------------------
+            Customer Payments: {$this->formatCurrency($customerPayments)} AED
+            ----------------------------------------------------
+            *Must get receive {$this->formatCurrency($balance)} AED*
+            
+            Other Charge will deduct from Security hold & The rest will return to Customer after 10 days.
+            
+            *Please check fine before receive the car*
+            TEXT);
+    }
+
+    private function formatDailyRate(): string
+    {
+        $rate = $this->apply_discount && $this->custom_daily_rate
+            ? (float) $this->custom_daily_rate
+            : (float) ($this->dailyRate ?? 0);
+
+        return number_format($rate, 2);
+    }
+
+    private function formatCurrency($value): string
+    {
+        if (! is_numeric($value)) {
+            return '0.00';
+        }
+
+        return number_format((float) $value, 2);
     }
 
     public function getCostComparisonDataProperty(): array
