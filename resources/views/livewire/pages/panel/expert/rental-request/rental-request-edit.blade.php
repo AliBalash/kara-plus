@@ -64,6 +64,81 @@
         'subtitle' => 'We are syncing your latest changes. Hang tight for a moment.',
     ])
 
+    @php
+        $deliveryTooltip = trim(preg_replace('/\s+/', ' ', (string) $deliveryInformation));
+        $returnTooltip = trim(preg_replace('/\s+/', ' ', (string) $returnInformation));
+    @endphp
+
+    <div class="row g-3 mb-4">
+        <div class="col-xl-6">
+            <div class="card delivery-copy-card mb-0 border-0 shadow-sm h-100">
+                <div class="card-body d-flex flex-column gap-3">
+                    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 delivery-toolbar">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="avatar flex-shrink-0 avatar-md">
+                                <span class="avatar-initial rounded bg-label-info"><i class="bx bx-send"></i></span>
+                            </div>
+                            <div>
+                                <p class="text-uppercase text-muted fw-semibold small mb-1">Customer-ready</p>
+                                <h5 class="mb-1">Delivery Information</h5>
+                                <p class="text-muted mb-0 small">Hover the copy button to preview the delivery note.</p>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-lg-end">
+                            
+                            <button type="button" id="copyDeliveryInfoButton"
+                                class="btn btn-gradient-ocean delivery-copy-action d-flex align-items-center gap-2"
+                                data-default-label="Copy delivery info" data-success-label="Copied!"
+                                data-empty-label="No delivery text yet" data-bs-toggle="tooltip" data-bs-placement="bottom"
+                                data-target="delivery"
+                                title="{{ $deliveryTooltip !== '' ? $deliveryTooltip : 'No delivery text yet' }}">
+                                <i class="bx bx-clipboard copy-icon"></i>
+                                <i class="bx bx-check-circle success-icon d-none"></i>
+                                <span class="status-text">Copy delivery info</span>
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="deliveryInformationText" class="visually-hidden" aria-hidden="true" readonly>{{ $deliveryInformation }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card delivery-copy-card delivery-copy-card--return mb-0 border-0 shadow-sm h-100">
+                <div class="card-body d-flex flex-column gap-3">
+                    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 delivery-toolbar">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="avatar flex-shrink-0 avatar-md">
+                                <span class="avatar-initial rounded bg-label-warning"><i class="bx bx-reset"></i></span>
+                            </div>
+                            <div>
+                                <p class="text-uppercase text-muted fw-semibold small mb-1">Customer-ready</p>
+                                <h5 class="mb-1">Return Information</h5>
+                                <p class="text-muted mb-0 small">Hover the copy button to preview the return note.</p>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-lg-end">
+                           
+                            <button type="button" id="copyReturnInfoButton"
+                                class="btn btn-gradient-sunset delivery-copy-action d-flex align-items-center gap-2"
+                                data-default-label="Copy return info" data-success-label="Copied!"
+                                data-empty-label="No return text yet" data-bs-toggle="tooltip" data-bs-placement="bottom"
+                                data-target="return"
+                                title="{{ $returnTooltip !== '' ? $returnTooltip : 'No return text yet' }}">
+                                <i class="bx bx-clipboard copy-icon"></i>
+                                <i class="bx bx-check-circle success-icon d-none"></i>
+                                <span class="status-text">Copy return info</span>
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="returnInformationText" class="visually-hidden" aria-hidden="true" readonly>{{ $returnInformation }}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
     <form wire:submit.prevent="submit" novalidate>
@@ -949,6 +1024,52 @@
                 font-weight: 600;
             }
 
+            .delivery-copy-card {
+                background: linear-gradient(135deg, #f4f9ff 0%, #f8fdff 35%, #f0f5ff 100%);
+                border: 1px solid #e5ecfa;
+            }
+
+            .delivery-copy-card--return {
+                background: linear-gradient(135deg, #fff7f2 0%, #fff2ed 32%, #ffe4d6 100%);
+                border: 1px solid #ffe2d5;
+            }
+
+            .delivery-copy-card .avatar.avatar-md {
+                width: 56px;
+                height: 56px;
+                font-size: 1.35rem;
+            }
+
+            .delivery-toolbar {
+                gap: 1rem;
+            }
+
+            .delivery-toolbar h5 {
+                display: flex;
+                align-items: center;
+                gap: 0.35rem;
+            }
+
+            .delivery-toolbar h5 .badge {
+                letter-spacing: 0.02em;
+            }
+
+            .delivery-copy-action {
+                border: none;
+                box-shadow: 0 8px 30px rgba(25, 118, 210, 0.18);
+                transition: all 0.18s ease;
+            }
+
+            .delivery-copy-action:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 10px 38px rgba(25, 118, 210, 0.28);
+            }
+
+            .delivery-copy-action.is-copied {
+                background: linear-gradient(135deg, #28c76f, #48da89);
+                box-shadow: 0 10px 30px rgba(40, 199, 111, 0.32);
+            }
+
             .assign-pill-value {
                 display: inline-flex;
                 align-items: center;
@@ -1097,13 +1218,116 @@
     </style>
 @endsection
 
-@section('scripts')
+@push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        });
+
+        (() => {
+            const onReady = (callback) => {
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', callback, { once: true });
+                } else {
+                    callback();
+                }
+            };
+
+            const initTooltips = () => {
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+            };
+
+            const setupCopyButton = (buttonId, textareaId) => {
+                const copyButton = document.getElementById(buttonId);
+                const textArea = document.getElementById(textareaId);
+
+                if (!copyButton || !textArea) {
+                    return;
+                }
+
+                if (copyButton.dataset.bound === 'true') {
+                    return;
+                }
+
+                copyButton.dataset.bound = 'true';
+
+                const label = copyButton.querySelector('.status-text');
+                const copyIcon = copyButton.querySelector('.copy-icon');
+                const successIcon = copyButton.querySelector('.success-icon');
+                const defaultLabel = copyButton.dataset.defaultLabel || 'Copy';
+                const successLabel = copyButton.dataset.successLabel || 'Copied!';
+                const emptyLabel = copyButton.dataset.emptyLabel || 'Nothing to copy';
+
+                const setState = (state = 'default') => {
+                    copyButton.classList.remove('is-copied');
+                    copyIcon?.classList.remove('d-none');
+                    successIcon?.classList.add('d-none');
+
+                    if (!label) {
+                        return;
+                    }
+
+                    if (state === 'copied') {
+                        copyButton.classList.add('is-copied');
+                        copyIcon?.classList.add('d-none');
+                        successIcon?.classList.remove('d-none');
+                        label.textContent = successLabel;
+                    } else if (state === 'empty') {
+                        label.textContent = emptyLabel;
+                    } else {
+                        label.textContent = defaultLabel;
+                    }
+                };
+
+                const getCopyText = () => {
+                    return (textArea.value || textArea.textContent || '').trim();
+                };
+
+                const copyToClipboard = () => {
+                    const text = getCopyText();
+
+                    if (!text) {
+                        setState('empty');
+                        return;
+                    }
+
+                    const handleSuccess = () => {
+                        setState('copied');
+                        setTimeout(() => setState('default'), 2000);
+                    };
+
+                    const fallbackCopy = () => {
+                        const temp = document.createElement('textarea');
+                        temp.value = text;
+                        temp.style.position = 'fixed';
+                        temp.style.opacity = '0';
+                        document.body.appendChild(temp);
+                        temp.focus();
+                        temp.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(temp);
+                        handleSuccess();
+                    };
+
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                        navigator.clipboard.writeText(text).then(handleSuccess).catch(fallbackCopy);
+                        return;
+                    }
+
+                    fallbackCopy();
+                };
+
+                copyButton.addEventListener('click', copyToClipboard);
+            };
+
+            const bootCopyUtilities = () => {
+                initTooltips();
+                setupCopyButton('copyDeliveryInfoButton', 'deliveryInformationText');
+                setupCopyButton('copyReturnInfoButton', 'returnInformationText');
+            };
+
+            document.addEventListener('livewire:navigated', bootCopyUtilities);
+            onReady(bootCopyUtilities);
+        })();
     </script>
-@endsection
+@endpush
