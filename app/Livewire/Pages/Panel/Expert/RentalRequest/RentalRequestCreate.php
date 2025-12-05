@@ -53,6 +53,18 @@ class RentalRequestCreate extends Component
     public $selected_insurance = 'basic_insurance';
     public $services_total = 0;
     public $insurance_total = 0;
+    public ?string $driving_license_option = null;
+    public float $driving_license_cost = 0;
+    public array $driving_license_options = [
+        'one_year' => [
+            'label' => 'Driving License (1 Year)',
+            'amount' => 32,
+        ],
+        'three_year' => [
+            'label' => 'Driving License (3 Years)',
+            'amount' => 220,
+        ],
+    ];
     public $driver_hours = 0;
     public $driver_cost = 0;
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
@@ -159,6 +171,7 @@ class RentalRequestCreate extends Component
             'selected_services',
             'selected_insurance',
             'driver_hours',
+            'driving_license_option',
         ];
         return in_array($propertyName, $costRelatedFields) ||
             Str::startsWith($propertyName, 'selected_services.') ||
@@ -217,6 +230,7 @@ class RentalRequestCreate extends Component
         $this->calculateTransferCosts();
         $this->calculateServicesTotal();
         $this->calculateDriverServiceCost();
+        $this->calculateDrivingLicenseCost();
         $this->calculateTaxAndTotal();
     }
 
@@ -355,14 +369,29 @@ class RentalRequestCreate extends Component
         $this->driver_cost = $this->roundCurrency($baseCost + $additionalCost);
     }
 
+    private function calculateDrivingLicenseCost(): void
+    {
+        $selectedKey = $this->driving_license_option ?: null;
+
+        if (!$selectedKey || !isset($this->driving_license_options[$selectedKey])) {
+            $this->driving_license_cost = $this->roundCurrency(0);
+            $this->driving_license_option = $selectedKey ?: null;
+            return;
+        }
+
+        $amount = (float) ($this->driving_license_options[$selectedKey]['amount'] ?? 0);
+        $this->driving_license_cost = $this->roundCurrency($amount);
+    }
+
     private function calculateTaxAndTotal()
     {
         $this->subtotal = $this->roundCurrency(
             $this->base_price
-            + $this->services_total
-            + $this->insurance_total
-            + $this->transfer_costs['total']
-            + $this->driver_cost
+                + $this->services_total
+                + $this->insurance_total
+                + $this->transfer_costs['total']
+                + $this->driver_cost
+                + $this->driving_license_cost
         );
         $this->tax_amount = $this->roundCurrency($this->subtotal * $this->tax_rate);
         $this->final_total = $this->roundCurrency($this->subtotal + $this->tax_amount);
@@ -466,6 +495,7 @@ class RentalRequestCreate extends Component
             'license_number' => ['nullable', 'string', 'max:50'],
             'licensed_driver_name' => ['nullable', 'string', 'max:255'],
             'selected_insurance' => ['nullable', Rule::in(['', 'basic_insurance', 'ldw_insurance', 'scdw_insurance'])],
+            'driving_license_option' => ['nullable', Rule::in(array_keys($this->driving_license_options))],
             'kardo_required' => ['boolean'],
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
@@ -523,6 +553,7 @@ class RentalRequestCreate extends Component
         'licensed_driver_name.string' => 'Licensed driver name must be a string.',
         'licensed_driver_name.max' => 'Licensed driver name cannot be longer than 255 characters.',
         'selected_insurance.in' => 'The selected insurance option is invalid.',
+        'driving_license_option.in' => 'The selected driving license option is invalid.',
         'payment_on_delivery.boolean' => 'The payment on delivery field must be a boolean value.',
         'driver_hours.numeric' => 'Driver service hours must be a number.',
         'driver_hours.min' => 'Driver service hours cannot be negative.',
@@ -553,6 +584,7 @@ class RentalRequestCreate extends Component
         'license_number' => 'license number',
         'licensed_driver_name' => 'licensed driver name',
         'selected_insurance' => 'insurance selection',
+        'driving_license_option' => 'driving license option',
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
         'deposit' => 'deposit note',
@@ -669,6 +701,11 @@ class RentalRequestCreate extends Component
             $meta['service_quantities'] = $serviceQuantities;
         }
 
+        if ($this->driving_license_option && isset($this->driving_license_options[$this->driving_license_option])) {
+            $meta['driving_license_option'] = $this->driving_license_option;
+            $meta['driving_license_cost'] = $this->roundCurrency($this->driving_license_cost);
+        }
+
         return !empty($meta) ? $meta : null;
     }
 
@@ -759,6 +796,16 @@ class RentalRequestCreate extends Component
             ]);
         }
 
+        if ($this->driving_license_cost > 0 && $this->driving_license_option) {
+            ContractCharges::create([
+                'contract_id' => $contract->id,
+                'title' => 'driving_license_' . $this->driving_license_option,
+                'amount' => $this->roundCurrency($this->driving_license_cost),
+                'type' => 'service',
+                'description' => $this->buildDrivingLicenseDescription(),
+            ]);
+        }
+
         foreach ($this->selected_services as $serviceId) {
             $resolvedId = $this->resolveServiceId($serviceId);
             if (!$resolvedId) {
@@ -838,6 +885,17 @@ class RentalRequestCreate extends Component
         }
 
         return "Driver service for {$formattedHours} hour(s) — {$extraDescription}";
+    }
+
+    private function buildDrivingLicenseDescription(): string
+    {
+        if (!$this->driving_license_option || !isset($this->driving_license_options[$this->driving_license_option])) {
+            return 'Driving license fee';
+        }
+
+        $label = $this->driving_license_options[$this->driving_license_option]['label'] ?? 'Driving License';
+
+        return sprintf('%s - %s AED', $label, number_format($this->driving_license_cost, 2));
     }
 
     public function changeStatusToReserve($contractId)

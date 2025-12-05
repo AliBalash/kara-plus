@@ -734,6 +734,31 @@
                         </div>
 
                         <div class="mt-4">
+                            <h6 class="text-primary mb-3">Driving License (Optional)</h6>
+                            <div class="list-group mb-3" data-validation-field="driving_license_option">
+                                <label class="list-group-item d-flex align-items-center">
+                                    <input class="form-check-input me-2" type="radio" value=""
+                                        wire:model.live="driving_license_option">
+                                    <span class="fw-semibold">No Driving License Processing</span>
+                                </label>
+                                <label class="list-group-item d-flex align-items-center">
+                                    <input class="form-check-input me-2" type="radio" value="one_year"
+                                        wire:model.live="driving_license_option">
+                                    <div>
+                                        <div class="fw-semibold">Driving License (1 Year)</div>
+                                        <div class="text-muted small">{{ number_format($driving_license_options['one_year']['amount'], 2) }} AED</div>
+                                    </div>
+                                </label>
+                                <label class="list-group-item d-flex align-items-center">
+                                    <input class="form-check-input me-2" type="radio" value="three_year"
+                                        wire:model.live="driving_license_option">
+                                    <div>
+                                        <div class="fw-semibold">Driving License (3 Years)</div>
+                                        <div class="text-muted small">{{ number_format($driving_license_options['three_year']['amount'], 2) }} AED</div>
+                                    </div>
+                                </label>
+                            </div>
+
                             <h6 class="text-primary mb-3">Driver Service (Optional)</h6>
                             <div class="row g-3 align-items-start">
                                 <div class="col-md-6" data-validation-field="driver_hours">
@@ -801,6 +826,10 @@
                     <tr>
                         <th>Insurance</th>
                         <td>{{ number_format($insurance_total, 2) }} AED</td>
+                    </tr>
+                    <tr>
+                        <th>Driving License</th>
+                        <td>{{ number_format($driving_license_cost, 2) }} AED</td>
                     </tr>
                     <tr>
                         <th>Driver Service</th>
