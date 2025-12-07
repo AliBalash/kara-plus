@@ -154,7 +154,10 @@
                 @forelse($contracts as $contract)
                     <tr wire:key="contract-{{ $contract->id }}">
                         <td>{{ $contract->id }}</td>
-                        <td>{{ $contract->customer->fullName() }}</td>
+                        <td>
+                            <div>{{ $contract->customer->fullName() }}</div>
+                            <div class="text-muted small">{{ $contract->customer->phone ?? '—' }}</div>
+                        </td>
                         <td>{{ $contract->car->fullName() }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}</td>

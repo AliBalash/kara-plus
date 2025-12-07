@@ -158,7 +158,10 @@
                 @foreach ($reservedContracts as $reservedContract)
                     <tr>
                         <td>{{ $reservedContract->id }}</td>
-                        <td>{{ $reservedContract->customer->fullName() }}</td>
+                        <td>
+                            <div>{{ $reservedContract->customer->fullName() }}</div>
+                            <div class="text-muted small">{{ $reservedContract->customer->phone ?? '—' }}</div>
+                        </td>
                         <td>{{ $reservedContract->car->fullName() }}</td>
                         <td>{{ \Carbon\Carbon::parse($reservedContract->pickup_date)->format('d M Y H:i') }}</td>
                         <td>{{ $reservedContract->pickup_location }}</td>

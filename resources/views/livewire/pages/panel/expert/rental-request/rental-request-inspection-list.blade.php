@@ -181,7 +181,10 @@
                     @endphp
                     <tr>
                         <td>{{ $contract->id }}</td>
-                        <td>{{ optional($contract->customer)->fullName() ?? '—' }}</td>
+                        <td>
+                            <div>{{ optional($contract->customer)->fullName() ?? '—' }}</div>
+                            <div class="text-muted small">{{ optional($contract->customer)->phone ?? '—' }}</div>
+                        </td>
                         <td>{{ optional($contract->car)->fullName() ?? 'Vehicle N/A' }}</td>
                         <td>{{ $contract->pickup_date?->format('d M Y H:i') ?? '—' }}</td>
                         <td>{{ $contract->return_date?->format('d M Y H:i') ?? '—' }}</td>

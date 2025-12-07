@@ -120,7 +120,10 @@
                 @forelse ($contracts as $contract)
                     <tr>
                         <td>{{ $contract->id }}</td>
-                        <td>{{ $contract->customer?->fullName() ?? '—' }}</td>
+                        <td>
+                            <div>{{ $contract->customer?->fullName() ?? '—' }}</div>
+                            <div class="text-muted small">{{ $contract->customer?->phone ?? '—' }}</div>
+                        </td>
                         <td>{{ $contract->car?->fullName() ?? '—' }}</td>
                         <td>{{ $contract->pickup_date?->format('d M Y H:i') ?? '-' }}</td>
                         <td>{{ $contract->return_date?->format('d M Y H:i') ?? '-' }}</td>
