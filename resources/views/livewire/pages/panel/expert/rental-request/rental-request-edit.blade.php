@@ -754,7 +754,7 @@
                                             <div class="mb-3" data-validation-field="service_quantities.child_seat">
                                                 <label class="form-label fw-semibold mb-1" for="child-seat-quantity">
                                                     <i class="fa {{ $service['icon'] }} me-2"></i>
-                                                    {{ $service['label_en'] }} (per day)
+                                                    {{ $service['label_en'] }}
                                                 </label>
                                                 <div class="input-group">
                                                     <span class="input-group-text"><i class="bx bx-child"></i></span>
@@ -763,7 +763,7 @@
                                                         wire:model.live="service_quantities.child_seat" placeholder="0"
                                                         data-bs-toggle="tooltip"
                                                         title="Enter the number of child seats to include">
-                                                    <span class="input-group-text">AED/day</span>
+                                                    <span class="input-group-text"></span>
                                                 </div>
                                                 <div class="small text-muted mt-1">
                                                     Total for {{ max($rental_days, 1) }} day(s):
