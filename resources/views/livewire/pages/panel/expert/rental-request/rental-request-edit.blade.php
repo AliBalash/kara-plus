@@ -555,7 +555,7 @@
                                     <div class="form-check mb-2">
                                         <input type="checkbox" class="form-check-input"
                                             wire:model.live="apply_discount" id="apply_discount">
-                                        <label class="form-check-label" for="apply_discount">Apply Discount
+                                        <label class="form-check-label" for="apply_discount">Change daily rate
                                             (Custom Daily Rate)</label>
                                     </div>
                                     @if ($apply_discount)
