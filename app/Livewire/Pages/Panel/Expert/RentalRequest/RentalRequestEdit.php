@@ -1079,11 +1079,15 @@ class RentalRequestEdit extends Component
 
         $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
-        $seller = optional($this->contract->user)->shortName() ?? '---';
+        $seller = optional($this->contract->user)->fullName() ?? '---';
         $deliveryDate = $this->pickup_date ? Carbon::parse($this->pickup_date)->format('Y-m-d \A\T H:i') : '---';
         $deliveryPlace = $this->pickup_location ?: '---';
-        $carName = $this->contract->car?->fullName() ?? $this->getCarLabel($this->selectedCarId);
-        $plate = $this->contract->car?->plate_number ?? '---';
+        $carDescriptor = $this->formatCarDescriptor(
+            $this->stripPlateFromLabel(
+                $this->contract->car?->fullName() ?? $this->getCarLabel($this->selectedCarId)
+            ),
+            $this->contract->car?->plate_number
+        );
         $insurance = $this->formatInsuranceLabel($this->selected_insurance);
         $childSeatQuantity = $this->getServiceQuantity('child_seat');
         $childSeatText = $childSeatQuantity > 0 ? $childSeatQuantity . ' seat(s)' : '---';
@@ -1098,16 +1102,14 @@ class RentalRequestEdit extends Component
         $mustReceive = $this->formatCurrency($this->subtotal + $this->tax_amount + $securityHold);
         $dailyRate = $this->formatDailyRate() . ' AED plus vat';
 
-        $carLine = trim("{$carName} {$plate}");
-
         return trim(<<<TEXT
             Seller: {$seller}
             Name of Customer: {$customerName}
             Mobile number: {$phone}
             ----------------------------------------------------
-            Delivery Date & time: {$deliveryDate}
+            Delivery date and time: {$deliveryDate}
             Place of delivery: {$deliveryPlace}
-            Car: *{$carLine}*
+            Car: *{$carDescriptor}*
             Days: {$this->rental_days}
             Daily : {$dailyRate}
             Supplementary Insurance Package : {$insurance}
@@ -1160,16 +1162,19 @@ class RentalRequestEdit extends Component
         $depositLabel = $this->normalizedDeposit() ?: 'No Deposit';
         $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
-        $carName = $this->contract->car?->fullName() ?? $this->getCarLabel($this->selectedCarId);
-        $plate = $this->contract->car?->plate_number ?? '---';
+        $carDescriptor = $this->formatCarDescriptor(
+            $this->stripPlateFromLabel(
+                $this->contract->car?->fullName() ?? $this->getCarLabel($this->selectedCarId)
+            ),
+            $this->contract->car?->plate_number
+        );
 
         return trim(<<<TEXT
             *This report is for the information of the customer and the settlement is not complete*
             AG number: {$this->contract->id}
             Customer Name: {$customerName}
             Mobile number: {$phone}
-            Car name: *{$carName}*
-            Plate number: {$plate}
+            Car: *{$carDescriptor}*
             --------------------------------------------------
             Days: {$this->rental_days}
             Rate: {$this->formatDailyRate()} AED
@@ -1196,8 +1201,8 @@ class RentalRequestEdit extends Component
             Customer Payments: {$this->formatCurrency($customerPayments)} AED
             ----------------------------------------------------
             *Must get receive {$this->formatCurrency($balance)} AED*
-            
-            Other Charge will deduct from Security hold & The rest will return to Customer after 10 days.
+
+            Other charges will be deducted from the security hold. The rest will be returned to the customer after 10 days.
             
             *Please check fine before receive the car*
             TEXT);
@@ -1536,6 +1541,22 @@ class RentalRequestEdit extends Component
         $this->carNameCache[$carId] = $car?->fullName() ?? '—';
 
         return $this->carNameCache[$carId];
+    }
+
+    private function stripPlateFromLabel(string $label): string
+    {
+        return trim((string) preg_replace('/\s*\([^)]*\)$/', '', $label));
+    }
+
+    private function formatCarDescriptor(string $label, ?string $plate): string
+    {
+        $cleanLabel = trim($label) !== '' ? $label : '---';
+
+        if (!$plate) {
+            return $cleanLabel;
+        }
+
+        return trim("{$cleanLabel} ({$plate})");
     }
 
     private function formatDateTime(?string $value): string
