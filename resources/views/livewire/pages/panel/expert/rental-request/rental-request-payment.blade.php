@@ -205,11 +205,40 @@
                     <label class="form-label">Security Deposit Details (optional)</label>
                     <textarea class="form-control" wire:model.defer="security_note" rows="3"
                         placeholder="E.g., Deposit of 1000 AED, refundable after inspection"></textarea>
+                    @error('security_note')
+                        <span class="text-danger">{{ $message }}</span>
+                    @enderror
                 </div>
-                @if (!empty($contractMeta['security_deposit_note']))
+                <div class="col-md-12 mb-3">
+                    <label class="form-label">Security Deposit Attachment (optional)</label>
+                    <input type="file" class="form-control" wire:model="security_deposit_image" accept="image/*">
+                    @error('security_deposit_image')
+                        <span class="text-danger">{{ $message }}</span>
+                    @enderror
+                    <div wire:loading wire:target="security_deposit_image" class="text-primary mt-2">
+                        <i class="spinner-border spinner-border-sm"></i> Uploading...
+                    </div>
+                    @if (!empty($contractMeta['security_deposit_image']))
+                        <div class="mt-2">
+                            <strong>Current Attachment:</strong><br>
+                            <a href="{{ asset('storage/' . ltrim($contractMeta['security_deposit_image'], '/')) }}" target="_blank"
+                                rel="noopener" class="d-inline-block mt-1">View uploaded file</a>
+                        </div>
+                    @endif
+                </div>
+                @if (!empty($contractMeta['security_deposit_note']) || !empty($contractMeta['security_deposit_image']))
                     <div class="bg-light border rounded-3 p-3 mt-4">
                         <strong class="d-block mb-1">Security Deposit</strong>
-                        <p class="mb-0 text-muted">{{ $contractMeta['security_deposit_note'] }}</p>
+                        @if (!empty($contractMeta['security_deposit_note']))
+                            <p class="mb-2 text-muted">{{ $contractMeta['security_deposit_note'] }}</p>
+                        @endif
+                        @if (!empty($contractMeta['security_deposit_image']))
+                            <div class="mt-2">
+                                <img src="{{ asset('storage/' . ltrim($contractMeta['security_deposit_image'], '/')) }}"
+                                    alt="Security deposit attachment" class="img-thumbnail" width="200" loading="lazy"
+                                    decoding="async" fetchpriority="low">
+                            </div>
+                        @endif
                     </div>
                 @endif
                 <button type="submit" class="btn btn-dark mt-3">Submit Security Deposit</button>

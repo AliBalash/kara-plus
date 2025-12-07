@@ -60,6 +60,7 @@ class RentalRequestPayment extends Component
     public $effectivePaid;
     public $rate;
     public $security_note = '';
+    public $security_deposit_image;
     public $contract;
     public $contractMeta = [];
     public $payment_method = 'cash';
@@ -85,6 +86,9 @@ class RentalRequestPayment extends Component
         'receipt.image' => 'Receipt must be an image file.',
         'receipt.mimes' => 'Receipt must be a JPG, JPEG, PNG, or WEBP file.',
         'receipt.max' => 'Receipt may not be greater than 2MB.',
+        'security_deposit_image.image' => 'Security deposit attachment must be an image file.',
+        'security_deposit_image.mimes' => 'Security deposit attachment must be a JPG, JPEG, PNG, or WEBP file.',
+        'security_deposit_image.max' => 'Security deposit attachment may not be greater than 4MB.',
         'salik_trip_count.required_if' => 'Please enter the number of salik trips.',
         'salik_trip_count.integer' => 'Salik trips must be a whole number.',
         'salik_trip_count.min' => 'Salik trips cannot be negative.',
@@ -100,6 +104,7 @@ class RentalRequestPayment extends Component
         'rate' => 'exchange rate',
         'receipt' => 'receipt upload',
         'salik_trip_count' => 'Salik trips',
+        'security_deposit_image' => 'security deposit attachment',
     ];
 
 
@@ -362,25 +367,57 @@ class RentalRequestPayment extends Component
 
     public function submitDeposit()
     {
-        if (!empty($this->security_note)) {
-            $contract = Contract::find($this->contractId);
-            if (!$contract) {
-                $this->toast('error', 'Contract not found.', false);
-                return;
-            }
+        $this->validate(
+            [
+                'security_note' => ['nullable', 'string', 'max:2000'],
+                'security_deposit_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            ],
+            $this->messages,
+            $this->validationAttributes
+        );
 
-            $meta = $contract->meta ?? [];
-            $meta['security_deposit_note'] = $this->security_note;
-
-            $contract->meta = $meta;
-            $contract->save();
-
-            // هم در دیتابیس ذخیره شد، هم برای ویو آپدیت شد
-            $this->contractMeta = $meta;
-
-            $this->toast('success', 'Security deposit information was successfully saved.');
-            $this->security_note = '';
+        if (empty($this->security_note) && !$this->security_deposit_image) {
+            $this->addError('security_note', 'Please enter a note or upload an image for the security deposit.');
+            $this->dispatch('kara-scroll-to-error', field: 'security_note');
+            return;
         }
+
+        $contract = Contract::find($this->contractId);
+        if (!$contract) {
+            $this->toast('error', 'Contract not found.', false);
+            return;
+        }
+
+        $meta = $contract->meta ?? [];
+        $existingImagePath = $meta['security_deposit_image'] ?? null;
+
+        if (!empty($this->security_note)) {
+            $meta['security_deposit_note'] = $this->security_note;
+        }
+
+        if ($this->security_deposit_image) {
+            $baseName = "security_deposit_{$this->contractId}_" . time();
+            $meta['security_deposit_image'] = $this->imageUploader->store(
+                $this->security_deposit_image,
+                "security_deposits/{$baseName}.webp",
+                'myimage',
+                ['quality' => 40, 'max_width' => 2000, 'max_height' => 2000]
+            );
+
+            if ($existingImagePath && Storage::disk('myimage')->exists($existingImagePath)) {
+                Storage::disk('myimage')->delete($existingImagePath);
+            }
+        }
+
+        $contract->meta = $meta;
+        $contract->save();
+
+        // هم در دیتابیس ذخیره شد، هم برای ویو آپدیت شد
+        $this->contractMeta = $meta;
+
+        $this->toast('success', 'Security deposit information was successfully saved.');
+        $this->security_note = '';
+        $this->security_deposit_image = null;
     }
 
     private function validateWithScroll(?array $rules = null): array
