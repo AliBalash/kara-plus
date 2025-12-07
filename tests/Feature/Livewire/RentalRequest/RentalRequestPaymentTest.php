@@ -9,7 +9,9 @@ use App\Models\Customer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Media\OptimizedUploadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Tests\TestCase;
@@ -96,6 +98,38 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertEquals('Hold AED 2000 until return inspection', $contract->meta['security_deposit_note']);
         $this->assertEquals('Security deposit information was successfully saved.', session('message'));
         $this->assertEquals('', $component->security_note);
+    }
+
+    public function test_submit_deposit_stores_image_when_provided(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for(Car::factory())
+            ->status('payment')
+            ->create(['meta' => []]);
+
+        $mockUploader = Mockery::mock(OptimizedUploadService::class);
+        $mockUploader->shouldReceive('store')
+            ->once()
+            ->andReturn('security_deposits/test-image.webp');
+
+        $this->app->instance(OptimizedUploadService::class, $mockUploader);
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $component->security_deposit_image = UploadedFile::fake()->image('deposit.jpg');
+        $component->submitDeposit();
+
+        $contract->refresh();
+
+        $this->assertEquals('security_deposits/test-image.webp', $contract->meta['security_deposit_image']);
+        $this->assertEquals('Security deposit information was successfully saved.', session('message'));
+        $this->assertNull($component->security_deposit_image);
     }
 
     protected function tearDown(): void

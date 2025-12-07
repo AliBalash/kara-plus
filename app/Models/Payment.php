@@ -25,6 +25,7 @@ class Payment extends Model
         'is_paid',
         'rate',
         'receipt',
+        'security_deposit_image',
         'approval_status',
     ];
 

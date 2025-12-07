@@ -29,6 +29,7 @@ return new class extends Migration
             $table->boolean('is_refundable')->default(false); // آیا این پرداخت بازگشت‌پذیر است؟ (برای پیش‌پرداخت خلافی)
             $table->boolean('is_paid')->default(true); // وضعیت پرداخت            
             $table->string('receipt')->nullable()->after('rate');
+            $table->string('security_deposit_image')->nullable();
             $table->enum('approval_status', ['pending', 'approved', 'rejected'])
                 ->default('pending')
                 ->after('is_paid');
