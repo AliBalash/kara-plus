@@ -116,7 +116,10 @@
                 @forelse ($awaitContracts as $awaitContract)
                     <tr>
                         <td>{{ $awaitContract->id }}</td>
-                        <td>{{ $awaitContract->customer->fullName() }}</td>
+                        <td>
+                            <div>{{ $awaitContract->customer->fullName() }}</div>
+                            <div class="text-muted small">{{ $awaitContract->customer->phone ?? '—' }}</div>
+                        </td>
                         <td>{{ $awaitContract->car->fullName() }}</td>
                         <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y H:i') }}</td>
                         <td>{{ $awaitContract->return_location }}</td>

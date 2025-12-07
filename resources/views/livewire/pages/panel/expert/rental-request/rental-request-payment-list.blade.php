@@ -159,7 +159,10 @@
                     @endphp
                     <tr>
                         <td>{{ $contract->id }}</td>
-                        <td>{{ $contract->customer->fullName() }}</td>
+                        <td>
+                            <div>{{ $contract->customer->fullName() }}</div>
+                            <div class="text-muted small">{{ $contract->customer->phone ?? '—' }}</div>
+                        </td>
                         <td>{{ $contract->car->fullName() }}</td>
                         <td>{{ $contract->pickup_date?->format('d M Y') }}</td>
                         <td>{{ number_format($contract->total_price, 2) }}</td>
