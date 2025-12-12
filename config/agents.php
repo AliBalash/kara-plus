@@ -31,5 +31,6 @@ return [
         'Respina',
         'Nil Seir Royaei',
         'Medisa',
+        'Solmaz Shiri',
     ],
 ];
