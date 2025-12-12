@@ -753,7 +753,13 @@ class RentalRequestEdit extends Component
             'title' => 'base_rental',
             'amount' => $this->roundCurrency($this->base_price),
             'type' => 'base',
-            'description' => ((int)$this->rental_days) . " روز × " . number_format($this->dailyRate, 2) . " درهم" . ($this->apply_discount ? ' (with discount)' : ''),
+            'description' => sprintf(
+                '%d %s × %s AED%s',
+                (int) $this->rental_days,
+                (int) $this->rental_days === 1 ? 'day' : 'days',
+                number_format($this->dailyRate, 2),
+                $this->apply_discount ? ' (with discount)' : ''
+            ),
         ]);
 
         if ($this->transfer_costs['pickup'] > 0) {
@@ -836,7 +842,11 @@ class RentalRequestEdit extends Component
                     'title' => $this->selected_insurance,
                     'amount' => $this->roundCurrency($insuranceAmount),
                     'type' => 'insurance',
-                    'description' => "{$this->rental_days} روز"
+                    'description' => sprintf(
+                        '%d %s',
+                        (int) $this->rental_days,
+                        (int) $this->rental_days === 1 ? 'day' : 'days'
+                    )
                 ]);
             }
         }
@@ -847,7 +857,7 @@ class RentalRequestEdit extends Component
                 'title' => 'tax',
                 'amount' => $this->roundCurrency($this->tax_amount),
                 'type' => 'tax',
-                'description' => '۵٪ مالیات بر ارزش افزوده'
+                'description' => '5% VAT'
             ]);
         }
     }
