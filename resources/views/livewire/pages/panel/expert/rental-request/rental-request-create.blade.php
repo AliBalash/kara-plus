@@ -278,13 +278,13 @@
                         @endif
 
                         <div class="mb-3">
-                            <label class="form-label fw-semibold mb-1" for="depositCategory">Deposit Instructions</label>
+                            <label class="form-label fw-semibold mb-1" for="depositCategory">Security Hold Instructions</label>
                             <div class="input-group mb-2">
                                 <span class="input-group-text"><i class="bx bx-category"></i></span>
                                 <select id="depositCategory"
                                     class="form-select @error('deposit_category') is-invalid @enderror"
                                     wire:model.live="deposit_category">
-                                    <option value="">Select deposit category</option>
+                                    <option value="">Select security hold category</option>
                                     <option value="cash_aed">Cash (based on AED)</option>
                                     <option value="cheque">Cheque</option>
                                     <option value="transfer_cash_irr">Transfer or Cash (based on IRR)</option>
@@ -299,7 +299,7 @@
                                     <span class="input-group-text"><i class="bx bx-money"></i></span>
                                     <input type="number" step="0.01" min="0"
                                         class="form-control @error('deposit') is-invalid @enderror" wire:model="deposit"
-                                        placeholder="Enter deposit amount (AED)">
+                                        placeholder="Enter security hold amount (AED)">
                                     @error('deposit')
                                         <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                                     @enderror
@@ -308,7 +308,7 @@
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bx bx-chat"></i></span>
                                     <input type="text" class="form-control @error('deposit') is-invalid @enderror"
-                                        wire:model="deposit" placeholder="Add cheque/transfer details">
+                                        wire:model="deposit" placeholder="Add security hold details">
                                     @error('deposit')
                                         <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                                     @enderror
