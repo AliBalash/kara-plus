@@ -775,12 +775,6 @@ class RentalRequestPickupDocument extends Component
         $depositAmount = $this->depositDetails['amount'] ?? null;
 
         if ($depositAmount !== null) {
-            $this->costBreakdown[] = [
-                'label' => $this->depositDetails['label'] ?? 'Deposit',
-                'description' => $this->depositDetails['detail'] ?? 'Cash deposit payable in AED',
-                'amount' => (float) $depositAmount,
-            ];
-
             $this->costSummary['subtotal'] += $depositAmount;
             $this->costSummary['total'] += $depositAmount;
             $this->costSummary['remaining'] = (float) $this->costSummary['remaining'] + $depositAmount;

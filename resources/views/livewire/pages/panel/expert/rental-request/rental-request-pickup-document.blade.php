@@ -21,7 +21,8 @@
                         </div>
                         <div class="status-card">
                             <div class="status-card-label"><i class="bi bi-file-earmark-text me-2"></i>Agreement #</div>
-                            <div class="status-card-value">{{ $agreementDisplay ? \Illuminate\Support\Str::upper($agreementDisplay) : '—' }}</div>
+                            <div class="status-card-value">
+                                {{ $agreementDisplay ? \Illuminate\Support\Str::upper($agreementDisplay) : '—' }}</div>
                         </div>
                         <div class="status-card">
                             <div class="status-card-label"><i class="bi bi-car-front me-2"></i>Vehicle</div>
@@ -87,7 +88,8 @@
 
                 <div class="row g-4">
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="tarsContract">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white"
+                            data-validation-field="tarsContract">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label fw-semibold mb-0" for="tarsContractInput">
                                     Tars Contract
@@ -100,14 +102,14 @@
                             </div>
                             @if (!empty($existingFiles['tarsContract']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['tarsContract'] }}" class="img-fluid preview-clickable" loading="lazy" decoding="async" fetchpriority="low"
-                                        alt="Tars Contract"
+                                    <img src="{{ $existingFiles['tarsContract'] }}" class="img-fluid preview-clickable"
+                                        loading="lazy" decoding="async" fetchpriority="low" alt="Tars Contract"
                                         onclick="openModal('{{ $existingFiles['tarsContract'] }}')">
                                 </div>
                             @endif
                             <input id="tarsContractInput" type="file"
-                                class="form-control @error('tarsContract') is-invalid @enderror" wire:model="tarsContract"
-                                wire:loading.attr="disabled"
+                                class="form-control @error('tarsContract') is-invalid @enderror"
+                                wire:model="tarsContract" wire:loading.attr="disabled"
                                 wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
                                 data-upload-field="tarsContract"
                                 @if (empty($existingFiles['tarsContract'])) aria-required="true" @endif>
@@ -115,8 +117,9 @@
                             <div class="mt-3 d-none" data-progress-container="tarsContract"
                                 wire:loading.class.remove="d-none" wire:target="tarsContract">
                                 <div class="progress">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
-                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                        role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                                        style="width: 0%;">0%
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-between small text-muted mt-1">
@@ -138,7 +141,8 @@
                                     class="form-control @error('agreement_number') is-invalid @enderror"
                                     placeholder="Enter agreement number" wire:model="agreement_number"
                                     @if ($contract->kardo_required) aria-required="true" @endif>
-                                <small class="text-muted d-block">Letters and numbers only, up to 30 characters.</small>
+                                <small class="text-muted d-block">Letters and numbers only, up to 30
+                                    characters.</small>
                                 @error('agreement_number')
                                     <span class="text-danger small d-block">{{ $message }}</span>
                                 @enderror
@@ -148,7 +152,8 @@
 
                     @if ($contract->kardo_required)
                         <div class="col-12 col-lg-6 col-xl-4">
-                            <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="kardoContract">
+                            <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white"
+                                data-validation-field="kardoContract">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <label class="form-label fw-semibold mb-0" for="kardoContractInput">
                                         KARDO Contract
@@ -161,14 +166,15 @@
                                 </div>
                                 @if (!empty($existingFiles['kardoContract']))
                                     <div class="preview-wrapper mb-3">
-                                        <img src="{{ $existingFiles['kardoContract'] }}" loading="lazy" decoding="async" fetchpriority="low"
-                                            class="img-fluid preview-clickable" alt="Kardo Contract"
+                                        <img src="{{ $existingFiles['kardoContract'] }}" loading="lazy"
+                                            decoding="async" fetchpriority="low" class="img-fluid preview-clickable"
+                                            alt="Kardo Contract"
                                             onclick="openModal('{{ $existingFiles['kardoContract'] }}')">
                                     </div>
                                 @endif
                                 <input id="kardoContractInput" type="file"
-                                    class="form-control @error('kardoContract') is-invalid @enderror" wire:model="kardoContract"
-                                    wire:loading.attr="disabled"
+                                    class="form-control @error('kardoContract') is-invalid @enderror"
+                                    wire:model="kardoContract" wire:loading.attr="disabled"
                                     wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
                                     data-upload-field="kardoContract"
                                     @if (empty($existingFiles['kardoContract'])) aria-required="true" @endif>
@@ -176,8 +182,9 @@
                                 <div class="mt-3 d-none" data-progress-container="kardoContract"
                                     wire:loading.class.remove="d-none" wire:target="kardoContract">
                                     <div class="progress">
-                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
-                                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                            role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                                            aria-valuenow="0" style="width: 0%;">0%
                                         </div>
                                     </div>
                                     <div class="d-flex justify-content-between small text-muted mt-1">
@@ -203,8 +210,7 @@
 
                     <div class="col-12 col-lg-6 col-xl-4">
                         @php $paymentOnDelivery = (bool) ($contract->payment_on_delivery ?? false); @endphp
-                        <div
-                            class="document-card border rounded-3 p-3 h-100 shadow-sm {{ $paymentOnDelivery ? 'bg-white' : 'bg-light opacity-75' }}"
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm {{ $paymentOnDelivery ? 'bg-white' : 'bg-light opacity-75' }}"
                             data-validation-field="factorContract">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label fw-semibold mb-0" for="factorContractInput">
@@ -220,17 +226,17 @@
                             </div>
                             @if (!empty($existingFiles['factorContract']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['factorContract'] }}" loading="lazy" decoding="async" fetchpriority="low"
-                                        class="img-fluid preview-clickable" alt="Watcher's Receipt"
+                                    <img src="{{ $existingFiles['factorContract'] }}" loading="lazy"
+                                        decoding="async" fetchpriority="low" class="img-fluid preview-clickable"
+                                        alt="Watcher's Receipt"
                                         onclick="openModal('{{ $existingFiles['factorContract'] }}')">
                                 </div>
                             @endif
                             <input id="factorContractInput" type="file"
-                                class="form-control @error('factorContract') is-invalid @enderror" wire:model="factorContract"
-                                wire:loading.attr="disabled"
+                                class="form-control @error('factorContract') is-invalid @enderror"
+                                wire:model="factorContract" wire:loading.attr="disabled"
                                 wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
-                                data-upload-field="factorContract"
-                                @if (!$paymentOnDelivery) disabled @endif>
+                                data-upload-field="factorContract" @if (!$paymentOnDelivery) disabled @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             @unless ($paymentOnDelivery)
                                 <small class="text-muted d-block">Not needed when Payment on Delivery is disabled.</small>
@@ -238,8 +244,9 @@
                             <div class="mt-3 d-none" data-progress-container="factorContract"
                                 wire:loading.class.remove="d-none" wire:target="factorContract">
                                 <div class="progress">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
-                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                        role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                                        style="width: 0%;">0%
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-between small text-muted mt-1">
@@ -254,7 +261,8 @@
                     </div>
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="carDashboard">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white"
+                            data-validation-field="carDashboard">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label fw-semibold mb-0" for="carDashboardInput">
                                     KM/Fuel Photo
@@ -269,14 +277,14 @@
                             </div>
                             @if (!empty($existingFiles['carDashboard']))
                                 <div class="preview-wrapper mb-3">
-                                    <img src="{{ $existingFiles['carDashboard'] }}" loading="lazy" decoding="async" fetchpriority="low"
-                                        class="img-fluid preview-clickable" alt="Dashboard Photo"
+                                    <img src="{{ $existingFiles['carDashboard'] }}" loading="lazy" decoding="async"
+                                        fetchpriority="low" class="img-fluid preview-clickable" alt="Dashboard Photo"
                                         onclick="openModal('{{ $existingFiles['carDashboard'] }}')">
                                 </div>
                             @endif
                             <input id="carDashboardInput" type="file"
-                                class="form-control @error('carDashboard') is-invalid @enderror" wire:model="carDashboard"
-                                wire:loading.attr="disabled"
+                                class="form-control @error('carDashboard') is-invalid @enderror"
+                                wire:model="carDashboard" wire:loading.attr="disabled"
                                 wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
                                 data-upload-field="carDashboard"
                                 @if (empty($existingFiles['carDashboard'])) aria-required="true" @endif>
@@ -284,8 +292,9 @@
                             <div class="mt-3 d-none" data-progress-container="carDashboard"
                                 wire:loading.class.remove="d-none" wire:target="carDashboard">
                                 <div class="progress">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
-                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                        role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                                        style="width: 0%;">0%
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-between small text-muted mt-1">
@@ -301,10 +310,13 @@
 
                     @php $insideRequired = empty($existingGalleries['inside']); @endphp
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="carInsidePhotos">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white"
+                            data-validation-field="carInsidePhotos">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label fw-semibold mb-0" for="pickupCarInsideInput">
-                                    Inside Car Photos @if ($insideRequired)<span class="badge bg-danger-subtle text-danger ms-1">Required</span>@endif
+                                    Inside Car Photos @if ($insideRequired)
+                                        <span class="badge bg-danger-subtle text-danger ms-1">Required</span>
+                                    @endif
                                 </label>
                                 <span class="badge bg-primary-subtle text-primary">Max 12</span>
                             </div>
@@ -312,10 +324,14 @@
                             @if (!empty($existingGalleries['inside']))
                                 <div class="gallery-grid mb-3">
                                     @foreach ($existingGalleries['inside'] as $photo)
-                                        <div class="gallery-thumb position-relative" wire:key="inside-existing-{{ md5($photo['path']) }}">
-                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img" loading="lazy" decoding="async" fetchpriority="low"
+                                        <div class="gallery-thumb position-relative"
+                                            wire:key="inside-existing-{{ md5($photo['path']) }}">
+                                            <img src="{{ $photo['url'] }}"
+                                                class="img-fluid rounded-3 preview-clickable gallery-img"
+                                                loading="lazy" decoding="async" fetchpriority="low"
                                                 alt="Inside car photo" onclick="openModal('{{ $photo['url'] }}')">
-                                            <button type="button" class="btn btn-sm btn-danger rounded-circle gallery-remove"
+                                            <button type="button"
+                                                class="btn btn-sm btn-danger rounded-circle gallery-remove"
                                                 onclick="confirmGalleryRemoval('inside', '{{ addslashes($photo['path']) }}')">
                                                 <i class="bx bx-x"></i>
                                             </button>
@@ -331,21 +347,24 @@
 
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
-                                <input id="pickupCarInsideInput" type="file" class="form-control @error('carInsidePhotos') is-invalid @enderror @error('carInsidePhotos.*') is-invalid @enderror" wire:model="carInsidePhotos" accept="image/*"
-                                    multiple
+                                <input id="pickupCarInsideInput" type="file"
+                                    class="form-control @error('carInsidePhotos') is-invalid @enderror @error('carInsidePhotos.*') is-invalid @enderror"
+                                    wire:model="carInsidePhotos" accept="image/*" multiple
                                     wire:loading.attr="disabled"
                                     wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
                                     data-upload-field="carInsidePhotos"
                                     @if ($insideRequired) aria-required="true" @endif>
-                                <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12 photos
+                                <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12
+                                    photos
                                     in gallery.</small>
                             </div>
 
                             <div class="mt-3 d-none" data-progress-container="carInsidePhotos"
                                 wire:loading.class.remove="d-none" wire:target="carInsidePhotos">
                                 <div class="progress">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
-                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                        role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                                        style="width: 0%;">0%
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-between small text-muted mt-1">
@@ -365,10 +384,13 @@
 
                     @php $outsideRequired = empty($existingGalleries['outside']); @endphp
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="carOutsidePhotos">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white"
+                            data-validation-field="carOutsidePhotos">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label fw-semibold mb-0" for="pickupCarOutsideInput">
-                                    Outside Car Photos @if ($outsideRequired)<span class="badge bg-danger-subtle text-danger ms-1">Required</span>@endif
+                                    Outside Car Photos @if ($outsideRequired)
+                                        <span class="badge bg-danger-subtle text-danger ms-1">Required</span>
+                                    @endif
                                 </label>
                                 <span class="badge bg-success-subtle text-success">Max 12</span>
                             </div>
@@ -376,10 +398,14 @@
                             @if (!empty($existingGalleries['outside']))
                                 <div class="gallery-grid mb-3">
                                     @foreach ($existingGalleries['outside'] as $photo)
-                                        <div class="gallery-thumb position-relative" wire:key="outside-existing-{{ md5($photo['path']) }}">
-                                            <img src="{{ $photo['url'] }}" class="img-fluid rounded-3 preview-clickable gallery-img" loading="lazy" decoding="async" fetchpriority="low"
+                                        <div class="gallery-thumb position-relative"
+                                            wire:key="outside-existing-{{ md5($photo['path']) }}">
+                                            <img src="{{ $photo['url'] }}"
+                                                class="img-fluid rounded-3 preview-clickable gallery-img"
+                                                loading="lazy" decoding="async" fetchpriority="low"
                                                 alt="Outside car photo" onclick="openModal('{{ $photo['url'] }}')">
-                                            <button type="button" class="btn btn-sm btn-danger rounded-circle gallery-remove"
+                                            <button type="button"
+                                                class="btn btn-sm btn-danger rounded-circle gallery-remove"
                                                 onclick="confirmGalleryRemoval('outside', '{{ addslashes($photo['path']) }}')">
                                                 <i class="bx bx-x"></i>
                                             </button>
@@ -395,21 +421,24 @@
 
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
-                                <input id="pickupCarOutsideInput" type="file" class="form-control @error('carOutsidePhotos') is-invalid @enderror @error('carOutsidePhotos.*') is-invalid @enderror" wire:model="carOutsidePhotos" accept="image/*"
-                                    multiple
+                                <input id="pickupCarOutsideInput" type="file"
+                                    class="form-control @error('carOutsidePhotos') is-invalid @enderror @error('carOutsidePhotos.*') is-invalid @enderror"
+                                    wire:model="carOutsidePhotos" accept="image/*" multiple
                                     wire:loading.attr="disabled"
                                     wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
                                     data-upload-field="carOutsidePhotos"
                                     @if ($outsideRequired) aria-required="true" @endif>
-                                <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12 photos
+                                <small class="text-muted d-block mt-2">JPG, PNG or WEBP up to 8MB each. Maximum 12
+                                    photos
                                     in gallery.</small>
                             </div>
 
                             <div class="mt-3 d-none" data-progress-container="carOutsidePhotos"
                                 wire:loading.class.remove="d-none" wire:target="carOutsidePhotos">
                                 <div class="progress">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar"
-                                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                        role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                                        style="width: 0%;">0%
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-between small text-muted mt-1">
@@ -428,10 +457,14 @@
                     </div>
 
                     <div class="col-12 col-lg-6 col-xl-4">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="mileage">
-                            <label class="form-label fw-semibold" for="pickupMileageInput">Mileage <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
-                            <input id="pickupMileageInput" type="number" class="form-control @error('mileage') is-invalid @enderror" wire:model="mileage"
-                                inputmode="numeric" min="0" step="1" placeholder="Km on pickup" aria-required="true">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white"
+                            data-validation-field="mileage">
+                            <label class="form-label fw-semibold" for="pickupMileageInput">Mileage <span
+                                    class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                            <input id="pickupMileageInput" type="number"
+                                class="form-control @error('mileage') is-invalid @enderror" wire:model="mileage"
+                                inputmode="numeric" min="0" step="1" placeholder="Km on pickup"
+                                aria-required="true">
                             <small class="text-muted d-block mt-2">Current odometer at pickup</small>
                             @error('mileage')
                                 <span class="text-danger small d-block mt-2">{{ $message }}</span>
@@ -440,7 +473,8 @@
                     </div>
 
                     <div class="col-12 col-xl-6">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="note">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white"
+                            data-validation-field="note">
                             <label class="form-label fw-semibold">Note (Optional)</label>
                             <textarea class="form-control @error('note') is-invalid @enderror" wire:model="note" rows="4"
                                 placeholder="Internal note for the team"></textarea>
@@ -451,7 +485,8 @@
                     </div>
 
                     <div class="col-12 col-xl-6">
-                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white" data-validation-field="driverNote">
+                        <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white"
+                            data-validation-field="driverNote">
                             <label class="form-label fw-semibold">Driver Note (Optional)</label>
                             <textarea class="form-control @error('driverNote') is-invalid @enderror" wire:model="driverNote" rows="4"
                                 placeholder="Message for the driver"></textarea>
@@ -464,13 +499,15 @@
                     <div class="col-12 col-lg-6 col-xl-4">
                         <div class="card shadow-sm h-100" data-validation-field="fuelLevel">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>Fuel Level <span class="badge bg-danger-subtle text-danger ms-2">Required</span></span>
+                                <span>Fuel Level <span
+                                        class="badge bg-danger-subtle text-danger ms-2">Required</span></span>
                                 <span class="badge bg-primary">{{ $fuelLevel }}%</span>
                             </div>
                             <div class="card-body">
                                 <label for="fuelRange" class="form-label">Select fuel level (%)</label>
-                                    <input type="range" class="form-range @error('fuelLevel') is-invalid @enderror" min="0" max="100" step="10"
-                                        id="fuelRange" wire:model.live="fuelLevel" aria-required="true">
+                                <input type="range" class="form-range @error('fuelLevel') is-invalid @enderror"
+                                    min="0" max="100" step="10" id="fuelRange"
+                                    wire:model.live="fuelLevel" aria-required="true">
                                 <div class="d-flex justify-content-between small text-muted">
                                     <span>0%</span>
                                     <span>50%</span>
@@ -486,92 +523,92 @@
                     @if (!empty($costBreakdown) || !empty($depositDetails))
                         <div class="col-12 col-xl-6">
                             <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
-                                <div class="d-flex flex-column flex-lg-row align-items-stretch cost-breakdown-layout">
-                                    @if (!empty($costBreakdown))
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                                                <div>
-                                                    <h6 class="fw-semibold mb-0">Cost Breakdown</h6>
-                                                    <span class="text-muted small">View pricing details</span>
-                                                </div>
-                                                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse"
-                                                    data-bs-target="#costBreakdownCollapse" aria-expanded="false"
-                                                    aria-controls="costBreakdownCollapse">
-                                                    Toggle
-                                                </button>
-                                            </div>
-                                            <div class="collapse mt-3" id="costBreakdownCollapse">
-                                                <div class="table-responsive">
-                                                    <table class="table table-sm table-borderless align-middle mb-0">
-                                                        <thead class="table-light">
-                                                            <tr>
-                                                                <th>Item</th>
-                                                                <th class="d-none d-md-table-cell">Details</th>
-                                                                <th class="text-end">Amount (AED)</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            @foreach ($costBreakdown as $item)
-                                                                <tr>
-                                                                    <td class="fw-semibold">{{ $item['label'] }}</td>
-                                                                    <td class="text-muted small d-none d-md-table-cell">
-                                                                        {{ $item['description'] ?? '—' }}
-                                                                    </td>
-                                                                    <td class="text-end fw-semibold">
-                                                                        {{ number_format($item['amount'], 2) }}</td>
-                                                                </tr>
-                                                            @endforeach
-                                                            <tr class="table-light">
-                                                                <td class="fw-semibold">Subtotal</td>
-                                                                <td class="d-none d-md-table-cell"></td>
-                                                                <td class="text-end fw-semibold">
-                                                                    {{ number_format($costSummary['subtotal'], 2) }}</td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td class="fw-semibold">Tax</td>
-                                                                <td class="text-muted small d-none d-md-table-cell">5% VAT</td>
-                                                                <td class="text-end fw-semibold">
-                                                                    {{ number_format($costSummary['tax'], 2) }}</td>
-                                                            </tr>
-                                                            <tr class="table-primary">
-                                                                <td class="fw-semibold">Total Amount</td>
-                                                                <td class="d-none d-md-table-cell"></td>
-                                                                <td class="text-end fw-bold">
-                                                                    {{ number_format($costSummary['total'], 2) }}</td>
-                                                            </tr>
-                                                            <tr class="table-warning">
-                                                                <td class="fw-semibold">Remaining Balance</td>
-                                                                <td class="text-muted small d-none d-md-table-cell">After recorded
-                                                                    payments</td>
-                                                                <td class="text-end fw-bold text-warning">
-                                                                    {{ number_format($costSummary['remaining'], 2) }}</td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endif
-
-                                    @if (!empty($depositDetails))
-                                        <div class="deposit-instructions-panel flex-lg-shrink-0 mt-3 mt-lg-0">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <i class="bx bx-shield-quarter text-primary me-2 fs-5"></i>
-                                                <div>
-                                                    <p class="fw-semibold mb-0">Deposit Instructions</p>
-                                                    <span class="text-muted small">Shown on pickup document</span>
-                                                </div>
-                                            </div>
-                                            <p class="deposit-instructions-text mb-1">
-                                                {{ $depositDetails['label'] ?? 'Deposit' }}
-                                            </p>
-                                            @if (($depositDetails['category'] ?? null) === 'cash_aed' && ($depositDetails['amount'] ?? null) !== null)
-                                                <p class="fw-semibold mb-0">{{ number_format($depositDetails['amount'], 2) }} AED</p>
-                                            @elseif (!empty($depositDetails['detail']))
-                                                <p class="text-muted mb-0">{{ $depositDetails['detail'] }}</p>
-                                            @endif
-                                        </div>
-                                    @endif
+                                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                    <div>
+                                        <h6 class="fw-semibold mb-0">Cost Breakdown</h6>
+                                        <span class="text-muted small">View pricing details</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#costBreakdownCollapse"
+                                        aria-expanded="false" aria-controls="costBreakdownCollapse">
+                                        Toggle
+                                    </button>
+                                </div>
+                                <div class="collapse mt-3" id="costBreakdownCollapse">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-borderless align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Item</th>
+                                                    <th class="d-none d-md-table-cell">Details</th>
+                                                    <th class="text-end">Amount (AED)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($costBreakdown as $item)
+                                                    <tr>
+                                                        <td class="fw-semibold">{{ $item['label'] }}</td>
+                                                        <td class="text-muted small d-none d-md-table-cell">
+                                                            {{ $item['description'] ?? '—' }}
+                                                        </td>
+                                                        <td class="text-end fw-semibold">
+                                                            {{ number_format($item['amount'], 2) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                                <tr class="table-light">
+                                                    <td class="fw-semibold">Subtotal</td>
+                                                    <td class="d-none d-md-table-cell"></td>
+                                                    <td class="text-end fw-semibold">
+                                                        {{ number_format($costSummary['subtotal'], 2) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="fw-semibold">Tax</td>
+                                                    <td class="text-muted small d-none d-md-table-cell">5% VAT</td>
+                                                    <td class="text-end fw-semibold">
+                                                        {{ number_format($costSummary['tax'], 2) }}</td>
+                                                </tr>
+                                                <tr class="table-primary">
+                                                    <td class="fw-semibold">Total Amount</td>
+                                                    <td class="d-none d-md-table-cell"></td>
+                                                    <td class="text-end fw-bold">
+                                                        {{ number_format($costSummary['total'], 2) }}</td>
+                                                </tr>
+                                                <tr class="table-warning">
+                                                    <td class="fw-semibold">Remaining Balance</td>
+                                                    <td class="text-muted small d-none d-md-table-cell">After recorded
+                                                        payments</td>
+                                                    <td class="text-end fw-bold text-warning">
+                                                        {{ number_format($costSummary['remaining'], 2) }}</td>
+                                                </tr>
+                                                @if (!empty($depositDetails))
+                                                    <tr class="table-info">
+                                                        <td class="fw-semibold">
+                                                            <div>Deposit Instructions</div>
+                                                            @if (!empty($depositDetails['detail']))
+                                                                <div class="text-muted small d-md-none mt-1">
+                                                                    {{ $depositDetails['detail'] }}</div>
+                                                            @endif
+                                                        </td>
+                                                        <td class="d-none d-md-table-cell">
+                                                            <div class="fw-semibold">
+                                                                {{ $depositDetails['label'] ?? 'Deposit' }}</div>
+                                                            @if (!empty($depositDetails['detail']))
+                                                                <div class="text-muted small">
+                                                                    {{ $depositDetails['detail'] }}</div>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-end fw-semibold">
+                                                            @if (($depositDetails['category'] ?? null) === 'cash_aed' && ($depositDetails['amount'] ?? null) !== null)
+                                                                {{ number_format($depositDetails['amount'], 2) }} AED
+                                                            @else
+                                                                <span class="text-muted">—</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endif
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -608,7 +645,8 @@
 
     @if (!empty($customerDocuments['passport']) || !empty($customerDocuments['license']))
         <div class="card shadow-sm border-0 rounded-4 mt-4">
-            <div class="card-header bg-white border-0 rounded-top-4 py-3 d-flex justify-content-between align-items-center">
+            <div
+                class="card-header bg-white border-0 rounded-top-4 py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Customer Identity Documents</h5>
                 <span class="badge bg-label-primary">Available</span>
             </div>
@@ -622,15 +660,20 @@
                                     <h6 class="text-muted text-uppercase small mb-3">{{ $docLabel }}</h6>
                                     <div class="d-flex flex-wrap gap-3">
                                         @foreach ($customerDocuments[$docKey] as $file)
-                                            <div class="border rounded-3 p-2 text-center flex-grow-1" style="min-width: 160px;">
+                                            <div class="border rounded-3 p-2 text-center flex-grow-1"
+                                                style="min-width: 160px;">
                                                 <div class="fw-semibold small mb-2">{{ $file['label'] }}</div>
                                                 @if ($file['is_pdf'])
-                                                    <a href="{{ $file['url'] }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                                    <a href="{{ $file['url'] }}"
+                                                        class="btn btn-outline-primary btn-sm" target="_blank">
                                                         <i class="bx bxs-file-pdf me-1"></i> View PDF
                                                     </a>
                                                 @else
-                                                    <img src="{{ $file['url'] }}" class="img-fluid rounded preview-clickable" loading="lazy" decoding="async" fetchpriority="low"
-                                                        alt="{{ $docLabel }} {{ $file['label'] }}" onclick="openModal('{{ $file['url'] }}')">
+                                                    <img src="{{ $file['url'] }}"
+                                                        class="img-fluid rounded preview-clickable" loading="lazy"
+                                                        decoding="async" fetchpriority="low"
+                                                        alt="{{ $docLabel }} {{ $file['label'] }}"
+                                                        onclick="openModal('{{ $file['url'] }}')">
                                                 @endif
                                             </div>
                                         @endforeach
@@ -754,31 +797,6 @@
             justify-content: center;
             padding: 0.75rem;
             min-height: 220px;
-        }
-
-        .cost-breakdown-layout {
-            gap: 1.5rem;
-        }
-
-        .deposit-instructions-panel {
-            background: #fff8e6;
-            border: 1px solid #ffe0b3;
-            border-radius: 0.85rem;
-            padding: 1rem 1.2rem;
-        }
-
-        @media (min-width: 992px) {
-            .deposit-instructions-panel {
-                min-width: 240px;
-                max-width: 320px;
-            }
-        }
-
-        .deposit-instructions-text {
-            color: #6c757d;
-            margin-bottom: 0;
-            white-space: pre-wrap;
-            word-break: break-word;
         }
 
         .document-card .preview-wrapper img,
@@ -946,7 +964,8 @@
 
                     const field = input.dataset.uploadField;
 
-                    const findContainer = () => document.querySelector(`[data-progress-container="${field}"]`);
+                    const findContainer = () => document.querySelector(
+                        `[data-progress-container="${field}"]`);
                     const findBar = () => {
                         const container = findContainer();
                         return container ? container.querySelector('.progress-bar') : null;
