@@ -37,6 +37,7 @@ class Contract extends Model
         'return_driver_id',
         'licensed_driver_name',
         'deposit',
+        'deposit_category',
     ];
 
     /**

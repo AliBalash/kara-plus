@@ -483,7 +483,7 @@
                         </div>
                     </div>
 
-                    @if (!empty($costBreakdown) || !empty($depositNote))
+                    @if (!empty($costBreakdown) || !empty($depositDetails))
                         <div class="col-12 col-xl-6">
                             <div class="document-card border rounded-3 p-3 h-100 shadow-sm bg-white">
                                 <div class="d-flex flex-column flex-lg-row align-items-stretch cost-breakdown-layout">
@@ -553,7 +553,7 @@
                                         </div>
                                     @endif
 
-                                    @if (!empty($depositNote))
+                                    @if (!empty($depositDetails))
                                         <div class="deposit-instructions-panel flex-lg-shrink-0 mt-3 mt-lg-0">
                                             <div class="d-flex align-items-center mb-2">
                                                 <i class="bx bx-shield-quarter text-primary me-2 fs-5"></i>
@@ -562,7 +562,14 @@
                                                     <span class="text-muted small">Shown on pickup document</span>
                                                 </div>
                                             </div>
-                                            <p class="deposit-instructions-text">{{ $depositNote }}</p>
+                                            <p class="deposit-instructions-text mb-1">
+                                                {{ $depositDetails['label'] ?? 'Deposit' }}
+                                            </p>
+                                            @if (($depositDetails['category'] ?? null) === 'cash_aed' && ($depositDetails['amount'] ?? null) !== null)
+                                                <p class="fw-semibold mb-0">{{ number_format($depositDetails['amount'], 2) }} AED</p>
+                                            @elseif (!empty($depositDetails['detail']))
+                                                <p class="text-muted mb-0">{{ $depositDetails['detail'] }}</p>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>

@@ -87,6 +87,7 @@ class RentalRequestCreate extends Component
     public $ldw_daily_rate = 0;
     public $scdw_daily_rate = 0;
     public $deposit = null;
+    public $deposit_category = null;
     public array $salesAgents = [];
 
     public array $locationCosts = [];
@@ -158,6 +159,11 @@ class RentalRequestCreate extends Component
         if ($propertyName === 'selectedModelId') {
             $this->loadCars();
         }
+    }
+
+    public function updatedDepositCategory(): void
+    {
+        $this->deposit = null;
     }
 
     private function isCostRelatedField($propertyName)
@@ -502,9 +508,33 @@ class RentalRequestCreate extends Component
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
             'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
-            'deposit' => ['nullable', 'string', 'max:1000'],
+            'deposit_category' => ['nullable', 'in:cash_aed,cheque,transfer_cash_irr', 'required_with:deposit'],
+            'deposit' => $this->depositRules(),
             'service_quantities.child_seat' => ['nullable', 'integer', 'min:0'],
         ];
+    }
+
+    private function depositRules(): array
+    {
+        $rules = ['nullable'];
+
+        $rules[] = function ($attribute, $value, $fail) {
+            if (!$this->deposit_category && ($value !== null && $value !== '')) {
+                $fail('Please select a deposit category before entering details.');
+            }
+        };
+
+        if ($this->deposit_category === 'cash_aed') {
+            $rules[] = 'required_with:deposit_category';
+            $rules[] = 'numeric';
+            $rules[] = 'min:0';
+        } elseif ($this->deposit_category) {
+            $rules[] = 'required_with:deposit_category';
+            $rules[] = 'string';
+            $rules[] = 'max:1000';
+        }
+
+        return $rules;
     }
 
     protected $messages = [
@@ -559,6 +589,12 @@ class RentalRequestCreate extends Component
         'driver_hours.min' => 'Driver service hours cannot be negative.',
         'service_quantities.child_seat.integer' => 'Child seat quantity must be a whole number.',
         'service_quantities.child_seat.min' => 'Child seat quantity cannot be negative.',
+        'deposit_category.in' => 'Please select a valid deposit category.',
+        'deposit_category.required_with' => 'Please select a deposit category.',
+        'deposit.required_with' => 'Please provide deposit details for the selected category.',
+        'deposit.numeric' => 'Cash deposit must be a valid number.',
+        'deposit.min' => 'Cash deposit cannot be negative.',
+        'deposit.string' => 'Deposit note must be text.',
         'deposit.max' => 'Deposit note may not be greater than 1000 characters.',
     ];
 
@@ -587,7 +623,8 @@ class RentalRequestCreate extends Component
         'driving_license_option' => 'driving license option',
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
-        'deposit' => 'deposit note',
+        'deposit' => 'deposit detail',
+        'deposit_category' => 'deposit category',
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
     ];
@@ -641,6 +678,7 @@ class RentalRequestCreate extends Component
                 'licensed_driver_name' => $this->licensed_driver_name,
                 'notes' => $this->notes,
                 'deposit' => $this->normalizedDeposit(),
+                'deposit_category' => $this->deposit_category,
                 'kardo_required' => $this->kardo_required ?? true,
                 'used_daily_rate' => $this->roundCurrency($this->dailyRate),
                 'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
@@ -711,6 +749,14 @@ class RentalRequestCreate extends Component
 
     private function normalizedDeposit(): ?string
     {
+        if (!$this->deposit_category) {
+            return null;
+        }
+
+        if ($this->deposit_category === 'cash_aed' && is_numeric($this->deposit)) {
+            return number_format(max(0, (float) $this->deposit), 2, '.', '');
+        }
+
         $deposit = is_string($this->deposit) ? trim($this->deposit) : null;
 
         return $deposit !== '' ? $deposit : null;
