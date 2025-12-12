@@ -283,7 +283,7 @@
                                 <span class="input-group-text"><i class="bx bx-category"></i></span>
                                 <select id="depositCategory"
                                     class="form-select @error('deposit_category') is-invalid @enderror"
-                                    wire:model="deposit_category">
+                                    wire:model.live="deposit_category">
                                     <option value="">Select deposit category</option>
                                     <option value="cash_aed">Cash (based on AED)</option>
                                     <option value="cheque">Cheque</option>
