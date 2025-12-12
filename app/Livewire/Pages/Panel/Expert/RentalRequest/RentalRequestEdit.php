@@ -96,6 +96,7 @@ class RentalRequestEdit extends Component
     public $originalSelections = [];
     public $carNameCache = [];
     public $deposit = null;
+    public $deposit_category = null;
     public array $salesAgents = [];
 
     public array $locationCosts = [];
@@ -239,6 +240,7 @@ class RentalRequestEdit extends Component
         $meta = $this->contract->meta ?? [];
         $this->driver_note = $meta['driver_note'] ?? null;
         $this->deposit = $this->contract->deposit;
+        $this->deposit_category = $this->contract->deposit_category;
         $this->driver_hours = isset($meta['driver_hours']) ? (float) $meta['driver_hours'] : 0;
         $this->service_quantities = $this->normalizedServiceQuantities($meta['service_quantities'] ?? [], true);
         $licenseOption = $meta['driving_license_option'] ?? null;
@@ -532,9 +534,33 @@ class RentalRequestEdit extends Component
             'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
             'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
-            'deposit' => ['nullable', 'string', 'max:1000'],
+            'deposit_category' => ['nullable', 'in:cash_aed,cheque,transfer_cash_irr', 'required_with:deposit'],
+            'deposit' => $this->depositRules(),
             'service_quantities.child_seat' => ['nullable', 'integer', 'min:0'],
         ];
+    }
+
+    private function depositRules(): array
+    {
+        $rules = ['nullable'];
+
+        $rules[] = function ($attribute, $value, $fail) {
+            if (!$this->deposit_category && ($value !== null && $value !== '')) {
+                $fail('Please select a deposit category before entering details.');
+            }
+        };
+
+        if ($this->deposit_category === 'cash_aed') {
+            $rules[] = 'required_with:deposit_category';
+            $rules[] = 'numeric';
+            $rules[] = 'min:0';
+        } elseif ($this->deposit_category) {
+            $rules[] = 'required_with:deposit_category';
+            $rules[] = 'string';
+            $rules[] = 'max:1000';
+        }
+
+        return $rules;
     }
 
     protected $messages = [
@@ -593,6 +619,12 @@ class RentalRequestEdit extends Component
         'driver_hours.min' => 'Driver service hours cannot be negative.',
         'service_quantities.child_seat.integer' => 'Child seat quantity must be a whole number.',
         'service_quantities.child_seat.min' => 'Child seat quantity cannot be negative.',
+        'deposit_category.in' => 'Please select a valid deposit category.',
+        'deposit_category.required_with' => 'Please select a deposit category.',
+        'deposit.required_with' => 'Please provide deposit details for the selected category.',
+        'deposit.numeric' => 'Cash deposit must be a valid number.',
+        'deposit.min' => 'Cash deposit cannot be negative.',
+        'deposit.string' => 'Deposit note must be text.',
         'deposit.max' => 'Deposit note may not be greater than 1000 characters.',
     ];
 
@@ -621,7 +653,8 @@ class RentalRequestEdit extends Component
         'driving_license_option' => 'driving license option',
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
-        'deposit' => 'deposit note',
+        'deposit' => 'deposit detail',
+        'deposit_category' => 'deposit category',
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
     ];
@@ -641,6 +674,11 @@ class RentalRequestEdit extends Component
         if ($propertyName === 'selectedModelId') {
             $this->loadCars();
         }
+    }
+
+    public function updatedDepositCategory(): void
+    {
+        $this->deposit = null;
     }
 
     private function captureSelectionSnapshot(): array
@@ -929,6 +967,7 @@ class RentalRequestEdit extends Component
             'licensed_driver_name' => $this->licensed_driver_name,
             'notes' => $this->notes,
             'deposit' => $this->normalizedDeposit(),
+            'deposit_category' => $this->deposit_category,
             'kardo_required' => $this->kardo_required,
             'used_daily_rate' => $this->roundCurrency($this->dailyRate),
             'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
@@ -1102,7 +1141,7 @@ class RentalRequestEdit extends Component
         $childSeatQuantity = $this->getServiceQuantity('child_seat');
         $childSeatText = $childSeatQuantity > 0 ? $childSeatQuantity . ' seat(s)' : '---';
         $deliveryCharge = $this->formatCurrency($this->transfer_costs['pickup'] ?? ($this->transfer_costs['total'] ?? 0));
-        $guaranteeFee = $this->normalizedDeposit() ?: '---';
+        $guaranteeFee = $this->formattedDepositLabel();
         $securityHold = $sumAmount('security_deposit');
         $debtInAdvance = $this->formatCurrency(max($this->contract->calculateRemainingBalance($payments), 0));
         $cardooForm = $this->kardo_required ? 'YES' : 'NO';
@@ -1169,7 +1208,7 @@ class RentalRequestEdit extends Component
         $customerPayments = (float) $payments->sum('amount_in_aed');
         $balance = $this->contract->calculateRemainingBalance($payments);
 
-        $depositLabel = $this->normalizedDeposit() ?: 'No Deposit';
+        $depositLabel = $this->formattedDepositLabel();
         $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
         $carDescriptor = $this->formatCarDescriptor(
@@ -1234,6 +1273,37 @@ class RentalRequestEdit extends Component
         }
 
         return number_format((float) $value, 2);
+    }
+
+    private function depositCategoryLabel(?string $category): string
+    {
+        return match ($category) {
+            'cash_aed' => 'Cash (based on AED)',
+            'cheque' => 'Cheque',
+            'transfer_cash_irr' => 'Transfer or Cash (based on IRR)',
+            default => 'Deposit',
+        };
+    }
+
+    private function formattedDepositLabel(): string
+    {
+        $depositValue = $this->normalizedDeposit();
+
+        if (!$this->deposit_category && !$depositValue) {
+            return 'No Deposit';
+        }
+
+        $label = $this->depositCategoryLabel($this->deposit_category);
+
+        if ($this->deposit_category === 'cash_aed' && is_numeric($depositValue)) {
+            return $label . ': ' . $this->formatCurrency($depositValue) . ' AED';
+        }
+
+        if ($depositValue) {
+            return $label . ': ' . $depositValue;
+        }
+
+        return $label;
     }
 
     public function getCostComparisonDataProperty(): array
@@ -1642,6 +1712,14 @@ class RentalRequestEdit extends Component
 
     private function normalizedDeposit(): ?string
     {
+        if (!$this->deposit_category) {
+            return null;
+        }
+
+        if ($this->deposit_category === 'cash_aed' && is_numeric($this->deposit)) {
+            return number_format(max(0, (float) $this->deposit), 2, '.', '');
+        }
+
         $deposit = is_string($this->deposit) ? trim($this->deposit) : null;
 
         return $deposit !== '' ? $deposit : null;

@@ -42,6 +42,8 @@ class RentalRequestPickupDocument extends Component
 
     public $remainingBalance = 0;
     public $depositNote;
+    public array $depositDetails = [];
+    public ?string $depositCategory = null;
 
     public $contract;
     public array $customerDocuments = [
@@ -123,7 +125,9 @@ class RentalRequestPickupDocument extends Component
         $this->contractId = $contractId;
         $pickup = PickupDocument::where('contract_id', $contractId)->first();
         $contractMeta = $this->contract->meta ?? [];
-        $this->depositNote = $this->contract->deposit;
+        $this->depositCategory = $this->contract->deposit_category;
+        $this->depositDetails = $this->buildDepositDetails();
+        $this->depositNote = $this->depositDetails['display'] ?? null;
         if (!empty($pickup)) {
             $this->fuelLevel = $pickup->fuelLevel;
             $this->mileage = $pickup->mileage;
@@ -694,6 +698,43 @@ class RentalRequestPickupDocument extends Component
         };
     }
 
+    private function buildDepositDetails(): array
+    {
+        $category = $this->contract->deposit_category;
+        $detail = $this->contract->deposit;
+
+        if (!$category && ($detail === null || $detail === '')) {
+            return [];
+        }
+
+        $labels = [
+            'cash_aed' => 'Cash (based on AED)',
+            'cheque' => 'Cheque',
+            'transfer_cash_irr' => 'Transfer or Cash (based on IRR)',
+        ];
+
+        $label = $labels[$category] ?? 'Deposit';
+        $amount = null;
+        $formattedDetail = null;
+
+        if ($category === 'cash_aed' && is_numeric($detail)) {
+            $amount = (float) $detail;
+            $formattedDetail = number_format($amount, 2) . ' AED';
+        } elseif (is_string($detail) && trim($detail) !== '') {
+            $formattedDetail = trim($detail);
+        }
+
+        $display = trim($label . ($formattedDetail ? ' - ' . $formattedDetail : ''));
+
+        return [
+            'category' => $category,
+            'label' => $label,
+            'detail' => $formattedDetail ?? $detail,
+            'amount' => $amount,
+            'display' => $display !== '' ? $display : $label,
+        ];
+    }
+
     private function prepareCostBreakdown(): void
     {
         $charges = $this->contract->relationLoaded('charges')
@@ -708,30 +749,42 @@ class RentalRequestPickupDocument extends Component
                 'total' => (float) ($this->contract->total_price ?? 0),
                 'remaining' => (float) $this->remainingBalance,
             ];
+        } else {
+            $chargeRows = $charges->reject(fn($charge) => $charge->type === 'tax');
 
-            return;
+            $this->costBreakdown = $chargeRows->map(function ($charge) {
+                return [
+                    'label' => $this->humanReadableChargeTitle($charge->title),
+                    'description' => $charge->description,
+                    'amount' => (float) $charge->amount,
+                ];
+            })->toArray();
+
+            $tax = (float) $charges->where('type', 'tax')->sum('amount');
+            $total = (float) $charges->sum('amount');
+            $subtotal = $total - $tax;
+
+            $this->costSummary = [
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'total' => $total,
+                'remaining' => (float) $this->remainingBalance,
+            ];
         }
 
-        $chargeRows = $charges->reject(fn($charge) => $charge->type === 'tax');
+        $depositAmount = $this->depositDetails['amount'] ?? null;
 
-        $this->costBreakdown = $chargeRows->map(function ($charge) {
-            return [
-                'label' => $this->humanReadableChargeTitle($charge->title),
-                'description' => $charge->description,
-                'amount' => (float) $charge->amount,
+        if ($depositAmount !== null) {
+            $this->costBreakdown[] = [
+                'label' => $this->depositDetails['label'] ?? 'Deposit',
+                'description' => $this->depositDetails['detail'] ?? 'Cash deposit payable in AED',
+                'amount' => (float) $depositAmount,
             ];
-        })->toArray();
 
-        $tax = (float) $charges->where('type', 'tax')->sum('amount');
-        $total = (float) $charges->sum('amount');
-        $subtotal = $total - $tax;
-
-        $this->costSummary = [
-            'subtotal' => $subtotal,
-            'tax' => $tax,
-            'total' => $total,
-            'remaining' => (float) $this->remainingBalance,
-        ];
+            $this->costSummary['subtotal'] += $depositAmount;
+            $this->costSummary['total'] += $depositAmount;
+            $this->costSummary['remaining'] = (float) $this->costSummary['remaining'] + $depositAmount;
+        }
     }
 
     private function humanReadableChargeTitle(string $title): string
