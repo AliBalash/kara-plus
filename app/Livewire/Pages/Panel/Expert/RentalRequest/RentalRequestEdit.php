@@ -1128,7 +1128,9 @@ class RentalRequestEdit extends Component
 
         $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
-        $seller = optional($this->contract->user)->fullName() ?? '---';
+        $seller = $this->contract->agent_sale
+            ?: optional($this->contract->user)->fullName()
+            ?? '---';
         $deliveryDate = $this->pickup_date ? Carbon::parse($this->pickup_date)->format('Y-m-d \A\T H:i') : '---';
         $deliveryPlace = $this->pickup_location ?: '---';
         $carDescriptor = $this->formatCarDescriptor(
