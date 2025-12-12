@@ -1142,7 +1142,8 @@ class RentalRequestEdit extends Component
         $insurance = $this->formatInsuranceLabel($this->selected_insurance);
         $childSeatQuantity = $this->getServiceQuantity('child_seat');
         $childSeatText = $childSeatQuantity > 0 ? $childSeatQuantity . ' seat(s)' : '---';
-        $deliveryCharge = $this->formatCurrency($this->transfer_costs['pickup'] ?? ($this->transfer_costs['total'] ?? 0));
+        $pickupTravelCharge = $this->formatCurrency($this->transfer_costs['pickup'] ?? 0);
+        $returnTravelCharge = $this->formatCurrency($this->transfer_costs['return'] ?? 0);
         $guaranteeFee = $this->formattedDepositLabel();
         $securityHold = $sumAmount('security_deposit');
         $debtInAdvance = $this->formatCurrency(max($this->contract->calculateRemainingBalance($payments), 0));
@@ -1165,8 +1166,9 @@ class RentalRequestEdit extends Component
             Daily : {$dailyRate}
             Supplementary Insurance Package : {$insurance}
             Child Seat: {$childSeatText}
-            Charge delivery: {$deliveryCharge} AED
-            Guarantee fee: {$guaranteeFee}
+            Pickup travel charge: {$pickupTravelCharge} AED
+            Return travel charge: {$returnTravelCharge} AED
+            Security hold method: {$guaranteeFee}
             ----------------------------------------------------
             Total rent: {$totalRent}  AED
             Vat: {$vatAmount} AED
@@ -1181,7 +1183,7 @@ class RentalRequestEdit extends Component
 
     public function getReturnInformationTextProperty(): string
     {
-        $this->contract->loadMissing(['payments', 'customer', 'car.carModel']);
+        $this->contract->loadMissing(['payments', 'customer', 'car.carModel', 'pickupDocument']);
 
         $payments = $this->contract->payments ?? collect();
 
@@ -1210,6 +1212,7 @@ class RentalRequestEdit extends Component
         $customerPayments = (float) $payments->sum('amount_in_aed');
         $balance = $this->contract->calculateRemainingBalance($payments);
 
+        $agreementNumber = $this->contract->pickupDocument?->agreement_number ?? '---';
         $depositLabel = $this->formattedDepositLabel();
         $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
@@ -1222,7 +1225,7 @@ class RentalRequestEdit extends Component
 
         return trim(<<<TEXT
             *This report is for the information of the customer and the settlement is not complete*
-            AG number: {$this->contract->id}
+            AG number: {$agreementNumber}
             Customer Name: {$customerName}
             Mobile number: {$phone}
             Car: *{$carDescriptor}*
@@ -1235,7 +1238,8 @@ class RentalRequestEdit extends Component
             {$insuranceLabel}: {$this->formatCurrency($insuranceDaily)} AED
             Baby seat: {$this->formatCurrency($childSeatAmount)} AED
             Fine: {$this->formatCurrency($sumAmount('fine'))} AED
-            Delivery Charge: {$this->formatCurrency($this->transfer_costs['total'] ?? 0)} AED
+            Pickup travel charge: {$this->formatCurrency($this->transfer_costs['pickup'] ?? 0)} AED
+            Return travel charge: {$this->formatCurrency($this->transfer_costs['return'] ?? 0)} AED
             No Deposite Fee: {$this->formatCurrency($sumAmount('no_deposit_fee'))} AED
             Parking: {$this->formatCurrency($sumAmount('parking'))} AED
             Petrol: {$this->formatCurrency($sumAmount('fuel'))} AED
@@ -1245,7 +1249,7 @@ class RentalRequestEdit extends Component
             ----------------------------------------------------
             Total Costs: {$this->formatCurrency($this->final_total)} AED
             vat: {$this->formatCurrency($this->tax_amount)} AED
-            Deposit: {$depositLabel}
+            Security hold method: {$depositLabel}
             Security Hold: {$this->formatCurrency($securityHold)} AED
             Sub Total: {$this->formatCurrency($this->final_total +$securityHold)} AED
             ----------------------------------------------------
