@@ -713,7 +713,7 @@ class RentalRequestPickupDocument extends Component
             'transfer_cash_irr' => 'Transfer or Cash (based on IRR)',
         ];
 
-        $label = $labels[$category] ?? 'Deposit';
+        $label = $labels[$category] ?? 'Security Hold';
         $amount = null;
         $formattedDetail = null;
 

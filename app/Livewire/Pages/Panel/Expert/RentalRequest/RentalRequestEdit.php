@@ -546,7 +546,7 @@ class RentalRequestEdit extends Component
 
         $rules[] = function ($attribute, $value, $fail) {
             if (!$this->deposit_category && ($value !== null && $value !== '')) {
-                $fail('Please select a deposit category before entering details.');
+                $fail('Please select a security hold category before entering details.');
             }
         };
 
@@ -619,13 +619,13 @@ class RentalRequestEdit extends Component
         'driver_hours.min' => 'Driver service hours cannot be negative.',
         'service_quantities.child_seat.integer' => 'Child seat quantity must be a whole number.',
         'service_quantities.child_seat.min' => 'Child seat quantity cannot be negative.',
-        'deposit_category.in' => 'Please select a valid deposit category.',
-        'deposit_category.required_with' => 'Please select a deposit category.',
-        'deposit.required_with' => 'Please provide deposit details for the selected category.',
-        'deposit.numeric' => 'Cash deposit must be a valid number.',
-        'deposit.min' => 'Cash deposit cannot be negative.',
-        'deposit.string' => 'Deposit note must be text.',
-        'deposit.max' => 'Deposit note may not be greater than 1000 characters.',
+        'deposit_category.in' => 'Please select a valid security hold category.',
+        'deposit_category.required_with' => 'Please select a security hold category.',
+        'deposit.required_with' => 'Please provide security hold details for the selected category.',
+        'deposit.numeric' => 'Cash security hold amount must be a valid number.',
+        'deposit.min' => 'Cash security hold amount cannot be negative.',
+        'deposit.string' => 'Security hold note must be text.',
+        'deposit.max' => 'Security hold note may not be greater than 1000 characters.',
     ];
 
     protected array $validationAttributes = [
@@ -653,8 +653,8 @@ class RentalRequestEdit extends Component
         'driving_license_option' => 'driving license option',
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
-        'deposit' => 'deposit detail',
-        'deposit_category' => 'deposit category',
+        'deposit' => 'security hold detail',
+        'deposit_category' => 'security hold category',
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
     ];
@@ -1240,7 +1240,7 @@ class RentalRequestEdit extends Component
             Fine: {$this->formatCurrency($sumAmount('fine'))} AED
             Pickup travel charge: {$this->formatCurrency($this->transfer_costs['pickup'] ?? 0)} AED
             Return travel charge: {$this->formatCurrency($this->transfer_costs['return'] ?? 0)} AED
-            No Deposite Fee: {$this->formatCurrency($sumAmount('no_deposit_fee'))} AED
+            No Security Hold Fee: {$this->formatCurrency($sumAmount('no_deposit_fee'))} AED
             Parking: {$this->formatCurrency($sumAmount('parking'))} AED
             Petrol: {$this->formatCurrency($sumAmount('fuel'))} AED
             Car wash: {$this->formatCurrency($sumAmount('carwash'))} AED
@@ -1287,7 +1287,7 @@ class RentalRequestEdit extends Component
             'cash_aed' => 'Cash (based on AED)',
             'cheque' => 'Cheque',
             'transfer_cash_irr' => 'Transfer or Cash (based on IRR)',
-            default => 'Deposit',
+            default => 'Security Hold',
         };
     }
 
@@ -1296,7 +1296,7 @@ class RentalRequestEdit extends Component
         $depositValue = $this->normalizedDeposit();
 
         if (!$this->deposit_category && !$depositValue) {
-            return 'No Deposit';
+            return 'No Security Hold';
         }
 
         $label = $this->depositCategoryLabel($this->deposit_category);
