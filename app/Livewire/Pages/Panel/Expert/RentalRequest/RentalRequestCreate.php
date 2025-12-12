@@ -520,7 +520,7 @@ class RentalRequestCreate extends Component
 
         $rules[] = function ($attribute, $value, $fail) {
             if (!$this->deposit_category && ($value !== null && $value !== '')) {
-                $fail('Please select a deposit category before entering details.');
+                $fail('Please select a security hold category before entering details.');
             }
         };
 
@@ -589,13 +589,13 @@ class RentalRequestCreate extends Component
         'driver_hours.min' => 'Driver service hours cannot be negative.',
         'service_quantities.child_seat.integer' => 'Child seat quantity must be a whole number.',
         'service_quantities.child_seat.min' => 'Child seat quantity cannot be negative.',
-        'deposit_category.in' => 'Please select a valid deposit category.',
-        'deposit_category.required_with' => 'Please select a deposit category.',
-        'deposit.required_with' => 'Please provide deposit details for the selected category.',
-        'deposit.numeric' => 'Cash deposit must be a valid number.',
-        'deposit.min' => 'Cash deposit cannot be negative.',
-        'deposit.string' => 'Deposit note must be text.',
-        'deposit.max' => 'Deposit note may not be greater than 1000 characters.',
+        'deposit_category.in' => 'Please select a valid security hold category.',
+        'deposit_category.required_with' => 'Please select a security hold category.',
+        'deposit.required_with' => 'Please provide security hold details for the selected category.',
+        'deposit.numeric' => 'Cash security hold amount must be a valid number.',
+        'deposit.min' => 'Cash security hold amount cannot be negative.',
+        'deposit.string' => 'Security hold note must be text.',
+        'deposit.max' => 'Security hold note may not be greater than 1000 characters.',
     ];
 
     protected array $validationAttributes = [
@@ -623,8 +623,8 @@ class RentalRequestCreate extends Component
         'driving_license_option' => 'driving license option',
         'driver_hours' => 'driver service hours',
         'driver_note' => 'driver note',
-        'deposit' => 'deposit detail',
-        'deposit_category' => 'deposit category',
+        'deposit' => 'security hold detail',
+        'deposit_category' => 'security hold category',
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
     ];

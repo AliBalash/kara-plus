@@ -583,7 +583,7 @@
                                                 @if (!empty($depositDetails))
                                                     <tr class="table-info">
                                                         <td class="fw-semibold">
-                                                            <div>Deposit Instructions</div>
+                                                            <div>Security Hold Instructions</div>
                                                             @if (!empty($depositDetails['detail']))
                                                                 <div class="text-muted small d-md-none mt-1">
                                                                     {{ $depositDetails['detail'] }}</div>
@@ -591,7 +591,7 @@
                                                         </td>
                                                         <td class="d-none d-md-table-cell">
                                                             <div class="fw-semibold">
-                                                                {{ $depositDetails['label'] ?? 'Deposit' }}</div>
+                                                                {{ $depositDetails['label'] ?? 'Security Hold' }}</div>
                                                             @if (!empty($depositDetails['detail']))
                                                                 <div class="text-muted small">
                                                                     {{ $depositDetails['detail'] }}</div>
