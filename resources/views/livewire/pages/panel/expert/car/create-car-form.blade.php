@@ -102,10 +102,10 @@
 
                                 <!-- Price for 1-6 Days -->
                                 <div class="input-group">
-                                    <span class="input-group-text">Price (1-6 days)</span>
+                                <span class="input-group-text">Price (1-6 days)</span>
                                 <input type="number" step="0.01"
                                     class="form-control @error('price_per_day_short') is-invalid @enderror"
-                                    wire:model="price_per_day_short" placeholder="Price for short-term (درهم)"
+                                    wire:model="price_per_day_short" placeholder="Price for short-term (AED)"
                                     min="0" required>
                                     @error('price_per_day_short')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -114,10 +114,10 @@
 
                                 <!-- Price for 7-28 Days -->
                                 <div class="input-group">
-                                    <span class="input-group-text">Price (7-28 days)</span>
+                                <span class="input-group-text">Price (7-28 days)</span>
                                 <input type="number" step="0.01"
                                     class="form-control @error('price_per_day_mid') is-invalid @enderror"
-                                    wire:model="price_per_day_mid" placeholder="Price for mid-term (درهم)"
+                                    wire:model="price_per_day_mid" placeholder="Price for mid-term (AED)"
                                     min="0" required>
                                     @error('price_per_day_mid')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -126,10 +126,10 @@
 
                                 <!-- Price for 28+ Days -->
                                 <div class="input-group">
-                                    <span class="input-group-text">Price (28+ days)</span>
+                                <span class="input-group-text">Price (28+ days)</span>
                                 <input type="number" step="0.01"
                                     class="form-control @error('price_per_day_long') is-invalid @enderror"
-                                    wire:model="price_per_day_long" placeholder="Price for long-term (درهم)"
+                                    wire:model="price_per_day_long" placeholder="Price for long-term (AED)"
                                     min="0" required>
                                     @error('price_per_day_long')
                                         <div class="invalid-feedback">{{ $message }}</div>

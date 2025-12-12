@@ -52,11 +52,13 @@ trait HandlesServicePricing
         if (!empty($service['per_day'])) {
             $dailyAmount = number_format((float) ($service['amount'] ?? 0), 2);
             $quantityPrefix = $quantity > 1 ? ($quantity . ' × ') : '';
+            $dayCount = max($days, 1);
+            $dayLabel = $dayCount === 1 ? 'day' : 'days';
 
-            return sprintf('%s%d روز × %s درهم', $quantityPrefix, max($days, 1), $dailyAmount);
+            return sprintf('%s%d %s × %s AED', $quantityPrefix, $dayCount, $dayLabel, $dailyAmount);
         }
 
-        $oneTime = 'یک‌بار هزینه';
+        $oneTime = 'One-time fee';
 
         return $quantity > 1 ? sprintf('%d × %s', $quantity, $oneTime) : $oneTime;
     }
