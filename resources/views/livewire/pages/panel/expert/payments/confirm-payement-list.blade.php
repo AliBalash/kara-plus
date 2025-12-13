@@ -9,8 +9,8 @@
         </a>
     </div>
 
-    @php($summaryData = $summaryData ?? [])
     @php
+        $summaryData = $summaryData ?? [];
         $statusMeta = $statusMeta ?? [
             'pending' => ['label' => 'Pending', 'bg' => 'warning', 'text' => 'dark'],
             'approved' => ['label' => 'Approved', 'bg' => 'success', 'text' => 'white'],
@@ -30,7 +30,8 @@
                                 <div class="display-6 fw-bold">{{ $summary['count'] }}</div>
                                 <p class="mb-0 text-muted small">Payments</p>
                             </div>
-                            <span class="badge bg-{{ $meta['bg'] }} text-{{ $meta['text'] }}">{{ strtoupper($status) }}</span>
+                            <span
+                                class="badge bg-{{ $meta['bg'] }} text-{{ $meta['text'] }}">{{ strtoupper($status) }}</span>
                         </div>
                         <hr>
                         <p class="mb-1 text-muted small">Total Amount</p>
@@ -48,10 +49,9 @@
         <div class="col-md-3 mb-2">
             <form class="input-group" wire:submit.prevent="applySearch">
                 <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="search" class="form-control"
-                    placeholder="Search by Contract ID or Customer Last Name..." wire:model.defer="searchInput">
-                <button class="btn btn-primary" type="submit" wire:loading.attr="disabled"
-                    wire:target="applySearch">
+                <input type="search" class="form-control" placeholder="Search by Contract ID or Customer Last Name..."
+                    wire:model.defer="searchInput">
+                <button class="btn btn-primary" type="submit" wire:loading.attr="disabled" wire:target="applySearch">
                     <span wire:loading.remove wire:target="applySearch">Search</span>
                     <span wire:loading wire:target="applySearch">...</span>
                 </button>
@@ -153,7 +153,8 @@
                                             <td>{{ $payment->id }}</td>
                                             <td>
                                                 <div>{{ $payment->customer?->fullName() ?? '-' }}</div>
-                                                <div class="text-muted small">{{ $payment->customer?->phone ?? '—' }}</div>
+                                                <div class="text-muted small">{{ $payment->customer?->phone ?? '—' }}
+                                                </div>
                                             </td>
                                             <td>{{ $payment->contract?->car?->fullName() ?? '-' }}</td>
                                             <td>{{ number_format($payment->amount, 2) }}</td>
@@ -163,10 +164,12 @@
                                                 @if ($payment->isSalikBreakdownEntry())
                                                     <div class="small text-muted mt-1">
                                                         Trips: {{ $payment->salikTripCount() }},
-                                                        Amount: {{ number_format($payment->salikBreakdownAmount(), 2) }} AED
+                                                        Amount:
+                                                        {{ number_format($payment->salikBreakdownAmount(), 2) }} AED
                                                     </div>
                                                 @elseif ($payment->payment_type === 'salik')
-                                                    <div class="small text-muted mt-1">Legacy salik entry without breakdown</div>
+                                                    <div class="small text-muted mt-1">Legacy salik entry without
+                                                        breakdown</div>
                                                 @endif
                                             </td>
                                             <td>{{ $payment->payment_date }}</td>
@@ -211,10 +214,10 @@
                     </div>
                 </div>
             </div>
-        @empty
-            <div class="text-center p-3">No payments found.</div>
-        @endforelse
-    </div>
+            @empty
+                <div class="text-center p-3">No payments found.</div>
+            @endforelse
+        </div>
 
-    <div class="mt-3">{{ $groupedPayments->links() }}</div>
-</div>
+        <div class="mt-3">{{ $groupedPayments->links() }}</div>
+    </div>
