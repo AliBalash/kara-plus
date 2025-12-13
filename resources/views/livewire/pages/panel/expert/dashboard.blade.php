@@ -506,10 +506,7 @@
                     <div class="card-body pt-0 pb-4 px-4" style="max-height: 420px; overflow-y: auto;" data-simplebar>
                         @forelse ($reservedCars as $contract)
                             @php
-                                $carModel = optional(optional($contract->car)->carModel);
-                                $carImage = $carModel && $carModel->image
-                                    ? asset('assets/car-pics/' . $carModel->image->file_name)
-                                    : asset('assets/car-pics/car test.webp');
+                                $carImage = optional($contract->car)?->primaryImageUrl() ?? asset('assets/car-pics/car test.webp');
                                 $pickupAt = $contract->pickup_date ? \Carbon\Carbon::parse($contract->pickup_date) : null;
                                 $returnAt = $contract->return_date ? \Carbon\Carbon::parse($contract->return_date) : null;
                                 $agreementNumber = optional($contract->pickupDocument)->agreement_number;
@@ -639,10 +636,7 @@
                     <div class="card-body pt-0 pb-4 px-4" style="max-height: 420px; overflow-y: auto;" data-simplebar>
                         @forelse ($returnedCars as $contract)
                             @php
-                                $carModel = optional(optional($contract->car)->carModel);
-                                $carImage = $carModel && $carModel->image
-                                    ? asset('assets/car-pics/' . $carModel->image->file_name)
-                                    : asset('assets/car-pics/car test.webp');
+                                $carImage = optional($contract->car)?->primaryImageUrl() ?? asset('assets/car-pics/car test.webp');
                                 $pickupAt = $contract->pickup_date ? \Carbon\Carbon::parse($contract->pickup_date) : null;
                                 $returnAt = $contract->return_date ? \Carbon\Carbon::parse($contract->return_date) : null;
                                 $agreementNumber = optional($contract->pickupDocument)->agreement_number;

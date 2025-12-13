@@ -48,6 +48,7 @@ class EditCarForm extends Component
     public $car_options = [];
     public $existingImageUrl;
     public $is_featured = false;
+    public $newImage;
 
     protected function rules()
     {
@@ -87,6 +88,7 @@ class EditCarForm extends Component
             'car_options.fuel_type' => 'nullable|in:petrol,diesel,hybrid,electric',
             'car_options.unlimited_km' => 'boolean',
             'car_options.base_insurance' => 'boolean',
+            'newImage' => 'nullable|image|max:10240',
         ];
     }
 
@@ -160,6 +162,8 @@ class EditCarForm extends Component
         'car_options.min_days.integer' => 'The minimum rental days must be an integer.',
         'car_options.min_days.min' => 'The minimum rental days must be at least 1.',
         'car_options.fuel_type.in' => 'The fuel type must be one of petrol, diesel, hybrid, or electric.',
+        'newImage.image' => 'The uploaded file must be an image.',
+        'newImage.max' => 'The image size cannot exceed 10MB.',
     ];
 
     public function mount($carId)
@@ -198,12 +202,7 @@ class EditCarForm extends Component
         $this->notes = $this->car->notes;
         $this->is_featured = $this->car->carModel->is_featured;
 
-        // Set existing image URL
-        if ($this->car->carModel->image) {
-            $this->existingImageUrl = asset('assets/' .
-                $this->car->carModel->image->file_path .
-                $this->car->carModel->image->file_name);
-        }
+        $this->existingImageUrl = $this->car->primaryImageUrl();
 
         // Populate car options
         $this->car_options = $this->car->options->pluck('option_value', 'option_key')->toArray();
@@ -335,6 +334,31 @@ class EditCarForm extends Component
                     'option_value' => is_bool($value) ? ($value ? '1' : '0') : $value,
                 ]);
             }
+        }
+
+        if ($this->newImage) {
+            if ($this->car->image && Storage::disk('car_pics')->exists($this->car->image->file_name)) {
+                Storage::disk('car_pics')->delete($this->car->image->file_name);
+            }
+
+            $extension = $this->newImage->getClientOriginalExtension();
+            $safeName = Str::slug($this->car->fullName()) . '-' . time() . '.' . $extension;
+
+            Storage::disk('car_pics')->putFileAs('', $this->newImage, $safeName);
+
+            $image = $this->car->image()->updateOrCreate(
+                [
+                    'imageable_id' => $this->car->id,
+                    'imageable_type' => Car::class,
+                ],
+                [
+                    'file_path' => 'car-pics/',
+                    'file_name' => $safeName,
+                ]
+            );
+
+            $this->car->setRelation('image', $image);
+            $this->existingImageUrl = $this->car->primaryImageUrl();
         }
 
         $this->car->carModel->is_featured = $this->is_featured;

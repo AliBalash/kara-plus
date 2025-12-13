@@ -54,8 +54,12 @@ class CarList extends Component
 
         $car->options()->delete();
 
-        if ($car->carModel->image && Storage::disk('car_pics')->exists($car->carModel->image->file_name)) {
-            Storage::disk('car_pics')->delete($car->carModel->image->file_name);
+        if ($car->image && Storage::disk('car_pics')->exists($car->image->file_name)) {
+            Storage::disk('car_pics')->delete($car->image->file_name);
+        }
+
+        if ($car->image) {
+            $car->image->delete();
         }
 
         $car->delete();
