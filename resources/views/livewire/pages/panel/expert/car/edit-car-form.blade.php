@@ -258,6 +258,23 @@
                                 @endif
                             </div>
 
+                            <!-- Upload New Image -->
+                            <div class="input-group mb-3">
+                                <span class="input-group-text">Update Image</span>
+                                <input type="file" class="form-control @error('newImage') is-invalid @enderror"
+                                    wire:model="newImage" accept="image/*">
+                                @error('newImage')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div wire:loading wire:target="newImage" class="progress mt-2" style="height: 40px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info fs-5 fw-bold text-center"
+                                    style="width: 100%;">
+                                    Uploading Image...
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>

@@ -377,17 +377,17 @@ class CreateCarForm extends Component
 
         if ($this->newImage) {
             $extension = $this->newImage->getClientOriginalExtension();
-            $carName = CarModel::find($validated['selectedModelId'])->fullname();
-            $safeName = Str::slug($carName) . '.' . $extension;
+            $carName = $car->fullName();
+            $safeName = Str::slug($carName) . '-' . time() . '.' . $extension;
 
             Storage::disk('car_pics')->putFileAs('', $this->newImage, $safeName);
 
-            $imageModel = new \App\Models\Image();
-            $imageModel->imageable_id = $car->car_model_id;
-            $imageModel->imageable_type = \App\Models\CarModel::class;
-            $imageModel->file_path = 'car-pics/';
-            $imageModel->file_name = $safeName;
-            $imageModel->save();
+            $car->image()->create([
+                'imageable_id' => $car->id,
+                'imageable_type' => Car::class,
+                'file_path' => 'car-pics/',
+                'file_name' => $safeName,
+            ]);
         }
 
         $carModel = CarModel::find($validated['selectedModelId']);

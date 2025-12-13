@@ -134,6 +134,11 @@ class Car extends Model
         return $this->belongsTo(CarModel::class, 'car_model_id');
     }
 
+    public function image()
+    {
+        return $this->morphOne(Image::class, 'imageable');
+    }
+
     public function contracts()
     {
         return $this->hasMany(Contract::class);
@@ -207,5 +212,33 @@ class Car extends Model
     public function options()
     {
         return $this->hasMany(CarOption::class);
+    }
+
+    public function primaryImageUrl(): string
+    {
+        if ($this->image) {
+            return $this->resolveImageUrl($this->image);
+        }
+
+        if ($this->carModel?->image) {
+            return $this->resolveImageUrl($this->carModel->image);
+        }
+
+        return asset('assets/car-pics/car test.webp');
+    }
+
+    private function resolveImageUrl(Image $image): string
+    {
+        $path = ltrim($image->file_path, '/');
+
+        if (! str_starts_with($path, 'assets/')) {
+            $path = 'assets/' . $path;
+        }
+
+        if (! str_ends_with($path, '/')) {
+            $path .= '/';
+        }
+
+        return asset($path . $image->file_name);
     }
 }
