@@ -31,6 +31,9 @@ class RentalRequestDetail extends Component
             'returnDriver',
             'pickupDocument',
             'returnDocument',
+            'payments',
+            'incomingBalanceTransfers',
+            'outgoingBalanceTransfers',
         ])->findOrFail($contractId);
 
         $this->pickupDocument = $this->contract->pickupDocument;
@@ -83,7 +86,9 @@ class RentalRequestDetail extends Component
         $this->customerDocumentsCompleted = (bool) $this->contract->customerDocument;
         $this->pickupDocumentsCompleted = (bool) $this->contract->pickupDocument;
         $this->returnDocumentsCompleted = (bool) $this->contract->returnDocument;
-        $this->paymentsExist = $this->contract->payments()->exists();
+        $this->paymentsExist = $this->contract->relationLoaded('payments')
+            ? $this->contract->payments->isNotEmpty()
+            : $this->contract->payments()->exists();
     }
 
     private function updateStatusAdvanceState(): void

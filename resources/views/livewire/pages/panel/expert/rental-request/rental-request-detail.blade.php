@@ -1,5 +1,14 @@
 <div class="container-xxl flex-grow-1 container-p-y">
-    <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Rental Request /</span> Detail</h4>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 py-3 mb-4">
+        <div>
+            <div class="text-muted small mb-1">Rental Request</div>
+            <h4 class="fw-bold mb-0">Contract Detail</h4>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-label-primary text-uppercase">{{ $contract->statusLabel() }}</span>
+            <span class="badge bg-label-secondary">#{{ $contract->id }}</span>
+        </div>
+    </div>
 
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
@@ -36,7 +45,6 @@
             $durationDisplay = 'Ongoing';
         }
 
-        $statusLabel = $contract->statusLabel();
         $totalPriceDisplay = is_numeric($contract->total_price)
             ? number_format((float) $contract->total_price, 2)
             : ($contract->total_price ?? '—');
@@ -79,95 +87,164 @@
         $returnLocation = $contract->return_location ?? '—';
         $submittedBy = $contract->submitted_by_name
             ?? (optional($contract->user)->fullName() ?? optional($contract->user)->name ?? 'Website');
+
+        $payments = $contract->relationLoaded('payments')
+            ? $contract->payments
+            : $contract->payments()->get();
+        $paidAmount = (float) $payments->where('is_paid', true)->sum('amount_in_aed');
+        $pendingAmount = (float) $payments->where('is_paid', false)->sum('amount_in_aed');
+        $rentalCollected = (float) $payments->where('payment_type', 'rental_fee')->sum('amount_in_aed');
+        $depositCollected = (float) $payments->where('payment_type', 'security_deposit')->sum('amount_in_aed');
+        $fineCharges = (float) $payments->where('payment_type', 'fine')->sum('amount_in_aed');
+        $salikCharges = (float) $payments
+            ->whereIn('payment_type', ['salik', 'salik_4_aed', 'salik_6_aed', 'salik_other_revenue'])
+            ->sum('amount_in_aed');
+        $outstandingBalance = $contract->calculateRemainingBalance($payments);
+
+        $incomingTransfers = $contract->relationLoaded('incomingBalanceTransfers')
+            ? (float) $contract->incomingBalanceTransfers->sum('amount')
+            : (float) $contract->incomingBalanceTransfers()->sum('amount');
+        $outgoingTransfers = $contract->relationLoaded('outgoingBalanceTransfers')
+            ? (float) $contract->outgoingBalanceTransfers->sum('amount')
+            : (float) $contract->outgoingBalanceTransfers()->sum('amount');
+        $netTransfers = $incomingTransfers - $outgoingTransfers;
     @endphp
 
     <div class="row g-4">
         <div class="col-12">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <div>
-                        <h5 class="mb-1">Contract #{{ $contract->id }}</h5>
-                        <small class="text-muted">Created {{ $createdAt?->format('d M Y · H:i') ?? '—' }}</small>
-                    </div>
-                    <span class="badge bg-label-primary text-uppercase">{{ $statusLabel }}</span>
-                </div>
                 <div class="card-body">
-                    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mb-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                        <div>
+                            <div class="text-muted small">Created {{ $createdAt?->format('d M Y · H:i') ?? '—' }}</div>
+                            <div class="fw-semibold text-body">Managed by {{ $agentName }}</div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            @if ($paymentMethod)
+                                <span class="badge bg-label-info">{{ $paymentMethod }}</span>
+                            @endif
+                            <span class="badge bg-label-secondary">{{ $submittedBy }}</span>
+                        </div>
+                    </div>
+
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
                         <div class="col">
-                            <div class="border rounded-3 p-3 h-100">
-                                <small class="text-muted text-uppercase fw-medium">Total amount</small>
-                                <div class="fs-5 fw-semibold text-body">{{ $totalPriceDisplay }}</div>
-                                @if ($dailyRateDisplay)
-                                    <div class="text-muted small">Daily rate {{ $dailyRateDisplay }}</div>
-                                @endif
+                            <div class="p-3 rounded-3 border h-100 bg-light">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <small class="text-muted text-uppercase fw-medium">Contract value</small>
+                                    <span class="badge bg-label-primary">{{ $contract->currency ?? 'AED' }}</span>
+                                </div>
+                                <div class="fs-4 fw-bold text-body">{{ $totalPriceDisplay }}</div>
+                                <div class="text-muted small">Daily rate {{ $dailyRateDisplay ?? '—' }}</div>
                             </div>
                         </div>
                         <div class="col">
-                            <div class="border rounded-3 p-3 h-100">
-                                <small class="text-muted text-uppercase fw-medium">Trip duration</small>
-                                <div class="fs-5 fw-semibold text-body">{{ $durationDisplay ?? '—' }}</div>
-                                <div class="text-muted small">Pickup {{ $pickupDate?->format('d M Y') ?? '—' }}</div>
+                            <div class="p-3 rounded-3 border h-100">
+                                <small class="text-muted text-uppercase fw-medium">Paid to date</small>
+                                <div class="fs-4 fw-bold text-success">{{ number_format($paidAmount, 2) }} AED</div>
+                                <div class="text-muted small">Pending {{ number_format($pendingAmount, 2) }} AED</div>
                             </div>
                         </div>
                         <div class="col">
-                            <div class="border rounded-3 p-3 h-100">
-                                <small class="text-muted text-uppercase fw-medium">Payment</small>
-                                <div class="fs-5 fw-semibold text-body">{{ $paymentMethod ?? '—' }}</div>
-                                <div class="text-muted small">Submitted by {{ $submittedBy }}</div>
+                            <div class="p-3 rounded-3 border h-100">
+                                <small class="text-muted text-uppercase fw-medium">Outstanding</small>
+                                <div class="fs-4 fw-bold {{ $outstandingBalance > 0 ? 'text-danger' : 'text-success' }}">
+                                    {{ number_format($outstandingBalance, 2) }} AED
+                                </div>
+                                <div class="text-muted small">Includes Salik, parking &amp; fines</div>
                             </div>
                         </div>
                         <div class="col">
-                            <div class="border rounded-3 p-3 h-100">
-                                <small class="text-muted text-uppercase fw-medium">Account manager</small>
-                                <div class="fs-5 fw-semibold text-body">{{ $agentName }}</div>
-                                <div class="text-muted small">Delivery driver {{ $deliveryDriverName }}</div>
+                            <div class="p-3 rounded-3 border h-100 bg-light">
+                                <small class="text-muted text-uppercase fw-medium">Transfers</small>
+                                <div class="fs-5 fw-semibold">Net {{ number_format($netTransfers, 2) }} AED</div>
+                                <div class="d-flex gap-2 flex-wrap text-muted small">
+                                    <span>In {{ number_format($incomingTransfers, 2) }} AED</span>
+                                    <span class="text-muted">•</span>
+                                    <span>Out {{ number_format($outgoingTransfers, 2) }} AED</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="row g-4">
-                        <div class="col-md-6 col-xl-4">
-                            <div class="border rounded-3 h-100 p-3 bg-light">
-                                <small class="text-muted text-uppercase fw-medium d-block mb-2">Pickup</small>
-                                <div class="fw-semibold text-body fs-6 mb-1">{{ $pickupDate?->format('d M Y · H:i') ?? '—' }}</div>
-                                <div class="text-muted small">{{ $pickupLocation }}</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 col-xl-4">
-                            <div class="border rounded-3 h-100 p-3 bg-light">
-                                <small class="text-muted text-uppercase fw-medium d-block mb-2">Return</small>
-                                <div class="fw-semibold text-body fs-6 mb-1">{{ $returnDate?->format('d M Y · H:i') ?? '—' }}</div>
-                                <div class="text-muted small">{{ $returnLocation }}</div>
-                            </div>
-                        </div>
-                        <div class="col-md-12 col-xl-4">
+                        <div class="col-xl-7">
                             <div class="border rounded-3 h-100 p-3">
-                                <small class="text-muted text-uppercase fw-medium d-block mb-2">Logistics &amp; documents</small>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <small class="text-muted text-uppercase fw-medium">Payment breakdown</small>
+                                        <div class="text-muted small">Follow what was collected vs. due items</div>
+                                    </div>
+                                    <span class="badge bg-label-info">Live</span>
+                                </div>
+                                <div class="row row-cols-1 row-cols-md-2 g-3">
+                                    <div class="col">
+                                        <div class="p-3 rounded-3 bg-light h-100">
+                                            <div class="text-muted text-uppercase small mb-1">Rental collected</div>
+                                            <div class="fw-bold fs-5 text-body">{{ number_format($rentalCollected, 2) }} AED</div>
+                                            <div class="text-muted small">Security deposit {{ number_format($depositCollected, 2) }} AED</div>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="p-3 rounded-3 border h-100">
+                                            <div class="text-muted text-uppercase small mb-1">Add-ons &amp; penalties</div>
+                                            <div class="fw-bold fs-5 text-body">{{ number_format($fineCharges + $salikCharges, 2) }} AED</div>
+                                            <div class="text-muted small">Fines {{ number_format($fineCharges, 2) }} · Salik {{ number_format($salikCharges, 2) }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="p-3 rounded-3 border h-100">
+                                            <div class="text-muted text-uppercase small mb-1">Drivers</div>
+                                            <div class="fw-semibold text-body">Delivery: {{ $deliveryDriverName }}</div>
+                                            <div class="text-muted small">Return: {{ $returnDriverName }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="p-3 rounded-3 bg-light h-100">
+                                            <div class="text-muted text-uppercase small mb-1">Status guardrail</div>
+                                            <div class="fw-semibold text-body">{{ $pickupDocument ? 'Pickup inspection done' : 'Pickup inspection missing' }}</div>
+                                            <div class="text-muted small">{{ $contract->kardo_required ? 'KARDO required' : 'KARDO not required' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-5">
+                            <div class="border rounded-3 h-100 p-3 bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <small class="text-muted text-uppercase fw-medium">Timeline</small>
+                                        <div class="text-muted small">All critical milestones at a glance</div>
+                                    </div>
+                                    <span class="badge bg-label-primary">{{ $durationDisplay ?? '—' }}</span>
+                                </div>
                                 <ul class="list-unstyled mb-0">
-                                    <li class="mb-3">
-                                        <div class="text-muted text-uppercase small">Return driver</div>
-                                        <div class="fw-semibold text-body">{{ $returnDriverName }}</div>
-                                    </li>
-                                    <li class="mb-3">
-                                        <div class="text-muted text-uppercase small">KARDO requirement</div>
-                                        <div class="fw-semibold text-body">{{ $contract->kardo_required === null ? '—' : ($contract->kardo_required ? 'Required' : 'Not required') }}</div>
-                                    </li>
-                                    <li class="mb-3">
-                                        <div class="text-muted text-uppercase small">Customer documents</div>
-                                        <div class="fw-semibold {{ $customerDocument ? 'text-success' : 'text-danger' }}">
-                                            {{ $customerDocument ? 'Received' : 'Missing' }}
+                                    <li class="d-flex align-items-start mb-3">
+                                        <span class="badge bg-label-primary me-2">Pick</span>
+                                        <div>
+                                            <div class="fw-semibold text-body">Pickup</div>
+                                            <div class="text-muted small">{{ $pickupDate?->format('d M Y · H:i') ?? '—' }} — {{ $pickupLocation }}</div>
                                         </div>
                                     </li>
-                                    <li class="mb-3">
-                                        <div class="text-muted text-uppercase small">Pickup agreement</div>
-                                        <div class="fw-semibold text-body">
-                                            {{ $pickupDocument?->agreement_number ?? '—' }}
+                                    <li class="d-flex align-items-start mb-3">
+                                        <span class="badge bg-label-success me-2">Ret</span>
+                                        <div>
+                                            <div class="fw-semibold text-body">Return</div>
+                                            <div class="text-muted small">{{ $returnDate?->format('d M Y · H:i') ?? '—' }} — {{ $returnLocation }}</div>
                                         </div>
                                     </li>
-                                    <li>
-                                        <div class="text-muted text-uppercase small">Return inspection</div>
-                                        <div class="fw-semibold {{ $returnDocument ? 'text-success' : 'text-muted' }}">
-                                            {{ $returnDocument ? 'Completed' : 'Pending' }}
+                                    <li class="d-flex align-items-start mb-3">
+                                        <span class="badge bg-label-info me-2">Docs</span>
+                                        <div>
+                                            <div class="fw-semibold text-body">Documents</div>
+                                            <div class="text-muted small">Customer {{ $customerDocument ? 'received' : 'missing' }} · Pickup {{ $pickupDocument?->agreement_number ?? '—' }}</div>
+                                        </div>
+                                    </li>
+                                    <li class="d-flex align-items-start">
+                                        <span class="badge bg-label-warning me-2">Inspect</span>
+                                        <div>
+                                            <div class="fw-semibold text-body">Return inspection</div>
+                                            <div class="text-muted small">{{ $returnDocument ? 'Completed' : 'Pending' }}</div>
                                         </div>
                                     </li>
                                 </ul>
