@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\Payments;
 
 use Livewire\Component;
+use App\Models\ContractBalanceTransfer;
 use App\Models\Payment;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Concerns\SearchesCustomerPhone;
@@ -146,14 +147,17 @@ class ConfirmPayementList extends Component
             ->get()
             ->groupBy('contract_id');
 
-        $groupedPayments = $contractsPaginator->getCollection()->mapWithKeys(
+        $groupedPaymentsCollection = $contractsPaginator->getCollection()->mapWithKeys(
             fn($contract) => [
                 $contract->contract_id => $payments->get($contract->contract_id, collect())
             ]
         );
 
+        $contractIds = $groupedPaymentsCollection->keys()->all();
+        $transferSnapshots = $this->buildTransferSnapshots($contractIds);
+
         $groupedPayments = new \Illuminate\Pagination\LengthAwarePaginator(
-            $groupedPayments,
+            $groupedPaymentsCollection,
             $contractsPaginator->total(),
             $contractsPaginator->perPage(),
             $contractsPaginator->currentPage(),
@@ -166,6 +170,7 @@ class ConfirmPayementList extends Component
         return view('livewire.pages.panel.expert.payments.confirm-payement-list', [
             'groupedPayments' => $groupedPayments,
             'statusMeta' => $statusMeta,
+            'transferSnapshots' => $transferSnapshots,
         ]);
     }
 
@@ -173,5 +178,76 @@ class ConfirmPayementList extends Component
     {
         $this->search = trim($this->searchInput);
         $this->resetPage();
+    }
+
+    protected function buildTransferSnapshots(array $contractIds): array
+    {
+        if (empty($contractIds)) {
+            return [];
+        }
+
+        $snapshots = [];
+
+        foreach ($contractIds as $contractId) {
+            $snapshots[$contractId] = [
+                'incoming' => 0.0,
+                'outgoing' => 0.0,
+                'net' => 0.0,
+                'recent' => [],
+            ];
+        }
+
+        $transfers = ContractBalanceTransfer::query()
+            ->where(function ($query) use ($contractIds) {
+                $query->whereIn('from_contract_id', $contractIds)
+                    ->orWhereIn('to_contract_id', $contractIds);
+            })
+            ->orderByDesc('transferred_at')
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get();
+
+        foreach ($transfers as $transfer) {
+            $incomingContract = $transfer->to_contract_id;
+            $outgoingContract = $transfer->from_contract_id;
+
+            if ($incomingContract && isset($snapshots[$incomingContract])) {
+                $snapshots[$incomingContract]['incoming'] += (float) $transfer->amount;
+                $snapshots[$incomingContract]['recent'][] = [
+                    'id' => $transfer->id,
+                    'direction' => 'incoming',
+                    'amount' => (float) $transfer->amount,
+                    'reference' => $transfer->reference,
+                    'notes' => $transfer->notes,
+                    'meta' => $transfer->meta ?? [],
+                    'timestamp' => optional($transfer->transferred_at ?? $transfer->created_at)->format('d M Y · H:i'),
+                ];
+            }
+
+            if ($outgoingContract && isset($snapshots[$outgoingContract])) {
+                $snapshots[$outgoingContract]['outgoing'] += (float) $transfer->amount;
+                $snapshots[$outgoingContract]['recent'][] = [
+                    'id' => $transfer->id,
+                    'direction' => 'outgoing',
+                    'amount' => (float) $transfer->amount,
+                    'reference' => $transfer->reference,
+                    'notes' => $transfer->notes,
+                    'meta' => $transfer->meta ?? [],
+                    'timestamp' => optional($transfer->transferred_at ?? $transfer->created_at)->format('d M Y · H:i'),
+                ];
+            }
+        }
+
+        foreach ($snapshots as $contractId => $data) {
+            $incoming = round($data['incoming'], 2);
+            $outgoing = round($data['outgoing'], 2);
+
+            $snapshots[$contractId]['incoming'] = $incoming;
+            $snapshots[$contractId]['outgoing'] = $outgoing;
+            $snapshots[$contractId]['net'] = round($incoming - $outgoing, 2);
+            $snapshots[$contractId]['recent'] = array_slice($data['recent'], 0, 3);
+        }
+
+        return $snapshots;
     }
 }

@@ -130,6 +130,49 @@
                     class="accordion-collapse collapse {{ in_array($contractId, $this->openAccordions) ? 'show' : '' }}"
                     aria-labelledby="processedHeading{{ $contractId }}" data-bs-parent="#processedPaymentAccordion">
                     <div class="accordion-body">
+                        @php($transferInsight = $transferSnapshots[$contractId] ?? null)
+                        @if ($transferInsight && ($transferInsight['incoming'] > 0 || $transferInsight['outgoing'] > 0))
+                            <div class="alert alert-light border shadow-sm mb-3">
+                                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                                    <div>
+                                        <div class="text-muted text-uppercase small">Balance transfers</div>
+                                        <div class="fw-semibold">+{{ number_format($transferInsight['incoming'], 2) }} AED ·
+                                            -{{ number_format($transferInsight['outgoing'], 2) }} AED
+                                            <span class="ms-2 {{ $transferInsight['net'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                                Net {{ number_format($transferInsight['net'], 2) }} AED
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                        href="{{ route('rental-requests.balance-transfer', $contractId) }}">
+                                        Manage transfers
+                                    </a>
+                                </div>
+                                @if (!empty($transferInsight['recent']))
+                                    <ul class="list-unstyled small mb-0 mt-3 text-muted">
+                                        @foreach ($transferInsight['recent'] as $transfer)
+                                            @php
+                                                $metaText = collect($transfer['meta'] ?? [])->map(fn($value, $key) => $key . ': ' . $value)->take(2)->implode(', ');
+                                            @endphp
+                                            <li class="mb-1">
+                                                <span class="badge rounded-pill {{ $transfer['direction'] === 'incoming' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
+                                                    {{ ucfirst($transfer['direction']) }}
+                                                </span>
+                                                <strong class="ms-2">{{ number_format($transfer['amount'], 2) }} AED</strong>
+                                                <span class="ms-2">Ref: {{ $transfer['reference'] ?? '—' }}</span>
+                                                <span class="ms-2">{{ $transfer['timestamp'] }}</span>
+                                                @if ($metaText)
+                                                    <div class="ms-4">{{ $metaText }}</div>
+                                                @endif
+                                                @if (!empty($transfer['notes']))
+                                                    <div class="ms-4 text-body">{{ \Illuminate\Support\Str::limit($transfer['notes'], 90) }}</div>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </div>
+                        @endif
                         <div class="table-responsive text-nowrap">
                             <table class="table table-hover">
                                 <thead>

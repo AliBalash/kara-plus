@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
+use App\Models\ContractBalanceTransfer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Services\Media\OptimizedUploadService;
@@ -64,6 +65,13 @@ class RentalRequestPayment extends Component
     public $contract;
     public $contractMeta = [];
     public $payment_method = 'cash';
+    public array $transferSummary = [
+        'incoming' => 0.0,
+        'outgoing' => 0.0,
+        'net' => 0.0,
+        'count' => 0,
+    ];
+    public array $recentTransfers = [];
     protected OptimizedUploadService $imageUploader;
     protected int $currentSalikTripCount = 0;
 
@@ -245,6 +253,59 @@ class RentalRequestPayment extends Component
         $this->remainingBalance = $this->roundCurrency(
             $this->contract->calculateRemainingBalance($allPayments)
         );
+
+        $this->loadTransferLedger();
+    }
+
+    protected function loadTransferLedger(): void
+    {
+        $transfers = ContractBalanceTransfer::with(['fromContract.car', 'toContract.car', 'createdBy'])
+            ->where(function ($query) {
+                $query->where('from_contract_id', $this->contractId)
+                    ->orWhere('to_contract_id', $this->contractId);
+            })
+            ->orderByDesc('transferred_at')
+            ->orderByDesc('id')
+            ->get();
+
+        $incoming = (float) $transfers
+            ->where('to_contract_id', $this->contractId)
+            ->sum('amount');
+
+        $outgoing = (float) $transfers
+            ->where('from_contract_id', $this->contractId)
+            ->sum('amount');
+
+        $this->transferSummary = [
+            'incoming' => $this->roundCurrency($incoming),
+            'outgoing' => $this->roundCurrency($outgoing),
+            'net' => $this->roundCurrency($incoming - $outgoing),
+            'count' => $transfers->count(),
+        ];
+
+        $this->recentTransfers = $transfers
+            ->take(5)
+            ->map(function (ContractBalanceTransfer $transfer) {
+                $direction = $transfer->to_contract_id === $this->contractId ? 'incoming' : 'outgoing';
+                $counterparty = $direction === 'incoming' ? $transfer->fromContract : $transfer->toContract;
+
+                return [
+                    'id' => $transfer->id,
+                    'direction' => $direction,
+                    'amount' => $this->roundCurrency((float) $transfer->amount),
+                    'reference' => $transfer->reference,
+                    'notes' => $transfer->notes,
+                    'meta' => $transfer->meta ?? [],
+                    'by' => $transfer->createdBy?->shortName() ?? $transfer->createdBy?->name ?? 'System',
+                    'at' => optional($transfer->transferred_at ?? $transfer->created_at)->format('d M Y · H:i'),
+                    'counterparty_contract' => $counterparty?->id,
+                    'counterparty_car' => optional($counterparty?->car)->fullName()
+                        ?? optional($counterparty?->car)->name
+                        ?? optional($counterparty?->car)->title,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function getPaymentTypeOptionsProperty(): array
