@@ -19,6 +19,31 @@
     <ul class="menu-inner py-1">
         @php
             $isDriver = auth()->user()?->hasRole('driver');
+            $rentalLifecycle = [
+                ['route' => 'rental-requests.creat', 'label' => 'Add'],
+                ['route' => 'rental-requests.list', 'label' => 'Reserve'],
+                ['route' => 'rental-requests.reserved', 'label' => 'Booking'],
+                ['route' => 'rental-requests.awaiting.pickup', 'label' => 'Awaiting Delivery'],
+                ['route' => 'rental-requests.awaiting.return', 'label' => 'Awaiting Return'],
+                ['route' => 'rental-requests.cancelled', 'label' => 'Cancelled'],
+                ['route' => 'rental-requests.me', 'label' => 'Me'],
+            ];
+            $inspectionRoutes = [
+                ['route' => 'rental-requests.tars-inspection-list', 'label' => 'Inspection Contracts (TARS)'],
+                ['route' => 'rental-requests.kardo-inspection-list', 'label' => 'Inspection Contracts (KARDO)'],
+            ];
+            $paymentRoutes = [
+                ['route' => 'rental-requests.payment.list', 'label' => 'Payment'],
+                ['route' => 'rental-requests.confirm-payment-list', 'label' => 'Confirm Payments'],
+                ['route' => 'rental-requests.processed-payments', 'label' => 'Processed Payments'],
+            ];
+            $rentalPaymentRoutes = [
+                'rental-requests.payment.list',
+                'rental-requests.payment',
+                'rental-requests.confirm-payment-list',
+                'rental-requests.processed-payments',
+            ];
+            $rentalMenuOpen = request()->routeIs('rental-requests.*') && !request()->routeIs($rentalPaymentRoutes);
         @endphp
 
         @if ($isDriver)
@@ -43,7 +68,6 @@
                 </a>
             </li>
         @else
-            <!-- Dashboard -->
             <li class="menu-item {{ Request::routeIs('expert.dashboard') ? 'active' : '' }}">
                 <a href="{{ route('expert.dashboard') }}" class="menu-link">
                     <i class="menu-icon tf-icons bx bx-home-circle"></i>
@@ -51,91 +75,54 @@
                 </a>
             </li>
 
+            <li class="menu-header small text-uppercase">
+                <span class="menu-header-text">Operations</span>
+            </li>
+
             @cannot('car')
-                <!-- Rental Request -->
-                <li class="menu-item {{ request()->routeIs('rental-requests.*') ? 'open' : '' }}">
+                <li class="menu-item {{ $rentalMenuOpen ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="menu-icon tf-icons bx bxs-car"></i>
                         <div data-i18n="Layouts">Rental Requests</div>
                     </a>
 
                     <ul class="menu-sub">
-                        <li class="menu-item {{ Request::routeIs('rental-requests.creat') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.creat') }}" class="menu-link">
-                                <div data-i18n="Without menu">Add</div>
-                            </a>
-                        </li>
-                        <li class="menu-item {{ Request::routeIs('rental-requests.list') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.list') }}" class="menu-link">
-                                <div data-i18n="Without menu">Reserve</div>
-                            </a>
-                        </li>
-
-                        <li class="menu-item {{ Request::routeIs('rental-requests.reserved') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.reserved') }}" class="menu-link">
-                                <div data-i18n="Without menu">Booking</div>
-                            </a>
-                        </li>
-
-                        <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.pickup') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.awaiting.pickup') }}" class="menu-link">
-                                <div data-i18n="Without menu">Awaiting Delivery</div>
-                            </a>
-                        </li>
-
-                        <li
-                            class="menu-item {{ Request::routeIs('rental-requests.tars-inspection-list', 'rental-requests.tars-approval') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.tars-inspection-list') }}" class="menu-link">
-                                <div data-i18n="Without menu">Inspection Contracts (TARS)</div>
-                            </a>
-                        </li>
-
-                        <li
-                            class="menu-item {{ Request::routeIs('rental-requests.kardo-inspection-list', 'rental-requests.kardo-approval') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.kardo-inspection-list') }}" class="menu-link">
-                                <div data-i18n="Without menu">Inspection Contracts (KARDO)</div>
-                            </a>
-                        </li>
-
-                        <li class="menu-item {{ Request::routeIs('rental-requests.awaiting.return') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.awaiting.return') }}" class="menu-link">
-                                <div data-i18n="Without menu">Awaiting Return</div>
-                            </a>
-                        </li>
-
-                        <li class="menu-item {{ Request::routeIs('rental-requests.cancelled') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.cancelled') }}" class="menu-link">
-                                <div data-i18n="Without menu">Cancelled</div>
-                            </a>
-                        </li>
-
-                        <li class="menu-item {{ Request::routeIs('rental-requests.payment.list') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.payment.list') }}" class="menu-link">
-                                <div data-i18n="Without menu">Payment</div>
-                            </a>
-                        </li>
-
-                        <li
-                            class="menu-item {{ Request::routeIs('rental-requests.confirm-payment-list') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.confirm-payment-list') }}" class="menu-link">
-                                <div data-i18n="Without menu">Confirm Payments</div>
-                            </a>
-                        </li>
-
-                        <li class="menu-item {{ Request::routeIs('rental-requests.processed-payments') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.processed-payments') }}" class="menu-link">
-                                <div data-i18n="Without menu">Processed Payments</div>
-                            </a>
-                        </li>
-
-                        <li class="menu-item {{ Request::routeIs('rental-requests.me') ? 'active' : '' }}">
-                            <a href="{{ route('rental-requests.me') }}" class="menu-link">
-                                <div data-i18n="Without menu">Me</div>
-                            </a>
-                        </li>
+                        <li class="menu-item pt-0 pb-1 px-3 text-uppercase text-muted fw-semibold small">Lifecycle</li>
+                        @foreach ($rentalLifecycle as $item)
+                            <li class="menu-item {{ Request::routeIs($item['route']) ? 'active' : '' }}">
+                                <a href="{{ route($item['route']) }}" class="menu-link">
+                                    <div data-i18n="Without menu">{{ $item['label'] }}</div>
+                                </a>
+                            </li>
+                        @endforeach
 
                         <li class="menu-divider"></li>
+                        <li class="menu-item pt-0 pb-1 px-3 text-uppercase text-muted fw-semibold small">Inspections</li>
+                        @foreach ($inspectionRoutes as $item)
+                            <li class="menu-item {{ Request::routeIs($item['route']) ? 'active' : '' }}">
+                                <a href="{{ route($item['route']) }}" class="menu-link">
+                                    <div data-i18n="Without menu">{{ $item['label'] }}</div>
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </li>
 
+                <li class="menu-item {{ request()->routeIs('rental-requests.payment.list', 'rental-requests.payment', 'rental-requests.confirm-payment-list', 'rental-requests.processed-payments', 'cashier.dashboard') ? 'open' : '' }}">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-credit-card"></i>
+                        <div data-i18n="Layouts">Payments</div>
+                    </a>
+
+                    <ul class="menu-sub">
+                        @foreach ($paymentRoutes as $item)
+                            <li class="menu-item {{ Request::routeIs($item['route']) ? 'active' : '' }}">
+                                <a href="{{ route($item['route']) }}" class="menu-link">
+                                    <div data-i18n="Without menu">{{ $item['label'] }}</div>
+                                </a>
+                            </li>
+                        @endforeach
+                        <li class="menu-divider"></li>
                         <li class="menu-item {{ Request::routeIs('cashier.dashboard') ? 'active' : '' }}">
                             <a href="{{ route('cashier.dashboard') }}" class="menu-link">
                                 <div data-i18n="Without menu">Cashier</div>
@@ -146,10 +133,9 @@
             @endcannot
 
             <li class="menu-header small text-uppercase">
-                <span class="menu-header-text">transport</span>
+                <span class="menu-header-text">Fleet &amp; Compliance</span>
             </li>
 
-            <!-- Car -->
             <li class="menu-item {{ request()->routeIs('car.*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons bx bxs-car-garage"></i>
@@ -172,7 +158,6 @@
             </li>
 
             @cannot('car')
-                <!-- Brand -->
                 <li class="menu-item {{ request()->routeIs('brand.*') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="menu-icon tf-icons bx bxs-factory"></i>
@@ -194,10 +179,6 @@
                     </ul>
                 </li>
 
-                <li class="menu-header small text-uppercase">
-                    <span class="menu-header-text">RTA</span>
-                </li>
-                <!-- Insurance -->
                 <li class="menu-item {{ request()->routeIs('insurance.*') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="menu-icon tf-icons bx bxs-car-crash"></i>
@@ -220,10 +201,9 @@
                 </li>
 
                 <li class="menu-header small text-uppercase">
-                    <span class="menu-header-text">Pages</span>
+                    <span class="menu-header-text">Customers</span>
                 </li>
 
-                <!-- Customer -->
                 <li class="menu-item {{ request()->routeIs('customer.*') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="menu-icon tf-icons bx bx-body"></i>
@@ -236,15 +216,24 @@
                                 <div data-i18n="Without menu">List</div>
                             </a>
                         </li>
+                        <li class="menu-item {{ Request::routeIs('customer.debtor-list') ? 'active' : '' }}">
+                            <a href="{{ route('customer.debtor-list') }}" class="menu-link">
+                                <div data-i18n="Without menu">Debt customers</div>
+                            </a>
+                        </li>
                     </ul>
                 </li>
 
-                <li class="menu-item {{ Request::routeIs('discount.codes') ? 'active' : '' }}">
+                <li class="menu-header small text-uppercase">
+                    <span class="menu-header-text">Administration</span>
+                </li>
+
+                {{-- <li class="menu-item {{ Request::routeIs('discount.codes') ? 'active' : '' }}">
                     <a href="{{ route('discount.codes') }}" class="menu-link">
                         <i class="menu-icon tf-icons bx bxs-discount"></i>
                         <div data-i18n="Analytics">Discount Codes</div>
                     </a>
-                </li>
+                </li> --}}
 
                 @role('super-admin')
                     <li class="menu-item {{ Request::routeIs('users.create') ? 'active' : '' }}">

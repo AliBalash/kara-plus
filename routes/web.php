@@ -11,6 +11,7 @@ use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\CarList;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDebt;
+use App\Livewire\Pages\Panel\Expert\Customer\CustomerDebtorList;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDetail;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDocumentUpload;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerHistory;
@@ -120,6 +121,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
 
     Route::get('/expert/customer/list', CustomerList::class)->name('customer.list');
+    Route::get('/expert/customer/debtors', CustomerDebtorList::class)->name('customer.debtor-list');
     Route::get('/expert/customer/detail/{customerId}', CustomerDetail::class)->name('customer.detail');
     Route::get('/expert/customer/history/{customerId}', CustomerHistory::class)->name('customer.history');
     Route::get('/expert/customer/debt/{customerId}', CustomerDebt::class)->name('customer.debt');
@@ -131,7 +133,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
 
 
-    Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
+    // Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
     Route::get('/expert/location-costs', LocationCostList::class)->name('location-costs.index');
 
     Route::get('/maintenance/normalize-phones', [MaintenanceController::class, 'normalizeCustomerPhones'])
