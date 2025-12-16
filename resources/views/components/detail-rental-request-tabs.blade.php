@@ -60,6 +60,17 @@
             'driver' => false,
         ],
         [
+            'key' => 'balance-transfer',
+            'label' => 'Debt Transfer',
+            'icon' => 'bx-transfer-alt',
+            'routes' => ['rental-requests.balance-transfer'],
+            'route' => 'rental-requests.balance-transfer',
+            'params' => $contractId ? [$contractId] : null,
+            'status' => null,
+            'staff' => true,
+            'driver' => false,
+        ],
+        [
             'key' => 'history',
             'label' => 'Status & History',
             'icon' => 'bx-history',

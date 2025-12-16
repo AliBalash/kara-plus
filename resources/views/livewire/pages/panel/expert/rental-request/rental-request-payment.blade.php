@@ -250,6 +250,9 @@
 
     <!-- Payment Overview -->
     @php
+        $transferIncoming = $transferSummary['incoming'] ?? 0;
+        $transferOutgoing = $transferSummary['outgoing'] ?? 0;
+        $transferNet = $transferSummary['net'] ?? 0;
         $summaryMetrics = [
             [
                 'key' => 'total',
@@ -282,6 +285,14 @@
                 'icon' => 'bi-graph-down',
                 'accent' => 'bg-dark text-white',
                 'value_class' => $remainingBalance <= 0 ? 'text-success' : 'text-danger',
+            ],
+            [
+                'key' => 'transfers',
+                'label' => 'Net Transfers',
+                'value' => $transferNet,
+                'icon' => 'bi-arrow-left-right',
+                'accent' => 'bg-info text-white',
+                'value_class' => $transferNet >= 0 ? 'text-success' : 'text-danger',
             ],
         ];
 
@@ -335,6 +346,20 @@
             ['label' => 'Damage', 'value' => $damagePaid],
             ['label' => 'No Deposit Fee', 'value' => $no_deposit_fee],
         ];
+
+        if ($transferOutgoing > 0) {
+            $subtractItems[] = [
+                'label' => 'Transfer Out',
+                'value' => $transferOutgoing,
+            ];
+        }
+
+        if ($transferIncoming > 0) {
+            $additionItems[] = [
+                'label' => 'Transfer In',
+                'value' => $transferIncoming,
+            ];
+        }
     @endphp
 
     <div class="row g-3 mt-1">
@@ -359,6 +384,100 @@
                 </div>
             </div>
         @endforeach
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+            <div>
+                <h5 class="mb-1">Balance transfers impact</h5>
+                <span class="text-muted small">Audit how much debt moved to or from other contracts.</span>
+            </div>
+            <a class="btn btn-sm btn-outline-primary" href="{{ route('rental-requests.balance-transfer', $contractId) }}">
+                Open transfer workspace
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-4">
+                    <div class="border rounded-3 p-3 h-100 text-center">
+                        <small class="text-muted text-uppercase">Incoming</small>
+                        <div class="display-6 text-success fw-bold">{{ number_format($transferIncoming, 2) }} AED</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="border rounded-3 p-3 h-100 text-center">
+                        <small class="text-muted text-uppercase">Outgoing</small>
+                        <div class="display-6 text-danger fw-bold">{{ number_format($transferOutgoing, 2) }} AED</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="border rounded-3 p-3 h-100 text-center">
+                        <small class="text-muted text-uppercase">Net impact</small>
+                        <div class="display-6 {{ $transferNet >= 0 ? 'text-success' : 'text-danger' }} fw-bold">
+                            {{ number_format($transferNet, 2) }} AED
+                        </div>
+                        <div class="text-muted small">{{ $transferSummary['count'] ?? 0 }} transfer(s)</div>
+                    </div>
+                </div>
+            </div>
+
+            @if (!empty($recentTransfers))
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Direction</th>
+                                <th>Amount</th>
+                                <th>Reference</th>
+                                <th>Counterparty</th>
+                                <th>Metadata</th>
+                                <th>When</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($recentTransfers as $transfer)
+                                @php
+                                    $metaText = collect($transfer['meta'] ?? [])->map(fn($value, $key) => $key . ': ' . $value)->take(3)->implode(', ');
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <span class="badge rounded-pill {{ $transfer['direction'] === 'incoming' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }}">
+                                            {{ ucfirst($transfer['direction']) }}
+                                        </span>
+                                    </td>
+                                    <td class="fw-semibold">{{ number_format($transfer['amount'], 2) }} AED</td>
+                                    <td>{{ $transfer['reference'] ?? '—' }}</td>
+                                    <td>
+                                        @if ($transfer['counterparty_contract'])
+                                            #{{ $transfer['counterparty_contract'] }}
+                                            <div class="text-muted small">{{ $transfer['counterparty_car'] ?? 'Vehicle' }}</div>
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($metaText)
+                                            <div class="text-muted small">{{ $metaText }}</div>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                        @if (!empty($transfer['notes']))
+                                            <div>{{ \Illuminate\Support\Str::limit($transfer['notes'], 120) }}</div>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="text-muted small">{{ $transfer['at'] }}</div>
+                                        <div class="small">{{ $transfer['by'] }}</div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <p class="text-muted small mb-0">No transfers recorded for this contract yet.</p>
+            @endif
+        </div>
     </div>
 
     <div class="card border-0 shadow-sm mt-4 formula-card">
