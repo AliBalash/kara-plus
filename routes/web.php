@@ -10,6 +10,7 @@ use App\Livewire\Pages\Panel\Expert\Car\CarDetail;
 use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\CarList;
+use App\Livewire\Pages\Panel\Expert\Customer\CustomerDebt;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDetail;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDocumentUpload;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerHistory;
@@ -24,6 +25,7 @@ use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingPickupList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingReturnList;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestBalanceTransfer;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCreate;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestEdit;
@@ -60,6 +62,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/reserved', RentalRequestReserved::class)->name('rental-requests.reserved');
     Route::get('/expert/rental-requests/pickup-document/{contractId}', RentalRequestPickupDocument::class)->name('rental-requests.pickup-document');
     Route::get('/expert/rental-requests/return-document/{contractId}', RentalRequestReturnDocument::class)->name('rental-requests.return-document');
+    Route::get('/expert/rental-requests/balance-transfer/{contractId}', RentalRequestBalanceTransfer::class)->name('rental-requests.balance-transfer');
 
     Route::get('/expert/rental-requests/awaiting-pickup', RentalRequestAwaitingPickupList::class)->name('rental-requests.awaiting.pickup');
     Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
@@ -119,6 +122,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/customer/list', CustomerList::class)->name('customer.list');
     Route::get('/expert/customer/detail/{customerId}', CustomerDetail::class)->name('customer.detail');
     Route::get('/expert/customer/history/{customerId}', CustomerHistory::class)->name('customer.history');
+    Route::get('/expert/customer/debt/{customerId}', CustomerDebt::class)->name('customer.debt');
     Route::get('/expert/customer/documents/{contractId}/{customerId}', CustomerDocumentUpload::class)->name('customer.documents');
 
 

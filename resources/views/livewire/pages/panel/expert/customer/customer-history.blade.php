@@ -6,13 +6,20 @@
             <div class="col-md-12">
                 <ul class="nav nav-pills flex-column flex-md-row mb-3">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('customer.detail', $customerId) }}">
+                        <a class="nav-link {{ request()->routeIs('customer.detail') ? 'active' : '' }}"
+                            href="{{ route('customer.detail', $customerId) }}">
                             <i class="bx bx-file me-1"></i> Contract Details
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="{{ route('customer.history', $customerId) }}"><i
-                                class="bx bx-history me-1"></i> History</a>
+                        <a class="nav-link {{ request()->routeIs('customer.history') ? 'active' : '' }}"
+                            href="{{ route('customer.history', $customerId) }}"><i class="bx bx-history me-1"></i> History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('customer.debt') ? 'active' : '' }}"
+                            href="{{ route('customer.debt', $customerId) }}">
+                            <i class="bx bx-trending-down me-1"></i> Debt
+                        </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#"><i class="bx bx-paperclip me-1"></i> Attachments</a>
