@@ -58,7 +58,7 @@
                 </div>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <select class="form-select form-select-sm" wire:model="status">
+                <select class="form-select form-select-sm" wire:model.live="status">
                     <option value="all">All statuses</option>
                     <option value="overdue">Overdue</option>
                     <option value="open">Open</option>

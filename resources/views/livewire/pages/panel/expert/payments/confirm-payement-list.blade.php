@@ -20,7 +20,13 @@
 
     <div class="row g-3 px-3 pt-3">
         @foreach ($statusMeta as $status => $meta)
-            @php($summary = $summaryData[$status] ?? ['count' => 0, 'total_amount' => 0, 'total_amount_aed' => 0])
+            @php
+                $summary = $summaryData[$status] ?? [
+                    'count' => 0,
+                    'total_amount' => 0,
+                    'total_amount_aed' => 0,
+                ];
+            @endphp
             <div class="col-sm-6 col-lg-4">
                 <div class="card h-100 border border-{{ $meta['bg'] }}">
                     <div class="card-body">
@@ -121,7 +127,9 @@
                         type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ $contractId }}"
                         aria-expanded="{{ in_array($contractId, $this->openAccordions) ? 'true' : 'false' }}"
                         aria-controls="collapse{{ $contractId }}" wire:click="toggleAccordion({{ $contractId }})">
-                        @php($firstPayment = $paymentGroup->first())
+                        @php
+                            $firstPayment = $paymentGroup->first();
+                        @endphp
                         <strong>Contract #{{ $contractId }} - Customer:
                             {{ $firstPayment?->customer?->fullName() ?? 'Unknown' }}</strong>
                         <span class="ms-3 badge bg-info">{{ count($paymentGroup) }} Payment(s)</span>
@@ -131,7 +139,9 @@
                     class="accordion-collapse collapse {{ in_array($contractId, $this->openAccordions) ? 'show' : '' }}"
                     aria-labelledby="heading{{ $contractId }}" data-bs-parent="#paymentAccordion">
                     <div class="accordion-body">
-                        @php($transferInsight = $transferSnapshots[$contractId] ?? null)
+                        @php
+                            $transferInsight = $transferSnapshots[$contractId] ?? null;
+                        @endphp
                         @if ($transferInsight && ($transferInsight['incoming'] > 0 || $transferInsight['outgoing'] > 0))
                             <div class="alert alert-light border shadow-sm mb-3">
                                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
