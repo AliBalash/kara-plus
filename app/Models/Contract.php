@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Car;
+use App\Models\ContractBalanceTransfer;
 
 class Contract extends Model
 {
@@ -163,6 +164,16 @@ class Contract extends Model
             - ($effectivePaid + $discounts + $securityDeposit)
             + $finePaid + $salik + $salikOtherRevenue + $parking + $damage + $carwash + $fuel + $noDepositFee;
 
+        $incomingTransfers = $this->relationLoaded('incomingBalanceTransfers')
+            ? (float) $this->incomingBalanceTransfers->sum('amount')
+            : (float) $this->incomingBalanceTransfers()->sum('amount');
+
+        $outgoingTransfers = $this->relationLoaded('outgoingBalanceTransfers')
+            ? (float) $this->outgoingBalanceTransfers->sum('amount')
+            : (float) $this->outgoingBalanceTransfers()->sum('amount');
+
+        $balance = $balance + $incomingTransfers - $outgoingTransfers;
+
         return round($balance, 2);
     }
 
@@ -197,6 +208,16 @@ class Contract extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function incomingBalanceTransfers()
+    {
+        return $this->hasMany(ContractBalanceTransfer::class, 'to_contract_id');
+    }
+
+    public function outgoingBalanceTransfers()
+    {
+        return $this->hasMany(ContractBalanceTransfer::class, 'from_contract_id');
     }
 
     // ارتباط با تاریخچه وضعیت‌ها
