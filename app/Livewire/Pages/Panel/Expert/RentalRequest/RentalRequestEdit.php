@@ -1124,7 +1124,8 @@ class RentalRequestEdit extends Component
         $this->contract->loadMissing(['payments', 'customer', 'car.carModel', 'user']);
 
         $payments = $this->contract->payments ?? collect();
-        $sumAmount = fn(string $type): float => (float) $payments->where('payment_type', $type)->sum('amount_in_aed');
+        $paidPayments = $payments->where('is_paid', true);
+        $sumAmount = fn(string $type): float => (float) $paidPayments->where('payment_type', $type)->sum('amount_in_aed');
 
         $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
@@ -1146,12 +1147,26 @@ class RentalRequestEdit extends Component
         $returnTravelCharge = $this->formatCurrency($this->transfer_costs['return'] ?? 0);
         $guaranteeFee = $this->formattedDepositLabel();
         $securityHold = $sumAmount('security_deposit');
-        $debtInAdvance = $this->formatCurrency(max($this->contract->calculateRemainingBalance($payments), 0));
+        $remainingBalance = (float) $this->contract->calculateRemainingBalance($paidPayments);
+        $outstandingBalance = max($remainingBalance, 0);
+        $debtInAdvance = $this->formatCurrency($outstandingBalance);
         $cardooForm = $this->kardo_required ? 'YES' : 'NO';
+        $addOnsLabel = $this->formatServiceList($this->selected_services ?? []);
+        $addOnsLabel = $addOnsLabel === '—' ? 'None' : $addOnsLabel;
+        $driverService = ($this->driver_hours ?? 0) > 0
+            ? number_format((float) $this->driver_hours, 1) . ' hrs (' . $this->formatCurrency($this->driver_cost) . ' AED)'
+            : 'None';
+        $drivingLicenseLabel = $this->driving_license_option
+            ? $this->formatDrivingLicenseLabel($this->driving_license_option) . ' (' . $this->formatCurrency($this->driving_license_cost) . ' AED)'
+            : 'None';
+        $paymentStatus = $outstandingBalance <= 0.01
+            ? 'Paid in full'
+            : ($this->payment_on_delivery ? 'Payment due on delivery' : 'Balance pending');
+        $paidTotal = (float) $paidPayments->sum('amount_in_aed');
 
         $totalRent = $this->formatCurrency($this->subtotal);
         $vatAmount = $this->formatCurrency($this->tax_amount);
-        $mustReceive = $this->formatCurrency($this->subtotal + $this->tax_amount + $securityHold);
+        $mustReceive = $this->formatCurrency($outstandingBalance);
         $dailyRate = $this->formatDailyRate() . ' AED plus vat';
 
         return trim(<<<TEXT
@@ -1165,7 +1180,11 @@ class RentalRequestEdit extends Component
             Days: {$this->rental_days}
             Daily : {$dailyRate}
             Supplementary Insurance Package : {$insurance}
+            Add-ons: {$addOnsLabel}
+            Add-on total: {$this->formatCurrency($this->services_total)} AED
             Child Seat: {$childSeatText}
+            Driver service: {$driverService}
+            Driving license: {$drivingLicenseLabel}
             Pickup travel charge: {$pickupTravelCharge} AED
             Return travel charge: {$returnTravelCharge} AED
             Security hold method: {$guaranteeFee}
@@ -1173,7 +1192,9 @@ class RentalRequestEdit extends Component
             Total rent: {$totalRent}  AED
             Vat: {$vatAmount} AED
             Security hold: {$this->formatCurrency($securityHold)} AED
-            Debt in advance: {$debtInAdvance} AED
+            Remaining balance (rent + add-ons): {$debtInAdvance} AED
+            Payment status: {$paymentStatus}
+            Paid so far: {$this->formatCurrency($paidTotal)} AED
             ----------------------------------------------------
             Must get receive: {$mustReceive} AED 
             ----------------------------------------------------
