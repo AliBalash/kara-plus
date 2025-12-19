@@ -77,6 +77,8 @@
                                 <option value="USD">USD</option>
                                 <option value="IRR">IRR</option>
                                 <option value="EUR">EUR</option>
+                                <option value="SAR">SAR</option>
+                                <option value="OMR">OMR</option>
                             </select>
                         </div>
                         <div class="col-6 col-md-2">

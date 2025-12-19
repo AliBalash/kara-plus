@@ -80,6 +80,9 @@
                 <option value="IRR">IRR</option>
                 <option value="USD">USD</option>
                 <option value="AED">AED</option>
+                <option value="EUR">EUR</option>
+                <option value="SAR">SAR</option>
+                <option value="OMR">OMR</option>
             </select>
         </div>
 

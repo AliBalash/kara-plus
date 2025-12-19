@@ -152,7 +152,7 @@ class RentalRequestPayment extends Component
                     && $this->payment_type !== ''
                     && ! in_array($this->payment_type, ['salik', 'salik_4_aed', 'salik_6_aed'], true)),
             ],
-            'currency' => ['required', Rule::in(['IRR', 'USD', 'AED', 'EUR'])],
+            'currency' => ['required', Rule::in(['IRR', 'USD', 'AED', 'EUR', 'SAR', 'OMR'])],
             'payment_type' => ['required', Rule::in(self::PAYMENT_TYPES)],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['required', Rule::in(self::PAYMENT_METHODS)],
