@@ -75,6 +75,8 @@
                             <option value="USD">Dollar</option>
                             <option value="AED">Dirham</option>
                             <option value="EUR">Euro</option>
+                            <option value="SAR">Saudi Riyal</option>
+                            <option value="OMR">Omani Rial</option>
                         </select>
                         @if (in_array($payment_type, ['salik', 'salik_4_aed', 'salik_6_aed']))
                             <small class="text-muted">Salik payments are always billed in AED.</small>

@@ -74,7 +74,7 @@ class PaymentEdit extends Component
                     && $this->payment_type !== ''
                     && ! in_array($this->payment_type, ['salik', 'salik_4_aed', 'salik_6_aed'], true)),
             ],
-            'currency' => 'required|in:IRR,USD,AED,EUR',
+            'currency' => 'required|in:IRR,USD,AED,EUR,SAR,OMR',
             'payment_type' => 'required|in:' . $types,
             'payment_method' => 'required|in:cash,transfer,ticket',
             'payment_date' => 'required|date',
