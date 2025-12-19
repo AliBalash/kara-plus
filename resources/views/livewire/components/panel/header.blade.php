@@ -188,6 +188,7 @@
                                 <div class="result-card-top">
                                     <div class="result-card-heading">
                                         <span class="vehicle-name">{{ $car->fullname() }}</span>
+                                        <x-car-ownership-badge :car="$car" class="ms-2" />
                                         <span class="vehicle-sub text-muted">{{ optional($car->carModel)->brand }}
                                             {{ optional($car->carModel)->model }}</span>
                                     </div>
@@ -423,7 +424,10 @@
                                 <div class="result-card-top">
                                     <div class="result-card-heading">
                                         <span class="vehicle-name">Agreement #{{ $agreementNumber ?? '—' }}</span>
-                                        <span class="vehicle-sub text-muted">{{ optional($car)->fullName() ?? 'Vehicle TBD' }}</span>
+                                        <span class="vehicle-sub text-muted">
+                                            {{ optional($car)->fullName() ?? 'Vehicle TBD' }}
+                                            <x-car-ownership-badge :car="$car" class="ms-2" />
+                                        </span>
                                     </div>
                                     <span class="status-chip is-{{ $statusColor }}">
                                         <i class="bx {{ $statusIcon }}"></i>

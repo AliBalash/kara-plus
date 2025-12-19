@@ -31,7 +31,12 @@
                         <tr>
                             <td>{{ $contract->id }}</td>
                             <td>{{ $contract->customer->fullName() }}</td>
-                            <td>{{ $contract->car->fullName() }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span>{{ $contract->car->fullName() }}</span>
+                                    <x-car-ownership-badge :car="$contract->car" />
+                                </div>
+                            </td>
                             <td>{{ \Carbon\Carbon::parse($contract->pickup_date ?? $contract->created_at)->format('d M Y') }}</td>
                             <td>{{ $contract->return_date ? \Carbon\Carbon::parse($contract->return_date)->format('d M Y') : 'N/A' }}</td>
                             <td>{{ $contract->agent_sale }}</td>
@@ -83,7 +88,12 @@
                             <tr>
                                 <td>{{ $status->id }}</td> <!-- نمایش ID تاریخچه وضعیت -->
                                 <td>{{ $status->contract->customer->fullName() }}</td>
-                                <td>{{ $status->contract->car->fullName() }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>{{ $status->contract->car->fullName() }}</span>
+                                        <x-car-ownership-badge :car="$status->contract->car" />
+                                    </div>
+                                </td>
                                 <td>{{ \Carbon\Carbon::parse($status->created_at)->format('d M Y') }}</td>
                                 <td>{{ $status->contract->return_date ? \Carbon\Carbon::parse($status->contract->return_date)->format('d M Y') : 'N/A' }}
                                 </td>

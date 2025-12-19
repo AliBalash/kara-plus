@@ -163,7 +163,12 @@
                             <div>{{ $contract->customer->fullName() }}</div>
                             <div class="text-muted small">{{ $contract->customer->phone ?? '—' }}</div>
                         </td>
-                        <td>{{ $contract->car->fullName() }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span>{{ $contract->car->fullName() }}</span>
+                                <x-car-ownership-badge :car="$contract->car" />
+                            </div>
+                        </td>
                         <td>{{ $contract->pickup_date?->format('d M Y') }}</td>
                         <td>{{ number_format($contract->total_price, 2) }}</td>
                         <td>{{ number_format($remaining, 2) }}</td>

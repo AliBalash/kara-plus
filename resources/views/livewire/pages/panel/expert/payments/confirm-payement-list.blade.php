@@ -212,7 +212,12 @@
                                                 <div class="text-muted small">{{ $payment->customer?->phone ?? '—' }}
                                                 </div>
                                             </td>
-                                            <td>{{ $payment->contract?->car?->fullName() ?? '-' }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span>{{ $payment->contract?->car?->fullName() ?? '-' }}</span>
+                                                    <x-car-ownership-badge :car="$payment->contract?->car" />
+                                                </div>
+                                            </td>
                                             <td>{{ number_format($payment->amount, 2) }}</td>
                                             <td>{{ $payment->currency }}</td>
                                             <td>

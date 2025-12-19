@@ -124,7 +124,10 @@
                                             <td>{{ $payment->id }}</td>
                                             <td>
                                                 <span class="fw-semibold">#{{ $payment->contract_id }}</span>
-                                                <div class="text-muted small">{{ $payment->contract?->car?->fullName() ?? '-' }}</div>
+                                                <div class="text-muted small d-flex align-items-center gap-2">
+                                                    <span>{{ $payment->contract?->car?->fullName() ?? '-' }}</span>
+                                                    <x-car-ownership-badge :car="$payment->contract?->car" />
+                                                </div>
                                             </td>
                                             <td>
                                                 {{ $payment->customer?->fullName() ?? '-' }}
