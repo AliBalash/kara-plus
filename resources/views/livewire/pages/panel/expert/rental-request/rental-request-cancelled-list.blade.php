@@ -105,7 +105,12 @@
                     <tr wire:key="cancelled-contract-{{ $contract->id }}">
                         <td>{{ $contract->id }}</td>
                         <td>{{ $contract->customer->fullName() }}</td>
-                        <td>{{ $contract->car->fullName() }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span>{{ $contract->car->fullName() }}</span>
+                                <x-car-ownership-badge :car="$contract->car" />
+                            </div>
+                        </td>
                         <td>{{ optional($contract->pickup_date)->format('d M Y') }}</td>
                         <td>{{ optional($contract->return_date)->format('d M Y') }}</td>
                         <td>{{ optional($contract->updated_at)->format('d M Y H:i') }}</td>

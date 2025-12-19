@@ -185,7 +185,12 @@
                             <div>{{ optional($contract->customer)->fullName() ?? '—' }}</div>
                             <div class="text-muted small">{{ optional($contract->customer)->phone ?? '—' }}</div>
                         </td>
-                        <td>{{ optional($contract->car)->fullName() ?? 'Vehicle N/A' }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span>{{ optional($contract->car)->fullName() ?? 'Vehicle N/A' }}</span>
+                                <x-car-ownership-badge :car="$contract->car" />
+                            </div>
+                        </td>
                         <td>{{ $contract->pickup_date?->format('d M Y H:i') ?? '—' }}</td>
                         <td>{{ $contract->return_date?->format('d M Y H:i') ?? '—' }}</td>
                         <td>

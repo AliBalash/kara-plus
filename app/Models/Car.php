@@ -39,6 +39,7 @@ class Car extends Model
         'notes',
         'chassis_number',
         'gps',
+        'is_company_car',
         'issue_date',
         'expiry_date',
         'passing_date',
@@ -69,6 +70,7 @@ class Car extends Model
         'insurance_expiry_date' => 'date',
         'service_due_date' => 'date',
         'manufacturing_year' => 'integer',
+        'is_company_car' => 'boolean',
     ];
 
     /**
@@ -122,6 +124,16 @@ class Car extends Model
     public function fullName(): string
     {
         return $this->nameWithPlate();
+    }
+
+    public function ownershipLabel(): string
+    {
+        return $this->is_company_car ? 'Our Fleet' : 'Partner Fleet';
+    }
+
+    public function ownershipBadgeClass(): string
+    {
+        return $this->is_company_car ? 'bg-label-primary' : 'bg-label-warning';
     }
 
     /**

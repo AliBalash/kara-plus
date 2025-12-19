@@ -120,7 +120,12 @@
                             <div>{{ $awaitContract->customer->fullName() }}</div>
                             <div class="text-muted small">{{ $awaitContract->customer->phone ?? '—' }}</div>
                         </td>
-                        <td>{{ $awaitContract->car->fullName() }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span>{{ $awaitContract->car->fullName() }}</span>
+                                <x-car-ownership-badge :car="$awaitContract->car" />
+                            </div>
+                        </td>
                         <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y H:i') }}</td>
                         <td>{{ $awaitContract->return_location }}</td>
                         <td>

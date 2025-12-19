@@ -23,7 +23,10 @@
                         <span class="next-task-label {{ $isPickupTask ? 'next-task-label--pickup' : 'next-task-label--return' }}">
                             Next {{ $isPickupTask ? 'Pickup' : 'Return' }}
                         </span>
-                        <h5 class="mt-2 mb-1">{{ optional($taskContract->car)->fullName() ?? 'Vehicle' }}</h5>
+                        <div class="d-flex align-items-center gap-2 mt-2 mb-1">
+                            <h5 class="mb-0">{{ optional($taskContract->car)->fullName() ?? 'Vehicle' }}</h5>
+                            <x-car-ownership-badge :car="$taskContract->car" />
+                        </div>
                         <div class="text-muted small mb-1"><i class="bx bx-user-circle me-1"></i>{{ optional($taskContract->customer)->fullName() ?? 'Customer TBD' }}</div>
                         <div class="text-muted small mb-1"><i class="bx bx-time me-1"></i>{{ $taskMoment->format('d M Y · H:i') }}</div>
                         <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $isPickupTask ? ($taskContract->pickup_location ?? 'Pickup location TBD') : ($taskContract->return_location ?? 'Return location TBD') }}</div>
@@ -93,7 +96,10 @@
                         @forelse ($driverPickups as $pickup)
                             <div class="task-item d-flex align-items-start justify-content-between">
                                 <div class="task-info">
-                                    <h6 class="mb-1">{{ optional($pickup->car)->fullName() ?? 'Vehicle' }}</h6>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="mb-0">{{ optional($pickup->car)->fullName() ?? 'Vehicle' }}</h6>
+                                        <x-car-ownership-badge :car="$pickup->car" />
+                                    </div>
                                     <div class="text-muted small"><i class="bx bx-user-circle me-1"></i>{{ optional($pickup->customer)->fullName() ?? 'Customer TBD' }}</div>
                                     <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($pickup->pickup_date)->format('d M · H:i') }}</div>
                                     <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $pickup->pickup_location ?? 'Pickup location TBD' }}</div>
@@ -119,7 +125,10 @@
                         @forelse ($driverReturns as $returnContract)
                             <div class="task-item d-flex align-items-start justify-content-between">
                                 <div class="task-info">
-                                    <h6 class="mb-1">{{ optional($returnContract->car)->fullName() ?? 'Vehicle' }}</h6>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="mb-0">{{ optional($returnContract->car)->fullName() ?? 'Vehicle' }}</h6>
+                                        <x-car-ownership-badge :car="$returnContract->car" />
+                                    </div>
                                     <div class="text-muted small"><i class="bx bx-user-circle me-1"></i>{{ optional($returnContract->customer)->fullName() ?? 'Customer TBD' }}</div>
                                     <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($returnContract->return_date)->format('d M · H:i') }}</div>
                                     <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $returnContract->return_location ?? 'Return location TBD' }}</div>
@@ -545,7 +554,10 @@
                                         <div class="d-flex flex-column gap-3">
                                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                    <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
+                                                        <x-car-ownership-badge :car="$contract->car" />
+                                                    </div>
                                                     <span class="badge bg-warning text-dark">Booking</span>
                                                 </div>
                                                 <span class="meta-chip meta-chip--status">
@@ -675,7 +687,10 @@
                                         <div class="d-flex flex-column gap-3">
                                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                    <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <h6 class="fw-bold mb-0">{{ optional($contract->car)->fullname() ?? 'Vehicle' }}</h6>
+                                                        <x-car-ownership-badge :car="$contract->car" />
+                                                    </div>
                                                     <span class="badge bg-success">Return</span>
                                                 </div>
                                                 <span class="meta-chip meta-chip--status">

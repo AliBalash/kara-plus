@@ -29,7 +29,10 @@
                     <ul class="list-unstyled mb-0 small text-muted">
                         <li class="mb-2"><strong>Contract:</strong> #{{ $contract->id }}</li>
                         <li class="mb-2"><strong>Customer:</strong> {{ $contract->customer?->fullName() }}</li>
-                        <li><strong>Vehicle:</strong> {{ $contract->car?->fullName() ?? '—' }}</li>
+                        <li>
+                            <strong>Vehicle:</strong> {{ $contract->car?->fullName() ?? '—' }}
+                            <x-car-ownership-badge :car="$contract->car" class="ms-2" />
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -191,6 +194,7 @@
                             <td>
                                 @if ($transfer['from_contract'])
                                     #{{ $transfer['from_contract']->id }} · {{ $transfer['from_contract']->car?->fullName() ?? 'Vehicle' }}
+                                    <x-car-ownership-badge :car="$transfer['from_contract']->car" class="ms-2" />
                                 @else
                                     —
                                 @endif
@@ -198,6 +202,7 @@
                             <td>
                                 @if ($transfer['to_contract'])
                                     #{{ $transfer['to_contract']->id }} · {{ $transfer['to_contract']->car?->fullName() ?? 'Vehicle' }}
+                                    <x-car-ownership-badge :car="$transfer['to_contract']->car" class="ms-2" />
                                 @else
                                     —
                                 @endif

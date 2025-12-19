@@ -33,6 +33,7 @@ return new class extends Migration
             $table->string('color')->nullable(); // رنگ خودرو
             $table->string('chassis_number')->unique(); // شماره شاسی
             $table->boolean('gps')->default(false); // وضعیت GPS
+            $table->boolean('is_company_car')->default(true)->after('gps');
 
             $table->date('issue_date')->nullable(); // تاریخ شروع ثبت‌نام
             $table->date('expiry_date')->nullable(); // تاریخ انقضای ثبت‌نام

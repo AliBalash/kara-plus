@@ -12,7 +12,9 @@
                             <select class="form-control @error('carId') is-invalid @enderror" wire:model.live="carId">
                                 <option value="">Choose a car</option>
                                 @foreach ($cars as $carOption)
-                                    <option value="{{ $carOption->id }}">{{ $carOption->fullname() }}</option>
+                                    <option value="{{ $carOption->id }}">
+                                        {{ $carOption->fullname() }} ({{ $carOption->ownershipLabel() }})
+                                    </option>
                                 @endforeach
                             </select>
                             @error('carId')
@@ -24,7 +26,8 @@
                             <!-- Car Details -->
                             <div class="input-group mt-2">
                                 <span class="input-group-text">Car Name</span>
-                                <input type="text" class="form-control" value="{{ $car->fullname() }}" disabled>
+                                <input type="text" class="form-control"
+                                    value="{{ $car->fullname() }} ({{ $car->ownershipLabel() }})" disabled>
                             </div>
                             <div class="input-group mt-2">
                                 <span class="input-group-text">Manufacturing Year</span>

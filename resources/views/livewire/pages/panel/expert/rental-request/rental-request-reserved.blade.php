@@ -162,7 +162,12 @@
                             <div>{{ $reservedContract->customer->fullName() }}</div>
                             <div class="text-muted small">{{ $reservedContract->customer->phone ?? '—' }}</div>
                         </td>
-                        <td>{{ $reservedContract->car->fullName() }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span>{{ $reservedContract->car->fullName() }}</span>
+                                <x-car-ownership-badge :car="$reservedContract->car" />
+                            </div>
+                        </td>
                         <td>{{ \Carbon\Carbon::parse($reservedContract->pickup_date)->format('d M Y H:i') }}</td>
                         <td>{{ $reservedContract->pickup_location }}</td>
                         <td>

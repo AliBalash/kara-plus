@@ -18,7 +18,12 @@
                 @forelse ($insurancelist as $insurance)
                     <tr>
                         <td>{{ $insurance->id }}</td>
-                        <td>{{ $insurance->car->fullname() }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span>{{ $insurance->car->fullname() }}</span>
+                                <x-car-ownership-badge :car="$insurance->car" />
+                            </div>
+                        </td>
                         <td>{{ $insurance->insurance_company }}</td>
                         <td>{{ $insurance->expiry_date }}</td>
                         <td>{{ $insurance->valid_days }}</td>

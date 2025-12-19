@@ -12,7 +12,7 @@
                             <div class="input-group">
                                 <span class="input-group-text" id="car-brand-addon">Car Brand</span>
                                 <select class="form-control" disabled>
-                                    <option>{{ $car->fullName() }}</option>
+                                    <option>{{ $car->fullName() }} ({{ $car->ownershipLabel() }})</option>
                                 </select>
                             </div>
 
@@ -58,6 +58,19 @@
                                     </option>
                                 </select>
                                 @error('availability')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- Ownership -->
+                            <div class="input-group">
+                                <span class="input-group-text" id="ownership-addon">Ownership</span>
+                                <select class="form-select @error('is_company_car') is-invalid @enderror"
+                                    wire:model="is_company_car" required>
+                                    <option value="1" {{ $is_company_car ? 'selected' : '' }}>Our Fleet</option>
+                                    <option value="0" {{ !$is_company_car ? 'selected' : '' }}>Partner Fleet</option>
+                                </select>
+                                @error('is_company_car')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>

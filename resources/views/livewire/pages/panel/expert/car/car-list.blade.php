@@ -75,7 +75,12 @@
                 @forelse($cars as $car)
                     <tr>
                         <td>{{ $car->id }}</td>
-                        <td>{{ $car->fullname() }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span>{{ $car->fullname() }}</span>
+                                <x-car-ownership-badge :car="$car" />
+                            </div>
+                        </td>
                         <td>{{ $car->color ?? 'N/A' }}</td>
                         <td>
                             <div class="dropdown">
