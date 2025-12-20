@@ -33,6 +33,7 @@ class PaymentEdit extends Component
     public $is_refundable = false;
     public $receipt;
     public $existingReceipt;
+    public $note;
     public $salik_trip_count = '';
     public $salik_other_revenue_preview = 0;
 
@@ -80,7 +81,8 @@ class PaymentEdit extends Component
             'payment_date' => 'required|date',
             'is_refundable' => 'required|boolean',
             'rate' => 'nullable|numeric|min:0.0001',
-            'receipt' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'receipt' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:8048',
+            'note' => 'nullable|string|max:2000',
             'salik_trip_count' => ['required_if:payment_type,salik_4_aed,salik_6_aed', 'integer', 'min:0'],
         ];
     }
@@ -101,6 +103,7 @@ class PaymentEdit extends Component
         $this->payment_date = $this->payment->payment_date?->format('Y-m-d') ?? now()->format('Y-m-d');
         $this->is_refundable = (bool) $this->payment->is_refundable;
         $this->existingReceipt = $this->payment->receipt;
+        $this->note = $this->payment->note;
         $this->salik_trip_count = $this->resolveInitialSalikTrips();
         $this->refreshSalikDerivedFields();
     }
@@ -214,6 +217,7 @@ class PaymentEdit extends Component
                 'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                 'is_refundable' => $this->is_refundable,
                 'receipt' => $receiptPath,
+                'note' => $this->note,
             ]);
 
             if (in_array($this->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {

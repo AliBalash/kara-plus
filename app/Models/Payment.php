@@ -20,6 +20,7 @@ class Payment extends Model
         'amount_in_aed',
         'payment_type',
         'description',
+        'note',
         'payment_date',
         'is_refundable',
         'is_paid',
