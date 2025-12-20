@@ -197,6 +197,7 @@
                                         <th>Amount</th>
                                         <th>Currency</th>
                                         <th>Type</th>
+                                        <th>Note</th>
                                         <th>Payment Date</th>
                                         <th>Actions</th>
                                         <th>Status</th>
@@ -231,6 +232,13 @@
                                                 @elseif ($payment->payment_type === 'salik')
                                                     <div class="small text-muted mt-1">Legacy salik entry without
                                                         breakdown</div>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($payment->note)
+                                                    {{ \Illuminate\Support\Str::limit($payment->note, 80) }}
+                                                @else
+                                                    —
                                                 @endif
                                             </td>
                                             <td>{{ $payment->payment_date }}</td>

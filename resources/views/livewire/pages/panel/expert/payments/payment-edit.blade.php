@@ -145,6 +145,13 @@
                         @error('is_refundable') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
 
+                    <div class="col-md-6" data-validation-field="note">
+                        <label class="form-label">Payment Note (optional)</label>
+                        <textarea class="form-control" rows="3" wire:model.defer="note"
+                            placeholder="Optional note for this payment"></textarea>
+                        @error('note') <span class="text-danger">{{ $message }}</span> @enderror
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label">Replace Receipt (optional)</label>
                         <input type="file" class="form-control" wire:model="receipt">

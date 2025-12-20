@@ -171,6 +171,15 @@
                         </select>
                     </div>
 
+                    <div class="col-md-6 mb-3" data-validation-field="note">
+                        <label class="form-label fw-semibold" for="paymentNoteInput">Payment Note (Optional)</label>
+                        <textarea id="paymentNoteInput" class="form-control" rows="3" wire:model.defer="note"
+                            placeholder="Optional note for this payment"></textarea>
+                        @error('note')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Receipt Upload (Optional)</label>
                         <input type="file" class="form-control" wire:model="receipt">
@@ -620,6 +629,7 @@
                     <th>Refundable</th>
                     <th>Created By</th>
                     <th>Payment Date</th>
+                    <th>Note</th>
                     <th>Receipt</th>
                     <th>Actions</th>
 
@@ -654,6 +664,13 @@
                         <td>{{ $payment->user?->shortName() ?? '—' }}</td>
                         <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
                         <td>
+                            @if ($payment->note)
+                                {{ \Illuminate\Support\Str::limit($payment->note, 80) }}
+                            @else
+                                —
+                            @endif
+                        </td>
+                        <td>
                             @if ($payment->receipt)
                                 <a href="{{ asset('storage/' . ltrim($payment->receipt, '/')) }}" target="_blank">View</a>
                             @else
@@ -673,7 +690,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center">No payments found</td>
+                        <td colspan="11" class="text-center">No payments found</td>
                     </tr>
                 @endforelse
             </tbody>

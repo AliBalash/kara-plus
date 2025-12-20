@@ -40,6 +40,7 @@ class RentalRequestPayment extends Component
     public $hasPayments;
 
     public $receipt;
+    public $note;
     public $finePaid;
     public $parkingPaid;
     public $damagePaid;
@@ -111,6 +112,7 @@ class RentalRequestPayment extends Component
         'is_refundable' => 'refundable selection',
         'rate' => 'exchange rate',
         'receipt' => 'receipt upload',
+        'note' => 'payment note',
         'salik_trip_count' => 'Salik trips',
         'security_deposit_image' => 'security deposit attachment',
     ];
@@ -158,7 +160,8 @@ class RentalRequestPayment extends Component
             'payment_method' => ['required', Rule::in(self::PAYMENT_METHODS)],
             'is_refundable' => ['required', 'boolean'],
             'rate' => ['nullable', 'numeric', 'min:0.0001'],
-            'receipt' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], // optional receipt image
+            'receipt' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8048'], // optional receipt image
+            'note' => ['nullable', 'string', 'max:2000'],
             'salik_trip_count' => ['required_if:payment_type,salik_4_aed,salik_6_aed', 'integer', 'min:0'],
         ];
     }
@@ -405,6 +408,7 @@ class RentalRequestPayment extends Component
                     'amount_in_aed' => $aedAmount,
                     'payment_type' => $this->payment_type,
                     'payment_method' => $this->payment_method,
+                    'note' => $this->note,
                     'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                     'is_paid' => false,
                     'is_refundable' => $this->is_refundable,
@@ -512,6 +516,7 @@ class RentalRequestPayment extends Component
         $this->payment_method = 'cash';
         $this->rate = '';
         $this->receipt = '';
+        $this->note = '';
         $this->is_refundable = false;
         $this->salik_trip_count = '';
         $this->salik_other_revenue_preview = 0;
