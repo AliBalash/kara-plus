@@ -47,6 +47,7 @@ use App\Livewire\Pages\Panel\Expert\User\ManageUserRoles;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
 use App\Livewire\Pages\Panel\Expert\LocationCost\LocationCostList;
 use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\UserRequestStatsController;
 
 Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
@@ -142,6 +143,8 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/users/create', CreateUser::class)->name('users.create');
     Route::get('/expert/users/roles', ManageUserRoles::class)->name('users.roles');
 
+    Route::get('/expert/reports/user-requests/{userId}', [UserRequestStatsController::class, 'show'])
+        ->name('reports.user-requests');
 
     Route::get('/my-profile', Profile::class)->name('profile.me');
 });
