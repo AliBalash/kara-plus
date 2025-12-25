@@ -84,6 +84,7 @@ class RentalRequestCreate extends Component
     public $payment_on_delivery = true;
     public $apply_discount = false;
     public $custom_daily_rate = null;
+    public $standard_daily_rate = 0;
     public $ldw_daily_rate = 0;
     public $scdw_daily_rate = 0;
     public $deposit = null;
@@ -262,6 +263,7 @@ class RentalRequestCreate extends Component
         if ($this->selectedCarId && $this->rental_days) {
             $car = Car::find($this->selectedCarId);
             $standardRate = $this->roundCurrency($this->getCarDailyRate($car, $this->rental_days));
+            $this->standard_daily_rate = $standardRate;
             $this->dailyRate = ($this->apply_discount && $this->custom_daily_rate)
                 ? $this->roundCurrency((float) $this->custom_daily_rate)
                 : $standardRate;
@@ -271,6 +273,7 @@ class RentalRequestCreate extends Component
         } else {
             $this->dailyRate = $this->roundCurrency(0);
             $this->base_price = $this->roundCurrency(0);
+            $this->standard_daily_rate = $this->roundCurrency(0);
             $this->ldw_daily_rate = $this->roundCurrency(0);
             $this->scdw_daily_rate = $this->roundCurrency(0);
         }
@@ -681,6 +684,7 @@ class RentalRequestCreate extends Component
                 'deposit_category' => $this->deposit_category,
                 'kardo_required' => $this->kardo_required ?? true,
                 'used_daily_rate' => $this->roundCurrency($this->dailyRate),
+                'custom_daily_rate_enabled' => $this->apply_discount,
                 'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
                 'payment_on_delivery' => $this->payment_on_delivery ?? true,
                 'meta' => $this->prepareContractMeta(),
