@@ -24,7 +24,8 @@ class RentalRequestHistory extends Component
         // گرفتن تاریخچه وضعیت‌ها
         $this->statuses = ContractStatus::with(['user.roles'])
             ->where('contract_id', $this->contractId)
-            ->orderBy('created_at', 'desc')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
     }
 
@@ -41,6 +42,7 @@ class RentalRequestHistory extends Component
         $this->statuses = ContractStatus::with(['user.roles'])
             ->where('contract_id', $this->contractId)
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
     }
 }
