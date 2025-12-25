@@ -33,6 +33,7 @@ class Contract extends Model
         'meta',
         'payment_on_delivery',
         'used_daily_rate',
+        'custom_daily_rate_enabled',
         'discount_note',
         'delivery_driver_id',
         'return_driver_id',
@@ -52,6 +53,7 @@ class Contract extends Model
         'total_price' => 'decimal:2',
         'kardo_required' => 'boolean',
         'payment_on_delivery' => 'boolean',
+        'custom_daily_rate_enabled' => 'boolean',
         'meta' => 'array',
     ];
 

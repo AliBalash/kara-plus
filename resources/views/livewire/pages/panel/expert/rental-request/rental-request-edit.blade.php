@@ -581,25 +581,37 @@
                                 </div>
 
                                 <div class="mt-3">
-                                    <div class="form-check mb-2">
-                                        <input type="checkbox" class="form-check-input"
-                                            wire:model.live="apply_discount" id="apply_discount">
-                                        <label class="form-check-label" for="apply_discount">Change daily rate
-                                            (Custom Daily Rate)</label>
-                                    </div>
-                                    @if ($apply_discount)
-                                        <div class="input-group mb-3">
+                                    <div class="d-flex flex-column gap-2">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="text-muted small">Standard daily rate</span>
+                                            <span class="fw-semibold">
+                                                {{ number_format((float) $standard_daily_rate, 2) }} AED/day
+                                            </span>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input type="checkbox" class="form-check-input"
+                                                wire:model.live="apply_discount" id="apply_discount">
+                                            <label class="form-check-label" for="apply_discount">
+                                                Change daily rate (Custom Daily Rate)
+                                            </label>
+                                        </div>
+                                        <div class="input-group">
                                             <span class="input-group-text"><i class="bx bx-discount"></i></span>
                                             <input type="number" step="0.01"
                                                 class="form-control @error('custom_daily_rate') is-invalid @enderror"
                                                 wire:model.live="custom_daily_rate"
-                                                placeholder="Enter discounted daily rate (e.g. 180 AED)">
+                                                placeholder="Enter custom daily rate (e.g. 180 AED)"
+                                                @disabled(!$apply_discount)>
+                                            <span class="input-group-text">AED/day</span>
                                             @error('custom_daily_rate')
                                                 <div class="invalid-feedback animate__animated animate__fadeIn">
                                                     {{ $message }}</div>
                                             @enderror
                                         </div>
-                                    @endif
+                                        <small class="text-muted">
+                                            When custom rate is off, pricing auto-resets to the car's standard rate.
+                                        </small>
+                                    </div>
                                 </div>
 
                                 <div class="row mt-3">

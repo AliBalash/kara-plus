@@ -89,6 +89,7 @@ class RentalRequestEdit extends Component
     public $payment_on_delivery;
     public $apply_discount = false;
     public $custom_daily_rate = null;
+    public $standard_daily_rate = 0;
     public $carsForModel = [];
     public $ldw_daily_rate = 0;
     public $scdw_daily_rate = 0;
@@ -111,9 +112,14 @@ class RentalRequestEdit extends Component
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->contract = Contract::with(['customer', 'car.carModel', 'payments'])->findOrFail($contractId);
 
-        if ($this->contract->used_daily_rate) {
+        $this->apply_discount = (bool) ($this->contract->custom_daily_rate_enabled ?? false);
+
+        if (!$this->apply_discount && $this->contract->discount_note) {
+            $this->apply_discount = true;
+        }
+
+        if ($this->apply_discount && $this->contract->used_daily_rate) {
             $this->custom_daily_rate = $this->contract->used_daily_rate;
-            // $this->apply_discount = true;
         }
 
         $this->initializeFromContract();
@@ -313,15 +319,17 @@ class RentalRequestEdit extends Component
         if ($this->selectedCarId && $this->rental_days) {
             $car = Car::find($this->selectedCarId);
             $standardRate = $this->roundCurrency($this->getCarDailyRate($car, $this->rental_days));
+            $this->standard_daily_rate = $standardRate;
             $this->dailyRate = $this->apply_discount && $this->custom_daily_rate
                 ? $this->roundCurrency((float) $this->custom_daily_rate)
-                : $this->roundCurrency($this->contract->used_daily_rate ?? $standardRate);
+                : $standardRate;
             $this->base_price = $this->roundCurrency($this->dailyRate * $this->rental_days);
             $this->ldw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'ldw', $this->rental_days));
             $this->scdw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'scdw', $this->rental_days));
         } else {
             $this->dailyRate = $this->roundCurrency(0);
             $this->base_price = $this->roundCurrency(0);
+            $this->standard_daily_rate = $this->roundCurrency(0);
             $this->ldw_daily_rate = $this->roundCurrency(0);
             $this->scdw_daily_rate = $this->roundCurrency(0);
         }
@@ -970,6 +978,7 @@ class RentalRequestEdit extends Component
             'deposit_category' => $this->deposit_category,
             'kardo_required' => $this->kardo_required,
             'used_daily_rate' => $this->roundCurrency($this->dailyRate),
+            'custom_daily_rate_enabled' => $this->apply_discount,
             'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
             'payment_on_delivery' => $this->payment_on_delivery ?? true,
             'meta' => !empty($meta) ? $meta : null,

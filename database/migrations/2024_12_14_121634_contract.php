@@ -28,6 +28,7 @@ return new class extends Migration
             $table->string('return_location'); // مکان بازگشت خودرو
             $table->decimal('total_price', 10, 2); // مبلغ کل اجاره
             $table->decimal('used_daily_rate', 10, 2)->nullable();
+            $table->boolean('custom_daily_rate_enabled')->default(false);
             $table->text('discount_note')->nullable();
             $table->boolean('kardo_required')->default(true);
             $table->boolean('payment_on_delivery')->default(true);
@@ -49,7 +50,7 @@ return new class extends Migration
             $table->text('deposit')->nullable()->after('notes');
             $table->string('deposit_category')->nullable()->after('deposit');
             $table->json('meta')->nullable();
-
+            
             $table->timestamps();
 
             $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
