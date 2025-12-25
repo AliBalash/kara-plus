@@ -179,7 +179,7 @@ class RentalRequestPayment extends Component
 
     public function loadData()
     {
-        $this->contract = Contract::with('payments')->findOrFail($this->contractId);
+        $this->contract = Contract::with(['payments', 'customer', 'car', 'pickupDocument'])->findOrFail($this->contractId);
         $this->contractMeta = $this->contract->meta ?? [];
         $this->totalPrice = $this->roundCurrency($this->contract->total_price ?? 0);
 

@@ -1,7 +1,48 @@
 <div class="container">
-    <h4 class="fw-bold py-3 mb-4">
-        <span class="text-muted fw-light">Rental Request /</span> Payment Information
-    </h4>
+    <div class="row g-3 align-items-center">
+        <div class="col-lg-4">
+            <h4 class="fw-bold py-3 mb-0">
+                <span class="text-muted fw-light">Rental Request /</span> Payment Information
+            </h4>
+        </div>
+        @if (!empty($contractId))
+            @php
+                $customerName = optional($contract->customer)->fullName() ?? '—';
+                $agreementDisplay = optional($contract->pickupDocument)->agreement_number;
+                $vehicleName = optional($contract->car)->modelName() ?? 'Vehicle not assigned';
+                $plateNumber = optional($contract->car)->plate_number;
+            @endphp
+            <div class="col-lg-8">
+                <div class="status-toolbar d-flex flex-column flex-lg-row align-items-lg-center gap-3">
+                    <div class="status-overview flex-grow-1 d-flex flex-column flex-md-row flex-wrap gap-3">
+                        <div class="status-card">
+                            <div class="status-card-label"><i class="bi bi-person-circle me-2"></i>Customer</div>
+                            <div class="status-card-value">{{ $customerName }}</div>
+                        </div>
+                        <div class="status-card">
+                            <div class="status-card-label"><i class="bi bi-file-earmark-text me-2"></i>Agreement #</div>
+                            <div class="status-card-value">
+                                {{ $agreementDisplay ? \Illuminate\Support\Str::upper($agreementDisplay) : '—' }}
+                            </div>
+                        </div>
+                        <div class="status-card">
+                            <div class="status-card-label"><i class="bi bi-car-front me-2"></i>Vehicle</div>
+                            <div class="status-card-value">{{ $vehicleName }}</div>
+                            <div class="status-card-sub text-muted">
+                                {{ $plateNumber ? 'Plate: ' . \Illuminate\Support\Str::upper($plateNumber) : 'Plate not set' }}
+                            </div>
+                        </div>
+                        <div class="status-card status-card--status">
+                            <div class="status-card-label"><i class="bi bi-info-circle me-2"></i>Status</div>
+                            <div class="status-card-value">
+                                {{ \Illuminate\Support\Str::headline($contract->current_status ?? 'draft') }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    </div>
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
     @include('livewire.components.waiting-overlay', [
@@ -702,6 +743,77 @@
 
 @push('styles')
     <style>
+        .status-toolbar {
+            background: #fff;
+            border: 1px solid #e0e6ef;
+            border-radius: 1rem;
+            padding: 1rem 1.2rem;
+            box-shadow: 0 6px 16px rgba(33, 56, 86, 0.06);
+        }
+
+        .status-overview {
+            display: flex;
+        }
+
+        .status-card {
+            flex: 1 1 170px;
+            background: #f8f9fc;
+            border: 1px solid #edf1f7;
+            border-radius: 0.9rem;
+            padding: 0.75rem 1rem;
+            min-width: 160px;
+        }
+
+        .status-card-label {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #8a96aa;
+            font-weight: 600;
+        }
+
+        .status-card-value {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 0.35rem;
+            color: #1f2a3d;
+            word-break: break-word;
+        }
+
+        .status-card-sub {
+            font-size: 0.78rem;
+            margin-top: 0.2rem;
+        }
+
+        .status-card--status {
+            background: linear-gradient(135deg, #4263eb, #364fc7);
+            color: #fff;
+            border: none;
+            box-shadow: 0 12px 24px rgba(66, 99, 235, 0.2);
+        }
+
+        .status-card--status .status-card-label,
+        .status-card--status .status-card-sub {
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        .status-card--status .status-card-value {
+            color: #fff;
+        }
+
+        @media (max-width: 575.98px) {
+            .status-toolbar {
+                gap: 0.75rem;
+            }
+
+            .status-card {
+                min-width: 100%;
+            }
+        }
+
         .transform:hover {
             transform: translateY(-4px);
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
