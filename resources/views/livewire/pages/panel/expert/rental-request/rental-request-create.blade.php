@@ -1,27 +1,47 @@
 <div>
-    <div class="row">
-        <div class="col-lg-12 text-start">
-            <h4 class="fw-bold py-3 mb-4">
+    <div class="row g-3 align-items-center">
+        <div class="col-lg-6 text-start">
+            <h4 class="fw-bold py-3 mb-0">
                 <span class="text-muted fw-light">Rental Request /</span> Create Request
             </h4>
         </div>
+        <div class="col-lg-6">
+            @isset($contract)
+                @if (is_null($contract->user_id))
+                    <div class="assign-toolbar d-flex flex-column flex-sm-row align-items-sm-center justify-content-lg-end gap-3">
+                        <div class="assign-pill text-sm-start text-lg-end">
+                            <span class="assign-pill-label">Assignee</span>
+                            <span class="assign-pill-value assign-pill-value--warning">
+                                <i class="bx bx-time-five"></i> Unassigned
+                            </span>
+                        </div>
+                        <button type="button" class="btn assign-action btn-gradient-ocean"
+                            onclick="window.confirm('Assign this contract to yourself?') && @this.assignToMe({{ $contract->id }})"
+                            wire:loading.attr="disabled" wire:target="assignToMe">
+                            <i class="bx bx-user-plus me-1"></i>
+                            <span>Assign to Me</span>
+                        </button>
+                    </div>
+                @else
+                    <div class="assign-toolbar d-flex flex-column flex-sm-row align-items-sm-center justify-content-lg-end gap-3">
+                        <div class="assign-pill text-sm-start text-lg-end">
+                            <span class="assign-pill-label">Assigned to</span>
+                            <span class="assign-pill-value assign-pill-value--primary">
+                                <i class="bx bx-user-circle"></i>
+                                {{ optional($contract->user)->shortName() ?? 'Team Member' }}
+                            </span>
+                        </div>
+                        <button type="button" class="btn assign-action btn-gradient-sunset"
+                            onclick="window.confirm('Set this contract status to Booking?') && @this.changeStatusToReserve({{ $contract->id }})"
+                            wire:loading.attr="disabled" wire:target="changeStatusToReserve">
+                            <i class="bx bxs-log-in-circle me-1"></i>
+                            <span>Set to Booking</span>
+                        </button>
+                    </div>
+                @endif
+            @endisset
+        </div>
     </div>
-
-    @isset($contract)
-        @if (is_null($contract->user_id))
-            <a class="btn btn-info fw-bold m-2 transition-all duration-300 hover:bg-info-dark" href="javascript:void(0);"
-                onclick="if(confirm('Are you sure you want to assign this contract to self?')) { @this.assignToMe({{ $contract->id }}) }">
-                <i class="bx bx-user-plus me-2"></i> Assign to Me
-            </a>
-        @else
-            <div class="col-lg-6 text-end">
-                <a class="btn btn-danger fw-bold transition-all duration-300 hover:bg-danger-dark" href="javascript:void(0);"
-                    onclick="if(confirm('Are you sure you want to set this contract to Booking?')) { @this.changeStatusToReserve({{ $contract->id }}) }">
-                    <i class="bx bxs-log-in-circle me-2"></i> Set to Booking
-                </a>
-            </div>
-        @endif
-    @endisset
 
     @if (session()->has('success'))
         <div class="alert alert-success animate__animated animate__fadeIn">
@@ -903,7 +923,7 @@
 
 @include('components.panel.form-error-highlighter')
 
-@section('styles')
+@push('styles')
     <style>
         .transition-all {
             transition: all 0.3s ease;
@@ -935,14 +955,90 @@
             transform: translateY(-2px);
         }
 
+        .assign-toolbar {
+            background: #fff;
+            border: 1px solid #e0e6ef;
+            border-radius: 1rem;
+            padding: 0.85rem 1rem;
+            box-shadow: 0 6px 16px rgba(33, 56, 86, 0.06);
+        }
+
+        .assign-pill {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .assign-pill-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #8a96aa;
+            font-weight: 600;
+        }
+
+        .assign-pill-value {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-weight: 600;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+        }
+
+        .assign-pill-value--warning {
+            background: rgba(255, 196, 0, 0.12);
+            color: #b77400;
+        }
+
+        .assign-pill-value--primary {
+            background: rgba(57, 123, 255, 0.12);
+            color: #2b5ec9;
+        }
+
+        .assign-action {
+            border-radius: 999px;
+            padding: 0.55rem 1.4rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .assign-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(32, 56, 90, 0.22);
+        }
+
+        .assign-action:active {
+            transform: translateY(0);
+        }
+
+        .btn-gradient-ocean {
+            background: linear-gradient(135deg, #3a86ff, #4361ee);
+            color: #00d4ff;
+        }
+
+        .btn-gradient-sunset {
+            background: linear-gradient(135deg, #ff9f43, #ff6f61);
+            color: #fff;
+        }
+
+        .btn-gradient-sunset:hover,
+        .btn-gradient-ocean:hover {
+            color: #fff;
+        }
+
         .table th,
         .table td {
             vertical-align: middle;
         }
     </style>
-@endsection
+@endpush
 
-@section('scripts')
+@push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -951,4 +1047,4 @@
             });
         });
     </script>
-@endsection
+@endpush
