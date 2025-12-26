@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Models\Agent;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\Contract;
@@ -28,7 +29,7 @@ class RentalRequestEdit extends Component
     public $selectedCarId;
     public $selectedCar;
     public $total_price;
-    public $agent_sale;
+    public $agent_id;
     public $pickup_location;
     public $return_location;
     public $return_date;
@@ -98,7 +99,7 @@ class RentalRequestEdit extends Component
     public $carNameCache = [];
     public $deposit = null;
     public $deposit_category = null;
-    public array $salesAgents = [];
+    public $salesAgents = [];
 
     public array $locationCosts = [];
     public array $locationOptions = [];
@@ -108,7 +109,9 @@ class RentalRequestEdit extends Component
     public function mount($contractId)
     {
         $this->services = config('carservices');
-        $this->salesAgents = config('agents.sales_agents', []);
+        $this->salesAgents = Agent::query()
+            ->orderBy('name')
+            ->get();
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->contract = Contract::with(['customer', 'car.carModel', 'payments'])->findOrFail($contractId);
 
@@ -234,7 +237,7 @@ class RentalRequestEdit extends Component
     private function initializeFromContract()
     {
         $this->total_price = $this->contract->total_price;
-        $this->agent_sale = $this->contract->agent_sale;
+        $this->agent_id = $this->contract->agent_id;
         $this->pickup_location = $this->contract->pickup_location;
         $this->return_location = $this->contract->return_location;
         $this->pickup_date = \Carbon\Carbon::parse($this->contract->pickup_date)->format('Y-m-d\TH:i');
@@ -474,6 +477,7 @@ class RentalRequestEdit extends Component
             'selectedBrand' => ['required', 'string'],
             'selectedModelId' => ['required', 'exists:car_models,id'],
             'selectedCarId' => ['required', 'exists:cars,id'],
+            'agent_id' => ['nullable', 'exists:agents,id'],
             'pickup_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'return_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'pickup_date' => [
@@ -640,6 +644,7 @@ class RentalRequestEdit extends Component
         'selectedBrand' => 'car brand',
         'selectedModelId' => 'car model',
         'selectedCarId' => 'car',
+        'agent_id' => 'sales agent',
         'pickup_location' => 'pickup location',
         'return_location' => 'return location',
         'pickup_date' => 'pickup date',
@@ -965,7 +970,7 @@ class RentalRequestEdit extends Component
         $contractData = [
             'car_id' => $this->selectedCarId,
             'total_price' => $this->roundCurrency($this->final_total),
-            'agent_sale' => $this->agent_sale,
+            'agent_id' => $this->agent_id,
             'pickup_location' => $this->pickup_location,
             'return_location' => $this->return_location,
             'pickup_date' => $this->pickup_date,
@@ -1290,7 +1295,7 @@ class RentalRequestEdit extends Component
 
         $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
-        $seller = $this->contract->agent_sale
+        $seller = $this->contract->agent?->name
             ?: optional($this->contract->user)->fullName()
             ?? '---';
         $deliveryDate = $this->pickup_date ? Carbon::parse($this->pickup_date)->format('Y-m-d \A\T H:i') : '---';

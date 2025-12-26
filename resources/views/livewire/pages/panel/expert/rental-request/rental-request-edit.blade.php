@@ -767,13 +767,14 @@
 
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-user"></i></span>
-                            <select class="form-control @error('agent_sale') is-invalid @enderror"
-                                wire:model="agent_sale" data-bs-toggle="tooltip" title="Select agent or Website">
+                            <select class="form-control @error('agent_id') is-invalid @enderror"
+                                wire:model="agent_id" data-bs-toggle="tooltip" title="Select agent or Website">
+                                <option value="">No agent</option>
                                 @foreach ($salesAgents as $agent)
-                                    <option value="{{ $agent }}">{{ $agent }}</option>
+                                    <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                                 @endforeach
                             </select>
-                            @error('agent_sale')
+                            @error('agent_id')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>

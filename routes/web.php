@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Pages\Panel\Expert\Dashboard;
 use App\Livewire\Pages\Panel\Auth\Login;
+use App\Livewire\Pages\Panel\Expert\Agent\AgentList;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandDetail;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandForm;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandList;
@@ -136,9 +137,12 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     // Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
     Route::get('/expert/location-costs', LocationCostList::class)->name('location-costs.index');
+    Route::get('/expert/agents', AgentList::class)->name('agents.index');
 
     Route::get('/maintenance/normalize-phones', [MaintenanceController::class, 'normalizeCustomerPhones'])
         ->name('maintenance.normalize-phones');
+    // Route::get('/maintenance/backfill-contract-agents', [MaintenanceController::class, 'backfillContractAgents'])
+    //     ->name('maintenance.backfill-contract-agents');
 
     Route::get('/expert/users/create', CreateUser::class)->name('users.create');
     Route::get('/expert/users/roles', ManageUserRoles::class)->name('users.roles');

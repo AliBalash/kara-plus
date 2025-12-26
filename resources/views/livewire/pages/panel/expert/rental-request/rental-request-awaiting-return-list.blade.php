@@ -102,9 +102,9 @@
                     <th>Driver</th>
                     <th>Actions</th>
                     <th>Status</th>
-                    <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
+                    <th wire:click="sortBy('agent_name')" role="button" class="sortable">
                         Sales Agent
-                        <i class="bx {{ $sortField === 'agent_sale' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        <i class="bx {{ $sortField === 'agent_name' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
                     <th>Submitted By</th>
@@ -170,8 +170,8 @@
                             <x-status-badge :status="$awaitContract->current_status" />
                         </td>
                         <td>
-                            <span class="badge {{ $awaitContract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
-                                {{ $awaitContract->agent_sale ?? '—' }}
+                            <span class="badge {{ $awaitContract->agent?->name ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $awaitContract->agent?->name ?? '—' }}
                             </span>
                         </td>
 

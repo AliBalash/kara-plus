@@ -108,7 +108,8 @@
                     </ul>
                 </li>
 
-                <li class="menu-item {{ request()->routeIs('rental-requests.payment.list', 'rental-requests.payment', 'rental-requests.confirm-payment-list', 'rental-requests.processed-payments', 'cashier.dashboard') ? 'open' : '' }}">
+                <li
+                    class="menu-item {{ request()->routeIs('rental-requests.payment.list', 'rental-requests.payment', 'rental-requests.confirm-payment-list', 'rental-requests.processed-payments', 'cashier.dashboard') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="menu-icon tf-icons bx bx-credit-card"></i>
                         <div data-i18n="Layouts">Payments</div>
@@ -228,12 +229,6 @@
                     <span class="menu-header-text">Administration</span>
                 </li>
 
-                {{-- <li class="menu-item {{ Request::routeIs('discount.codes') ? 'active' : '' }}">
-                    <a href="{{ route('discount.codes') }}" class="menu-link">
-                        <i class="menu-icon tf-icons bx bxs-discount"></i>
-                        <div data-i18n="Analytics">Discount Codes</div>
-                    </a>
-                </li> --}}
 
                 @role('super-admin')
                     <li class="menu-item {{ Request::routeIs('users.create') ? 'active' : '' }}">
@@ -242,12 +237,7 @@
                             <div data-i18n="Analytics">Create user</div>
                         </a>
                     </li>
-                    <li class="menu-item {{ Request::routeIs('location-costs.index') ? 'active' : '' }}">
-                        <a href="{{ route('location-costs.index') }}" class="menu-link">
-                            <i class="menu-icon tf-icons bx bx-map"></i>
-                            <div data-i18n="Analytics">Location Costs</div>
-                        </a>
-                    </li>
+
                     <li class="menu-item {{ Request::routeIs('users.roles') ? 'active' : '' }}">
                         <a href="{{ route('users.roles') }}" class="menu-link">
                             <i class="menu-icon tf-icons bx bx-user-check"></i>
@@ -255,7 +245,31 @@
                         </a>
                     </li>
                 @endrole
+
+
+                <li class="menu-item {{ Request::routeIs('location-costs.index') ? 'active' : '' }}">
+                    <a href="{{ route('location-costs.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-map"></i>
+                        <div data-i18n="Analytics">Location Costs</div>
+                    </a>
+                </li>
+                <li class="menu-item {{ Request::routeIs('agents.index') ? 'active' : '' }}">
+                    <a href="{{ route('agents.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-id-card"></i>
+                        <div data-i18n="Analytics">Sales Agents</div>
+                    </a>
+                </li>
             @endcannot
+
         @endif
+
+        {{-- <li class="menu-item {{ Request::routeIs('discount.codes') ? 'active' : '' }}">
+                    <a href="{{ route('discount.codes') }}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bxs-discount"></i>
+                        <div data-i18n="Analytics">Discount Codes</div>
+                    </a>
+                </li> --}}
     </ul>
+
+
 </aside>

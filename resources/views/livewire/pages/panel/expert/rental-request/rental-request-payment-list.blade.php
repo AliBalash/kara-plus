@@ -53,7 +53,7 @@
                     <option value="">All Agents</option>
                     <option value="none">No Agent</option>
                     @foreach ($salesAgents as $agent)
-                        <option value="{{ $agent }}">{{ $agent }}</option>
+                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -173,8 +173,8 @@
                         <td>{{ number_format($contract->total_price, 2) }}</td>
                         <td>{{ number_format($remaining, 2) }}</td>
                         <td>
-                            <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
-                                {{ $contract->agent_sale ?? '—' }}
+                            <span class="badge {{ $contract->agent?->name ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $contract->agent?->name ?? '—' }}
                             </span>
                         </td>
                         <td>

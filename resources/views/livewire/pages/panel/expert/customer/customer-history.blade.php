@@ -60,7 +60,7 @@
                                             </td>
                                             <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}
                                             </td>
-                                            <td>{{ $contract->agent_sale }}</td>
+                                            <td>{{ $contract->agent?->name }}</td>
 
                                             <td>
                                                 @php

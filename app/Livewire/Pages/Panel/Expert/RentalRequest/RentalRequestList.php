@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Models\Agent;
 use App\Models\Contract;
 use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Livewire\Concerns\InteractsWithToasts;
@@ -30,7 +31,7 @@ class RentalRequestList extends Component
     public $searchInput = '';
     public $agentFilter = '';
     public $kardoFilter = '';
-    public array $salesAgents = [];
+    public $salesAgents = [];
 
     protected $listeners = ['refreshContracts' => '$refresh'];
     protected $queryString = [
@@ -50,7 +51,9 @@ class RentalRequestList extends Component
     public function mount(): void
     {
         $this->searchInput = $this->search;
-        $this->salesAgents = config('agents.sales_agents', []);
+        $this->salesAgents = Agent::query()
+            ->orderBy('name')
+            ->get();
     }
 
     public function sortBy($field)
@@ -105,7 +108,7 @@ class RentalRequestList extends Component
         $likeSearch = '%' . $search . '%';
         $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
-        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'latestStatus.user'])
+        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'latestStatus.user', 'agent'])
             ->when($search !== '', function ($query) use ($search, $likeSearch, $isPhoneSearch) {
                 $query->where(function ($scopedQuery) use ($search, $likeSearch, $isPhoneSearch) {
                     $scopedQuery
@@ -137,12 +140,16 @@ class RentalRequestList extends Component
             ->when($this->pickupTo, fn($q) => $q->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($q) => $q->where('return_date', '>=', $this->returnFrom))
             ->when($this->returnTo, fn($q) => $q->where('return_date', '<=', $this->returnTo))
-            ->when($this->agentFilter === 'none', fn($q) => $q->whereNull('agent_sale'))
-            ->when($this->agentFilter && $this->agentFilter !== 'none', fn($q) => $q->where('agent_sale', $this->agentFilter))
+            ->when($this->agentFilter === 'none', fn($q) => $q->whereNull('agent_id'))
+            ->when($this->agentFilter && $this->agentFilter !== 'none', fn($q) => $q->where('agent_id', $this->agentFilter))
             ->when($this->kardoFilter === 'required', fn($q) => $q->where('kardo_required', true))
             ->when($this->kardoFilter === 'not_required', fn($q) => $q->where('kardo_required', false))
             ->orderByRaw("FIELD(current_status, 'pending') DESC") // Pending همیشه بالا
-            ->when(!in_array($this->sortField, ['customer', 'car']), fn($q) => $q->orderBy($this->sortField, $this->sortDirection))
+            ->when($this->sortField === 'agent_name', fn($q) => $q->orderBy(
+                Agent::select('name')->whereColumn('agents.id', 'contracts.agent_id'),
+                $this->sortDirection
+            ))
+            ->when(!in_array($this->sortField, ['customer', 'car', 'agent_name']), fn($q) => $q->orderBy($this->sortField, $this->sortDirection))
             ->paginate(10);
 
         return view('livewire.pages.panel.expert.rental-request.rental-request-list', [

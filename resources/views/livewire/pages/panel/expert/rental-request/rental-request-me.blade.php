@@ -114,9 +114,9 @@
                             class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
-                    <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
+                    <th wire:click="sortBy('agent_name')" role="button" class="sortable">
                         Sales Agent
-                        <i class="bx {{ $sortField === 'agent_sale' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                        <i class="bx {{ $sortField === 'agent_name' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
                     <th>Submitted By</th>
@@ -147,8 +147,8 @@
                         <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
                         <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}</td>
                         <td>
-                            <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
-                                {{ $contract->agent_sale ?? '—' }}
+                            <span class="badge {{ $contract->agent?->name ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $contract->agent?->name ?? '—' }}
                             </span>
                         </td>
                         <td>
