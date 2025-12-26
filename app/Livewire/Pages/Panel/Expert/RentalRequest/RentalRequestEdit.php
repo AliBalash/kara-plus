@@ -1157,6 +1157,7 @@ class RentalRequestEdit extends Component
             ->where('payment_type', 'salik_other_revenue')
             ->sum(fn($payment) => $payment->salikTripCount() ?: (int) round((float) $payment->amount_in_aed));
         $insuranceTotal = (float) ($this->insurance_total ?? 0);
+        $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
         $childSeatQuantity = $this->getServiceQuantity('child_seat');
         $childSeatUnit = (float) ($this->services['child_seat']['amount'] ?? 0);
         $childSeatAmount = $childSeatQuantity * $childSeatUnit;
@@ -1225,6 +1226,9 @@ class RentalRequestEdit extends Component
         }
 
         $appendRentalLine('Add-on total', $servicesTotal, 'Selected add-ons');
+        if ($securityHoldInstructionAmount > 0) {
+            $appendRentalLine('Security Hold Instructions (added)', $securityHoldInstructionAmount);
+        }
         $appendRentalLine('Driver service', $driverServiceCost, ($this->driver_hours ?? 0) > 0 ? number_format(max(0, (float) $this->driver_hours), 1) . ' hrs' : null);
         $appendRentalLine('Driving license', $drivingLicenseCost, $this->driving_license_option ? $this->formatDrivingLicenseLabel($this->driving_license_option) : null);
 
@@ -1304,6 +1308,7 @@ class RentalRequestEdit extends Component
         $addOnsLabel = $addOnsLabel === '—' ? 'None' : $addOnsLabel;
         $securityHold = $securityDeposit;
         $remainingBalanceRaw = (float) $this->contract->calculateRemainingBalance($payments);
+        $remainingBalanceForNote = $remainingBalanceRaw + $securityHoldInstructionAmount;
         $paymentStatus = $remainingBalanceRaw < -0.01
             ? 'Overpaid'
             : ($remainingBalanceRaw <= 0.01
@@ -1313,10 +1318,11 @@ class RentalRequestEdit extends Component
         $cardooForm = $this->kardo_required ? 'YES' : 'NO';
 
         $contractTotal = (float) ($this->contract->total_price ?? $this->final_total);
+        $contractTotalForNote = $contractTotal + $securityHoldInstructionAmount;
         $totalRent = $this->formatCurrency($contractTotal);
         $vatAmount = $this->formatCurrency($this->tax_amount);
-        $grandTotal = $this->formatCurrency($contractTotal);
-        $remainingBalanceFormatted = $this->formatCurrency($remainingBalanceRaw);
+        $grandTotal = $this->formatCurrency($contractTotalForNote);
+        $remainingBalanceFormatted = $this->formatCurrency($remainingBalanceForNote);
         $dailyRate = $this->formatDailyRate() . ' AED plus vat';
         $securityHoldSummary = '';
 
@@ -1354,6 +1360,9 @@ class RentalRequestEdit extends Component
         $paymentsReceivedBlock = $formatListSection('Payments recorded by type', $paymentsReceivedLines);
 
         $summaryBlock = $formatListSection('Financial summary', [
+            $securityHoldInstructionAmount > 0
+                ? 'Security hold instructions added: ' . $this->formatCurrency($securityHoldInstructionAmount) . ' AED'
+                : null,
             "Contract total reference: {$totalRent} AED",
             "VAT (current calc): {$vatAmount} AED",
             "Grand total reference: {$grandTotal} AED",
@@ -1398,6 +1407,10 @@ class RentalRequestEdit extends Component
                 'label' => 'Fines',
                 'amount' => $fineAmount,
             ],
+            $securityHoldInstructionAmount > 0 ? [
+                'label' => 'Security Hold Instructions (added)',
+                'amount' => $securityHoldInstructionAmount,
+            ] : null,
             [
                 'label' => 'Salik (4 & 6 AED)',
                 'amount' => $salik4Amount + $salik6Amount,
@@ -1469,7 +1482,7 @@ Mobile number: {$phone}
 ----------------------------------------------------{$deliveryScheduleBlock}{$vehiclePlanBlock}
 Supplementary Insurance Package : {$insurance}
 Add-ons: {$addOnsLabel}
-Security hold method: {$guaranteeFee}{$rentalCostsBlock}{$otherChargesBlock}{$financialFormulaBlock}{$paymentsReceivedBlock}
+Security Hold Instructions: {$guaranteeFee}{$rentalCostsBlock}{$otherChargesBlock}{$financialFormulaBlock}{$paymentsReceivedBlock}
 ----------------------------------------------------{$summaryBlock}{$securityHoldSummary}
 ----------------------------------------------------
 Must get receive: {$remainingBalanceFormatted} AED
@@ -1508,6 +1521,8 @@ TEXT);
         $securityHold = $sumAmount('security_deposit');
         $customerPayments = (float) $payments->sum('amount_in_aed');
         $balance = $this->contract->calculateRemainingBalance($payments);
+        $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
+        $balanceForNote = $balance + $securityHoldInstructionAmount;
 
         $agreementNumber = $this->contract->pickupDocument?->agreement_number ?? '---';
         $depositLabel = $this->formattedDepositLabel();
@@ -1519,6 +1534,12 @@ TEXT);
             ),
             $this->contract->car?->plate_number
         );
+
+        $totalCostsForNote = $this->final_total + $securityHoldInstructionAmount;
+        $subTotalForNote = $totalCostsForNote + $securityHold;
+        $securityHoldInstructionLine = $securityHoldInstructionAmount > 0
+            ? 'Security Hold Instructions (added): ' . $this->formatCurrency($securityHoldInstructionAmount) . ' AED'
+            : null;
 
         return trim(<<<TEXT
             *This report is for the information of the customer and the settlement is not complete*
@@ -1543,16 +1564,17 @@ TEXT);
             Car wash: {$this->formatCurrency($sumAmount('carwash'))} AED
             Scratch: {$this->formatCurrency($sumAmount('damage'))} AED
             Debt: {$this->formatCurrency(max($balance, 0))} AED
+            {$securityHoldInstructionLine}
             ----------------------------------------------------
-            Total Costs: {$this->formatCurrency($this->final_total)} AED
+            Total Costs: {$this->formatCurrency($totalCostsForNote)} AED
             vat: {$this->formatCurrency($this->tax_amount)} AED
-            Security hold method: {$depositLabel}
+            Security Hold Instructions: {$depositLabel}
             Security Hold: {$this->formatCurrency($securityHold)} AED
-            Sub Total: {$this->formatCurrency($this->final_total +$securityHold)} AED
+            Sub Total: {$this->formatCurrency($subTotalForNote)} AED
             ----------------------------------------------------
             Customer Payments: {$this->formatCurrency($customerPayments)} AED
             ----------------------------------------------------
-            *Must get receive {$this->formatCurrency($balance)} AED*
+            *Must get receive {$this->formatCurrency($balanceForNote)} AED*
 
             Other charges will be deducted from the security hold. The rest will be returned to the customer after 10 days.
             
@@ -2026,6 +2048,21 @@ TEXT);
         $deposit = is_string($this->deposit) ? trim($this->deposit) : null;
 
         return $deposit !== '' ? $deposit : null;
+    }
+
+    private function cashSecurityHoldAmount(): float
+    {
+        if ($this->deposit_category !== 'cash_aed') {
+            return 0.0;
+        }
+
+        $depositValue = $this->normalizedDeposit();
+
+        if (!is_numeric($depositValue)) {
+            return 0.0;
+        }
+
+        return max(0.0, (float) $depositValue);
     }
 
     private function roundCurrency($value): float
