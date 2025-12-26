@@ -86,7 +86,7 @@ class RentalRequestCancelledList extends Component
         $likeSearch = '%' . $search . '%';
         $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
-        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'latestStatus.user'])
+        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'latestStatus.user', 'agent'])
             ->where('current_status', 'cancelled')
             ->when($search !== '', function ($query) use ($likeSearch, $isPhoneSearch) {
                 $query->where(function ($scopedQuery) use ($likeSearch, $isPhoneSearch) {

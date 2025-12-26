@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Models\Agent;
 use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -37,7 +38,7 @@ class RentalRequestAwaitingPickupList extends Component
         'id',
         'pickup_date',
         'return_date',
-        'agent_sale',
+        'agent_name',
         'created_at',
     ];
 
@@ -88,7 +89,7 @@ class RentalRequestAwaitingPickupList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         $query = Contract::query()
-            ->with(['customer', 'car.carModel', 'user', 'pickupDocument', 'deliveryDriver', 'latestStatus.user'])
+            ->with(['customer', 'car.carModel', 'user', 'pickupDocument', 'deliveryDriver', 'latestStatus.user', 'agent'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($q) use ($likeSearch, $isPhoneSearch) {
                 $q->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
@@ -123,7 +124,12 @@ class RentalRequestAwaitingPickupList extends Component
 
         $sortDirection = $this->sortDirection === 'desc' ? 'desc' : 'asc';
 
-        return $query->orderBy($sortField, $sortDirection)
+        return $query
+            ->when($sortField === 'agent_name', fn($query) => $query->orderBy(
+                Agent::select('name')->whereColumn('agents.id', 'contracts.agent_id'),
+                $sortDirection
+            ))
+            ->when($sortField !== 'agent_name', fn($query) => $query->orderBy($sortField, $sortDirection))
             ->paginate($this->perPage);
     }
 

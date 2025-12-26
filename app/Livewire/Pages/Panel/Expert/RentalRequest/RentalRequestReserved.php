@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Models\Agent;
 use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -26,12 +27,12 @@ class RentalRequestReserved extends Component
     public $returnTo;
     public $agentFilter = '';
     public $kardoFilter = '';
-    public array $salesAgents = [];
+    public $salesAgents = [];
 
     protected array $allowedSortFields = [
         'id',
         'pickup_date',
-        'agent_sale',
+        'agent_name',
         'created_at',
     ];
 
@@ -67,7 +68,9 @@ class RentalRequestReserved extends Component
     public function mount(): void
     {
         $this->searchInput = $this->search;
-        $this->salesAgents = config('agents.sales_agents', []);
+        $this->salesAgents = Agent::query()
+            ->orderBy('name')
+            ->get();
     }
 
     public function clearFilters(): void
@@ -107,7 +110,7 @@ class RentalRequestReserved extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         return Contract::query()
-            ->with(['customer', 'car.carModel', 'user', 'latestStatus.user'])
+            ->with(['customer', 'car.carModel', 'user', 'latestStatus.user', 'agent'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch, $isPhoneSearch) {
                 $query->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
@@ -135,11 +138,15 @@ class RentalRequestReserved extends Component
             ->when($this->pickupTo, fn($query) => $query->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($query) => $query->where('return_date', '>=', $this->returnFrom))
             ->when($this->returnTo, fn($query) => $query->where('return_date', '<=', $this->returnTo))
-            ->when($this->agentFilter === 'none', fn($query) => $query->whereNull('agent_sale'))
-            ->when($this->agentFilter && $this->agentFilter !== 'none', fn($query) => $query->where('agent_sale', $this->agentFilter))
+            ->when($this->agentFilter === 'none', fn($query) => $query->whereNull('agent_id'))
+            ->when($this->agentFilter && $this->agentFilter !== 'none', fn($query) => $query->where('agent_id', $this->agentFilter))
             ->when($this->kardoFilter === 'required', fn($query) => $query->where('kardo_required', true))
             ->when($this->kardoFilter === 'not_required', fn($query) => $query->where('kardo_required', false))
-            ->orderBy($sortField, $sortDirection)
+            ->when($sortField === 'agent_name', fn($query) => $query->orderBy(
+                Agent::select('name')->whereColumn('agents.id', 'contracts.agent_id'),
+                $sortDirection
+            ))
+            ->when($sortField !== 'agent_name', fn($query) => $query->orderBy($sortField, $sortDirection))
             ->paginate(10);
     }
 

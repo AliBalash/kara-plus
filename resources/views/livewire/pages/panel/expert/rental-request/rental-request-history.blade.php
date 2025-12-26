@@ -41,7 +41,7 @@
                                 <td>{{ \Carbon\Carbon::parse($status->created_at)->format('d M Y') }}</td>
                                 <td>{{ $status->contract->return_date ? \Carbon\Carbon::parse($status->contract->return_date)->format('d M Y') : 'N/A' }}
                                 </td>
-                        <td>{{ $status->contract->agent_sale }}</td>
+                        <td>{{ $status->contract->agent?->name }}</td>
 
                                 <td>
                                     @if ($status->contract->user)
@@ -108,7 +108,7 @@
                             </td>
                             <td>{{ \Carbon\Carbon::parse($contract->pickup_date ?? $contract->created_at)->format('d M Y') }}</td>
                             <td>{{ $contract->return_date ? \Carbon\Carbon::parse($contract->return_date)->format('d M Y') : 'N/A' }}</td>
-                            <td>{{ $contract->agent_sale }}</td>
+                            <td>{{ $contract->agent?->name }}</td>
 
                             <td>
                                 @if ($contract->user)

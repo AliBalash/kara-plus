@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Models\Agent;
 use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -31,7 +32,7 @@ class RentalRequestAwaitingReturnList extends Component
     protected array $allowedSortFields = [
         'id',
         'return_date',
-        'agent_sale',
+        'agent_name',
         'created_at',
     ];
 
@@ -104,7 +105,7 @@ class RentalRequestAwaitingReturnList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         return Contract::query()
-            ->with(['customer', 'car.carModel', 'user', 'returnDriver', 'latestStatus.user'])
+            ->with(['customer', 'car.carModel', 'user', 'returnDriver', 'latestStatus.user', 'agent'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch, $isPhoneSearch) {
                 $query->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
@@ -137,7 +138,11 @@ class RentalRequestAwaitingReturnList extends Component
             ->when($this->pickupTo, fn($query) => $query->where('pickup_date', '<=', $this->pickupTo))
             ->when($this->returnFrom, fn($query) => $query->where('return_date', '>=', $this->returnFrom))
             ->when($this->returnTo, fn($query) => $query->where('return_date', '<=', $this->returnTo))
-            ->orderBy($sortField, $sortDirection)
+            ->when($sortField === 'agent_name', fn($query) => $query->orderBy(
+                Agent::select('name')->whereColumn('agents.id', 'contracts.agent_id'),
+                $sortDirection
+            ))
+            ->when($sortField !== 'agent_name', fn($query) => $query->orderBy($sortField, $sortDirection))
             ->paginate(10);
     }
 

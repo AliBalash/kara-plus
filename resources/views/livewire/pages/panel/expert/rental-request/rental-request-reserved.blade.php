@@ -56,7 +56,7 @@
                     <option value="">All Agents</option>
                     <option value="none">No Agent</option>
                     @foreach ($salesAgents as $agent)
-                        <option value="{{ $agent }}">{{ $agent }}</option>
+                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -142,10 +142,10 @@
                         </i>
                     </th>
                     <th>Location</th>
-                    <th wire:click="sortBy('agent_sale')" role="button" class="sortable">
+                    <th wire:click="sortBy('agent_name')" role="button" class="sortable">
                         Sales Agent
                         <i
-                            class="bx {{ $sortField === 'agent_sale' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
+                            class="bx {{ $sortField === 'agent_name' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
                     </th>
                     <th>Submitted By</th>
@@ -171,8 +171,8 @@
                         <td>{{ \Carbon\Carbon::parse($reservedContract->pickup_date)->format('d M Y H:i') }}</td>
                         <td>{{ $reservedContract->pickup_location }}</td>
                         <td>
-                            <span class="badge {{ $reservedContract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
-                                {{ $reservedContract->agent_sale ?? '—' }}
+                            <span class="badge {{ $reservedContract->agent?->name ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $reservedContract->agent?->name ?? '—' }}
                             </span>
                         </td>
 

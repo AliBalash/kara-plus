@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Services\Agents\ContractAgentBackfillService;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
+use RuntimeException;
+use Throwable;
 
 class MaintenanceController extends Controller
 {
@@ -50,5 +53,28 @@ class MaintenanceController extends Controller
             'unchanged' => $unchanged,
             'skipped' => $skipped,
         ]);
+    }
+
+    public function backfillContractAgents(ContractAgentBackfillService $backfillService): JsonResponse
+    {
+        try {
+            $result = $backfillService->run();
+        } catch (RuntimeException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Unexpected error while backfilling contract agents.',
+            ], 500);
+        }
+
+        return response()->json(array_merge([
+            'success' => true,
+        ], $result));
     }
 }

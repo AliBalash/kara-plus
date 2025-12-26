@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Models\Agent;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\Contract;
@@ -31,7 +32,7 @@ class RentalRequestCreate extends Component
     public $return_date;
     public $notes;
     public $driver_note;
-    public $agent_sale = 'Website';
+    public $agent_id;
     public $submitted_by_name;
     public $first_name;
     public $last_name;
@@ -89,7 +90,7 @@ class RentalRequestCreate extends Component
     public $scdw_daily_rate = 0;
     public $deposit = null;
     public $deposit_category = null;
-    public array $salesAgents = [];
+    public $salesAgents = [];
 
     public array $locationCosts = [];
     public array $locationOptions = [];
@@ -99,7 +100,11 @@ class RentalRequestCreate extends Component
         $this->services = config('carservices');
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->submitted_by_name = $this->determineDefaultSubmitterName();
-        $this->salesAgents = config('agents.sales_agents', []);
+        $this->salesAgents = Agent::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $this->agent_id = Agent::query()->where('name', 'Website')->value('id');
         $this->loadLocationCosts();
     }
 
@@ -453,6 +458,7 @@ class RentalRequestCreate extends Component
             'selectedBrand' => ['required', 'string'],
             'selectedModelId' => ['required', 'exists:car_models,id'],
             'selectedCarId' => ['required', 'exists:cars,id'],
+            'agent_id' => ['nullable', 'exists:agents,id'],
             'pickup_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'return_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'pickup_date' => [
@@ -605,6 +611,7 @@ class RentalRequestCreate extends Component
         'selectedBrand' => 'car brand',
         'selectedModelId' => 'car model',
         'selectedCarId' => 'car',
+        'agent_id' => 'sales agent',
         'pickup_location' => 'pickup location',
         'return_location' => 'return location',
         'pickup_date' => 'pickup date',
@@ -670,7 +677,7 @@ class RentalRequestCreate extends Component
                 'customer_id' => $customer->id,
                 'car_id' => $this->selectedCarId,
                 'total_price' => $this->roundCurrency($this->final_total),
-                'agent_sale' => $this->agent_sale,
+                'agent_id' => $this->agent_id,
                 'submitted_by_name' => $this->submitted_by_name ?: $this->determineDefaultSubmitterName(),
                 'pickup_location' => $this->pickup_location,
                 'return_location' => $this->return_location,

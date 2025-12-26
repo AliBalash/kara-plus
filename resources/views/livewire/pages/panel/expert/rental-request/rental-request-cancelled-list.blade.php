@@ -137,8 +137,8 @@
                             <x-status-badge :status="$contract->current_status" />
                         </td>
                         <td>
-                            <span class="badge {{ $contract->agent_sale ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
-                                {{ $contract->agent_sale ?? '—' }}
+                            <span class="badge {{ $contract->agent?->name ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">
+                                {{ $contract->agent?->name ?? '—' }}
                             </span>
                         </td>
                         <td>

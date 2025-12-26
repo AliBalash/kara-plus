@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Agent;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\Customer;
@@ -21,7 +22,7 @@ class ContractFactory extends Factory
             'user_id' => User::factory(),
             'customer_id' => Customer::factory(),
             'car_id' => Car::factory(),
-            'agent_sale' => $this->faker->name,
+            'agent_id' => Agent::factory(),
             'submitted_by_name' => $this->faker->name,
             'pickup_date' => $pickup,
             'pickup_location' => $this->faker->city,

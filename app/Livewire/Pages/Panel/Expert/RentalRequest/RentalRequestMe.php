@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Livewire\Concerns\SearchesCustomerPhone;
+use App\Models\Agent;
 use App\Models\Contract;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -30,7 +31,7 @@ class RentalRequestMe extends Component
         'id',
         'pickup_date',
         'return_date',
-        'agent_sale',
+        'agent_name',
         'current_status',
         'created_at',
     ];
@@ -128,7 +129,7 @@ class RentalRequestMe extends Component
 
         $query = Contract::query()
             ->where('user_id', auth()->id())
-            ->with(['customer', 'car.carModel', 'user', 'latestStatus.user']);
+            ->with(['customer', 'car.carModel', 'user', 'latestStatus.user', 'agent']);
 
         if ($search !== '') {
             $query->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
@@ -164,7 +165,11 @@ class RentalRequestMe extends Component
 
         $contracts = $query
             ->orderByRaw("FIELD(current_status, 'pending') DESC")
-            ->orderBy($sortField, $this->sortDirection)
+            ->when($sortField === 'agent_name', fn($builder) => $builder->orderBy(
+                Agent::select('name')->whereColumn('agents.id', 'contracts.agent_id'),
+                $this->sortDirection
+            ))
+            ->when($sortField !== 'agent_name', fn($builder) => $builder->orderBy($sortField, $this->sortDirection))
             ->paginate(10);
 
         return view('livewire.pages.panel.expert.rental-request.rental-request-me', [

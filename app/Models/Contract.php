@@ -20,7 +20,7 @@ class Contract extends Model
         'user_id',
         'customer_id',
         'car_id',
-        'agent_sale',
+        'agent_id',
         'submitted_by_name',
         'pickup_date',
         'pickup_location',
@@ -120,6 +120,11 @@ class Contract extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class);
     }
 
     /**
