@@ -1537,49 +1537,102 @@ TEXT);
 
         $totalCostsForNote = $this->final_total + $securityHoldInstructionAmount;
         $subTotalForNote = $totalCostsForNote + $securityHold;
-        $securityHoldInstructionLine = $securityHoldInstructionAmount > 0
-            ? 'Security Hold Instructions (added): ' . $this->formatCurrency($securityHoldInstructionAmount) . ' AED'
+
+        $formatMoney = fn(float $amount): string => $this->formatCurrency($amount) . ' AED';
+        $hasValue = fn(float $amount): bool => abs($amount) >= 0.01;
+
+        $formatList = function (string $title, array $items): string {
+            $items = array_values(array_filter($items));
+
+            if (empty($items)) {
+                return '';
+            }
+
+            $lines = array_map(fn($item) => '- ' . $item, $items);
+
+            return $title . ":\n" . implode("\n", $lines);
+        };
+
+        $moneyLine = function (string $label, float $amount) use ($hasValue, $formatMoney): ?string {
+            if (! $hasValue($amount)) {
+                return null;
+            }
+
+            return $label . ': ' . $formatMoney($amount);
+        };
+
+        $tripLine = function (string $label, int $trips, float $amount) use ($hasValue, $formatMoney): ?string {
+            if ($trips <= 0 && ! $hasValue($amount)) {
+                return null;
+            }
+
+            $tripText = $trips > 0 ? $trips . ' trips' : '0 trips';
+
+            return $label . ': ' . $tripText . ' — ' . $formatMoney($amount);
+        };
+
+        $childSeatLine = $childSeatQuantity > 0
+            ? 'Baby seat (' . $childSeatQuantity . ' pcs): ' . $formatMoney($childSeatAmount)
             : null;
 
-        return trim(<<<TEXT
-            *This report is for the information of the customer and the settlement is not complete*
-            AG number: {$agreementNumber}
-            Customer Name: {$customerName}
-            Mobile number: {$phone}
-            Car: *{$carDescriptor}*
-            --------------------------------------------------
-            Days: {$this->rental_days}
-            Rate: {$this->formatDailyRate()} AED
-            Salik (4 AED): {$salik4Trips} Trips, {$this->formatCurrency($sumAmount('salik_4_aed'))} AED
-            Salik (6 AED): {$salik6Trips} Trips, {$this->formatCurrency($sumAmount('salik_6_aed'))} AED
-            Other revenue: {$otherRevenueTrips} Trips, {$this->formatCurrency($sumAmount('salik_other_revenue'))} AED
-            {$insuranceLabel}: {$this->formatCurrency($insuranceDaily)} AED
-            Baby seat: {$this->formatCurrency($childSeatAmount)} AED
-            Fine: {$this->formatCurrency($sumAmount('fine'))} AED
-            Pickup travel charge: {$this->formatCurrency($this->transfer_costs['pickup'] ?? 0)} AED
-            Return travel charge: {$this->formatCurrency($this->transfer_costs['return'] ?? 0)} AED
-            No Security Hold Fee: {$this->formatCurrency($sumAmount('no_deposit_fee'))} AED
-            Parking: {$this->formatCurrency($sumAmount('parking'))} AED
-            Petrol: {$this->formatCurrency($sumAmount('fuel'))} AED
-            Car wash: {$this->formatCurrency($sumAmount('carwash'))} AED
-            Scratch: {$this->formatCurrency($sumAmount('damage'))} AED
-            Debt: {$this->formatCurrency(max($balance, 0))} AED
-            {$securityHoldInstructionLine}
-            ----------------------------------------------------
-            Total Costs: {$this->formatCurrency($totalCostsForNote)} AED
-            vat: {$this->formatCurrency($this->tax_amount)} AED
-            Security Hold Instructions: {$depositLabel}
-            Security Hold: {$this->formatCurrency($securityHold)} AED
-            Sub Total: {$this->formatCurrency($subTotalForNote)} AED
-            ----------------------------------------------------
-            Customer Payments: {$this->formatCurrency($customerPayments)} AED
-            ----------------------------------------------------
-            *Must get receive {$this->formatCurrency($balanceForNote)} AED*
+        $sections = array_filter([
+            $formatList('Agreement summary', [
+                'AG number: ' . $agreementNumber,
+                'Customer: ' . $customerName,
+                'Mobile number: ' . $phone,
+                'Car: *' . $carDescriptor . '*',
+            ]),
+            $formatList('Rental overview', [
+                'Rental days: ' . $this->rental_days,
+                'Daily rate: ' . $this->formatDailyRate() . ' AED',
+            ]),
+            $formatList('Tolls & trips', array_filter([
+                $tripLine('Salik (4 AED)', $salik4Trips, $sumAmount('salik_4_aed')),
+                $tripLine('Salik (6 AED)', $salik6Trips, $sumAmount('salik_6_aed')),
+                $tripLine('Other revenue', $otherRevenueTrips, $sumAmount('salik_other_revenue')),
+            ])),
+            $formatList('Services & logistics', array_filter([
+                $moneyLine($insuranceLabel, $insuranceDaily),
+                $childSeatLine,
+                $moneyLine('Pickup travel charge', (float) ($this->transfer_costs['pickup'] ?? 0)),
+                $moneyLine('Return travel charge', (float) ($this->transfer_costs['return'] ?? 0)),
+            ])),
+            $formatList('Fees & penalties', array_filter([
+                $moneyLine('Fine', $sumAmount('fine')),
+                $moneyLine('No Security Hold Fee', $sumAmount('no_deposit_fee')),
+                $moneyLine('Parking', $sumAmount('parking')),
+                $moneyLine('Petrol', $sumAmount('fuel')),
+                $moneyLine('Car wash', $sumAmount('carwash')),
+                $moneyLine('Scratch', $sumAmount('damage')),
+                $moneyLine('Debt', max($balance, 0)),
+            ])),
+            $formatList('Security hold summary', array_filter([
+                'Instructions: ' . $depositLabel,
+                $moneyLine('Security hold received', $securityHold),
+                $securityHoldInstructionAmount > 0
+                    ? 'Additional security hold charge: ' . $formatMoney($securityHoldInstructionAmount)
+                    : null,
+                $moneyLine('Subtotal including security hold', $subTotalForNote),
+            ])),
+            $formatList('Financial summary', array_filter([
+                $moneyLine('Charges reference total', $totalCostsForNote),
+                $moneyLine('VAT (reference)', $this->tax_amount),
+                $moneyLine('Customer payments recorded', $customerPayments),
+                $moneyLine('Outstanding balance (incl. instructions)', $balanceForNote),
+            ])),
+        ]);
 
-            Other charges will be deducted from the security hold. The rest will be returned to the customer after 10 days.
-            
-            *Please check fine before receive the car*
-            TEXT);
+        $structuredBody = implode("\n\n", $sections);
+
+        return trim(implode("\n\n", array_filter([
+            '*This report is for the information of the customer and the settlement is not complete*',
+            $structuredBody,
+            '----------------------------------------------------',
+            '*Must get receive ' . $this->formatCurrency($balanceForNote) . ' AED*',
+            '----------------------------------------------------',
+            'Other charges will be deducted from the security hold. The rest will be returned to the customer after 10 days.',
+            '*Please check fine before receive the car*',
+        ])));
     }
 
     private function formatDailyRate(): string
