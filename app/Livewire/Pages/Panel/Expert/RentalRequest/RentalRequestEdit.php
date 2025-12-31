@@ -1149,49 +1149,21 @@ class RentalRequestEdit extends Component
         $sumPaymentAmount = fn(string $type): float => (float) $payments
             ->where('payment_type', $type)
             ->sum('amount_in_aed');
-        $sumTrips = fn(string $type): int => $payments
-            ->where('payment_type', $type)
-            ->sum(fn($payment) => (int) $payment->salikTripCount());
-
-        $salik4Amount = $sumPaymentAmount('salik_4_aed');
-        $salik4Trips = $sumTrips('salik_4_aed');
-        $salik6Amount = $sumPaymentAmount('salik_6_aed');
-        $salik6Trips = $sumTrips('salik_6_aed');
-        $otherRevenueAmount = $sumPaymentAmount('salik_other_revenue');
-        $otherRevenueTrips = $payments
-            ->where('payment_type', 'salik_other_revenue')
-            ->sum(fn($payment) => $payment->salikTripCount() ?: (int) round((float) $payment->amount_in_aed));
         $insuranceTotal = (float) ($this->insurance_total ?? 0);
         $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
-        $childSeatQuantity = $this->getServiceQuantity('child_seat');
-        $childSeatUnit = (float) ($this->services['child_seat']['amount'] ?? 0);
-        $childSeatAmount = $childSeatQuantity * $childSeatUnit;
         $pickupCharge = (float) ($this->transfer_costs['pickup'] ?? 0);
         $returnCharge = (float) ($this->transfer_costs['return'] ?? 0);
-        $fineAmount = $sumPaymentAmount('fine');
-        $noSecurityHoldFee = $sumPaymentAmount('no_deposit_fee');
-        $parkingAmount = $sumPaymentAmount('parking');
-        $fuelAmount = $sumPaymentAmount('fuel');
-        $carwashAmount = $sumPaymentAmount('carwash');
-        $scratchAmount = $sumPaymentAmount('damage');
-        $legacySalikAmount = $sumPaymentAmount('salik');
         $driverServiceCost = (float) ($this->driver_cost ?? 0);
         $drivingLicenseCost = (float) ($this->driving_license_cost ?? 0);
         $servicesTotal = (float) ($this->services_total ?? 0);
 
-        $discountsTotal = $sumPaymentAmount('discount');
         $securityDeposit = $sumPaymentAmount('security_deposit');
         $paymentBack = $sumPaymentAmount('payment_back');
         $rentalFeeCollected = $sumPaymentAmount('rental_fee');
         $effectivePaid = $rentalFeeCollected - $paymentBack;
 
-        $incomingTransfers = (float) ($this->contract->incomingBalanceTransfers?->sum('amount') ?? 0);
-        $outgoingTransfers = (float) ($this->contract->outgoingBalanceTransfers?->sum('amount') ?? 0);
-        $debtAmount = max((float) $this->contract->calculateRemainingBalance($payments), 0);
-
         $basePrice = (float) ($this->base_price ?? 0);
         $rentalCostLines = [];
-        $otherChargeLines = [];
         $appendRentalLine = function (string $label, float $amount, ?string $extra = null) use (&$rentalCostLines) {
             if (abs((float) $amount) < 0.01) {
                 return;
@@ -1204,27 +1176,6 @@ class RentalRequestEdit extends Component
             }
 
             $rentalCostLines[] = $label . ': ' . $value;
-        };
-        $appendOtherChargeLine = function (string $label, float $amount, ?string $extra = null) use (&$otherChargeLines) {
-            if (abs((float) $amount) < 0.01) {
-                return;
-            }
-
-            $value = $this->formatCurrency($amount) . ' AED';
-
-            if ($extra) {
-                $value = $extra . ', ' . $value;
-            }
-
-            $otherChargeLines[] = $label . ': ' . $value;
-        };
-        $appendTripsOtherCharge = function (string $label, float $amount, int $trips) use (&$otherChargeLines) {
-            if (abs((float) $amount) < 0.01) {
-                return;
-            }
-
-            $tripText = $trips > 0 ? $trips . ' Trips, ' : '';
-            $otherChargeLines[] = $label . ': ' . $tripText . $this->formatCurrency($amount) . ' AED';
         };
         if ($basePrice > 0) {
             $rentalCostLines[] = 'Rate: ' . $this->rental_days . ' day(s) x ' . $this->formatDailyRate() . ' AED = ' . $this->formatCurrency($basePrice) . ' AED';
@@ -1244,54 +1195,6 @@ class RentalRequestEdit extends Component
 
         $appendRentalLine('Pickup travel charge', $pickupCharge);
         $appendRentalLine('Return travel charge', $returnCharge);
-
-        $appendTripsOtherCharge('Salik (4 AED)', $salik4Amount, $salik4Trips);
-        $appendTripsOtherCharge('Salik (6 AED)', $salik6Amount, $salik6Trips);
-        $appendTripsOtherCharge('Other revenue', $otherRevenueAmount, $otherRevenueTrips);
-        $appendOtherChargeLine('Legacy salik', $legacySalikAmount);
-
-        if ($childSeatAmount > 0) {
-            $appendOtherChargeLine('Baby seat', $childSeatAmount, $childSeatQuantity . ' seat(s)');
-        }
-
-        $appendOtherChargeLine('Fine', $fineAmount);
-        $appendOtherChargeLine('No Security Hold Fee', $noSecurityHoldFee);
-        $appendOtherChargeLine('Parking', $parkingAmount);
-        $appendOtherChargeLine('Petrol', $fuelAmount);
-        $appendOtherChargeLine('Car wash', $carwashAmount);
-        $appendOtherChargeLine('Scratch', $scratchAmount);
-        $appendOtherChargeLine('Debt', $debtAmount);
-
-        $paymentsReceivedLines = [];
-        $paidByType = $payments
-            ->groupBy('payment_type')
-            ->map(fn($group) => (float) $group->sum('amount_in_aed'));
-
-        foreach ($paidByType as $type => $amount) {
-            if (abs($amount) < 0.01) {
-                continue;
-            }
-
-            $label = match ($type) {
-                'rental_fee' => 'Rental Fee',
-                'security_deposit' => 'Security Deposit',
-                'fine' => 'Fine',
-                'salik_4_aed' => 'Salik (4 AED)',
-                'salik_6_aed' => 'Salik (6 AED)',
-                'salik_other_revenue' => 'Other revenue',
-                'parking' => 'Parking',
-                'fuel' => 'Petrol',
-                'carwash' => 'Car wash',
-                'damage' => 'Scratch',
-                'no_deposit_fee' => 'No Security Hold Fee',
-                'driver_service' => 'Driver service',
-                'driving_license' => 'Driving license',
-                'addon' => 'Add-ons',
-                default => Str::headline(str_replace('_', ' ', (string) $type)),
-            };
-
-            $paymentsReceivedLines[] = $label . ': ' . $this->formatCurrency($amount) . ' AED';
-        }
 
         $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
@@ -1323,10 +1226,8 @@ class RentalRequestEdit extends Component
         $cardooForm = $this->kardo_required ? 'YES' : 'NO';
 
         $contractTotal = (float) ($this->contract->total_price ?? $this->final_total);
-        $contractTotalForNote = $contractTotal + $securityHoldInstructionAmount;
         $totalRent = $this->formatCurrency($contractTotal);
         $vatAmount = $this->formatCurrency($this->tax_amount);
-        $grandTotal = $this->formatCurrency($contractTotalForNote);
         $remainingBalanceFormatted = $this->formatCurrency($remainingBalanceForNote);
         $dailyRate = $this->formatDailyRate() . ' AED plus vat';
         $securityHoldSummary = '';
@@ -1361,20 +1262,13 @@ class RentalRequestEdit extends Component
         ]);
 
         $rentalCostsBlock = $formatListSection('Rental cost calculation', $rentalCostLines);
-        $otherChargesBlock = $formatListSection('Additional recorded charges', $otherChargeLines);
-        $paymentsReceivedBlock = $formatListSection('Payments recorded by type', $paymentsReceivedLines);
-
-        $summaryBlock = $formatListSection('Financial summary', [
-            $securityHoldInstructionAmount > 0
-                ? 'Security hold instructions added: ' . $this->formatCurrency($securityHoldInstructionAmount) . ' AED'
-                : null,
-            "Contract total reference: {$totalRent} AED",
+        $summaryLines = array_values(array_filter([
             "VAT (current calc): {$vatAmount} AED",
-            "Grand total reference: {$grandTotal} AED",
+            "Contract total price: {$totalRent} AED",
             "Paid so far (after refunds): {$this->formatCurrency($paidTotal)} AED",
             "Remaining balance: {$remainingBalanceFormatted} AED",
             "Payment status: {$paymentStatus}",
-        ]);
+        ]));
 
         $prependBreak = function (string $block): string {
             return $block !== '' ? "\n{$block}" : '';
@@ -1383,102 +1277,22 @@ class RentalRequestEdit extends Component
         $deliveryScheduleBlock = $prependBreak($deliveryScheduleBlock);
         $vehiclePlanBlock = $prependBreak($vehiclePlanBlock);
         $rentalCostsBlock = $prependBreak($rentalCostsBlock);
-        $otherChargesBlock = $prependBreak($otherChargesBlock);
-        $paymentsReceivedBlock = $prependBreak($paymentsReceivedBlock);
-        $summaryBlock = $prependBreak($summaryBlock);
 
-        $subtractItems = array_filter([
-            [
-                'label' => 'Paid (after refunds)',
-                'amount' => $effectivePaid,
-                'detail' => 'Collected ' . $this->formatCurrency($rentalFeeCollected) . ' AED − Payment back ' . $this->formatCurrency($paymentBack) . ' AED',
-            ],
-            [
-                'label' => 'Discounts',
-                'amount' => $discountsTotal,
-            ],
-            [
-                'label' => 'Security Deposit',
-                'amount' => $securityDeposit,
-            ],
-            $outgoingTransfers > 0 ? [
-                'label' => 'Transfer Out',
-                'amount' => $outgoingTransfers,
-            ] : null,
-        ], fn($item) => $item && abs((float) $item['amount']) >= 0.01);
+        $summaryBlock = '';
 
-        $additionItems = array_filter([
-            [
-                'label' => 'Fines',
-                'amount' => $fineAmount,
-            ],
-            $securityHoldInstructionAmount > 0 ? [
-                'label' => 'Security Hold Instructions (added)',
-                'amount' => $securityHoldInstructionAmount,
-            ] : null,
-            [
-                'label' => 'Salik (4 & 6 AED)',
-                'amount' => $salik4Amount + $salik6Amount,
-            ],
-            [
-                'label' => 'Salik other revenue',
-                'amount' => $otherRevenueAmount,
-            ],
-            [
-                'label' => 'Legacy salik',
-                'amount' => $legacySalikAmount,
-            ],
-            [
-                'label' => 'Parking',
-                'amount' => $parkingAmount,
-            ],
-            [
-                'label' => 'Petrol',
-                'amount' => $fuelAmount,
-            ],
-            [
-                'label' => 'Car wash',
-                'amount' => $carwashAmount,
-            ],
-            [
-                'label' => 'Scratch',
-                'amount' => $scratchAmount,
-            ],
-            [
-                'label' => 'No Security Hold Fee',
-                'amount' => $noSecurityHoldFee,
-            ],
-            $incomingTransfers > 0 ? [
-                'label' => 'Transfer In',
-                'amount' => $incomingTransfers,
-            ] : null,
-        ], fn($item) => $item && abs((float) $item['amount']) >= 0.01);
-
-        $financialFormulaBlock = '';
-
-        if (!empty($subtractItems) || !empty($additionItems)) {
-            $lines = [];
-            $lines[] = $indent . '- Contract total price: ' . $totalRent . ' AED';
-
-            if (!empty($subtractItems)) {
-                $lines[] = $indent . '- Less:';
-                foreach ($subtractItems as $item) {
-                    $detail = isset($item['detail']) ? ' (' . $item['detail'] . ')' : '';
-                    $lines[] = $indent . '    * ' . $item['label'] . ': ' . $this->formatCurrency($item['amount']) . ' AED' . $detail;
-                }
-            }
-
-            if (!empty($additionItems)) {
-                $lines[] = $indent . '- Plus:';
-                foreach ($additionItems as $item) {
-                    $lines[] = $indent . '    * ' . $item['label'] . ': ' . $this->formatCurrency($item['amount']) . ' AED';
-                }
-            }
-
-            $lines[] = $indent . '- Resulting balance: ' . $remainingBalanceFormatted . ' AED';
-
-            $financialFormulaBlock = "\n" . $indent . 'Payment reconciliation (Remaining Balance Formula):' . "\n" . implode("\n", $lines);
+        if (!empty($summaryLines)) {
+            $summaryLinesWithSpacing = array_merge(
+                [$summaryLines[0]],
+                ['', ...array_slice($summaryLines, 1)]
+            );
+            $summaryBlock = "\n" . implode("\n", array_map(
+                fn($line) => $line === '' ? '' : $indent . '- ' . $line,
+                $summaryLinesWithSpacing
+            ));
         }
+
+        $mustGetReceiveLabel = $remainingBalanceForNote < -0.01 ? 'Must refund' : 'Must receive';
+        $mustGetReceiveAmount = $this->formatCurrency(abs($remainingBalanceForNote));
 
         return trim(<<<TEXT
 Seller: {$seller}
@@ -1487,10 +1301,9 @@ Mobile number: {$phone}
 ----------------------------------------------------{$deliveryScheduleBlock}{$vehiclePlanBlock}
 Supplementary Insurance Package : {$insurance}
 Add-ons: {$addOnsLabel}
-Security Hold Instructions: {$guaranteeFee}{$rentalCostsBlock}{$otherChargesBlock}{$financialFormulaBlock}{$paymentsReceivedBlock}
-----------------------------------------------------{$summaryBlock}{$securityHoldSummary}
+Security Hold Instructions: {$guaranteeFee}{$rentalCostsBlock}{$summaryBlock}{$securityHoldSummary}
 ----------------------------------------------------
-Must get receive: {$remainingBalanceFormatted} AED
+{$mustGetReceiveLabel}: {$mustGetReceiveAmount} AED
 ----------------------------------------------------
 Cardoo form: {$cardooForm}
 TEXT);
