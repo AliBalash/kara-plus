@@ -1303,7 +1303,7 @@ Supplementary Insurance Package : {$insurance}
 Add-ons: {$addOnsLabel}
 Security Hold Instructions: {$guaranteeFee}{$rentalCostsBlock}{$summaryBlock}{$securityHoldSummary}
 ----------------------------------------------------
-{$mustGetReceiveLabel}: {$mustGetReceiveAmount} AED
+*{$mustGetReceiveLabel}*: {$mustGetReceiveAmount} AED
 ----------------------------------------------------
 Cardoo form: {$cardooForm}
 TEXT);
