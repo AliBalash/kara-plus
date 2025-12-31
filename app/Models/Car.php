@@ -40,6 +40,7 @@ class Car extends Model
         'chassis_number',
         'gps',
         'is_company_car',
+        'ownership_type',
         'issue_date',
         'expiry_date',
         'passing_date',
@@ -71,6 +72,13 @@ class Car extends Model
         'service_due_date' => 'date',
         'manufacturing_year' => 'integer',
         'is_company_car' => 'boolean',
+    ];
+
+    private const OWNERSHIP_OPTIONS = [
+        'company' => ['label' => 'Our Fleet', 'badge' => 'bg-label-primary'],
+        'golden_key' => ['label' => 'Golden Key', 'badge' => 'bg-label-info'],
+        'liverpool' => ['label' => 'Liverpool', 'badge' => 'bg-label-success'],
+        'other' => ['label' => 'Other Fleet', 'badge' => 'bg-label-warning'],
     ];
 
     /**
@@ -128,12 +136,25 @@ class Car extends Model
 
     public function ownershipLabel(): string
     {
-        return $this->is_company_car ? 'Our Fleet' : 'Partner Fleet';
+        $ownershipType = $this->ownershipType();
+
+        return static::OWNERSHIP_OPTIONS[$ownershipType]['label'] ?? 'Other Fleet';
     }
 
     public function ownershipBadgeClass(): string
     {
-        return $this->is_company_car ? 'bg-label-primary' : 'bg-label-warning';
+        $ownershipType = $this->ownershipType();
+
+        return static::OWNERSHIP_OPTIONS[$ownershipType]['badge'] ?? 'bg-label-secondary';
+    }
+
+    public function ownershipType(): string
+    {
+        if ($this->ownership_type) {
+            return $this->ownership_type;
+        }
+
+        return $this->is_company_car ? 'company' : 'other';
     }
 
     /**

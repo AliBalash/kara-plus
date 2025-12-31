@@ -37,7 +37,7 @@ class EditCarForm extends Component
     public $color;
     public $chassis_number;
     public $gps;
-    public $is_company_car;
+    public $ownership_type;
     public $issue_date;
     public $expiry_date;
     public $passing_date;
@@ -73,7 +73,7 @@ class EditCarForm extends Component
             'color' => 'required|string|min:1|max:255',
             'chassis_number' => 'required|string|min:1|max:255',
             'gps' => 'boolean',
-            'is_company_car' => 'required|boolean',
+            'ownership_type' => 'required|in:company,golden_key,liverpool,other',
             'issue_date' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:issue_date',
             'passing_date' => 'nullable|date',
@@ -194,7 +194,7 @@ class EditCarForm extends Component
         $this->color = $this->car->color;
         $this->chassis_number = $this->car->chassis_number;
         $this->gps = $this->car->gps;
-        $this->is_company_car = $this->car->is_company_car;
+        $this->ownership_type = $this->car->ownershipType();
         $this->issue_date = $this->car->issue_date;
         $this->expiry_date = $this->car->expiry_date;
         $this->passing_date = $this->car->passing_date;
@@ -319,7 +319,8 @@ class EditCarForm extends Component
             'color' => $validated['color'],
             'chassis_number' => $validated['chassis_number'],
             'gps' => $validated['gps'],
-            'is_company_car' => $validated['is_company_car'],
+            'is_company_car' => $validated['ownership_type'] === 'company',
+            'ownership_type' => $validated['ownership_type'],
             'issue_date' => $validated['issue_date'],
             'expiry_date' => $validated['expiry_date'],
             'passing_date' => $validated['passing_date'],
