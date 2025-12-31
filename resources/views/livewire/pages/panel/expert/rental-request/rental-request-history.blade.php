@@ -97,6 +97,9 @@
                                 </td>
                             </tr>
                         @endforeach
+                        @php
+                            $initialStatusUser = optional($statuses->last())->user;
+                        @endphp
                         <tr>
                             <td>{{ $contract->id }}</td>
                             <td>{{ $contract->customer->fullName() }}</td>
@@ -147,7 +150,9 @@
                                 <span class="badge bg-label-secondary">Request Created</span>
                             </td>
                             <td>
-                                <span class="badge bg-label-primary">{{ $contract->customer->fullName() }}</span>
+                                <span class="badge bg-label-primary">
+                                    {{ $initialStatusUser?->shortName() ?? $contract->submitted_by_name ?? $contract->user?->shortName() ?? 'System' }}
+                                </span>
                             </td>
                             <td>
                                 {{ $contract->created_at?->timezone(config('app.timezone'))?->format('d M Y - H:i') ?? '—' }}
