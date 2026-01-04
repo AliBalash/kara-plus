@@ -1346,6 +1346,24 @@ TEXT);
             ->where('payment_type', 'salik_other_revenue')
             ->sum(fn($payment) => $payment->salikTripCount() ?: (int) round((float) $payment->amount_in_aed));
 
+        $additionalChargeTypes = [
+            'salik_4_aed',
+            'salik_6_aed',
+            'salik_other_revenue',
+            'fine',
+            'no_deposit_fee',
+            'parking',
+            'fuel',
+            'carwash',
+            'damage',
+        ];
+
+        $additionalCharges = array_reduce(
+            $additionalChargeTypes,
+            fn(float $carry, string $type) => $carry + $sumAmount($type),
+            0.0
+        );
+
         $insuranceLabel = 'Supplementary Insurance Package (Daily)';
         $insuranceDaily = 0.0;
 
@@ -1375,8 +1393,10 @@ TEXT);
             $this->contract->car?->plate_number
         );
 
-        $totalCostsForNote = $this->final_total + $securityHoldInstructionAmount;
-        $subTotalForNote = $totalCostsForNote + $securityHold;
+        $chargesReferenceTotal = $this->roundCurrency(
+            $this->subtotal + $additionalCharges + $securityHoldInstructionAmount
+        );
+        $subTotalForNote = $chargesReferenceTotal;
 
         $formatMoney = fn(float $amount): string => $this->formatCurrency($amount) . ' AED';
         $hasValue = fn(float $amount): bool => abs($amount) >= 0.01;
@@ -1420,7 +1440,7 @@ TEXT);
                 'AG number: ' . $agreementNumber,
                 'Customer: ' . $customerName,
                 'Mobile number: ' . $phone,
-                'Car: *' . $carDescriptor . '*',
+                'Car: ' . $carDescriptor,
             ]),
             $formatList('Rental overview', [
                 'Rental days: ' . $this->rental_days,
@@ -1444,7 +1464,6 @@ TEXT);
                 $moneyLine('Petrol', $sumAmount('fuel')),
                 $moneyLine('Car wash', $sumAmount('carwash')),
                 $moneyLine('Scratch', $sumAmount('damage')),
-                $moneyLine('Debt', max($balance, 0)),
             ])),
             $formatList('Security hold summary', array_filter([
                 'Instructions: ' . $depositLabel,
@@ -1455,7 +1474,7 @@ TEXT);
                 $moneyLine('Subtotal including security hold', $subTotalForNote),
             ])),
             $formatList('Financial summary', array_filter([
-                $moneyLine('Charges reference total', $totalCostsForNote),
+                $moneyLine('Charges reference total', $chargesReferenceTotal),
                 $moneyLine('VAT (reference)', $this->tax_amount),
                 $moneyLine('Customer payments recorded', $customerPayments),
                 $moneyLine('Outstanding balance (incl. instructions)', $balanceForNote),
@@ -1465,13 +1484,13 @@ TEXT);
         $structuredBody = implode("\n\n", $sections);
 
         return trim(implode("\n\n", array_filter([
-            '*This report is for the information of the customer and the settlement is not complete*',
+            'This report is for the information of the customer and the settlement is not complete',
             $structuredBody,
             '----------------------------------------------------',
-            '*Must get receive ' . $this->formatCurrency($balanceForNote) . ' AED*',
+            ($balanceForNote < -0.01 ? 'Must refund ' : 'Must get receive ') . $this->formatCurrency(abs($balanceForNote)) . ' AED',
             '----------------------------------------------------',
             'Other charges will be deducted from the security hold. The rest will be returned to the customer after 10 days.',
-            '*Please check fine before receive the car*',
+            'Please check fine before receive the car',
         ])));
     }
 
