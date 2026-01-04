@@ -121,8 +121,10 @@ class RentalRequestEdit extends Component
             $this->apply_discount = true;
         }
 
-        if ($this->apply_discount && $this->contract->used_daily_rate) {
-            $this->custom_daily_rate = $this->contract->used_daily_rate;
+        $storedRate = $this->storedDailyRate();
+
+        if ($storedRate !== null) {
+            $this->custom_daily_rate = $storedRate;
         }
 
         $this->initializeFromContract();
@@ -323,9 +325,14 @@ class RentalRequestEdit extends Component
             $car = Car::find($this->selectedCarId);
             $standardRate = $this->roundCurrency($this->getCarDailyRate($car, $this->rental_days));
             $this->standard_daily_rate = $standardRate;
-            $this->dailyRate = $this->apply_discount && $this->custom_daily_rate
-                ? $this->roundCurrency((float) $this->custom_daily_rate)
-                : $standardRate;
+            $storedRate = $this->storedDailyRate();
+            if ($this->apply_discount && $this->custom_daily_rate !== null && $this->custom_daily_rate !== '') {
+                $this->dailyRate = $this->roundCurrency((float) $this->custom_daily_rate);
+            } elseif ($storedRate !== null) {
+                $this->dailyRate = $storedRate;
+            } else {
+                $this->dailyRate = $standardRate;
+            }
             $this->base_price = $this->roundCurrency($this->dailyRate * $this->rental_days);
             $this->ldw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'ldw', $this->rental_days));
             $this->scdw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'scdw', $this->rental_days));
@@ -336,6 +343,21 @@ class RentalRequestEdit extends Component
             $this->ldw_daily_rate = $this->roundCurrency(0);
             $this->scdw_daily_rate = $this->roundCurrency(0);
         }
+    }
+
+    private function storedDailyRate(): ?float
+    {
+        if (!$this->contract) {
+            return null;
+        }
+
+        $rate = $this->contract->used_daily_rate;
+
+        if ($rate === null || $rate === '') {
+            return null;
+        }
+
+        return $this->roundCurrency((float) $rate);
     }
 
     private function getSelectedCar()

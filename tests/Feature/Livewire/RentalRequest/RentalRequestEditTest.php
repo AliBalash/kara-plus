@@ -174,6 +174,55 @@ class RentalRequestEditTest extends TestCase
         $this->assertEquals('Contract Updated successfully!', session('info'));
     }
 
+    public function test_edit_component_keeps_stored_daily_rate_when_car_price_changes(): void
+    {
+        Carbon::setTestNow('2025-04-01 08:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $carModel = CarModel::factory()->create([
+            'brand' => 'Audi',
+            'model' => 'Q5',
+        ]);
+
+        $car = Car::factory()->create([
+            'car_model_id' => $carModel->id,
+            'price_per_day_short' => 150,
+            'price_per_day_mid' => 140,
+            'price_per_day_long' => 130,
+        ]);
+
+        $customer = Customer::factory()->create();
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('pending')
+            ->create([
+                'pickup_date' => now()->addDay(),
+                'return_date' => now()->addDays(4),
+                'used_daily_rate' => 210.25,
+                'custom_daily_rate_enabled' => false,
+                'discount_note' => null,
+            ]);
+
+        $car->update([
+            'price_per_day_short' => 999,
+            'price_per_day_mid' => 999,
+            'price_per_day_long' => 999,
+        ]);
+
+        $component = Mockery::mock(RentalRequestEdit::class)->makePartial();
+        $component->shouldAllowMockingProtectedMethods();
+        $component->mount($contract->id);
+
+        $this->assertFalse($component->apply_discount);
+        $this->assertEqualsWithDelta(210.25, $component->dailyRate, 0.01);
+        $this->assertEqualsWithDelta(210.25, (float) $component->custom_daily_rate, 0.01);
+    }
+
     public function test_change_status_to_reserve_requires_same_user_and_updates_car(): void
     {
         $user = User::factory()->create();
