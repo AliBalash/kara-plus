@@ -1380,7 +1380,7 @@ TEXT);
         $customerPayments = (float) $payments->sum('amount_in_aed');
         $balance = $this->contract->calculateRemainingBalance($payments);
         $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
-        $balanceForNote = $balance + $securityHoldInstructionAmount;
+        $balanceForNote = $balance;
 
         $agreementNumber = $this->contract->pickupDocument?->agreement_number ?? '---';
         $depositLabel = $this->formattedDepositLabel();
@@ -1397,6 +1397,15 @@ TEXT);
             $this->subtotal + $additionalCharges + $securityHoldInstructionAmount
         );
         $subTotalForNote = $chargesReferenceTotal;
+
+        $salikTotal = $sumAmount('salik_4_aed') + $sumAmount('salik_6_aed') + $sumAmount('salik_other_revenue');
+        $parkingTotal = $sumAmount('parking');
+        $fineTotal = $sumAmount('fine');
+        $otherChargesTotal = $sumAmount('no_deposit_fee')
+            + $sumAmount('fuel')
+            + $sumAmount('carwash')
+            + $sumAmount('damage');
+        $feesPenaltiesTotal = $fineTotal + $parkingTotal + $otherChargesTotal;
 
         $formatMoney = fn(float $amount): string => $this->formatCurrency($amount) . ' AED';
         $hasValue = fn(float $amount): bool => abs($amount) >= 0.01;
@@ -1450,6 +1459,7 @@ TEXT);
                 $tripLine('Salik (4 AED)', $salik4Trips, $sumAmount('salik_4_aed')),
                 $tripLine('Salik (6 AED)', $salik6Trips, $sumAmount('salik_6_aed')),
                 $tripLine('Other revenue', $otherRevenueTrips, $sumAmount('salik_other_revenue')),
+                $moneyLine('Salik total', $salikTotal),
             ])),
             $formatList('Services & logistics', array_filter([
                 $moneyLine($insuranceLabel, $insuranceDaily),
@@ -1464,32 +1474,48 @@ TEXT);
                 $moneyLine('Petrol', $sumAmount('fuel')),
                 $moneyLine('Car wash', $sumAmount('carwash')),
                 $moneyLine('Scratch', $sumAmount('damage')),
-            ])),
-            $formatList('Security hold summary', array_filter([
-                'Instructions: ' . $depositLabel,
-                $moneyLine('Security hold received', $securityHold),
-                $securityHoldInstructionAmount > 0
-                    ? 'Additional security hold charge: ' . $formatMoney($securityHoldInstructionAmount)
-                    : null,
-                $moneyLine('Subtotal including security hold', $subTotalForNote),
+                $moneyLine('Fees & penalties total', $feesPenaltiesTotal),
             ])),
             $formatList('Financial summary', array_filter([
-                $moneyLine('Charges reference total', $chargesReferenceTotal),
-                $moneyLine('VAT (reference)', $this->tax_amount),
+                $moneyLine('Rental amount', $this->subtotal),
+                $moneyLine('VAT', $this->tax_amount),
                 $moneyLine('Customer payments recorded', $customerPayments),
-                $moneyLine('Outstanding balance (incl. instructions)', $balanceForNote),
+                $moneyLine('Salik total', $salikTotal),
+                $moneyLine('Parking total', $parkingTotal),
+                $moneyLine('Fines total', $fineTotal),
+                $moneyLine('Other charges total', $otherChargesTotal),
+                $moneyLine('Outstanding balance', $balanceForNote),
+                $moneyLine('Security hold', $securityHold),
+                $securityHoldInstructionAmount > 0
+                    ? 'Security hold instructions: ' . $formatMoney($securityHoldInstructionAmount)
+                    : null,
+            ])),
+            $formatList('Security hold summary', array_filter([
+                ($hasValue($securityHold) || $hasValue($securityHoldInstructionAmount))
+                    ? 'Security hold (' . $depositLabel . '): '
+                        . implode(' + ', array_filter([
+                            $hasValue($securityHold) ? $formatMoney($securityHold) : null,
+                            $hasValue($securityHoldInstructionAmount)
+                                ? 'instructions ' . $formatMoney($securityHoldInstructionAmount)
+                                : null,
+                        ]))
+                    : null,
             ])),
         ]);
 
         $structuredBody = implode("\n\n", $sections);
 
-        return trim(implode("\n\n", array_filter([
-            'This report is for the information of the customer and the settlement is not complete',
-            $structuredBody,
+        $footerBlock = implode("\n", [
             '----------------------------------------------------',
             ($balanceForNote < -0.01 ? 'Must refund ' : 'Must get receive ') . $this->formatCurrency(abs($balanceForNote)) . ' AED',
             '----------------------------------------------------',
             'Other charges will be deducted from the security hold. The rest will be returned to the customer after 10 days.',
+        ]);
+
+        return trim(implode("\n\n", array_filter([
+            'This report is for the information of the customer and the settlement is not complete',
+            $structuredBody,
+            $footerBlock,
             'Please check fine before receive the car',
         ])));
     }
