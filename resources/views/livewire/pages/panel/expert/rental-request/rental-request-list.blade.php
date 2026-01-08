@@ -217,15 +217,34 @@
                             @endif
                         </td>
                         <td>
-                            @if ($contract->customerDocument()->exists())
-                                <span class="badge bg-warning">📄 Customer</span>
-                            @endif
-                            @if ($contract->ReturnDocument()->exists())
-                                <span class="badge bg-success">📄 Return</span>
-                            @endif
-                            @if ($contract->pickupDocument()->exists())
-                                <span class="badge bg-primary">📄 Deliver</span>
-                            @endif
+                            @php
+                                $pickupDocument = $contract->pickupDocument;
+                                $agreementNumber = $pickupDocument?->agreement_number;
+                                $kardoContract = $pickupDocument?->kardo_contract;
+                            @endphp
+                            <div class="d-flex flex-wrap gap-1 align-items-center">
+                                @if ($contract->customerDocument()->exists())
+                                    <span class="badge bg-warning doc-chip">📄 Customer</span>
+                                @endif
+                                @if ($contract->ReturnDocument()->exists())
+                                    <span class="badge bg-success doc-chip">📄 Return</span>
+                                @endif
+                                @if ($contract->pickupDocument()->exists())
+                                    <span class="badge bg-primary doc-chip">📄 Deliver</span>
+                                @endif
+                                @if ($contract->kardo_required && $kardoContract)
+                                    <span class="badge bg-label-success text-success doc-chip">
+                                        <i class="bx bx-layer"></i>
+                                        KARDO uploaded
+                                    </span>
+                                @endif
+                                @if ($agreementNumber)
+                                    <span class="badge bg-label-info text-info doc-chip">
+                                        <i class="bx bx-receipt"></i>
+                                        Agreement #{{ \Illuminate\Support\Str::upper($agreementNumber) }}
+                                    </span>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -256,6 +275,22 @@
 
             th.sortable:hover {
                 color: #007bff;
+            }
+
+            .doc-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.35rem 0.6rem;
+                border-radius: 999px;
+                font-size: 0.78rem;
+                font-weight: 600;
+                letter-spacing: 0.01em;
+                white-space: nowrap;
+            }
+
+            .doc-chip i {
+                font-size: 0.9rem;
             }
         </style>
     @endpush
