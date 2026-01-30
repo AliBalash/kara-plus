@@ -1,0 +1,86 @@
+name: CI/CD (master)
+
+on:
+  push:
+    branches: ["master"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_pass
+          MYSQL_ROOT_PASSWORD: root_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_pass --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo_mysql, zip, xml, curl, exif
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache
+            vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install deps
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare env
+        run: |
+          cp .env.example .env || true
+          php artisan key:generate
+          php -r "file_put_contents('.env', PHP_EOL.'DB_CONNECTION=mysql'.PHP_EOL.'DB_HOST=127.0.0.1'.PHP_EOL.'DB_PORT=3306'.PHP_EOL.'DB_DATABASE=test_db'.PHP_EOL.'DB_USERNAME=test_user'.PHP_EOL.'DB_PASSWORD=test_pass'.PHP_EOL.'REDIS_HOST=127.0.0.1'.PHP_EOL.'QUEUE_CONNECTION=redis'.PHP_EOL, FILE_APPEND);"
+
+      - name: Migrate
+        run: php artisan migrate --force
+
+      - name: Run tests
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            vendor/bin/phpunit
+          else
+            echo "No phpunit found, skipping."
+          fi
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          script: |
+            cd /opt/apps/kara-plus
+            ./deploy.sh
+
