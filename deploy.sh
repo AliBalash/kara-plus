@@ -3,25 +3,26 @@ set -euo pipefail
 
 cd /opt/apps/kara-plus
 
-echo "[1/6] Pull latest master"
-git fetch --all
+echo "[1/6] Fetch + reset to origin/master"
+git config --global --add safe.directory /opt/apps/kara-plus
+git fetch origin
 git reset --hard origin/master
 
-echo "[2/6] Build & up containers"
+echo "[2/6] Build & up (docker compose)"
 docker compose --env-file .env.docker up -d --build
 
 APP_CID="$(docker compose ps -q app)"
 
-echo "[3/6] Install PHP deps"
+echo "[3/6] Composer install (no-dev)"
 docker exec -i "$APP_CID" bash -lc "composer install --no-interaction --prefer-dist --no-dev"
 
-echo "[4/6] Migrate DB"
+echo "[4/6] Migrate"
 docker exec -i "$APP_CID" bash -lc "php artisan migrate --force"
 
 echo "[5/6] Cache optimize"
 docker exec -i "$APP_CID" bash -lc "php artisan config:cache && php artisan route:cache && php artisan view:cache"
 
-echo "[6/6] Restart queue workers (safe)"
+echo "[6/6] Restart queue workers"
 docker exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
 
 echo "Deploy done."
