@@ -4,7 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\Brand;
 
 
 use App\Models\CarModel;
-use App\Services\Media\OptimizedUploadService;
+use App\Services\Media\DeferredImageUploadService;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,11 +22,11 @@ class BrandForm extends Component
     public $brandIcon;
     public $currentBrandIcon;
     public $additionalImage;
-    protected OptimizedUploadService $imageUploader;
+    protected DeferredImageUploadService $deferredUploader;
 
-    public function boot(OptimizedUploadService $imageUploader): void
+    public function boot(DeferredImageUploadService $deferredUploader): void
     {
-        $this->imageUploader = $imageUploader;
+        $this->deferredUploader = $deferredUploader;
     }
 
     public function mount($brandId = null)
@@ -69,7 +69,7 @@ class BrandForm extends Component
                 Storage::disk('myimage')->delete($carModel->brand_icon);
             }
 
-            $path = $this->imageUploader->store(
+            $path = $this->deferredUploader->store(
                 $this->brandIcon,
                 'brand-icons/' . Str::slug($this->brand . '-' . $this->model) . '-' . time() . '.webp',
                 'myimage',
@@ -88,11 +88,11 @@ class BrandForm extends Component
             }
 
             $safeName = Str::slug($carModel->fullname() ?? ($this->brand . '-' . $this->model)) . '-' . time() . '.webp';
-            $storedPath = $this->imageUploader->store(
+            $storedPath = $this->deferredUploader->store(
                 $this->additionalImage,
                 $safeName,
                 'car_pics',
-                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080]
+                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080, 'optimize' => false]
             );
 
             $fileName = basename($storedPath);
