@@ -16,13 +16,16 @@ APP_CID="$(docker compose ps -q app)"
 echo "[3/6] Composer install (no-dev)"
 docker exec -i "$APP_CID" bash -lc "composer install --no-interaction --prefer-dist --no-dev"
 
-echo "[4/6] Migrate"
+echo "[4/7] Storage link"
+docker exec -i "$APP_CID" bash -lc "php artisan storage:link --relative --force"
+
+echo "[5/7] Migrate"
 docker exec -i "$APP_CID" bash -lc "php artisan migrate --force"
 
-echo "[5/6] Cache optimize"
+echo "[6/7] Cache optimize"
 docker exec -i "$APP_CID" bash -lc "php artisan config:cache && php artisan route:cache && php artisan view:cache"
 
-echo "[6/6] Restart queue workers"
+echo "[7/7] Restart queue workers"
 docker exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
 
 echo "Deploy done."
