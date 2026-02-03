@@ -1,10 +1,19 @@
-# Laravel specific files and folders
+# Dependencies
 /vendor/
 /node_modules/
-.env
+
+# Environment files
+/.env
+/.env.*
+!/.env.example
+
+# Public build artifacts
+/public/build/
+/public/hot
+/public/storage
 /public/assets/car-pics
 
-# Ignore storage except gitignore in the directory
+# Storage (keep placeholder .gitignore files)
 /storage/*.key
 /storage/*.log
 /storage/*.cache
@@ -16,36 +25,26 @@
 /storage/app/public/*
 !/storage/app/public/.gitignore
 
-# Ignore IDE and editor files
+# IDE/editor files
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Ignore Composer and NPM/Yarn related files
-composer.lock
+# Package manager logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Ignore OS generated files
+# OS files
 .DS_Store
 Thumbs.db
 
-# Ignore Laravel Mix related files
-/public/hot
-/public/storage
-/public/mix-manifest.json
-
-# Ignore testing related files
+# Testing caches
 *.phpunit.*
 .phpunit.result.cache
 
-# Ignore other temporary files
+# Temporary files
 *.bak
 *.tmp
 *.temp
-
-.env
-.env.docker
-
