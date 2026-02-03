@@ -3,7 +3,8 @@
     <div class="app-brand demo d-flex align-items-center">
         <a href="{{ route('expert.dashboard') }}" class="app-brand-link">
             <span class="app-brand-logo demo">
-                <img width="120" src="{{ asset('assets/panel/assets/img/logo/logo.png') }}" alt="logo">
+                <img width="120" src="{{ asset('assets/panel/assets/img/logo/logo.png') }}" alt="logo"
+                    decoding="async">
             </span>
             {{-- <span class="app-brand-text demo menu-text fw-bolder ms-2">Sneat</span> --}}
         </a>

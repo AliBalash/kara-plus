@@ -27,12 +27,11 @@
     <link rel="stylesheet" href="{{ asset('assets/panel/assets/vendor/css/pages/page-auth.css') }}" />
 
 
-    <link href="http://127.0.0.1:8000/livewire/livewire.css" rel="stylesheet">
-
     <!-- Helpers -->
     <script src="{{ asset('assets/panel/assets/vendor/js/helpers.js') }}"></script>
     <script src="{{ asset('assets/panel/assets/js/config.js') }}"></script>
-
+    
+    @livewireStyles
     <!-- Livewire Styles -->
     @stack('styles')
 </head>
@@ -54,6 +53,7 @@
     <script src="{{ asset('assets/panel/assets/js/main.js') }}"></script>
 
     <!-- Livewire Scripts -->
+    @livewireScripts
     @stack('scripts')
 </body>
 </html>
