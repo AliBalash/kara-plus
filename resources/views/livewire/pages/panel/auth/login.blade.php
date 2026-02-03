@@ -5,7 +5,8 @@
                 <div class="card-body">
                     <div class="app-brand justify-content-center">
                         <span class="app-brand-logo demo">
-                            <img width="120" src="{{ asset('assets/panel/assets/img/logo/logo.png') }}" alt="logo">
+                            <img width="120" src="{{ asset('assets/panel/assets/img/logo/logo.png') }}" alt="logo"
+                                decoding="async">
                         </span>
                     </div>
                     <form wire:submit.prevent="login">
