@@ -267,7 +267,8 @@
                                 <label class="form-label">Current Image</label>
                                 @if ($existingImageUrl)
                                     <img src="{{ $existingImageUrl }}" width="400" height="200"
-                                        style="object-fit: cover; border-radius: 8px;" class="mb-3">
+                                        style="object-fit: cover; border-radius: 8px;" class="mb-3" loading="lazy"
+                                        decoding="async" fetchpriority="low">
                                 @else
                                     <p class="text-muted">No image uploaded yet.</p>
                                 @endif
