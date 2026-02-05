@@ -32,7 +32,7 @@ class RentalRequestPaymentList extends Component
     public $agentFilter = '';
     public $kardoFilter = '';
     public $salesAgents = [];
-    protected $paymentContracts;
+    public $paymentContracts;
 
     protected $listeners = [
         'refreshContracts' => '$refresh',
