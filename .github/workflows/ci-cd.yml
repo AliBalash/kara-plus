@@ -1,12 +1,23 @@
-name: CI/CD (master)
+name: CI/CD
 
 on:
+  pull_request:
   push:
     branches: ["master"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_ENV: testing
+      APP_DEBUG: true
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 
     services:
       mysql:
@@ -30,14 +41,16 @@ jobs:
           - 6379:6379
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: mbstring, pdo_mysql, zip, xml, curl, exif
+          extensions: mbstring, intl, sqlite3, pdo_sqlite, dom, curl, fileinfo, gd, bcmath, pdo_mysql, zip, xml, exif
           tools: composer:v2
+          coverage: none
 
       - name: Cache Composer
         uses: actions/cache@v4
@@ -49,12 +62,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-composer-
 
-      - name: Install deps
-        run: composer install --no-interaction --prefer-dist
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Prepare env
         run: |
-          cp .env.example .env || true
+          if [ -f .env.example ]; then
+            cp .env.example .env || true
+          elif [ ! -f .env ]; then
+            printf 'APP_ENV=testing\nAPP_DEBUG=true\nAPP_KEY=%s\n' "$APP_KEY" > .env
+          fi
           php artisan key:generate
           php -r "file_put_contents('.env', PHP_EOL.'DB_CONNECTION=mysql'.PHP_EOL.'DB_HOST=127.0.0.1'.PHP_EOL.'DB_PORT=3306'.PHP_EOL.'DB_DATABASE=test_db'.PHP_EOL.'DB_USERNAME=test_user'.PHP_EOL.'DB_PASSWORD=test_pass'.PHP_EOL.'REDIS_HOST=127.0.0.1'.PHP_EOL.'QUEUE_CONNECTION=redis'.PHP_EOL, FILE_APPEND);"
 
@@ -66,21 +83,15 @@ jobs:
           if [ -f vendor/bin/phpunit ]; then
             vendor/bin/phpunit
           else
-            echo "No phpunit found, skipping."
+            php artisan test --no-interaction --colors=always
           fi
 
   deploy:
     needs: test
-    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' && github.event_name == 'push' }}
+    runs-on: self-hosted
+    timeout-minutes: 30
+    environment: production
     steps:
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          script: |
-            cd /opt/apps/kara-plus
-            ./deploy.sh
-
+      - name: Run deploy script
+        run: bash /opt/apps/kara-plus/deploy.sh
