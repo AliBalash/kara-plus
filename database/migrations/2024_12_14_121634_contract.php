@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('agent_sale')->nullable(); // نام نماینده‌ی فروش
             $table->string('submitted_by_name')->nullable()->default('Website');
             $table->dateTime('pickup_date'); // تاریخ و ساعت تحویل
-            $table->dateTime('return_date'); // تاریخ و ساعت بازگشت
+            $table->dateTime('return_date')->nullable(); // تاریخ و ساعت بازگشت
             $table->string('pickup_location'); // مکان تحویل خودرو
             $table->string('return_location'); // مکان بازگشت خودرو
             $table->decimal('total_price', 10, 2); // مبلغ کل اجاره
