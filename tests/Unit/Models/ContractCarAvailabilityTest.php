@@ -105,12 +105,17 @@ class ContractCarAvailabilityTest extends TestCase
     {
         $car = Car::factory()->create(['status' => 'reserved', 'availability' => false]);
         $user = User::factory()->create();
+        $now = Carbon::now();
 
         $activeContract = Contract::factory()
             ->for(User::factory())
             ->for(Customer::factory())
             ->for($car)
             ->status('reserved')
+            ->state([
+                'pickup_date' => $now->copy()->subDay(),
+                'return_date' => $now->copy()->addDay(),
+            ])
             ->create();
 
         $completingContract = Contract::factory()
@@ -118,6 +123,10 @@ class ContractCarAvailabilityTest extends TestCase
             ->for(Customer::factory())
             ->for($car)
             ->status('delivery')
+            ->state([
+                'pickup_date' => $now->copy()->subDays(2),
+                'return_date' => $now->copy()->addDays(2),
+            ])
             ->create();
 
         $completingContract->changeStatus('complete', $user->id);
