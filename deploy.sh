@@ -33,10 +33,28 @@ else
 fi
 git reset --hard origin/deployment
 
-echo "[2/7] Build & up (docker compose)"
-docker compose --env-file .env.docker -f docker-compose.yml up -d --build
+echo "[1.5/7] Resolve Docker permissions"
+DOCKER_CMD="docker"
+if ! $DOCKER_CMD info >/dev/null 2>&1; then
+  if command -v sudo >/dev/null 2>&1; then
+    if sudo -n docker info >/dev/null 2>&1; then
+      DOCKER_CMD="sudo -n docker"
+    else
+      echo "Docker socket permission denied and passwordless sudo not available."
+      echo "Add the runner user to the docker group or allow sudo for docker."
+      exit 1
+    fi
+  else
+    echo "Docker socket permission denied and sudo is not available."
+    echo "Add the runner user to the docker group."
+    exit 1
+  fi
+fi
 
-APP_CID="$(docker compose -f docker-compose.yml ps -q app)"
+echo "[2/7] Build & up (docker compose)"
+$DOCKER_CMD compose --env-file .env.docker -f docker-compose.yml up -d --build
+
+APP_CID="$($DOCKER_CMD compose -f docker-compose.yml ps -q app)"
 
 echo "[3/7] Composer install (no-dev)"
 docker exec -i "$APP_CID" bash -lc "composer install --no-interaction --prefer-dist --no-dev"
