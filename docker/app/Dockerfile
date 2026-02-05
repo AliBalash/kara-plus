@@ -1,4 +1,5 @@
 FROM php:8.2-fpm
+<<<<<<< HEAD
  
 RUN apt-get update && apt-get install -y \
     git unzip libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev libonig-dev libxml2-dev \
@@ -26,4 +27,37 @@ RUN { \
 } > /usr/local/etc/php/conf.d/zz-app.ini
 
 WORKDIR /var/www
+=======
+
+# Install system dependencies and PHP extensions required by Laravel
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git \
+        curl \
+        unzip \
+        libpng-dev \
+        libjpeg-dev \
+        libfreetype6-dev \
+        libonig-dev \
+        libxml2-dev \
+        libzip-dev \
+        libicu-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" \
+        bcmath \
+        exif \
+        gd \
+        intl \
+        mbstring \
+        pdo_mysql \
+        zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add Composer
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+>>>>>>> 3fa5eb0 (Add docker compose deploy setup)
 CMD ["php-fpm"]

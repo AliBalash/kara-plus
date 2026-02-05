@@ -43,6 +43,7 @@ Thumbs.db
 # Backups and logs
 /backups/
 /error_log
+/docker/nginx/certs/
 
 # Testing caches
 *.phpunit.*

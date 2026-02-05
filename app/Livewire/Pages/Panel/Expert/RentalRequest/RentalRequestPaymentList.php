@@ -106,6 +106,9 @@ class RentalRequestPaymentList extends Component
     public function render()
     {
         $search = trim($this->search);
+        if ($search === '' && trim((string) $this->searchInput) !== '') {
+            $search = trim((string) $this->searchInput);
+        }
         $likeSearch = '%' . $search . '%';
         $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
