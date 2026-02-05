@@ -25,15 +25,14 @@ return new class extends Migration
             $table->enum('payment_type', ['rental_fee', 'security_deposit', 'salik', 'salik_4_aed', 'salik_6_aed', 'salik_other_revenue', 'fine', 'parking', 'damage', 'discount', 'payment_back', 'carwash', 'fuel', 'no_deposit_fee'])->default('rental_fee'); // نوع پرداخت
             $table->enum('payment_method', ['cash', 'transfer', 'ticket'])->default('cash');
             $table->text('description')->nullable(); // توضیحات (در صورت نیاز)
-            $table->text('note')->nullable()->after('description');
+            $table->text('note')->nullable();
             $table->date('payment_date'); // تاریخ پرداخت
             $table->boolean('is_refundable')->default(false); // آیا این پرداخت بازگشت‌پذیر است؟ (برای پیش‌پرداخت خلافی)
             $table->boolean('is_paid')->default(true); // وضعیت پرداخت            
-            $table->string('receipt')->nullable()->after('rate');
+            $table->string('receipt')->nullable();
             $table->string('security_deposit_image')->nullable();
             $table->enum('approval_status', ['pending', 'approved', 'rejected'])
-                ->default('pending')
-                ->after('is_paid');
+                ->default('pending');
 
             $table->timestamps();
         });

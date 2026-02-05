@@ -13,7 +13,6 @@ return new class extends Migration
             if (! Schema::hasColumn('contracts', 'agent_id')) {
                 $table->foreignId('agent_id')
                     ->nullable()
-                    ->after('car_id')
                     ->constrained('agents')
                     ->nullOnDelete();
             }
@@ -32,7 +31,7 @@ return new class extends Migration
     {
         Schema::table('contracts', function (Blueprint $table) {
             if (! Schema::hasColumn('contracts', 'agent_sale')) {
-                $table->string('agent_sale')->nullable()->after('car_id');
+                $table->string('agent_sale')->nullable();
             }
         });
 
