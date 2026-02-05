@@ -2,7 +2,13 @@
 set -euo pipefail
 
 ROOT="/opt/apps/kara-plus"
-SSH_KEY="$HOME/.ssh/kara_plus_deploy"
+SSH_KEY=""
+for candidate in "$HOME/.ssh/kara_plus_deploy" "/home/actions/.ssh/kara_plus_deploy" "/home/deploy/.ssh/kara_plus_deploy" "/home/runner/.ssh/kara_plus_deploy" "/root/.ssh/kara_plus_deploy"; do
+  if [ -f "$candidate" ]; then
+    SSH_KEY="$candidate"
+    break
+  fi
+done
 
 echo "[0/7] Ensure GitHub SSH host key"
 mkdir -p "$HOME/.ssh"
@@ -11,7 +17,7 @@ if ! ssh-keygen -F github.com >/dev/null 2>&1; then
   ssh-keyscan -H github.com >> "$HOME/.ssh/known_hosts"
   chmod 600 "$HOME/.ssh/known_hosts"
 fi
-if [ -f "$SSH_KEY" ]; then
+if [ -n "$SSH_KEY" ]; then
   GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes"
 else
   GIT_SSH_COMMAND=""
