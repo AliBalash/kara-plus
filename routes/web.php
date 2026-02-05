@@ -135,7 +135,6 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
 
 
-    // Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
     Route::get('/expert/location-costs', LocationCostList::class)->name('location-costs.index');
     Route::get('/expert/agents', AgentList::class)->name('agents.index');
 
