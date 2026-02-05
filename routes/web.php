@@ -139,7 +139,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/location-costs', LocationCostList::class)->name('location-costs.index');
     Route::get('/expert/agents', AgentList::class)->name('agents.index');
 
-    Route::get('/maintenance/normalize-phones', [MaintenanceController::class, 'normalizeCustomerPhones'])
+    Route::match(['get', 'post'], '/maintenance/normalize-phones', [MaintenanceController::class, 'normalizeCustomerPhones'])
         ->name('maintenance.normalize-phones');
     // Route::get('/maintenance/backfill-contract-agents', [MaintenanceController::class, 'backfillContractAgents'])
     //     ->name('maintenance.backfill-contract-agents');
