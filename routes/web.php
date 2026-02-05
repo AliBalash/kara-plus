@@ -141,8 +141,6 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     Route::match(['get', 'post'], '/maintenance/normalize-phones', [MaintenanceController::class, 'normalizeCustomerPhones'])
         ->name('maintenance.normalize-phones');
-    // Route::get('/maintenance/backfill-contract-agents', [MaintenanceController::class, 'backfillContractAgents'])
-    //     ->name('maintenance.backfill-contract-agents');
 
     Route::get('/expert/users/create', CreateUser::class)->name('users.create');
     Route::get('/expert/users/roles', ManageUserRoles::class)->name('users.roles');
