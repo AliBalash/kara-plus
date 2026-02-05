@@ -7,6 +7,7 @@ use App\Models\Car;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Session;
 use Tests\TestCase;
@@ -93,11 +94,16 @@ class HandlesContractCancellationTest extends TestCase
     {
         $user = User::factory()->create();
         $car = Car::factory()->create(['status' => 'reserved', 'availability' => false]);
+        $now = Carbon::now();
         $targetContract = Contract::factory()
             ->for($user)
             ->for(Customer::factory())
             ->for($car)
             ->status('reserved')
+            ->state([
+                'pickup_date' => $now->copy()->subDay(),
+                'return_date' => $now->copy()->addDay(),
+            ])
             ->create();
 
         Contract::factory()
@@ -105,6 +111,10 @@ class HandlesContractCancellationTest extends TestCase
             ->for(Customer::factory())
             ->for($car)
             ->status('assigned')
+            ->state([
+                'pickup_date' => $now->copy()->subDays(2),
+                'return_date' => $now->copy()->addDays(2),
+            ])
             ->create();
 
         $component = $this->makeComponent();
