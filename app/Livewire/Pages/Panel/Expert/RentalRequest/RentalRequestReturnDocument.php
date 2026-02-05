@@ -273,7 +273,7 @@ class RentalRequestReturnDocument extends Component
 
             $this->toast('success', 'Documents uploaded successfully. Images are being optimized in the background.');
             $this->mount($this->contractId);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
 
             // حذف فایل‌های آپلود شده در صورت خطا
@@ -477,7 +477,7 @@ class RentalRequestReturnDocument extends Component
 
             DB::commit();
             $this->toast('success', 'Status changed to Returned then Payment successfully.');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             $this->toast('error', 'Error changing status: ' . $e->getMessage(), false);
         }

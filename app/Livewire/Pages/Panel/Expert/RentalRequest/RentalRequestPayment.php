@@ -73,7 +73,7 @@ class RentalRequestPayment extends Component
         'count' => 0,
     ];
     public array $recentTransfers = [];
-    protected DeferredImageUploadService $deferredUploader;
+    protected ?DeferredImageUploadService $deferredUploader = null;
     protected int $currentSalikTripCount = 0;
 
     protected array $messages = [
@@ -123,6 +123,15 @@ class RentalRequestPayment extends Component
     public function boot(DeferredImageUploadService $deferredUploader): void
     {
         $this->deferredUploader = $deferredUploader;
+    }
+
+    private function deferredUploader(): DeferredImageUploadService
+    {
+        if (! $this->deferredUploader) {
+            $this->deferredUploader = app(DeferredImageUploadService::class);
+        }
+
+        return $this->deferredUploader;
     }
 
     private const PAYMENT_METHODS = ['cash', 'transfer', 'ticket'];
@@ -389,7 +398,7 @@ class RentalRequestPayment extends Component
 
             if ($this->receipt) {
                 $baseName = "payment_receipt_{$this->contractId}_" . time();
-                $receiptPath = $this->deferredUploader->store(
+                $receiptPath = $this->deferredUploader()->store(
                     $this->receipt,
                     "payment_receipts/{$baseName}.webp",
                     'myimage',
@@ -462,7 +471,7 @@ class RentalRequestPayment extends Component
 
         if ($this->security_deposit_image) {
             $baseName = "security_deposit_{$this->contractId}_" . time();
-            $meta['security_deposit_image'] = $this->deferredUploader->store(
+            $meta['security_deposit_image'] = $this->deferredUploader()->store(
                 $this->security_deposit_image,
                 "security_deposits/{$baseName}.webp",
                 'myimage',

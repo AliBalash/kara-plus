@@ -374,7 +374,7 @@ class RentalRequestPickupDocument extends Component
 
             $this->toast('success', 'Documents uploaded successfully. Images are being optimized in the background.');
             $this->mount($this->contractId);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
 
             // حذف فایل‌های آپلود شده در صورت خطا

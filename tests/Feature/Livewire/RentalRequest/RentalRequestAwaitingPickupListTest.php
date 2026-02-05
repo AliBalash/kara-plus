@@ -28,7 +28,7 @@ class RentalRequestAwaitingPickupListTest extends TestCase
 
         $contract = Contract::factory()
             ->status('delivery')
-            ->create(['driver_id' => null]);
+            ->create(['delivery_driver_id' => null]);
 
         $this->actingAs($driver);
 
@@ -36,7 +36,7 @@ class RentalRequestAwaitingPickupListTest extends TestCase
         $component->mount();
         $component->assignToDriver($contract->id);
 
-        $this->assertEquals($driver->id, $contract->fresh()->driver_id);
+        $this->assertEquals($driver->id, $contract->fresh()->delivery_driver_id);
         $this->assertEquals('Delivery assigned to you successfully.', session('success'));
     }
 
@@ -50,7 +50,7 @@ class RentalRequestAwaitingPickupListTest extends TestCase
 
         $contract = Contract::factory()
             ->status('delivery')
-            ->create(['driver_id' => $primaryDriver->id]);
+            ->create(['delivery_driver_id' => $primaryDriver->id]);
 
         $this->actingAs($otherDriver);
 
@@ -58,14 +58,14 @@ class RentalRequestAwaitingPickupListTest extends TestCase
         $component->mount();
         $component->assignToDriver($contract->id);
 
-        $this->assertEquals($primaryDriver->id, $contract->fresh()->driver_id);
+        $this->assertEquals($primaryDriver->id, $contract->fresh()->delivery_driver_id);
         $this->assertEquals('This delivery is already assigned to another driver.', session('error'));
     }
 
     public function test_non_driver_cannot_claim_delivery(): void
     {
         $user = User::factory()->create();
-        $contract = Contract::factory()->status('delivery')->create(['driver_id' => null]);
+        $contract = Contract::factory()->status('delivery')->create(['delivery_driver_id' => null]);
 
         $this->actingAs($user);
 
@@ -73,7 +73,7 @@ class RentalRequestAwaitingPickupListTest extends TestCase
         $component->mount();
         $component->assignToDriver($contract->id);
 
-        $this->assertNull($contract->fresh()->driver_id);
+        $this->assertNull($contract->fresh()->delivery_driver_id);
         $this->assertEquals('Only drivers can claim delivery tasks.', session('error'));
     }
 }
