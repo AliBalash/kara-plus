@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+<<<<<<< HEAD
 cd /opt/apps/kara-plus
 
 echo "[1/6] Fetch + reset to origin/master"
@@ -29,3 +30,14 @@ echo "[7/7] Restart queue workers"
 docker exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
 
 echo "Deploy done."
+=======
+ROOT="/opt/apps/kara-plus"
+
+echo "[1/6] Fetch + reset to origin/deployment"
+cd "$ROOT"
+git fetch origin deployment
+git reset --hard origin/deployment
+
+echo "[2/6] Build & up (docker compose)"
+docker compose --env-file .env.docker up -d --build
+>>>>>>> 3fa5eb0 (Add docker compose deploy setup)
