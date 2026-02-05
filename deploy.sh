@@ -57,6 +57,7 @@ $DOCKER_CMD compose --env-file .env.docker -f docker-compose.yml up -d --build
 APP_CID="$($DOCKER_CMD compose -f docker-compose.yml ps -q app)"
 
 echo "[3/7] Composer install (no-dev)"
+docker exec -i "$APP_CID" bash -lc "git config --global --add safe.directory /var/www || true"
 docker exec -i "$APP_CID" bash -lc "composer install --no-interaction --prefer-dist --no-dev"
 
 echo "[4/7] Storage link"
