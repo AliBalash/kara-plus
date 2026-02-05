@@ -23,6 +23,10 @@ class ContractCarAvailabilityTest extends TestCase
             ->for(Customer::factory())
             ->for($car)
             ->status('pending')
+            ->state([
+                'pickup_date' => Carbon::now()->subDay(),
+                'return_date' => Carbon::now()->addDay(),
+            ])
             ->create();
 
         $car->refresh();
