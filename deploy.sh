@@ -23,15 +23,15 @@ else
   GIT_SSH_COMMAND=""
 fi
 
-echo "[1/7] Fetch + reset to origin/deployment"
+echo "[1/7] Fetch + reset to origin/master"
 cd "$ROOT"
 git config --global --add safe.directory "$ROOT"
 if [ -n "$GIT_SSH_COMMAND" ]; then
-  GIT_SSH_COMMAND="$GIT_SSH_COMMAND" git fetch origin deployment
+  GIT_SSH_COMMAND="$GIT_SSH_COMMAND" git fetch origin master
 else
-  git fetch origin deployment
+  git fetch origin master
 fi
-git reset --hard origin/deployment
+git reset --hard origin/master
 
 echo "[1.5/7] Resolve Docker permissions"
 DOCKER_CMD="docker"
