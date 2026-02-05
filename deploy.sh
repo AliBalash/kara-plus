@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-<<<<<<< HEAD
-cd /opt/apps/kara-plus
+ROOT="/opt/apps/kara-plus"
 
-echo "[1/6] Fetch + reset to origin/master"
-git config --global --add safe.directory /opt/apps/kara-plus
-git fetch origin
-git reset --hard origin/master
+echo "[1/7] Fetch + reset to origin/deployment"
+cd "$ROOT"
+git config --global --add safe.directory "$ROOT"
+git fetch origin deployment
+git reset --hard origin/deployment
 
-echo "[2/6] Build & up (docker compose)"
-docker compose --env-file .env.docker up -d --build
+echo "[2/7] Build & up (docker compose)"
+docker compose --env-file .env.docker -f docker-compose.yml up -d --build
 
-APP_CID="$(docker compose ps -q app)"
+APP_CID="$(docker compose -f docker-compose.yml ps -q app)"
 
-echo "[3/6] Composer install (no-dev)"
+echo "[3/7] Composer install (no-dev)"
 docker exec -i "$APP_CID" bash -lc "composer install --no-interaction --prefer-dist --no-dev"
 
 echo "[4/7] Storage link"
@@ -30,14 +30,3 @@ echo "[7/7] Restart queue workers"
 docker exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
 
 echo "Deploy done."
-=======
-ROOT="/opt/apps/kara-plus"
-
-echo "[1/6] Fetch + reset to origin/deployment"
-cd "$ROOT"
-git fetch origin deployment
-git reset --hard origin/deployment
-
-echo "[2/6] Build & up (docker compose)"
-docker compose --env-file .env.docker up -d --build
->>>>>>> 3fa5eb0 (Add docker compose deploy setup)
