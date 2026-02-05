@@ -97,7 +97,7 @@ return [
 
         'myimage' => [
             'driver' => 'local',
-            'root' => rtrim(env('MYIMAGE_ROOT', $storageLinkPath), DIRECTORY_SEPARATOR),
+            'root' => rtrim(env('MYIMAGE_ROOT', $publicDiskRoot), DIRECTORY_SEPARATOR),
             'url' => rtrim(env('MYIMAGE_URL', $publicDiskUrl), '/'),
             'visibility' => 'public',
         ],

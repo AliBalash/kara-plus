@@ -32,6 +32,7 @@ class BrandList extends Component
         $likeSearch = '%' . $search . '%';
 
         $brands = CarModel::query()
+            ->withCount('cars')
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($scoped) use ($likeSearch) {
                     $scoped->where('brand', 'like', $likeSearch)

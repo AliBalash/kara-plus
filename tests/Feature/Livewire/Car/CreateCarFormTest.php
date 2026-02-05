@@ -66,6 +66,7 @@ class CreateCarFormTest extends TestCase
             'color' => 'Red',
             'chassis_number' => 'CHASSIS1234567890',
             'gps' => true,
+            'ownership_type' => 'company',
             'issue_date' => now()->subYear()->toDateString(),
             'expiry_date' => now()->addYear()->toDateString(),
             'passing_date' => now()->subMonths(6)->toDateString(),

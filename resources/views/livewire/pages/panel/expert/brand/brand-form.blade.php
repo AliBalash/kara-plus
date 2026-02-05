@@ -41,7 +41,7 @@
                             <label for="brandIcon" class="form-label">Brand Icon</label>
                             @if ($currentBrandIcon)
                                 <img src="{{ asset('storage/' . ltrim($currentBrandIcon, '/')) }}" alt="Current Brand Icon"
-                                    width="100">
+                                    width="100" height="100" loading="lazy" decoding="async" fetchpriority="low">
                             @endif
                             <input type="file" class="form-control" id="brandIcon" wire:model="brandIcon">
                             @error('brandIcon')
@@ -70,12 +70,14 @@
 
 
 
-                        @if ($additionalImages)
-                            <img src="{{ asset('assets/car-pics/' . $additionalImages->file_name) }}"
-                                alt="Additional Image" width="100">
-                        @else
-                            <img src="{{ asset('assets/car-pics/car test.webp') }}" alt="Default Image" width="100">
-                        @endif
+                            @if ($additionalImages)
+                                <img src="{{ asset('assets/car-pics/' . $additionalImages->file_name) }}"
+                                    alt="Additional Image" width="100" loading="lazy" decoding="async"
+                                    fetchpriority="low">
+                            @else
+                                <img src="{{ asset('assets/car-pics/car test.webp') }}" alt="Default Image" width="100"
+                                    loading="lazy" decoding="async" fetchpriority="low">
+                            @endif
 
                     </div>
                 </div>

@@ -703,7 +703,7 @@ class RentalRequestCreate extends Component
 
             DB::commit();
             $this->toast('success', 'Contract created successfully!');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
         }

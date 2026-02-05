@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Car;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Services\Media\DeferredImageUploadService;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -50,6 +51,7 @@ class EditCarForm extends Component
     public $existingImageUrl;
     public $is_featured = false;
     public $newImage;
+    protected DeferredImageUploadService $deferredUploader;
 
     protected function rules()
     {
@@ -218,6 +220,11 @@ class EditCarForm extends Component
         }
     }
 
+    public function boot(DeferredImageUploadService $deferredUploader): void
+    {
+        $this->deferredUploader = $deferredUploader;
+    }
+
     protected function prepareForValidation($attributes)
     {
         $decimalFields = [
@@ -346,10 +353,14 @@ class EditCarForm extends Component
                 Storage::disk('car_pics')->delete($this->car->image->file_name);
             }
 
-            $extension = $this->newImage->getClientOriginalExtension();
-            $safeName = Str::slug($this->car->fullName()) . '-' . time() . '.' . $extension;
-
-            Storage::disk('car_pics')->putFileAs('', $this->newImage, $safeName);
+            $safeName = Str::slug($this->car->fullName()) . '-' . time() . '.webp';
+            $storedPath = $this->deferredUploader->store(
+                $this->newImage,
+                $safeName,
+                'car_pics',
+                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080, 'optimize' => false]
+            );
+            $safeName = basename($storedPath);
 
             $image = $this->car->image()->updateOrCreate(
                 [

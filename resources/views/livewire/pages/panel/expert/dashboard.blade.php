@@ -549,7 +549,8 @@
                             @endphp
                             <div class="border rounded-4 p-3 mb-3 shadow-sm booking-card booking-card--reserved">
                                 <div class="d-flex align-items-start gap-3">
-                                    <img src="{{ $carImage }}" alt="Car" class="rounded-3 booking-card__image">
+                                    <img src="{{ $carImage }}" alt="Car" class="rounded-3 booking-card__image"
+                                        width="70" height="70" loading="lazy" decoding="async" fetchpriority="low">
                                     <div class="flex-grow-1">
                                         <div class="d-flex flex-column gap-3">
                                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -682,7 +683,8 @@
                             @endphp
                             <div class="border rounded-4 p-3 mb-3 shadow-sm booking-card booking-card--return">
                                 <div class="d-flex align-items-start gap-3">
-                                    <img src="{{ $carImage }}" alt="Car" class="rounded-3 booking-card__image">
+                                    <img src="{{ $carImage }}" alt="Car" class="rounded-3 booking-card__image"
+                                        width="70" height="70" loading="lazy" decoding="async" fetchpriority="low">
                                     <div class="flex-grow-1">
                                         <div class="d-flex flex-column gap-3">
                                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">

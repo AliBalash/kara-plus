@@ -9,7 +9,7 @@ use App\Models\Customer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Models\User;
-use App\Services\Media\OptimizedUploadService;
+use App\Services\Media\DeferredImageUploadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -113,12 +113,12 @@ class RentalRequestPaymentTest extends TestCase
             ->status('payment')
             ->create(['meta' => []]);
 
-        $mockUploader = Mockery::mock(OptimizedUploadService::class);
+        $mockUploader = Mockery::mock(DeferredImageUploadService::class);
         $mockUploader->shouldReceive('store')
             ->once()
             ->andReturn('security_deposits/test-image.webp');
 
-        $this->app->instance(OptimizedUploadService::class, $mockUploader);
+        $this->app->instance(DeferredImageUploadService::class, $mockUploader);
 
         $component = app(RentalRequestPayment::class);
         $component->mount($contract->id, $customer->id);

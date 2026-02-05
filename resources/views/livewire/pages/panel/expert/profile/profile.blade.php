@@ -10,7 +10,7 @@
             <div class="card-body">
                 <div class="d-flex align-items-start align-items-sm-center gap-4">
                     <img src="{{ Auth::user()->avatar ? asset('storage/' . ltrim(Auth::user()->avatar, '/')) : asset('assets/panel/assets/img/avatars/unknow.jpg') }}"
-                        alt="User Avatar" class="d-block rounded" height="100" width="100" />
+                        alt="User Avatar" class="d-block rounded" height="100" width="100" decoding="async" />
 
 
 
@@ -30,7 +30,8 @@
 
                         @if ($new_avatar)
                             <small>Preview:</small>
-                            <img src="{{ $new_avatar->temporaryUrl() }}" class="rounded mt-2" width="100">
+                            <img src="{{ $new_avatar->temporaryUrl() }}" class="rounded mt-2" width="100"
+                                height="100" decoding="async">
                         @endif
 
                         @error('new_avatar')

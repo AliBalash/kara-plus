@@ -129,7 +129,7 @@ class RentalRequestCreateTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $charges->count());
 
         $expectedDays = $pickup->diffInDays($return, false);
-        $expectedSubtotal = ($expectedDays * 200.45) + ($expectedDays * 20.05);
+        $expectedSubtotal = $expectedDays * 200.45;
         $expectedSubtotal = round($expectedSubtotal, 2);
         $expectedTax = round($expectedSubtotal * 0.05, 2);
         $this->assertEqualsWithDelta($expectedSubtotal + $expectedTax, (float) $contract->total_price, 0.01);

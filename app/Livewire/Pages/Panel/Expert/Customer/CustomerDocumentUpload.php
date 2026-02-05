@@ -4,7 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\Customer;
 
 use App\Models\CustomerDocument;
 use App\Models\Payment;
-use App\Services\Media\OptimizedUploadService;
+use App\Services\Media\DeferredImageUploadService;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -34,12 +34,12 @@ class CustomerDocumentUpload extends Component
 
     protected array $documentTypes = ['visa', 'passport', 'license', 'ticket'];
     protected array $orderedLabels = ['front', 'back'];
-    protected OptimizedUploadService $imageUploader;
+    protected DeferredImageUploadService $deferredUploader;
     protected array $pendingUploads = [];
 
-    public function boot(OptimizedUploadService $imageUploader): void
+    public function boot(DeferredImageUploadService $deferredUploader): void
     {
-        $this->imageUploader = $imageUploader;
+        $this->deferredUploader = $deferredUploader;
     }
 
     public function mount($customerId, $contractId)
@@ -118,7 +118,7 @@ class CustomerDocumentUpload extends Component
 
         $customerDocument->save();
 
-        $this->toast('success', 'Documents uploaded successfully.');
+        $this->toast('success', 'Documents uploaded successfully. Images are being optimized in the background.');
         $this->loadExistingFiles($customerDocument);
 
         foreach ($this->documentTypes as $type) {
@@ -237,13 +237,13 @@ class CustomerDocumentUpload extends Component
             $extension = Str::lower($file->getClientOriginalExtension() ?: 'jpg');
             $isPdf = $extension === 'pdf';
 
-            $finalExtension = $isPdf ? 'pdf' : 'webp';
+            $finalExtension = $isPdf ? 'pdf' : $extension;
             $fileName = $this->buildFileName($type, $label, $finalExtension);
 
             if ($isPdf) {
                 $path = $file->storeAs('CustomerDocument', $fileName, 'myimage');
             } else {
-                $path = $this->imageUploader->store(
+                $path = $this->deferredUploader->store(
                     $file,
                     "CustomerDocument/{$fileName}",
                     'myimage',

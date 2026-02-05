@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('location_costs')) {
+            return;
+        }
+
         Schema::create('location_costs', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('location')->unique();
