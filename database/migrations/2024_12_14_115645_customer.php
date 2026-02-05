@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('passport_number')->unique()->nullable(); // شماره پاسپورت
             $table->date('passport_expiry_date')->nullable(); // تاریخ انقضای پاسپورت
             $table->string('nationality')->nullable(); // ملیت
-            $table->date('birth_date')->nullable()->after('nationality');
+            $table->date('birth_date')->nullable();
             $table->string('license_number')->unique()->nullable(); // شماره گواهینامه رانندگی
             $table->enum('status', ['active', 'inactive'])->default('active'); // وضعیت مشتری
             $table->date('registration_date')->nullable(); // تاریخ ثبت مشتری

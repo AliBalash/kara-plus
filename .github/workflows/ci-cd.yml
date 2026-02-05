@@ -57,11 +57,15 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Get Composer cache dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
       - name: Cache Composer
         uses: actions/cache@v4
         with:
           path: |
-            ~/.composer/cache
+            ${{ steps.composer-cache.outputs.dir }}
             vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
