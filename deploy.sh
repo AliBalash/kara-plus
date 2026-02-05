@@ -57,19 +57,19 @@ $DOCKER_CMD compose --env-file .env.docker -f docker-compose.yml up -d --build
 APP_CID="$($DOCKER_CMD compose -f docker-compose.yml ps -q app)"
 
 echo "[3/7] Composer install (no-dev)"
-docker exec -i "$APP_CID" bash -lc "git config --global --add safe.directory /var/www || true"
-docker exec -i "$APP_CID" bash -lc "composer install --no-interaction --prefer-dist --no-dev"
+$DOCKER_CMD exec -i "$APP_CID" bash -lc "git config --global --add safe.directory /var/www || true"
+$DOCKER_CMD exec -i "$APP_CID" bash -lc "composer install --no-interaction --prefer-dist --no-dev"
 
 echo "[4/7] Storage link"
-docker exec -i "$APP_CID" bash -lc "php artisan storage:link --relative --force"
+$DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan storage:link --relative --force"
 
 echo "[5/7] Migrate"
-docker exec -i "$APP_CID" bash -lc "php artisan migrate --force"
+$DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan migrate --force"
 
 echo "[6/7] Cache optimize"
-docker exec -i "$APP_CID" bash -lc "php artisan config:cache && php artisan route:cache && php artisan view:cache"
+$DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan config:cache && php artisan route:cache && php artisan view:cache"
 
 echo "[7/7] Restart queue workers"
-docker exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
+$DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
 
 echo "Deploy done."
