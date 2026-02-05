@@ -3,6 +3,14 @@ set -euo pipefail
 
 ROOT="/opt/apps/kara-plus"
 
+echo "[0/7] Ensure GitHub SSH host key"
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+if ! ssh-keygen -F github.com >/dev/null 2>&1; then
+  ssh-keyscan -H github.com >> "$HOME/.ssh/known_hosts"
+  chmod 600 "$HOME/.ssh/known_hosts"
+fi
+
 echo "[1/7] Fetch + reset to origin/deployment"
 cd "$ROOT"
 git config --global --add safe.directory "$ROOT"
