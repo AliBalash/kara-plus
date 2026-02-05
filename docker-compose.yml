@@ -1,21 +1,28 @@
-<<<<<<< HEAD
 name: ${COMPOSE_PROJECT_NAME:-karaplus-crm}
-=======
-version: "3.9"
->>>>>>> 3fa5eb0 (Add docker compose deploy setup)
 
 services:
   app:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
-<<<<<<< HEAD
+    container_name: karaplus_app
     working_dir: /var/www
+    volumes:
+      - ./:/var/www
     environment:
       APP_ENV: ${APP_ENV:-production}
       APP_DEBUG: ${APP_DEBUG:-false}
-    volumes:
-      - ./:/var/www
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      CACHE_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
     depends_on:
       mysql:
         condition: service_healthy
@@ -25,9 +32,10 @@ services:
 
   web:
     image: nginx:alpine
+    container_name: karaplus_web
     ports:
-      - "127.0.0.1:${APP_LOCAL_HTTPS_PORT:-18001}:443"
       - "127.0.0.1:${APP_LOCAL_HTTP_PORT:-18000}:80"
+      - "127.0.0.1:${APP_LOCAL_PORT:-18001}:443"
     volumes:
       - ./:/var/www:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
@@ -38,6 +46,7 @@ services:
 
   mysql:
     image: mysql:8.0
+    container_name: karaplus_db
     command: --default-authentication-plugin=mysql_native_password --mysqlx=0
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -55,12 +64,14 @@ services:
 
   redis:
     image: redis:alpine
+    container_name: karaplus_redis
     restart: unless-stopped
 
   queue:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
+    container_name: karaplus_queue
     working_dir: /var/www
     volumes:
       - ./:/var/www
@@ -78,6 +89,7 @@ services:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
+    container_name: karaplus_scheduler
     working_dir: /var/www
     volumes:
       - ./:/var/www
@@ -91,12 +103,12 @@ services:
 
   phpmyadmin:
     image: phpmyadmin:latest
+    container_name: karaplus_pma
     ports:
       - "127.0.0.1:${PMA_LOCAL_PORT:-18002}:80"
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
-      # Force cookie auth to show login screen
       PMA_AUTH_TYPE: cookie
       UPLOAD_LIMIT: 256M
     depends_on:
@@ -106,59 +118,3 @@ services:
 
 volumes:
   mysql_data:
-=======
-    container_name: karaplus_app
-    working_dir: /var/www/html
-    volumes:
-      - ./:/var/www/html
-    environment:
-      APP_ENV: production
-      APP_DEBUG: "false"
-      APP_URL: ${APP_URL:-http://localhost}
-      DB_CONNECTION: mysql
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_DATABASE: ${MYSQL_DATABASE:-karaplus_crm}
-      DB_USERNAME: ${MYSQL_USER:-alibalash}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-@liBalash1999}
-      REDIS_HOST: redis
-      CACHE_DRIVER: redis
-      QUEUE_CONNECTION: redis
-      SESSION_DRIVER: redis
-    depends_on:
-      - db
-      - redis
-
-  web:
-    image: nginx:1.25-alpine
-    container_name: karaplus_web
-    ports:
-      - "${APP_LOCAL_PORT:-18001}:80"
-    volumes:
-      - ./:/var/www/html
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - app
-
-  db:
-    image: mysql:8.0
-    container_name: karaplus_db
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-karaplus_crm}
-      MYSQL_USER: ${MYSQL_USER:-alibalash}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-@liBalash1999}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-@liBalash1999}
-    volumes:
-      - db_data:/var/lib/mysql
-
-  redis:
-    image: redis:7-alpine
-    container_name: karaplus_redis
-    ports:
-      - "6379:6379"
-
-volumes:
-  db_data:
->>>>>>> 3fa5eb0 (Add docker compose deploy setup)
