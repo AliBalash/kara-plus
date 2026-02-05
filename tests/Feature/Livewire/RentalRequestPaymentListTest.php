@@ -24,11 +24,15 @@ class RentalRequestPaymentListTest extends TestCase
     protected function makePaymentContract(string $firstName, string $lastName): Contract
     {
         $user = User::factory()->create();
+        $carModel = \App\Models\CarModel::factory()->create([
+            'brand' => 'Toyota',
+            'model' => 'Corolla',
+        ]);
         $customer = Customer::factory()->create([
             'first_name' => $firstName,
             'last_name' => $lastName,
         ]);
-        $car = Car::factory()->create();
+        $car = Car::factory()->for($carModel)->create();
 
         return Contract::factory()
             ->for($user)
