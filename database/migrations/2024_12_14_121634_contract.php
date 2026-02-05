@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('licensed_driver_name')->nullable();
             $table->unsignedBigInteger('car_id'); // ارجاع به جدول خودروها
             $table->string('agent_sale')->nullable(); // نام نماینده‌ی فروش
-            $table->string('submitted_by_name')->nullable()->default('Website')->after('agent_sale');
+            $table->string('submitted_by_name')->nullable()->default('Website');
             $table->dateTime('pickup_date'); // تاریخ و ساعت تحویل
             $table->dateTime('return_date'); // تاریخ و ساعت بازگشت
             $table->string('pickup_location'); // مکان تحویل خودرو
@@ -47,8 +47,8 @@ return new class extends Migration
                 'rejected'
             ])->default('pending'); // وضعیت قرارداد
             $table->text('notes')->nullable(); // یادداشت‌ها
-            $table->text('deposit')->nullable()->after('notes');
-            $table->string('deposit_category')->nullable()->after('deposit');
+            $table->text('deposit')->nullable();
+            $table->string('deposit_category')->nullable();
             $table->json('meta')->nullable();
             
             $table->timestamps();
