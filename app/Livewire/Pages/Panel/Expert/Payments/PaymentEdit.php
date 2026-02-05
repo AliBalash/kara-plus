@@ -4,7 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\Payments;
 
 use App\Models\Payment;
 use App\Models\Contract;
-use App\Services\Media\OptimizedUploadService;
+use App\Services\Media\DeferredImageUploadService;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -37,12 +37,12 @@ class PaymentEdit extends Component
     public $salik_trip_count = '';
     public $salik_other_revenue_preview = 0;
 
-    protected OptimizedUploadService $imageUploader;
+    protected DeferredImageUploadService $deferredUploader;
     protected int $currentSalikTripCount = 0;
 
-    public function boot(OptimizedUploadService $imageUploader): void
+    public function boot(DeferredImageUploadService $deferredUploader): void
     {
-        $this->imageUploader = $imageUploader;
+        $this->deferredUploader = $deferredUploader;
     }
 
     private const PAYMENT_TYPES = [
@@ -196,7 +196,7 @@ class PaymentEdit extends Component
             }
 
             $baseName = "payment_receipt_{$this->payment->contract_id}_" . time();
-            $receiptPath = $this->imageUploader->store(
+            $receiptPath = $this->deferredUploader->store(
                 $this->receipt,
                 "payment_receipts/{$baseName}.webp",
                 'myimage',

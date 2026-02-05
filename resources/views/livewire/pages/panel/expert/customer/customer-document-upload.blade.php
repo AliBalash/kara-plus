@@ -59,6 +59,7 @@
                                             <iframe src="{{ $file['url'] }}" width="100%" height="320px"></iframe>
                                         @else
                                             <img src="{{ $file['url'] }}" class="img-thumbnail" width="150"
+                                                loading="lazy" decoding="async" fetchpriority="low"
                                                 onclick="openModal('{{ $file['url'] }}')">
                                         @endif
                                     @else
@@ -112,6 +113,7 @@
                                             <iframe src="{{ $file['url'] }}" width="100%" height="320px"></iframe>
                                         @else
                                             <img src="{{ $file['url'] }}" class="img-thumbnail" width="150"
+                                                loading="lazy" decoding="async" fetchpriority="low"
                                                 onclick="openModal('{{ $file['url'] }}')">
                                         @endif
                                     @else
@@ -165,6 +167,7 @@
                                             <iframe src="{{ $file['url'] }}" width="100%" height="320px"></iframe>
                                         @else
                                             <img src="{{ $file['url'] }}" class="img-thumbnail" width="150"
+                                                loading="lazy" decoding="async" fetchpriority="low"
                                                 onclick="openModal('{{ $file['url'] }}')">
                                         @endif
                                     @else
@@ -218,6 +221,7 @@
                                             <iframe src="{{ $file['url'] }}" width="100%" height="320px"></iframe>
                                         @else
                                             <img src="{{ $file['url'] }}" class="img-thumbnail" width="150"
+                                                loading="lazy" decoding="async" fetchpriority="low"
                                                 onclick="openModal('{{ $file['url'] }}')">
                                         @endif
                                     @else

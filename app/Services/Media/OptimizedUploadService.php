@@ -13,16 +13,20 @@ use Throwable;
 
 class OptimizedUploadService
 {
+    private static array $optimizerAvailability = [];
+
     public function store(TemporaryUploadedFile|UploadedFile $file, string $path, string $disk = 'public', array $options = []): string
     {
         $format = $this->resolveFormat($options['format'] ?? 'webp');
         $quality = max(1, min(100, (int) ($options['quality'] ?? 25)));
         $maxWidth = max(320, (int) ($options['max_width'] ?? 1600));
         $maxHeight = max(320, (int) ($options['max_height'] ?? 1600));
+        $optimize = (bool) ($options['optimize'] ?? true);
 
         $storage = Storage::disk($disk);
         $tempFile = $this->prepareTempFile($format);
         $path = $this->normalizePathExtension($path, $format);
+        $shouldOptimize = $optimize && $this->externalOptimizersAvailable($format);
 
         try {
             $image = Image::useImageDriver($this->preferredDriver());
@@ -33,13 +37,9 @@ class OptimizedUploadService
                 ->quality($quality)
                 ->format($format);
 
-            if ($this->canUseExternalOptimizers()) {
-                $pipeline->optimize();
-            }
-
             $pipeline->save($tempFile);
 
-            if ($this->canUseExternalOptimizers()) {
+            if ($shouldOptimize) {
                 try {
                     ImageOptimizer::optimize($tempFile);
                 } catch (Throwable $optimizerException) {
@@ -108,6 +108,37 @@ class OptimizedUploadService
         return extension_loaded('imagick') ? 'imagick' : 'gd';
     }
 
+    private function externalOptimizersAvailable(string $format): bool
+    {
+        $normalized = $this->resolveFormat($format);
+
+        if (array_key_exists($normalized, self::$optimizerAvailability)) {
+            return self::$optimizerAvailability[$normalized];
+        }
+
+        if (! $this->canUseExternalOptimizers()) {
+            self::$optimizerAvailability[$normalized] = false;
+            return false;
+        }
+
+        $binaries = match ($normalized) {
+            'webp' => ['cwebp'],
+            'jpg' => ['jpegoptim', 'jpegtran'],
+            'png' => ['pngquant', 'optipng'],
+            default => [],
+        };
+
+        foreach ($binaries as $binary) {
+            if ($this->binaryExists($binary)) {
+                self::$optimizerAvailability[$normalized] = true;
+                return true;
+            }
+        }
+
+        self::$optimizerAvailability[$normalized] = false;
+        return false;
+    }
+
     private function canUseExternalOptimizers(): bool
     {
         $requiredFunctions = ['proc_open', 'exec', 'shell_exec'];
@@ -120,6 +151,14 @@ class OptimizedUploadService
         }
 
         return true;
+    }
+
+    private function binaryExists(string $binary): bool
+    {
+        $escaped = escapeshellarg($binary);
+        $path = trim((string) @shell_exec("command -v {$escaped} 2>/dev/null"));
+
+        return $path !== '' && is_executable($path);
     }
 
     private function prepareTempFile(string $format): string

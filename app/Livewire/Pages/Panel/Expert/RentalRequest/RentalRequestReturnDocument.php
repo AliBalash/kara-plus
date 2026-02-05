@@ -4,7 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
 use App\Models\ReturnDocument;
-use App\Services\Media\OptimizedUploadService;
+use App\Services\Media\DeferredImageUploadService;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -39,7 +39,7 @@ class RentalRequestReturnDocument extends Component
     public $contract;
     public $agreementNumber;
 
-    protected OptimizedUploadService $imageUploader;
+    protected DeferredImageUploadService $deferredUploader;
     public array $pendingInsideUploads = [];
     public array $pendingOutsideUploads = [];
 
@@ -77,9 +77,9 @@ class RentalRequestReturnDocument extends Component
         'mileage' => 'mileage',
     ];
 
-    public function boot(OptimizedUploadService $imageUploader): void
+    public function boot(DeferredImageUploadService $deferredUploader): void
     {
-        $this->imageUploader = $imageUploader;
+        $this->deferredUploader = $deferredUploader;
     }
 
 
@@ -101,8 +101,8 @@ class RentalRequestReturnDocument extends Component
             $this->driverNote = $return->driver_note;
         }
         $this->existingFiles = [
-            'factorContract' => $this->resolveDocumentUrl("ReturnDocument/factor_contract_{$this->contractId}"),
-            'carDashboard' => $this->resolveDocumentUrl("ReturnDocument/car_dashboard_{$this->contractId}"),
+            'factorContract' => $this->resolveDocumentUrlFromRecord($return?->factor_contract, "ReturnDocument/factor_contract_{$this->contractId}"),
+            'carDashboard' => $this->resolveDocumentUrlFromRecord($return?->car_dashboard, "ReturnDocument/car_dashboard_{$this->contractId}"),
         ];
 
         $this->existingGalleries = [
@@ -210,8 +210,11 @@ class RentalRequestReturnDocument extends Component
 
             // Factor Contract Upload
             if ($this->factorContract) {
-                $factorPath = "ReturnDocument/factor_contract_{$this->contractId}.webp";
-                $this->imageUploader->store($this->factorContract, $factorPath, 'myimage');
+                $factorPath = $this->deferredUploader->store(
+                    $this->factorContract,
+                    "ReturnDocument/factor_contract_{$this->contractId}",
+                    'myimage'
+                );
                 $returnDocument->factor_contract = $factorPath;
                 $uploadedPaths[] = $factorPath;
             }
@@ -219,8 +222,11 @@ class RentalRequestReturnDocument extends Component
 
             // Car Dashboard  Upload
             if ($this->carDashboard) {
-                $carDashboardPath = "ReturnDocument/car_dashboard_{$this->contractId}.webp";
-                $this->imageUploader->store($this->carDashboard, $carDashboardPath, 'myimage');
+                $carDashboardPath = $this->deferredUploader->store(
+                    $this->carDashboard,
+                    "ReturnDocument/car_dashboard_{$this->contractId}",
+                    'myimage'
+                );
                 $returnDocument->car_dashboard = $carDashboardPath;
                 $uploadedPaths[] = $carDashboardPath;
             }
@@ -265,9 +271,9 @@ class RentalRequestReturnDocument extends Component
 
             DB::commit();
 
-            $this->toast('success', 'Documents uploaded successfully.');
+            $this->toast('success', 'Documents uploaded successfully. Images are being optimized in the background.');
             $this->mount($this->contractId);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
 
             // حذف فایل‌های آپلود شده در صورت خطا
@@ -294,14 +300,17 @@ class RentalRequestReturnDocument extends Component
 
         $dbField = $mapping[$fileType]['db_field'];
         $viewKey = $mapping[$fileType]['view_key'];
-        $storedPath = $this->resolveStoredPath("ReturnDocument/{$fileType}_{$this->contractId}");
+        $returnDocument = ReturnDocument::where('contract_id', $this->contractId)->first();
+        $storedPath = $this->resolveStoredPathFromRecord(
+            $returnDocument?->{$dbField},
+            "ReturnDocument/{$fileType}_{$this->contractId}"
+        );
 
         if ($storedPath && Storage::disk('myimage')->exists($storedPath)) {
             Storage::disk('myimage')->delete($storedPath);
         }
 
         // پاک کردن مقدار از دیتابیس
-        $returnDocument = ReturnDocument::where('contract_id', $this->contractId)->first();
         if ($returnDocument) {
             $returnDocument->$dbField = null;
             $returnDocument->save();
@@ -415,11 +424,20 @@ class RentalRequestReturnDocument extends Component
         return Str::before($firstKey, '.');
     }
 
-    private function resolveDocumentUrl(string $basePath): ?string
+    private function resolveDocumentUrlFromRecord(?string $storedPath, string $basePath): ?string
     {
-        $storedPath = $this->resolveStoredPath($basePath);
+        $path = $this->resolveStoredPathFromRecord($storedPath, $basePath);
 
-        return $storedPath ? Storage::url($storedPath) : null;
+        return $path ? Storage::disk('myimage')->url($path) : null;
+    }
+
+    private function resolveStoredPathFromRecord(?string $storedPath, string $basePath): ?string
+    {
+        if ($storedPath && Storage::disk('myimage')->exists($storedPath)) {
+            return $storedPath;
+        }
+
+        return $this->resolveStoredPath($basePath);
     }
 
     private function resolveStoredPath(string $basePath): ?string
@@ -439,6 +457,10 @@ class RentalRequestReturnDocument extends Component
     {
         $contract = Contract::findOrFail($contractId);
 
+        if ($contract->current_status === 'payment') {
+            $this->toast('success', 'Contract is already in payment status.');
+            return;
+        }
 
         DB::beginTransaction();
         try {
@@ -459,7 +481,7 @@ class RentalRequestReturnDocument extends Component
 
             DB::commit();
             $this->toast('success', 'Status changed to Returned then Payment successfully.');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             $this->toast('error', 'Error changing status: ' . $e->getMessage(), false);
         }
@@ -468,16 +490,16 @@ class RentalRequestReturnDocument extends Component
     private function storeGalleryPhoto(TemporaryUploadedFile $photo, string $section): string
     {
         $filename = sprintf(
-            '%s_%s_%s.webp',
+            '%s_%s_%s',
             $section,
             $this->contractId,
             Str::uuid()
         );
 
         $path = "ReturnDocument/{$section}/{$this->contractId}/{$filename}";
-        $this->imageUploader->store($photo, $path, 'myimage');
+        $storedPath = $this->deferredUploader->store($photo, $path, 'myimage', ['optimize' => false]);
 
-        return $path;
+        return $storedPath;
     }
 
     private function sanitizeGalleryArray($items): array
@@ -517,12 +539,14 @@ class RentalRequestReturnDocument extends Component
             return [];
         }
 
+        $disk = Storage::disk('myimage');
+
         return collect($items)
-            ->filter(fn ($path) => is_string($path) && Storage::disk('myimage')->exists($path))
-            ->map(function ($path) {
+            ->filter(fn ($path) => is_string($path) && $disk->exists($path))
+            ->map(function ($path) use ($disk) {
                 return [
                     'path' => $path,
-                    'url' => Storage::url($path),
+                    'url' => $disk->url($path),
                     'name' => basename($path),
                 ];
             })

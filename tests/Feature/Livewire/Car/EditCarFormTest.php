@@ -69,6 +69,7 @@ class EditCarFormTest extends TestCase
             'color' => 'Blue',
             'chassis_number' => $car->chassis_number,
             'gps' => $car->gps,
+            'ownership_type' => $car->ownershipType(),
             'issue_date' => $car->issue_date,
             'expiry_date' => $car->expiry_date,
             'passing_date' => $car->passing_date,

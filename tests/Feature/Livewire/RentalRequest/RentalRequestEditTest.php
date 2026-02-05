@@ -234,7 +234,10 @@ class RentalRequestEditTest extends TestCase
             ->for(Customer::factory())
             ->for($car)
             ->status('assigned')
-            ->create();
+            ->create([
+                'pickup_date' => now()->subDay(),
+                'return_date' => now()->addDay(),
+            ]);
 
         $component = app(RentalRequestEdit::class);
         $component->mount($contract->id);

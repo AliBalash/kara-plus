@@ -115,7 +115,7 @@ class CarModel extends Model
                 $file,
                 $slug . '-' . time() . '.webp',
                 'car_pics',
-                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080]
+                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080, 'optimize' => false]
             );
 
             $carModel->images()->create([

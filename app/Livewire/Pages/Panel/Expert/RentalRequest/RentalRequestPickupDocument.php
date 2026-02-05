@@ -4,7 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
 use App\Models\PickupDocument;
-use App\Services\Media\OptimizedUploadService;
+use App\Services\Media\DeferredImageUploadService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -58,7 +58,7 @@ class RentalRequestPickupDocument extends Component
         'remaining' => 0,
     ];
 
-    protected OptimizedUploadService $imageUploader;
+    protected DeferredImageUploadService $deferredUploader;
 
 
     protected array $messages = [
@@ -103,9 +103,9 @@ class RentalRequestPickupDocument extends Component
         'mileage' => 'mileage',
     ];
 
-    public function boot(OptimizedUploadService $imageUploader): void
+    public function boot(DeferredImageUploadService $deferredUploader): void
     {
-        $this->imageUploader = $imageUploader;
+        $this->deferredUploader = $deferredUploader;
     }
 
 
@@ -140,10 +140,10 @@ class RentalRequestPickupDocument extends Component
             $this->driverNote = $contractMeta['driver_note'] ?? null;
         }
         $this->existingFiles = [
-            'tarsContract' => $this->resolveDocumentUrl("PickupDocument/tars_contract_{$this->contractId}"),
-            'kardoContract' => $this->resolveDocumentUrl("PickupDocument/kardo_contract_{$this->contractId}"),
-            'factorContract' => $this->resolveDocumentUrl("PickupDocument/factor_contract_{$this->contractId}"),
-            'carDashboard' => $this->resolveDocumentUrl("PickupDocument/car_dashboard_{$this->contractId}"),
+            'tarsContract' => $this->resolveDocumentUrlFromRecord($pickup?->tars_contract, "PickupDocument/tars_contract_{$this->contractId}"),
+            'kardoContract' => $this->resolveDocumentUrlFromRecord($pickup?->kardo_contract, "PickupDocument/kardo_contract_{$this->contractId}"),
+            'factorContract' => $this->resolveDocumentUrlFromRecord($pickup?->factor_contract, "PickupDocument/factor_contract_{$this->contractId}"),
+            'carDashboard' => $this->resolveDocumentUrlFromRecord($pickup?->car_dashboard, "PickupDocument/car_dashboard_{$this->contractId}"),
         ];
 
         $this->existingGalleries = [
@@ -288,24 +288,33 @@ class RentalRequestPickupDocument extends Component
 
             // Tars Contract Upload
             if ($this->tarsContract) {
-                $tarsPath = "PickupDocument/tars_contract_{$this->contractId}.webp";
-                $this->imageUploader->store($this->tarsContract, $tarsPath, 'myimage');
+                $tarsPath = $this->deferredUploader->store(
+                    $this->tarsContract,
+                    "PickupDocument/tars_contract_{$this->contractId}",
+                    'myimage'
+                );
                 $pickupDocument->tars_contract = $tarsPath;
                 $uploadedPaths[] = $tarsPath;
             }
 
             // Kardo Contract Upload
             if ($this->kardoContract) {
-                $kardoPath = "PickupDocument/kardo_contract_{$this->contractId}.webp";
-                $this->imageUploader->store($this->kardoContract, $kardoPath, 'myimage');
+                $kardoPath = $this->deferredUploader->store(
+                    $this->kardoContract,
+                    "PickupDocument/kardo_contract_{$this->contractId}",
+                    'myimage'
+                );
                 $pickupDocument->kardo_contract = $kardoPath;
                 $uploadedPaths[] = $kardoPath;
             }
 
             // Factor Contract Upload
             if ($this->contract->payment_on_delivery && $this->factorContract) {
-                $factorPath = "PickupDocument/factor_contract_{$this->contractId}.webp";
-                $this->imageUploader->store($this->factorContract, $factorPath, 'myimage');
+                $factorPath = $this->deferredUploader->store(
+                    $this->factorContract,
+                    "PickupDocument/factor_contract_{$this->contractId}",
+                    'myimage'
+                );
                 $pickupDocument->factor_contract = $factorPath;
                 $uploadedPaths[] = $factorPath;
             }
@@ -313,8 +322,11 @@ class RentalRequestPickupDocument extends Component
 
             // Car Dashboard  Upload
             if ($this->carDashboard) {
-                $carDashboardPath = "PickupDocument/car_dashboard_{$this->contractId}.webp";
-                $this->imageUploader->store($this->carDashboard, $carDashboardPath, 'myimage');
+                $carDashboardPath = $this->deferredUploader->store(
+                    $this->carDashboard,
+                    "PickupDocument/car_dashboard_{$this->contractId}",
+                    'myimage'
+                );
                 $pickupDocument->car_dashboard = $carDashboardPath;
                 $uploadedPaths[] = $carDashboardPath;
             }
@@ -360,9 +372,9 @@ class RentalRequestPickupDocument extends Component
 
             DB::commit();
 
-            $this->toast('success', 'Documents uploaded successfully.');
+            $this->toast('success', 'Documents uploaded successfully. Images are being optimized in the background.');
             $this->mount($this->contractId);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
 
             // حذف فایل‌های آپلود شده در صورت خطا
@@ -392,13 +404,15 @@ class RentalRequestPickupDocument extends Component
         $dbField = $mapping[$fileType]['db_field'];
         $viewKey = $mapping[$fileType]['view_key'];
 
-        $storedPath = $this->resolveStoredPath("PickupDocument/{$fileType}_{$this->contractId}");
+        $pickupDocument = PickupDocument::where('contract_id', $this->contractId)->first();
+        $storedPath = $this->resolveStoredPathFromRecord(
+            $pickupDocument?->{$dbField},
+            "PickupDocument/{$fileType}_{$this->contractId}"
+        );
 
         if ($storedPath && Storage::disk('myimage')->exists($storedPath)) {
             Storage::disk('myimage')->delete($storedPath);
         }
-
-        $pickupDocument = PickupDocument::where('contract_id', $this->contractId)->first();
         if ($pickupDocument) {
             $pickupDocument->$dbField = null;
             $pickupDocument->save();
@@ -484,16 +498,16 @@ class RentalRequestPickupDocument extends Component
     private function storeGalleryPhoto(TemporaryUploadedFile $photo, string $section): string
     {
         $filename = sprintf(
-            '%s_%s_%s.webp',
+            '%s_%s_%s',
             $section,
             $this->contractId,
             Str::uuid()
         );
 
         $path = "PickupDocument/{$section}/{$this->contractId}/{$filename}";
-        $this->imageUploader->store($photo, $path, 'myimage');
+        $storedPath = $this->deferredUploader->store($photo, $path, 'myimage', ['optimize' => false]);
 
-        return $path;
+        return $storedPath;
     }
 
     public function updatedCarInsidePhotos($photos): void
@@ -548,11 +562,20 @@ class RentalRequestPickupDocument extends Component
         return Str::before($firstKey, '.');
     }
 
-    private function resolveDocumentUrl(string $basePath): ?string
+    private function resolveDocumentUrlFromRecord(?string $storedPath, string $basePath): ?string
     {
-        $storedPath = $this->resolveStoredPath($basePath);
+        $path = $this->resolveStoredPathFromRecord($storedPath, $basePath);
 
-        return $storedPath ? Storage::url($storedPath) : null;
+        return $path ? Storage::disk('myimage')->url($path) : null;
+    }
+
+    private function resolveStoredPathFromRecord(?string $storedPath, string $basePath): ?string
+    {
+        if ($storedPath && Storage::disk('myimage')->exists($storedPath)) {
+            return $storedPath;
+        }
+
+        return $this->resolveStoredPath($basePath);
     }
 
     private function resolveStoredPath(string $basePath): ?string
@@ -604,12 +627,14 @@ class RentalRequestPickupDocument extends Component
             return [];
         }
 
+        $disk = Storage::disk('myimage');
+
         return collect($items)
-            ->filter(fn ($path) => is_string($path) && Storage::disk('myimage')->exists($path))
-            ->map(function ($path) {
+            ->filter(fn ($path) => is_string($path) && $disk->exists($path))
+            ->map(function ($path) use ($disk) {
                 return [
                     'path' => $path,
-                    'url' => Storage::url($path),
+                    'url' => $disk->url($path),
                     'name' => basename($path),
                 ];
             })

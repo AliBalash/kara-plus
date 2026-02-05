@@ -67,7 +67,7 @@
             <form wire:submit.prevent="uploadDocuments">
                 <div class="alert alert-info d-none d-flex align-items-center" data-upload-guard role="status">
                     <i class="bi bi-cloud-arrow-up me-2"></i>
-                    <span>Please wait for the current uploads to finish before adding more files.</span>
+                    <span data-upload-guard-text>Please wait for the current uploads to finish before adding more files.</span>
                 </div>
                 {{-- Preview Modal --}}
                 <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel"
@@ -872,6 +872,8 @@
         (() => {
             const resetTimers = {};
             let activeUploads = 0;
+            const uploadErrors = new Set();
+            const pendingSelections = new Set();
 
             const getUploadInputs = () => Array.from(document.querySelectorAll('[data-upload-field]'));
 
@@ -907,14 +909,51 @@
                     setDisabledState(input, shouldDisable);
                 });
 
-                const guardAlert = document.querySelector('[data-upload-guard]');
-
-                if (guardAlert) {
-                    guardAlert.classList.toggle('d-none', !shouldDisable);
-                }
-
                 const submitButton = document.querySelector('[data-upload-submit]');
                 setDisabledState(submitButton, shouldDisable);
+            };
+
+            const updateGuardAlert = () => {
+                const guardAlert = document.querySelector('[data-upload-guard]');
+                const guardText = document.querySelector('[data-upload-guard-text]');
+
+                if (!guardAlert || !guardText) {
+                    return;
+                }
+
+                if (uploadErrors.size > 0) {
+                    guardText.textContent = 'Upload failed. Please reselect the files and try again.';
+                    guardAlert.classList.remove('alert-info');
+                    guardAlert.classList.add('alert-danger');
+                    guardAlert.classList.remove('d-none');
+                    return;
+                }
+
+                if (activeUploads > 0) {
+                    guardText.textContent = 'Please wait for the current uploads to finish before adding more files.';
+                    guardAlert.classList.remove('alert-danger');
+                    guardAlert.classList.add('alert-info');
+                    guardAlert.classList.remove('d-none');
+                    return;
+                }
+
+                if (pendingSelections.size > 0) {
+                    guardText.textContent = 'Preparing uploads... please wait.';
+                    guardAlert.classList.remove('alert-danger');
+                    guardAlert.classList.add('alert-info');
+                    guardAlert.classList.remove('d-none');
+                    return;
+                }
+
+                guardAlert.classList.add('d-none');
+                guardAlert.classList.remove('alert-danger');
+                guardAlert.classList.add('alert-info');
+            };
+
+            const updateFormLock = () => {
+                const shouldDisable = activeUploads > 0 || uploadErrors.size > 0 || pendingSelections.size > 0;
+                toggleDisabledState(shouldDisable);
+                updateGuardAlert();
             };
 
             const scheduleReset = (field, delay) => {
@@ -974,11 +1013,9 @@
                     const findPercent = () => document.querySelector(`[data-progress-percent="${field}"]`);
 
                     input.addEventListener('livewire-upload-start', () => {
+                        pendingSelections.delete(field);
                         activeUploads += 1;
-
-                        if (activeUploads === 1) {
-                            toggleDisabledState(true);
-                        }
+                        updateFormLock();
 
                         if (resetTimers[field]) {
                             window.clearTimeout(resetTimers[field]);
@@ -1053,16 +1090,40 @@
 
                         activeUploads = Math.max(activeUploads - 1, 0);
 
-                        if (activeUploads === 0) {
-                            toggleDisabledState(false);
-                        }
+                        updateFormLock();
 
                         scheduleReset(field, isError ? 2000 : 800);
                     };
 
-                    input.addEventListener('livewire-upload-finish', () => finalizeUpload(false));
-                    input.addEventListener('livewire-upload-error', () => finalizeUpload(true));
-                    input.addEventListener('livewire-upload-cancel', () => finalizeUpload(true));
+                    input.addEventListener('livewire-upload-finish', () => {
+                        pendingSelections.delete(field);
+                        uploadErrors.delete(field);
+                        finalizeUpload(false);
+                    });
+                    input.addEventListener('livewire-upload-error', () => {
+                        pendingSelections.add(field);
+                        uploadErrors.add(field);
+                        finalizeUpload(true);
+                    });
+                    input.addEventListener('livewire-upload-cancel', () => {
+                        pendingSelections.add(field);
+                        uploadErrors.add(field);
+                        finalizeUpload(true);
+                    });
+                    input.addEventListener('change', () => {
+                        if (input.files && input.files.length > 0) {
+                            pendingSelections.add(field);
+                        } else {
+                            pendingSelections.delete(field);
+                        }
+
+                        if (uploadErrors.delete(field)) {
+                            updateFormLock();
+                            return;
+                        }
+
+                        updateFormLock();
+                    });
                 });
             };
 
@@ -1081,6 +1142,7 @@
 
             const submitButton = document.querySelector('[data-upload-submit]');
             storeInitialDisabledState(submitButton);
+            updateFormLock();
         })();
     </script>
     <script>

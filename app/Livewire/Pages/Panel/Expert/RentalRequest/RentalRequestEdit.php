@@ -789,7 +789,7 @@ class RentalRequestEdit extends Component
             }
             DB::commit();
             $this->toast('success', 'Contract Updated successfully!');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
         }

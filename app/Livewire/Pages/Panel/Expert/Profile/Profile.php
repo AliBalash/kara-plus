@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Profile;
 
-use App\Services\Media\OptimizedUploadService;
+use App\Services\Media\DeferredImageUploadService;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +22,7 @@ class Profile extends Component
     public $national_code;
     public $address;
     public $last_login;
-    protected OptimizedUploadService $imageUploader;
+    protected DeferredImageUploadService $deferredUploader;
 
     protected $rules = [
         'first_name'    => 'required|string|max:255',
@@ -34,9 +34,9 @@ class Profile extends Component
         'address'       => 'nullable|string|max:255',
     ];
 
-    public function boot(OptimizedUploadService $imageUploader): void
+    public function boot(DeferredImageUploadService $deferredUploader): void
     {
-        $this->imageUploader = $imageUploader;
+        $this->deferredUploader = $deferredUploader;
     }
 
     public function mount()
@@ -71,7 +71,7 @@ class Profile extends Component
             }
 
             // آپلود عکس جدید
-            $avatarPath = $this->imageUploader->store(
+            $avatarPath = $this->deferredUploader->store(
                 $this->new_avatar,
                 'avatars/user_' . $user->id . '_' . time() . '.webp',
                 'myimage',

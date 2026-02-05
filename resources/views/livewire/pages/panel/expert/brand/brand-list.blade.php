@@ -36,14 +36,15 @@
                             <div class="d-flex align-items-center">
                                 @if ($brand->brand_icon)
                                     <img src="{{ asset('storage/' . ltrim($brand->brand_icon, '/')) }}" alt="Brand Icon"
-                                        class="rounded-circle me-2" width="30" height="30">
+                                        class="rounded-circle me-2" width="30" height="30" loading="lazy"
+                                        decoding="async" fetchpriority="low">
                                 @endif
                                 {{ $brand->brand }}
                             </div>
                         </td>
                         <td>{{ $brand->model }}</td>
                         <td>{{ ucfirst($brand->gearbox_type ?? 'N/A') }}</td>
-                        <td>{{ $brand->cars()->count() }}</td>
+                        <td>{{ $brand->cars_count }}</td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"

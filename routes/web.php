@@ -135,14 +135,11 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
 
 
-    // Route::get('/discount-codes', DiscountCodeList::class)->name('discount.codes');
     Route::get('/expert/location-costs', LocationCostList::class)->name('location-costs.index');
     Route::get('/expert/agents', AgentList::class)->name('agents.index');
 
-    Route::get('/maintenance/normalize-phones', [MaintenanceController::class, 'normalizeCustomerPhones'])
+    Route::match(['get', 'post'], '/maintenance/normalize-phones', [MaintenanceController::class, 'normalizeCustomerPhones'])
         ->name('maintenance.normalize-phones');
-    // Route::get('/maintenance/backfill-contract-agents', [MaintenanceController::class, 'backfillContractAgents'])
-    //     ->name('maintenance.backfill-contract-agents');
 
     Route::get('/expert/users/create', CreateUser::class)->name('users.create');
     Route::get('/expert/users/roles', ManageUserRoles::class)->name('users.roles');
