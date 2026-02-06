@@ -75,4 +75,4 @@ $DOCKER_CMD exec -i "$APP_CID" bash -lc "mkdir -p /var/www/storage/framework/liv
 echo "[7/7] Restart queue workers"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
 
-echo "Deploy done."
+echo "Deploy done and successfuly"
