@@ -69,6 +69,9 @@ $DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan migrate --force"
 echo "[6/7] Cache optimize"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan config:cache && php artisan route:cache && php artisan view:cache"
 
+echo "[6.5/7] Fix storage permissions"
+$DOCKER_CMD exec -i "$APP_CID" bash -lc "mkdir -p /var/www/storage/framework/livewire-tmp && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache && find /var/www/storage /var/www/bootstrap/cache -type d -exec chmod 775 {} + && find /var/www/storage /var/www/bootstrap/cache -type f -exec chmod 664 {} +"
+
 echo "[7/7] Restart queue workers"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
 
