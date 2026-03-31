@@ -32,7 +32,6 @@ class RentalRequestPaymentList extends Component
     public $agentFilter = '';
     public $kardoFilter = '';
     public $salesAgents = [];
-    public $paymentContracts;
 
     protected $listeners = [
         'refreshContracts' => '$refresh',
@@ -157,8 +156,6 @@ class RentalRequestPaymentList extends Component
             ->when($this->kardoFilter === 'not_required', fn($query) => $query->where('kardo_required', false))
             ->orderBy($sortField, $sortDirection)
             ->paginate(10);
-
-        $this->paymentContracts = $paymentContracts;
 
         return view('livewire.pages.panel.expert.rental-request.rental-request-payment-list', [
             'paymentContracts' => $paymentContracts,
