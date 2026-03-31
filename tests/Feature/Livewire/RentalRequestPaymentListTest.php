@@ -83,9 +83,8 @@ class RentalRequestPaymentListTest extends TestCase
         $component->searchInput = 'Smith';
         $component->applySearch();
 
-        $component->render();
-
-        $contracts = $component->paymentContracts;
+        $view = $component->render();
+        $contracts = $view->getData()['paymentContracts'];
         $this->assertCount(1, $contracts);
         $this->assertTrue($contracts->first()->is($matchingContract));
         $this->assertFalse($contracts->contains($nonMatchingContract));
