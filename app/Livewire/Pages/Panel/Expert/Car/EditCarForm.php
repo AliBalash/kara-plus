@@ -75,7 +75,7 @@ class EditCarForm extends Component
             'color' => 'required|string|min:1|max:255',
             'chassis_number' => 'required|string|min:1|max:255',
             'gps' => 'boolean',
-            'ownership_type' => 'required|in:company,golden_key,liverpool,other',
+            'ownership_type' => 'required|in:company,golden_key,liverpool,safe_drive,other',
             'issue_date' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:issue_date',
             'passing_date' => 'nullable|date',

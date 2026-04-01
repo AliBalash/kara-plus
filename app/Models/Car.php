@@ -78,6 +78,7 @@ class Car extends Model
         'company' => ['label' => 'Our Fleet', 'badge' => 'bg-label-primary'],
         'golden_key' => ['label' => 'Golden Key', 'badge' => 'bg-label-info'],
         'liverpool' => ['label' => 'Liverpool', 'badge' => 'bg-label-success'],
+        'safe_drive' => ['label' => 'Safe Drive', 'badge' => 'bg-label-secondary'],
         'other' => ['label' => 'Other Fleet', 'badge' => 'bg-label-warning'],
     ];
 
