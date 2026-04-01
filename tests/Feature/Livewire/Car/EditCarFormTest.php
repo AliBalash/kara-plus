@@ -69,7 +69,7 @@ class EditCarFormTest extends TestCase
             'color' => 'Blue',
             'chassis_number' => $car->chassis_number,
             'gps' => $car->gps,
-            'ownership_type' => $car->ownershipType(),
+            'ownership_type' => 'safe_drive',
             'issue_date' => $car->issue_date,
             'expiry_date' => $car->expiry_date,
             'passing_date' => $car->passing_date,
@@ -98,6 +98,8 @@ class EditCarFormTest extends TestCase
         $this->assertEquals('Blue', $car->color);
         $this->assertEquals('Updated note', $car->notes);
         $this->assertEquals(1500, $car->mileage);
+        $this->assertEquals('safe_drive', $car->ownership_type);
+        $this->assertFalse($car->is_company_car);
         $this->assertTrue($car->carModel->fresh()->is_featured);
 
         $options = $car->options()->pluck('option_value', 'option_key');

@@ -66,7 +66,7 @@ class CreateCarFormTest extends TestCase
             'color' => 'Red',
             'chassis_number' => 'CHASSIS1234567890',
             'gps' => true,
-            'ownership_type' => 'company',
+            'ownership_type' => 'safe_drive',
             'issue_date' => now()->subYear()->toDateString(),
             'expiry_date' => now()->addYear()->toDateString(),
             'passing_date' => now()->subMonths(6)->toDateString(),
@@ -87,6 +87,8 @@ class CreateCarFormTest extends TestCase
         $this->assertEquals($carModel->id, $car->car_model_id);
         $this->assertEquals('Red', $car->color);
         $this->assertEquals(true, $car->gps);
+        $this->assertEquals('safe_drive', $car->ownership_type);
+        $this->assertFalse($car->is_company_car);
 
         $this->assertEquals(8, $car->options()->count());
         $this->assertTrue($carModel->fresh()->is_featured);
