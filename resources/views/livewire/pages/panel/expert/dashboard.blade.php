@@ -417,34 +417,84 @@
             <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex flex-wrap gap-3 justify-content-between align-items-center">
                 <div>
                     <h5 class="fw-bold mb-1"><i class="bi bi-ev-front text-primary me-2"></i>Available Fleet</h5>
-                    <span class="text-muted small">{{ $availableCarsTotal }} vehicle{{ $availableCarsTotal === 1 ? '' : 's' }} ready for the next assignment</span>
+                    <span class="text-muted small">{{ $availableCarsTotal }} returned vehicle{{ $availableCarsTotal === 1 ? '' : 's' }} currently parked and rental-ready</span>
                 </div>
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <div class="input-group input-group-sm" style="width: 220px;">
-                        <span class="input-group-text bg-light border-0"><i class="bi bi-funnel"></i></span>
-                        <select class="form-select border-0" wire:model.live="availableBrand">
-                            <option value="all">All brands</option>
-                            @foreach ($availableBrands as $brand)
-                                <option value="{{ $brand }}">{{ $brand }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <a href="{{ route('car.list') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-card-checklist me-1"></i>Manage Cars
-                    </a>
-                </div>
+                <a href="{{ route('car.list') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-card-checklist me-1"></i>Manage Cars
+                </a>
             </div>
-            <div class="card-body pt-0 px-0 pb-4">
+            <div class="card-body pt-0 px-4 pb-4">
+                <form class="available-fleet-toolbar mb-3" wire:submit.prevent="applyAvailableFleetFilters">
+                    <div class="available-fleet-toolbar__search">
+                        <i class="bi bi-search"></i>
+                        <input type="text" class="form-control border-0 shadow-none"
+                            placeholder="Search by plate, brand, model, color"
+                            wire:model.defer="availableSearch">
+                    </div>
+                    <div class="available-fleet-toolbar__panel">
+                        <div class="available-fleet-toolbar__filters">
+                            <select class="form-select form-select-sm" wire:model.defer="availableFleetScope">
+                                <option value="our">Our Fleet (Default)</option>
+                                <option value="all">All Fleets</option>
+                                <option value="partners">Partner Fleets Only</option>
+                            </select>
+
+                            <select class="form-select form-select-sm" wire:model.defer="availableReadiness">
+                                <option value="available">Available Only</option>
+                                <option value="available_pre_reserved">Available + Pre-Reserved</option>
+                            </select>
+
+                            <select class="form-select form-select-sm" wire:model.defer="availableBrand">
+                                <option value="all">All Brands</option>
+                                @foreach ($availableBrands as $brand)
+                                    <option value="{{ $brand }}">{{ $brand }}</option>
+                                @endforeach
+                            </select>
+                            <select class="form-select form-select-sm" wire:model.defer="availableSort">
+                                <option value="returned_latest">Sort: Latest Return</option>
+                                <option value="returned_oldest">Sort: Oldest Return</option>
+                                <option value="service_due_soon">Sort: Service Due Soon</option>
+                                <option value="service_due_late">Sort: Service Due Late</option>
+                                <option value="year_newest">Sort: Newest Year</option>
+                                <option value="year_oldest">Sort: Oldest Year</option>
+                            </select>
+                        </div>
+                        <div class="available-fleet-toolbar__actions">
+                            <button type="submit" class="btn btn-sm btn-dark">
+                                <span wire:loading.remove wire:target="applyAvailableFleetFilters">Apply Filters</span>
+                                <span wire:loading wire:target="applyAvailableFleetFilters">Applying...</span>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-dark available-fleet-toolbar__reset" wire:click="resetAvailableFleetFilters">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="available-fleet-feedback mb-2 d-flex align-items-center justify-content-between">
+                    <span>Applied Results</span>
+                    <strong>{{ $availableCarsTotal }} matched</strong>
+                </div>
+
                 @if ($availableCars->isEmpty())
-                    <div class="text-center text-muted py-5">No vehicles are currently marked as available.</div>
+                    <div class="text-center text-muted py-5">No returned rental-ready vehicles found for the selected filters.</div>
                 @else
-                    <div class="table-responsive" style="max-height: 360px;" data-simplebar>
+                    <div class="table-responsive position-relative"
+                        wire:key="available-fleet-table-{{ $availableFleetScope }}-{{ $availableReadiness }}-{{ $availableBrand }}-{{ $availableSort }}-{{ md5((string) $availableSearch) }}"
+                        style="max-height: 380px; overflow-y: auto;">
+                        <div class="available-fleet-loading" wire:loading.flex
+                            wire:target="applyAvailableFleetFilters,resetAvailableFleetFilters">
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Applying filters...
+                        </div>
                         <table class="table table-hover align-middle mb-0">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col">Vehicle</th>
+                                    <th scope="col">Fleet</th>
                                     <th scope="col">Plate</th>
-                                    <th scope="col">Year</th>
+                                    <th scope="col">Returned At</th>
+                                    <th scope="col">Availability</th>
                                     <th scope="col">Next Reservation</th>
                                     <th scope="col">Last Service</th>
                                     <th scope="col" class="text-end">Action</th>
@@ -457,21 +507,35 @@
                                         $model = optional($car->carModel)->model;
                                         $serviceDue = $car->service_due_date ? \Carbon\Carbon::parse($car->service_due_date)->format('d M Y') : 'N/A';
                                         $upcomingReservation = $car->upcomingReservation;
+                                        $returnedAt = $car->latest_returned_at ? \Carbon\Carbon::parse($car->latest_returned_at) : null;
                                     @endphp
                                     <tr>
                                         <td>
                                             <div class="fw-semibold">{{ trim(($brand ? $brand . ' ' : '') . ($model ?? 'Vehicle')) }}</div>
-                                            <div class="text-muted small">{{ ucfirst($car->color ?? '—') }}</div>
+                                            <div class="text-muted small">{{ ucfirst($car->color ?? '—') }} · {{ $car->manufacturing_year ?? '—' }}</div>
+                                        </td>
+                                        <td>
+                                            <x-car-ownership-badge :car="$car" />
                                         </td>
                                         <td>{{ $car->plate_number ?? '—' }}</td>
-                                        <td>{{ $car->manufacturing_year ?? '—' }}</td>
+                                        <td>
+                                            @if ($returnedAt)
+                                                <div class="fw-semibold">{{ $returnedAt->format('d M Y · H:i') }}</div>
+                                                <div class="text-muted small">{{ $returnedAt->diffForHumans() }}</div>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if ($car->status === 'pre_reserved')
+                                                <span class="badge bg-info-subtle text-info">Available now · booked next</span>
+                                            @else
+                                                <span class="badge bg-success-subtle text-success">Ready to rent</span>
+                                            @endif
+                                        </td>
                                         <td>
                                             @if ($upcomingReservation)
                                                 <div class="d-flex flex-column gap-1">
-                                                    <span class="badge bg-success-subtle text-success align-self-start">Available now</span>
-                                                    @if ($car->status === 'pre_reserved')
-                                                        <span class="badge bg-info-subtle text-info align-self-start">Upcoming booking</span>
-                                                    @endif
                                                     <div class="fw-semibold">
                                                         {{ optional($upcomingReservation->pickup_date)->format('d M Y · H:i') }}
                                                     </div>
