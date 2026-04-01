@@ -70,6 +70,7 @@
                                         <option value="company">Our Fleet</option>
                                         <option value="golden_key">Golden Key</option>
                                         <option value="liverpool">Liverpool</option>
+                                        <option value="safe_drive">Safe Drive</option>
                                         <option value="other">Other Fleet</option>
                                     </select>
                                     @error('ownership_type')
