@@ -55,6 +55,10 @@ echo "[2/7] Build & up (docker compose)"
 $DOCKER_CMD compose --env-file .env.docker -f docker-compose.yml up -d --build
 
 APP_CID="$($DOCKER_CMD compose -f docker-compose.yml ps -q app)"
+if [ -z "$APP_CID" ]; then
+  echo "Failed to resolve app container id."
+  exit 1
+fi
 
 echo "[3/7] Composer install (no-dev)"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "git config --global --add safe.directory /var/www || true"
@@ -66,13 +70,13 @@ $DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan storage:link --relative --f
 echo "[5/7] Migrate"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan migrate --force"
 
-echo "[6/7] Cache optimize"
-$DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan config:cache && php artisan route:cache && php artisan view:cache"
+echo "[6/7] Normalize runtime permissions"
+$DOCKER_CMD exec -u 0:0 -i "$APP_CID" bash -lc "mkdir -p /var/www/storage/framework/cache/data /var/www/storage/framework/sessions /var/www/storage/framework/views /var/www/storage/framework/testing /var/www/storage/framework/livewire-tmp /var/www/storage/app/private/livewire-tmp /var/www/storage/app/public/livewire-tmp /var/www/bootstrap/cache /var/www/public/assets/car-pics && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics && find /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics -type d -exec chmod 775 {} + && find /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics -type f -exec chmod 664 {} + && find /var/www/storage/framework/views -maxdepth 1 -type f ! -name '.gitignore' -delete && rm -f /var/www/bootstrap/cache/*.php"
 
-echo "[6.5/7] Fix storage permissions"
-$DOCKER_CMD exec -u 0:0 -i "$APP_CID" bash -lc "mkdir -p /var/www/storage/framework/livewire-tmp /var/www/storage/app/private/livewire-tmp /var/www/storage/app/public/livewire-tmp /var/www/public/assets/car-pics && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics && find /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics -type d -exec chmod 775 {} + && find /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics -type f -exec chmod 664 {} +"
+echo "[6.5/7] Rebuild Laravel caches as www-data"
+$DOCKER_CMD exec -u www-data:www-data -i "$APP_CID" bash -lc "php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache"
 
 echo "[7/7] Restart queue workers"
-$DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan queue:restart || true"
+$DOCKER_CMD exec -u www-data:www-data -i "$APP_CID" bash -lc "php artisan queue:restart || true"
 
 echo "Deploy done and successfuly"
