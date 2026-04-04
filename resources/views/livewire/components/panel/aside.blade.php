@@ -6,7 +6,7 @@
                 <img width="120" src="{{ asset('assets/panel/assets/img/logo/logo.png') }}" alt="logo"
                     decoding="async">
             </span>
-            {{-- <span class="app-brand-text demo menu-text fw-bolder ms-2">Sneat</span> --}}
+            {{-- <span class="app-brand-text demo menu-text fw-bolder ms-2">Kara Plus</span> --}}
         </a>
 
         <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-xl-none"
