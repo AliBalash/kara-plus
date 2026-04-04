@@ -162,6 +162,27 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertTrue($car->availability);
     }
 
+    public function test_sync_does_not_override_sold_car_status(): void
+    {
+        $car = Car::factory()->sold()->create();
+
+        Contract::factory()
+            ->for(User::factory())
+            ->for(Customer::factory())
+            ->for($car)
+            ->status('pending')
+            ->state([
+                'pickup_date' => Carbon::now()->subDay(),
+                'return_date' => Carbon::now()->addDay(),
+            ])
+            ->create();
+
+        $car->refresh();
+
+        $this->assertEquals('sold', $car->status);
+        $this->assertFalse($car->availability);
+    }
+
     public function test_deleting_contract_releases_car_when_no_active_contract_remains(): void
     {
         $car = Car::factory()->create(['status' => 'reserved', 'availability' => false]);

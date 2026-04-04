@@ -314,6 +314,14 @@ class Contract extends Model
             return;
         }
 
+        if ($car->status === 'sold') {
+            if ($car->availability) {
+                $car->update(['availability' => false]);
+            }
+
+            return;
+        }
+
         $inactiveStatuses = ['complete', 'cancelled', 'rejected', 'returned', 'payment'];
         $now = now();
 
