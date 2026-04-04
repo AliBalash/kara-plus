@@ -181,6 +181,71 @@ class DashboardAvailableFleetTest extends TestCase
         $this->assertSame([$availableCar->id, $preReservedCar->id], $carsWithPreReserved->pluck('id')->all());
     }
 
+    public function test_dashboard_builds_fleet_status_summary_with_reservations_and_availability_breakdown(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Car::factory()->create([
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        Car::factory()->create([
+            'status' => 'available',
+            'availability' => false,
+        ]);
+
+        Car::factory()->create([
+            'status' => 'under_maintenance',
+            'availability' => false,
+        ]);
+
+        $bookedNow = Car::factory()->create([
+            'status' => 'reserved',
+            'availability' => false,
+        ]);
+
+        $bookedUpcoming = Car::factory()->create([
+            'status' => 'pre_reserved',
+            'availability' => true,
+        ]);
+
+        Contract::factory()->create([
+            'car_id' => $bookedNow->id,
+            'current_status' => 'reserved',
+            'pickup_date' => now()->subHours(3),
+            'return_date' => now()->addDay(),
+        ]);
+
+        Contract::factory()->create([
+            'car_id' => $bookedUpcoming->id,
+            'current_status' => 'assigned',
+            'pickup_date' => now()->addHours(8),
+            'return_date' => now()->addDays(2),
+        ]);
+
+        Contract::factory()->create([
+            'car_id' => $bookedUpcoming->id,
+            'current_status' => 'pending',
+            'pickup_date' => now()->addDays(2),
+            'return_date' => now()->addDays(4),
+        ]);
+
+        $component = app(Dashboard::class);
+        $component->mount();
+
+        $this->assertSame([
+            'total' => 5,
+            'available' => 1,
+            'booked' => 2,
+            'unavailable' => 2,
+            'availability_rate' => 20,
+            'active_reservations' => 2,
+            'upcoming_pickups' => 1,
+        ], $component->fleetStatusSummary);
+    }
+
     private function createReturnedCar(string $returnedAt, array $carOverrides = []): Car
     {
         $car = Car::factory()->create(array_merge([

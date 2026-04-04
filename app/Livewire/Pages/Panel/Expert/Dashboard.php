@@ -46,6 +46,15 @@ class Dashboard extends Component
     public $totalCars;
     public $activeVehicles;
     public $offlineVehicles;
+    public array $fleetStatusSummary = [
+        'total' => 0,
+        'available' => 0,
+        'booked' => 0,
+        'unavailable' => 0,
+        'availability_rate' => 0,
+        'active_reservations' => 0,
+        'upcoming_pickups' => 0,
+    ];
     public $averageRentalDuration;
     public $upcomingReturns;
     public $overdueContracts;
@@ -149,6 +158,7 @@ class Dashboard extends Component
             ->get();
 
         $this->buildAnalytics();
+        $this->buildFleetStatusSummary();
         $this->normalizeAvailableFleetFilters();
         $this->prepareAvailableBrands();
     }
@@ -258,7 +268,7 @@ class Dashboard extends Component
             'used' => $monthKeys->map(fn ($month) => (int) ($discountUsed[$month] ?? 0))->all(),
         ];
 
-        $maintenanceStatuses = ['maintenance', 'repair', 'service'];
+        $maintenanceStatuses = ['under_maintenance', 'sold', 'maintenance', 'repair', 'service'];
 
         $this->totalCars = Car::count();
         $this->offlineVehicles = Car::whereIn('status', $maintenanceStatuses)->count();
@@ -389,6 +399,42 @@ class Dashboard extends Component
         ])->filter()->sortBy('datetime');
 
         $this->driverNextTask = $nextTasks->first();
+    }
+
+    protected function buildFleetStatusSummary(): void
+    {
+        $summary = Car::query()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN cars.status = 'available' AND cars.availability = 1 THEN 1 ELSE 0 END) as available")
+            ->selectRaw("SUM(CASE WHEN cars.status IN ('reserved', 'pre_reserved') THEN 1 ELSE 0 END) as booked")
+            ->first();
+
+        $total = (int) ($summary->total ?? 0);
+        $available = (int) ($summary->available ?? 0);
+        $booked = (int) ($summary->booked ?? 0);
+        $unavailable = max($total - ($available + $booked), 0);
+
+        $reservationStatuses = array_values(array_diff(Car::reservingStatuses(), ['pending']));
+
+        $activeReservations = Contract::query()
+            ->whereIn('current_status', $reservationStatuses)
+            ->count();
+
+        $upcomingPickups = Contract::query()
+            ->whereIn('current_status', $reservationStatuses)
+            ->whereNotNull('pickup_date')
+            ->where('pickup_date', '>', Carbon::now())
+            ->count();
+
+        $this->fleetStatusSummary = [
+            'total' => $total,
+            'available' => $available,
+            'booked' => $booked,
+            'unavailable' => $unavailable,
+            'availability_rate' => $total > 0 ? (int) round(($available / $total) * 100) : 0,
+            'active_reservations' => $activeReservations,
+            'upcoming_pickups' => $upcomingPickups,
+        ];
     }
 
     protected function prepareAvailableBrands(): void
