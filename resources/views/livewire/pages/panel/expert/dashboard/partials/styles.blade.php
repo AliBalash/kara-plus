@@ -120,6 +120,158 @@
                     }
                 }
 
+            .fleet-status-hero {
+                position: relative;
+                overflow: hidden;
+                background:
+                    radial-gradient(circle at 0% 0%, rgba(51, 153, 255, 0.2), transparent 48%),
+                    radial-gradient(circle at 100% 100%, rgba(0, 206, 170, 0.16), transparent 45%),
+                    linear-gradient(132deg, #f8fbff 0%, #eef5ff 52%, #f8fdfb 100%);
+                border: 1px solid rgba(191, 210, 236, 0.6);
+            }
+
+            .fleet-status-hero__header {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 0.8rem;
+            }
+
+            .fleet-status-hero__eyebrow {
+                display: inline-flex;
+                align-items: center;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 700;
+                color: #2f5aa3;
+            }
+
+            .fleet-status-hero__meta {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .fleet-status-hero__pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.4rem 0.72rem;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.86);
+                border: 1px solid rgba(198, 212, 232, 0.75);
+                color: #3a526d;
+                font-size: 0.78rem;
+                white-space: nowrap;
+                box-shadow: 0 6px 14px rgba(26, 48, 78, 0.06);
+            }
+
+            .fleet-status-hero__pill strong {
+                color: #172c47;
+                margin-left: 0.15rem;
+            }
+
+            .fleet-status-card {
+                display: flex;
+                align-items: center;
+                gap: 0.8rem;
+                min-height: 104px;
+                border-radius: 1rem;
+                border: 1px solid rgba(198, 213, 234, 0.75);
+                background: rgba(255, 255, 255, 0.84);
+                backdrop-filter: blur(2px);
+                padding: 0.85rem 0.95rem;
+                box-shadow: 0 10px 24px rgba(31, 56, 86, 0.08);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .fleet-status-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 16px 26px rgba(31, 56, 86, 0.14);
+            }
+
+            .fleet-status-card__icon {
+                width: 2.6rem;
+                height: 2.6rem;
+                border-radius: 0.8rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.15rem;
+                flex-shrink: 0;
+            }
+
+            .fleet-status-card__content {
+                min-width: 0;
+            }
+
+            .fleet-status-card__value {
+                font-size: 1.35rem;
+                font-weight: 700;
+                color: #1f3858;
+                line-height: 1.1;
+            }
+
+            .fleet-status-card__label {
+                margin-top: 0.12rem;
+                font-size: 0.8rem;
+                font-weight: 600;
+                color: #304c6f;
+                letter-spacing: 0.01em;
+            }
+
+            .fleet-status-card__hint {
+                margin-top: 0.12rem;
+                font-size: 0.73rem;
+                color: #60758f;
+            }
+
+            .fleet-status-card--available .fleet-status-card__icon {
+                background: rgba(46, 204, 113, 0.18);
+                color: #1b8f4a;
+            }
+
+            .fleet-status-card--unavailable .fleet-status-card__icon {
+                background: rgba(255, 99, 71, 0.16);
+                color: #b5412f;
+            }
+
+            .fleet-status-card--booked .fleet-status-card__icon {
+                background: rgba(255, 179, 0, 0.2);
+                color: #a56b00;
+            }
+
+            .fleet-status-card--reservations .fleet-status-card__icon {
+                background: rgba(79, 131, 255, 0.18);
+                color: #2d55c7;
+            }
+
+            @media (max-width: 991.98px) {
+                .fleet-status-hero__header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+
+                .fleet-status-hero__meta {
+                    justify-content: flex-start;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .fleet-status-hero__pill {
+                    width: 100%;
+                    justify-content: space-between;
+                    padding: 0.46rem 0.7rem;
+                }
+
+                .fleet-status-card {
+                    min-height: 96px;
+                }
+            }
+
             .available-fleet-toolbar {
                 display: grid;
                 grid-template-columns: minmax(260px, 1fr) minmax(0, 2.25fr);

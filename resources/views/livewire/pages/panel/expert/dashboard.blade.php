@@ -264,6 +264,45 @@
                     'color' => 'warning',
                 ],
             ];
+
+            $fleetAvailable = (int) ($fleetStatusSummary['available'] ?? 0);
+            $fleetBooked = (int) ($fleetStatusSummary['booked'] ?? 0);
+            $fleetUnavailable = (int) ($fleetStatusSummary['unavailable'] ?? 0);
+            $fleetReservations = (int) ($fleetStatusSummary['active_reservations'] ?? 0);
+            $fleetUpcomingPickups = (int) ($fleetStatusSummary['upcoming_pickups'] ?? 0);
+            $fleetTotal = (int) ($fleetStatusSummary['total'] ?? 0);
+            $fleetAvailabilityRate = (int) ($fleetStatusSummary['availability_rate'] ?? 0);
+
+            $fleetSummaryCards = [
+                [
+                    'label' => 'Available Cars',
+                    'value' => $fleetAvailable,
+                    'hint' => 'Ready for pickup now',
+                    'icon' => 'bi bi-check2-circle',
+                    'tone' => 'available',
+                ],
+                [
+                    'label' => 'Unavailable Cars',
+                    'value' => $fleetUnavailable,
+                    'hint' => 'Maintenance or blocked',
+                    'icon' => 'bi bi-slash-circle',
+                    'tone' => 'unavailable',
+                ],
+                [
+                    'label' => 'Booked Cars',
+                    'value' => $fleetBooked,
+                    'hint' => 'Reserved or pre-reserved',
+                    'icon' => 'bi bi-calendar2-check',
+                    'tone' => 'booked',
+                ],
+                [
+                    'label' => 'Reservations',
+                    'value' => $fleetReservations,
+                    'hint' => 'Active reservation contracts',
+                    'icon' => 'bi bi-journal-check',
+                    'tone' => 'reservations',
+                ],
+            ];
         @endphp
 
         <div class="row g-3 align-items-center mb-4">
@@ -278,6 +317,49 @@
                 <div class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
                     <span class="badge bg-light text-dark px-3 py-2"><i class="bi bi-clock-history me-1"></i>Updated {{ now()->format('d M Y - H:i') }}</span>
                     <a href="{{ route('rental-requests.list') }}" class="btn btn-dark btn-sm px-3"><i class="bi bi-card-list me-1"></i>View Requests</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-lg border-0 rounded-4 mb-4 fleet-status-hero">
+            <div class="card-body p-4">
+                <div class="fleet-status-hero__header mb-3">
+                    <div>
+                        <span class="fleet-status-hero__eyebrow">Fleet Status Report</span>
+                        <h5 class="fw-bold mb-1">Live machine readiness snapshot</h5>
+                        <p class="text-muted mb-0">Instant view of availability, unavailability, and reservation pressure.</p>
+                    </div>
+                    <div class="fleet-status-hero__meta">
+                        <span class="fleet-status-hero__pill">
+                            <i class="bi bi-car-front me-1"></i>
+                            Total Fleet <strong>{{ number_format($fleetTotal) }}</strong>
+                        </span>
+                        <span class="fleet-status-hero__pill">
+                            <i class="bi bi-graph-up-arrow me-1"></i>
+                            Availability <strong>{{ $fleetAvailabilityRate }}%</strong>
+                        </span>
+                        <span class="fleet-status-hero__pill">
+                            <i class="bi bi-calendar-week me-1"></i>
+                            Upcoming Pickups <strong>{{ number_format($fleetUpcomingPickups) }}</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    @foreach ($fleetSummaryCards as $summaryCard)
+                        <div class="col-12 col-sm-6 col-xl-3">
+                            <div class="fleet-status-card fleet-status-card--{{ $summaryCard['tone'] }}">
+                                <span class="fleet-status-card__icon">
+                                    <i class="{{ $summaryCard['icon'] }}"></i>
+                                </span>
+                                <div class="fleet-status-card__content">
+                                    <div class="fleet-status-card__value">{{ number_format($summaryCard['value']) }}</div>
+                                    <div class="fleet-status-card__label">{{ $summaryCard['label'] }}</div>
+                                    <div class="fleet-status-card__hint">{{ $summaryCard['hint'] }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>
