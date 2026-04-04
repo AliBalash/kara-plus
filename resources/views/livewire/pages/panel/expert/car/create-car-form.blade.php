@@ -69,6 +69,7 @@
                                         <option value="under_maintenance"
                                             {{ $status == 'under_maintenance' ? 'selected' : '' }}>Under Maintenance
                                         </option>
+                                        <option value="sold" {{ $status == 'sold' ? 'selected' : '' }}>Sold</option>
                                     </select>
                                     @error('status')
                                         <div class="invalid-feedback">{{ $message }}</div>

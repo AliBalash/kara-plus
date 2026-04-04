@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Car;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Livewire\Concerns\InteractsWithToasts;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -67,8 +68,19 @@ class CreateCarForm extends Component
             'selectedBrand' => 'required|string',
             'selectedModelId' => 'required|exists:car_models,id',
             'plate_number' => 'required|string|max:255|unique:cars,plate_number',
-            'status' => 'required|in:available,pre_reserved,reserved,under_maintenance',
-            'availability' => 'required|boolean',
+            'status' => ['required', Rule::in(['available', 'pre_reserved', 'reserved', 'under_maintenance', 'sold'])],
+            'availability' => [
+                'required',
+                'boolean',
+                function ($attribute, $value, $fail) {
+                    if (
+                        $this->status === 'sold'
+                        && in_array($value, [true, 1, '1', 'true'], true)
+                    ) {
+                        $fail('Sold cars cannot be marked as available.');
+                    }
+                },
+            ],
             'mileage' => 'required|numeric|min:0',
             'price_per_day_short' => 'required|numeric|min:0',
             'price_per_day_mid' => 'required|numeric|min:0',
@@ -114,7 +126,7 @@ class CreateCarForm extends Component
         'plate_number.max' => 'The plate number cannot exceed 255 characters.',
         'plate_number.unique' => 'The plate number is already in use.',
         'status.required' => 'The status is required.',
-        'status.in' => 'The status must be one of available, pre-reserved, reserved, or under maintenance.',
+        'status.in' => 'The status must be one of available, pre-reserved, reserved, under maintenance, or sold.',
         'availability.required' => 'The availability is required.',
         'mileage.required' => 'The mileage is required.',
         'mileage.numeric' => 'The mileage must be a number.',
@@ -209,6 +221,13 @@ class CreateCarForm extends Component
             ->orderBy('model')
             ->get();
         $this->selectedModelId = '';
+    }
+
+    public function updatedStatus($status): void
+    {
+        if ($status === 'sold') {
+            $this->availability = false;
+        }
     }
 
     private function resetCarData()
@@ -321,6 +340,10 @@ class CreateCarForm extends Component
     public function submit()
     {
         $validated = $this->validate();
+
+        if ($validated['status'] === 'sold') {
+            $validated['availability'] = false;
+        }
 
         $decimalFields = [
             'price_per_day_short',
