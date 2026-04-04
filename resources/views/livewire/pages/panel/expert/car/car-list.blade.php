@@ -34,6 +34,7 @@
                 <option value="pre_reserved">Upcoming Booking</option>
                 <option value="reserved">Active Booking</option>
                 <option value="under_maintenance">Under Maintenance</option>
+                <option value="sold">Sold</option>
             </select>
         </div>
 
@@ -103,6 +104,7 @@
                                     @case('pre_reserved') bg-info @break
                                     @case('reserved') bg-warning @break
                                     @case('under_maintenance') bg-danger @break
+                                    @case('sold') bg-dark @break
                                     @default bg-secondary
                                 @endswitch">
                                 @php
@@ -110,6 +112,7 @@
                                         'pre_reserved' => 'Upcoming booking',
                                         'reserved' => 'Active booking',
                                         'under_maintenance' => 'Under maintenance',
+                                        'sold' => 'Sold',
                                         default => ucfirst($car->status),
                                     };
                                 @endphp
