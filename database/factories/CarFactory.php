@@ -51,4 +51,12 @@ class CarFactory extends Factory
             'availability' => true,
         ]);
     }
+
+    public function sold(): static
+    {
+        return $this->state(fn () => [
+            'status' => 'sold',
+            'availability' => false,
+        ]);
+    }
 }
