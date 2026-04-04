@@ -5,8 +5,11 @@ namespace Tests\Feature\Livewire\Car;
 use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
 use App\Models\Car;
 use App\Models\CarOption;
+use App\Models\Contract;
+use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -108,6 +111,52 @@ class EditCarFormTest extends TestCase
         $this->assertEquals('0', $options['unlimited_km']);
         $this->assertEquals('1', $options['base_insurance']);
         $this->assertEquals('Car updated successfully!', session('message'));
+    }
+
+    public function test_cannot_mark_car_as_sold_while_it_has_reserving_contracts(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $car = Car::factory()->create([
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for($car)
+            ->status('reserved')
+            ->create();
+
+        Livewire::test(EditCarForm::class, ['carId' => $car->id])
+            ->set('status', 'sold')
+            ->set('availability', false)
+            ->call('submit')
+            ->assertHasErrors(['status']);
+
+        $this->assertNotEquals('sold', $car->fresh()->status);
+    }
+
+    public function test_can_mark_car_as_sold_when_no_reserving_contract_exists(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $car = Car::factory()->create([
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        Livewire::test(EditCarForm::class, ['carId' => $car->id])
+            ->set('status', 'sold')
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $car->refresh();
+        $this->assertEquals('sold', $car->status);
+        $this->assertFalse($car->availability);
     }
 
     protected function tearDown(): void

@@ -218,6 +218,18 @@ class Car extends Model
         ];
     }
 
+    public function hasReservingContracts(?int $exceptContractId = null): bool
+    {
+        $query = $this->contracts()
+            ->whereIn('current_status', static::reservingStatuses());
+
+        if ($exceptContractId) {
+            $query->where('id', '!=', $exceptContractId);
+        }
+
+        return $query->exists();
+    }
+
     /**
      * متد برای دریافت خودروهای با وضعیت خاص.
      *

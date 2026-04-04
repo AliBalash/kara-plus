@@ -7,6 +7,7 @@ use App\Models\CarModel;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Services\Media\DeferredImageUploadService;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Str;
@@ -57,8 +58,31 @@ class EditCarForm extends Component
     {
         return [
             'plate_number' => 'required|string|max:255',
-            'status' => 'required|in:available,pre_reserved,reserved,under_maintenance',
-            'availability' => 'required|boolean',
+            'status' => [
+                'required',
+                Rule::in(['available', 'pre_reserved', 'reserved', 'under_maintenance', 'sold']),
+                function ($attribute, $value, $fail) {
+                    if ($value !== 'sold') {
+                        return;
+                    }
+
+                    if ($this->car && $this->car->hasReservingContracts()) {
+                        $fail('This car cannot be marked as sold while it has active or upcoming reservations.');
+                    }
+                },
+            ],
+            'availability' => [
+                'required',
+                'boolean',
+                function ($attribute, $value, $fail) {
+                    if (
+                        $this->status === 'sold'
+                        && in_array($value, [true, 1, '1', 'true'], true)
+                    ) {
+                        $fail('Sold cars cannot be marked as available.');
+                    }
+                },
+            ],
             'mileage' => 'required|numeric|min:0',
             'price_per_day_short' => 'required|numeric|min:0',
             'price_per_day_mid' => 'required|numeric|min:0',
@@ -100,7 +124,7 @@ class EditCarForm extends Component
         'plate_number.required' => 'The plate number is required.',
         'plate_number.max' => 'The plate number cannot exceed 255 characters.',
         'status.required' => 'The status is required.',
-        'status.in' => 'The status must be one of available, pre-reserved, reserved, or under maintenance.',
+        'status.in' => 'The status must be one of available, pre-reserved, reserved, under maintenance, or sold.',
         'availability.required' => 'The availability is required.',
         'mileage.required' => 'The mileage is required.',
         'mileage.numeric' => 'The mileage must be a number.',
@@ -225,6 +249,13 @@ class EditCarForm extends Component
         $this->deferredUploader = $deferredUploader;
     }
 
+    public function updatedStatus($status): void
+    {
+        if ($status === 'sold') {
+            $this->availability = false;
+        }
+    }
+
     protected function prepareForValidation($attributes)
     {
         $decimalFields = [
@@ -289,6 +320,10 @@ class EditCarForm extends Component
     public function submit()
     {
         $validated = $this->validate();
+
+        if ($validated['status'] === 'sold') {
+            $validated['availability'] = false;
+        }
 
         $decimalFields = [
             'price_per_day_short',
