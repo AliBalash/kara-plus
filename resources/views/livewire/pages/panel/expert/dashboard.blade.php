@@ -286,7 +286,7 @@
             <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex flex-wrap gap-3 justify-content-between align-items-center">
                 <div>
                     <h5 class="fw-bold mb-1"><i class="bi bi-ev-front text-primary me-2"></i>Available Fleet</h5>
-                    <span class="text-muted small">{{ $availableCarsTotal }} returned vehicle{{ $availableCarsTotal === 1 ? '' : 's' }} currently parked and rental-ready</span>
+                    <span class="text-muted small">{{ $availableCarsTotal }} returned vehicle{{ $availableCarsTotal === 1 ? '' : 's' }} currently parked</span>
                 </div>
                 <a href="{{ route('car.list') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-card-checklist me-1"></i>Manage Cars
@@ -311,6 +311,7 @@
                             <select class="form-select form-select-sm" wire:model.defer="availableReadiness">
                                 <option value="available">Available Only</option>
                                 <option value="available_pre_reserved">Available + Pre-Reserved</option>
+                                <option value="unavailable">Un Available</option>
                             </select>
 
                             <select class="form-select form-select-sm" wire:model.defer="availableBrand">
@@ -396,10 +397,12 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @if ($car->status === 'pre_reserved')
+                                            @if ($car->status === 'pre_reserved' && $car->availability)
                                                 <span class="badge bg-info-subtle text-info">Available now · booked next</span>
-                                            @else
+                                            @elseif ($car->status === 'available' && $car->availability)
                                                 <span class="badge bg-success-subtle text-success">Ready to rent</span>
+                                            @else
+                                                <span class="badge bg-danger-subtle text-danger">Unavailable</span>
                                             @endif
                                         </td>
                                         <td>

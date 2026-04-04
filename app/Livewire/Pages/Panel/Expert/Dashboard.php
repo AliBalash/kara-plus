@@ -66,7 +66,7 @@ class Dashboard extends Component
     public string $availableSearch = '';
 
     private const AVAILABLE_FLEET_SCOPES = ['our', 'all', 'partners'];
-    private const AVAILABLE_READINESS_FILTERS = ['available', 'available_pre_reserved'];
+    private const AVAILABLE_READINESS_FILTERS = ['available', 'available_pre_reserved', 'unavailable'];
     private const AVAILABLE_SORT_OPTIONS = [
         'returned_latest',
         'returned_oldest',
@@ -480,13 +480,20 @@ class Dashboard extends Component
             ->joinSub($this->latestReturnedAtSubquery(), 'latest_returns', function ($join) {
                 $join->on('latest_returns.car_id', '=', 'cars.id');
             })
-            ->where('cars.availability', true)
             ->withoutActiveReservations();
 
         if ($this->availableReadiness === 'available') {
-            $query->where('cars.status', 'available');
+            $query->where('cars.availability', true)
+                ->where('cars.status', 'available');
+        } elseif ($this->availableReadiness === 'available_pre_reserved') {
+            $query->where('cars.availability', true)
+                ->whereIn('cars.status', ['available', 'pre_reserved']);
         } else {
-            $query->whereIn('cars.status', ['available', 'pre_reserved']);
+            $query->where(function (Builder $builder) {
+                $builder->where('cars.availability', false)
+                    ->orWhereNotIn('cars.status', ['available', 'pre_reserved'])
+                    ->orWhereNull('cars.status');
+            });
         }
 
         if ($this->availableFleetScope === 'our') {

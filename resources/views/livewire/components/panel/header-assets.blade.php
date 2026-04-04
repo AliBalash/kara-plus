@@ -65,6 +65,25 @@
                 z-index: 2;
             }
 
+            .result-card-vehicle .result-card-overlay {
+                z-index: 3;
+            }
+
+            .result-card-vehicle > :not(.result-card-overlay) {
+                pointer-events: none;
+            }
+
+            .result-card-vehicle a:not(.result-card-overlay),
+            .result-card-vehicle button,
+            .result-card-vehicle input,
+            .result-card-vehicle select,
+            .result-card-vehicle textarea,
+            .result-card-vehicle label {
+                pointer-events: auto;
+                position: relative;
+                z-index: 4;
+            }
+
             .result-card:hover,
             .result-card:focus-visible {
                 transform: translateY(-4px);

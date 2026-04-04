@@ -181,7 +181,7 @@
                                 $mileage = $car->mileage !== null ? number_format($car->mileage) . ' km' : 'Mileage —';
                                 $price = $car->price_per_day !== null ? number_format($car->price_per_day, 2) . ' AED / day' : 'Rate —';
                             @endphp
-                            <article class="result-card" role="listitem"
+                            <article class="result-card result-card-vehicle" role="listitem"
                                 wire:key="search-result-{{ $car->id }}">
                                 <a href="{{ route('car.edit', $car->id) }}" class="result-card-overlay"
                                     aria-label="Open {{ $car->fullname() }} details" title="Open vehicle"></a>
