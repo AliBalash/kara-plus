@@ -50,6 +50,7 @@ Thumbs.db
 .phpunit.result.cache
 
 # Temporary files
+/tmp/
 *.bak
 *.tmp
 *.temp

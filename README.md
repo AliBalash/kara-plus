@@ -93,16 +93,24 @@ Main steps:
 3. Install Composer deps (no-dev)
 4. Create storage link
 5. Run migrations
-6. Cache config/routes/views
+6. Normalize runtime permissions + rebuild Laravel caches as `www-data`
 7. Restart queue workers
 
 > The deploy script runs on the server and uses `git reset --hard`.
+> To avoid `500 Permission denied` in `storage/framework/views`, do not run `artisan` as root inside the app container.
 
 ---
 
 ## Database Backups
 
-Backup script: `scripts/backup-mysql-to-gdrive.sh`
+Local backup script: `scripts/backup-mysql-local.sh`
+
+Features:
+- Dumps MySQL from the container and compresses output
+- Keeps local backups in `backups/mysql`
+- Retains only the last 10 days
+
+Google Drive backup script: `scripts/backup-mysql-to-gdrive.sh`
 
 Features:
 - Dumps MySQL from the container, compresses output
@@ -112,6 +120,9 @@ Features:
 Required config:
 - `.env` (DB credentials)
 - `/etc/kara-plus/backup.env` (rclone + retention settings)
+
+Example cron (twice daily):
+- `15 0,12 * * * /bin/bash /opt/apps/kara-plus/scripts/backup-mysql-local.sh >> /opt/apps/kara-plus/tmp/mysql-backup.log 2>&1`
 
 ---
 
