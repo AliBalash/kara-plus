@@ -227,6 +227,7 @@ class RentalRequestCreate extends Component
         }
 
         $this->carsForModel = Car::where('car_model_id', $this->selectedModelId)
+            ->where('status', '!=', 'sold')
             ->with(['carModel', 'currentContract.customer'])
             ->orderBy('plate_number')
             ->get();
@@ -457,7 +458,19 @@ class RentalRequestCreate extends Component
         return [
             'selectedBrand' => ['required', 'string'],
             'selectedModelId' => ['required', 'exists:car_models,id'],
-            'selectedCarId' => ['required', 'exists:cars,id'],
+            'selectedCarId' => [
+                'required',
+                'exists:cars,id',
+                function ($attribute, $value, $fail) {
+                    $car = Car::query()
+                        ->select(['id', 'status'])
+                        ->find($value);
+
+                    if ($car && $car->status === 'sold') {
+                        $fail('The selected car has been sold and cannot be used for reservations.');
+                    }
+                },
+            ],
             'agent_id' => ['nullable', 'exists:agents,id'],
             'pickup_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'return_location' => ['required', Rule::in(array_keys($this->locationCosts))],

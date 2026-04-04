@@ -156,6 +156,37 @@ class RentalRequestCreateTest extends TestCase
         $this->assertEquals('Contract status changed to Reserved successfully.', session('success'));
     }
 
+    public function test_load_cars_excludes_sold_cars_from_selection(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $carModel = CarModel::factory()->create([
+            'brand' => 'Kia',
+            'model' => 'Sportage',
+        ]);
+
+        $availableCar = Car::factory()->create([
+            'car_model_id' => $carModel->id,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        $soldCar = Car::factory()->sold()->create([
+            'car_model_id' => $carModel->id,
+        ]);
+
+        $component = app(RentalRequestCreate::class);
+        $component->mount();
+        $component->selectedModelId = $carModel->id;
+        $component->updatedSelectedModelId();
+
+        $carIds = collect($component->carsForModel)->pluck('id')->all();
+
+        $this->assertContains($availableCar->id, $carIds);
+        $this->assertNotContains($soldCar->id, $carIds);
+    }
+
     public function test_assign_to_me_sets_user_and_status(): void
     {
         $user = User::factory()->create();
