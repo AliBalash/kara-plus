@@ -73,6 +73,33 @@ vendor/bin/phpunit
 
 ---
 
+## Public Reservation API (For React Frontend)
+
+Public endpoints are available under:
+
+`/api/public/reservations`
+
+Routes:
+
+- `GET /bootstrap`
+- `GET /brands`
+- `GET /models?brand=...`
+- `GET /cars?model_id=...&pickup_date=...&return_date=...`
+- `POST /quote`
+- `POST /`
+
+Rate limit:
+
+- `120 requests / minute / IP` (limiter key: `reservation-public`)
+
+CORS:
+
+- Controlled by `config/cors.php`
+- Allowed origins from env:
+  - `CORS_ALLOWED_ORIGINS=*` (comma separated for multiple origins)
+
+---
+
 ## CI/CD
 
 Workflow file: `.github/workflows/ci-cd.yml`
