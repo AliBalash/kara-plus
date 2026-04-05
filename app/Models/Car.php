@@ -11,6 +11,11 @@ class Car extends Model
     use HasFactory;
 
     /**
+     * @var array<string, array<int, string>>
+     */
+    private static array $imageDirectoryCache = [];
+
+    /**
      * ویژگی‌های قابل پر کردن (mass assignable).
      *
      * @var array
@@ -251,28 +256,155 @@ class Car extends Model
     public function primaryImageUrl(): string
     {
         if ($this->image) {
-            return $this->resolveImageUrl($this->image);
+            $url = $this->resolveImageUrl($this->image);
+            if ($url !== null) {
+                return $url;
+            }
         }
 
         if ($this->carModel?->image) {
-            return $this->resolveImageUrl($this->carModel->image);
+            $url = $this->resolveImageUrl($this->carModel->image);
+            if ($url !== null) {
+                return $url;
+            }
         }
 
-        return asset('assets/car-pics/car test.webp');
+        return $this->publicAssetUrl('assets/car-pics/car test.webp');
     }
 
-    private function resolveImageUrl(Image $image): string
+    private function resolveImageUrl(Image $image): ?string
     {
-        $path = ltrim($image->file_path, '/');
+        $fileName = trim((string) $image->file_name);
+        if ($fileName === '') {
+            return null;
+        }
+
+        $path = trim((string) $image->file_path);
+        $path = ltrim($path, '/');
+
+        if ($path === '') {
+            return null;
+        }
 
         if (! str_starts_with($path, 'assets/')) {
             $path = 'assets/' . $path;
         }
 
-        if (! str_ends_with($path, '/')) {
-            $path .= '/';
+        $path = rtrim($path, '/');
+        $relativePath = $path . '/' . $fileName;
+
+        if (! is_file(public_path($relativePath))) {
+            $matchedPath = $this->resolveClosestImagePath($path, $fileName);
+            if ($matchedPath === null) {
+                return null;
+            }
+
+            return $this->publicAssetUrl($matchedPath);
         }
 
-        return asset($path . $image->file_name);
+        return $this->publicAssetUrl($relativePath);
+    }
+
+    private function resolveClosestImagePath(string $basePath, string $requestedFileName): ?string
+    {
+        $candidateFiles = $this->imageFilesInDirectory($basePath);
+        if ($candidateFiles === []) {
+            return null;
+        }
+
+        $targetKey = $this->normalizeImageKey(pathinfo($requestedFileName, PATHINFO_FILENAME));
+        if ($targetKey === '') {
+            return null;
+        }
+
+        $bestMatch = null;
+        $bestScore = PHP_INT_MAX;
+
+        foreach ($candidateFiles as $candidateFileName) {
+            $candidateKey = $this->normalizeImageKey(pathinfo($candidateFileName, PATHINFO_FILENAME));
+            if ($candidateKey === '') {
+                continue;
+            }
+
+            if ($candidateKey === $targetKey) {
+                return $basePath . '/' . $candidateFileName;
+            }
+
+            if (!str_contains($candidateKey, $targetKey) && !str_contains($targetKey, $candidateKey)) {
+                continue;
+            }
+
+            $distance = levenshtein($targetKey, $candidateKey);
+            $lengthPenalty = abs(strlen($candidateKey) - strlen($targetKey));
+            $score = $distance + $lengthPenalty;
+
+            if ($score < $bestScore) {
+                $bestScore = $score;
+                $bestMatch = $candidateFileName;
+            }
+        }
+
+        if ($bestMatch === null) {
+            return null;
+        }
+
+        return $basePath . '/' . $bestMatch;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function imageFilesInDirectory(string $relativeDirectory): array
+    {
+        $normalizedDirectory = trim($relativeDirectory, '/');
+        if (isset(self::$imageDirectoryCache[$normalizedDirectory])) {
+            return self::$imageDirectoryCache[$normalizedDirectory];
+        }
+
+        $absoluteDirectory = public_path($normalizedDirectory);
+        if (!is_dir($absoluteDirectory)) {
+            self::$imageDirectoryCache[$normalizedDirectory] = [];
+
+            return [];
+        }
+
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
+        $files = [];
+
+        foreach (scandir($absoluteDirectory) ?: [] as $entry) {
+            $entry = trim((string) $entry);
+            if ($entry === '' || $entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $absolutePath = $absoluteDirectory . DIRECTORY_SEPARATOR . $entry;
+            if (!is_file($absolutePath)) {
+                continue;
+            }
+
+            $extension = strtolower((string) pathinfo($entry, PATHINFO_EXTENSION));
+            if (!in_array($extension, $allowedExtensions, true)) {
+                continue;
+            }
+
+            $files[] = $entry;
+        }
+
+        self::$imageDirectoryCache[$normalizedDirectory] = $files;
+
+        return $files;
+    }
+
+    private function normalizeImageKey(string $value): string
+    {
+        return (string) preg_replace('/[^a-z0-9]+/i', '', strtolower(trim($value)));
+    }
+
+    private function publicAssetUrl(string $relativePath): string
+    {
+        $segments = array_values(array_filter(explode('/', ltrim($relativePath, '/')), static fn (string $segment): bool => $segment !== ''));
+        $encodedPath = implode('/', array_map(static fn (string $segment): string => rawurlencode($segment), $segments));
+
+        return asset($encodedPath);
     }
 }
