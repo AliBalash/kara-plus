@@ -57,6 +57,45 @@ class ReservationQuoteRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'required' => ':attribute الزامی است.',
+            'required_with' => 'تکمیل :attribute الزامی است.',
+            'string' => ':attribute باید متن باشد.',
+            'integer' => ':attribute باید عدد صحیح باشد.',
+            'numeric' => ':attribute باید عددی باشد.',
+            'array' => ':attribute باید به‌صورت لیست ارسال شود.',
+            'date' => 'فرمت :attribute معتبر نیست.',
+            'after' => ':attribute باید بعد از تاریخ تحویل باشد.',
+            'exists' => ':attribute انتخاب‌شده معتبر نیست.',
+            'in' => ':attribute انتخاب‌شده معتبر نیست.',
+            'min' => ':attribute نمی‌تواند کمتر از :min باشد.',
+            'max' => ':attribute از حد مجاز بیشتر است.',
+            'boolean' => ':attribute باید true یا false باشد.',
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'selected_car_id' => 'خودرو',
+            'pickup_location' => 'محل تحویل',
+            'return_location' => 'محل بازگشت',
+            'pickup_date' => 'تاریخ تحویل',
+            'return_date' => 'تاریخ بازگشت',
+            'selected_services' => 'خدمات جانبی',
+            'selected_services.*' => 'خدمت جانبی',
+            'service_quantities' => 'تعداد خدمات',
+            'service_quantities.*' => 'تعداد خدمت',
+            'selected_insurance' => 'بیمه',
+            'driving_license_option' => 'گزینه گواهینامه',
+            'driver_hours' => 'ساعت راننده',
+            'apply_discount' => 'اعمال تخفیف',
+            'custom_daily_rate' => 'نرخ روزانه سفارشی',
+        ];
+    }
+
     public function withValidator(Validator $validator): void
     {
         $serviceKeys = $this->serviceKeys();
@@ -74,7 +113,7 @@ class ReservationQuoteRequest extends FormRequest
                 if (!in_array((string) $serviceId, $serviceKeys, true)) {
                     $validator->errors()->add(
                         "service_quantities.{$serviceId}",
-                        'The selected service quantity key is invalid.'
+                        'کلید تعداد خدمت انتخاب‌شده معتبر نیست.'
                     );
                 }
             }

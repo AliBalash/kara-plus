@@ -33,6 +33,45 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
         ]);
     }
 
+    public function messages(): array
+    {
+        return array_merge(parent::messages(), [
+            'email.email' => 'فرمت ایمیل معتبر نیست.',
+            'phone.regex' => 'شماره تماس باید با + شروع شود و بین ۸ تا ۱۵ رقم باشد.',
+            'messenger_phone.regex' => 'شماره پیام‌رسان باید با + شروع شود و بین ۸ تا ۱۵ رقم باشد.',
+            'birth_date.before_or_equal' => 'تاریخ تولد نمی‌تواند بعد از امروز باشد.',
+            'passport_expiry_date.after_or_equal' => 'تاریخ انقضای پاسپورت باید امروز یا بعد از آن باشد.',
+            'deposit_category.in' => 'نوع ودیعه انتخاب‌شده معتبر نیست.',
+        ]);
+    }
+
+    public function attributes(): array
+    {
+        return array_merge(parent::attributes(), [
+            'first_name' => 'نام',
+            'last_name' => 'نام خانوادگی',
+            'email' => 'ایمیل',
+            'phone' => 'شماره تماس',
+            'messenger_phone' => 'شماره پیام‌رسان',
+            'address' => 'آدرس',
+            'birth_date' => 'تاریخ تولد',
+            'national_code' => 'کد ملی/شناسه',
+            'passport_number' => 'شماره پاسپورت',
+            'passport_expiry_date' => 'تاریخ انقضای پاسپورت',
+            'nationality' => 'ملیت',
+            'license_number' => 'شماره گواهینامه',
+            'licensed_driver_name' => 'نام راننده دارای گواهینامه',
+            'agent_id' => 'کارشناس',
+            'submitted_by_name' => 'ثبت‌کننده',
+            'notes' => 'توضیحات',
+            'driver_note' => 'یادداشت راننده',
+            'kardo_required' => 'نیاز به کاردو',
+            'payment_on_delivery' => 'پرداخت در محل',
+            'deposit_category' => 'نوع ودیعه',
+            'deposit' => 'مبلغ/جزئیات ودیعه',
+        ]);
+    }
+
     private function depositRules(): array
     {
         $rules = ['nullable'];
