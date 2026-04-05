@@ -192,7 +192,7 @@ class PublicReservationService
             $quote = $this->buildQuote($normalized, $car);
             if (($quote['availability']['has_conflict'] ?? false) === true) {
                 throw ValidationException::withMessages([
-                    'selected_car_id' => [$quote['availability']['message'] ?? 'The selected vehicle is not available for the selected dates.'],
+                    'selected_car_id' => [$quote['availability']['message'] ?? 'خودروی انتخاب‌شده در بازه زمانی انتخابی در دسترس نیست.'],
                 ]);
             }
 
@@ -433,7 +433,7 @@ class PublicReservationService
                 'has_conflict' => $hasConflict,
                 'message' => $hasConflict
                     ? sprintf(
-                        'The selected car is already reserved from %s to %s.',
+                        'این خودرو از %s تا %s قبلا رزرو شده است.',
                         $conflicts[0]['pickup_date'],
                         $conflicts[0]['return_date']
                     )
