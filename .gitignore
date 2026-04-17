@@ -54,3 +54,11 @@ Thumbs.db
 *.bak
 *.tmp
 *.temp
+
+# Local runtime folders
+/tmp/
+
+# Local databases / dumps
+/database/*.sqlite
+/database/*.sqlite-*
+/database/*.sql
