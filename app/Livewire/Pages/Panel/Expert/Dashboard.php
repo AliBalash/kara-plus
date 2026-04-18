@@ -71,7 +71,7 @@ class Dashboard extends Component
     public array $availableBrands = [];
     public string $availableFleetScope = 'our';
     public string $availableReadiness = 'available';
-    public string $availableSort = 'returned_oldest';
+    public string $availableSort = 'returned_latest';
     public string $availableSearch = '';
 
     private const AVAILABLE_FLEET_SCOPES = ['our', 'all', 'partners'];
@@ -170,6 +170,7 @@ class Dashboard extends Component
 
         if (! $this->isDriver) {
             $this->normalizeAvailableFleetFilters();
+            $this->buildFleetStatusSummary();
             $this->prepareAvailableBrands();
             $data['availableCars'] = $this->availableCars;
             $data['availableBrands'] = $this->availableBrands;
@@ -403,25 +404,30 @@ class Dashboard extends Component
 
     protected function buildFleetStatusSummary(): void
     {
-        $summary = Car::query()
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw("SUM(CASE WHEN cars.status = 'available' AND cars.availability = 1 THEN 1 ELSE 0 END) as available")
-            ->selectRaw("SUM(CASE WHEN cars.status IN ('reserved', 'pre_reserved') THEN 1 ELSE 0 END) as booked")
-            ->first();
+        $summaryScope = 'our';
 
-        $total = (int) ($summary->total ?? 0);
-        $available = (int) ($summary->available ?? 0);
-        $booked = (int) ($summary->booked ?? 0);
+        $carsInScope = Car::query();
+        $this->applyAvailableFleetScope($carsInScope, $summaryScope);
+
+        $total = (int) (clone $carsInScope)->count('cars.id');
+        $available = (int) $this->applyAvailableFleetReadiness(
+            $this->baseAvailableFleetQuery($summaryScope),
+            'available'
+        )->count('cars.id');
+        $booked = (int) (clone $carsInScope)
+            ->whereIn('cars.status', ['reserved', 'pre_reserved'])
+            ->count('cars.id');
         $unavailable = max($total - ($available + $booked), 0);
 
         $reservationStatuses = array_values(array_diff(Car::reservingStatuses(), ['pending']));
 
-        $activeReservations = Contract::query()
-            ->whereIn('current_status', $reservationStatuses)
-            ->count();
+        $reservationsInScope = Contract::query()
+            ->whereIn('current_status', $reservationStatuses);
+        $this->applyAvailableFleetScopeToContracts($reservationsInScope, $summaryScope);
 
-        $upcomingPickups = Contract::query()
-            ->whereIn('current_status', $reservationStatuses)
+        $activeReservations = (int) (clone $reservationsInScope)->count();
+
+        $upcomingPickups = (int) (clone $reservationsInScope)
             ->whereNotNull('pickup_date')
             ->where('pickup_date', '>', Carbon::now())
             ->count();
@@ -521,49 +527,7 @@ class Dashboard extends Component
 
     protected function availableFleetQuery(bool $applyBrandFilter = true, bool $applySearchFilter = true): Builder
     {
-        $query = Car::query()
-            ->select('cars.*', 'latest_returns.latest_returned_at')
-            ->joinSub($this->latestReturnedAtSubquery(), 'latest_returns', function ($join) {
-                $join->on('latest_returns.car_id', '=', 'cars.id');
-            })
-            ->withoutActiveReservations();
-
-        if ($this->availableReadiness === 'available') {
-            $query->where('cars.availability', true)
-                ->where('cars.status', 'available');
-        } elseif ($this->availableReadiness === 'available_pre_reserved') {
-            $query->where('cars.availability', true)
-                ->whereIn('cars.status', ['available', 'pre_reserved']);
-        } else {
-            $query->where(function (Builder $builder) {
-                $builder->where('cars.availability', false)
-                    ->orWhereNotIn('cars.status', ['available', 'pre_reserved'])
-                    ->orWhereNull('cars.status');
-            });
-        }
-
-        if ($this->availableFleetScope === 'our') {
-            $query->where(function (Builder $builder) {
-                $builder->where('cars.ownership_type', 'company')
-                    ->orWhere(function (Builder $fallback) {
-                        $fallback->whereNull('cars.ownership_type')
-                            ->where('cars.is_company_car', true);
-                    });
-            });
-        } elseif ($this->availableFleetScope === 'partners') {
-            $query->where(function (Builder $builder) {
-                $builder->where(function (Builder $owned) {
-                    $owned->whereNotNull('cars.ownership_type')
-                        ->where('cars.ownership_type', '!=', 'company');
-                })->orWhere(function (Builder $fallback) {
-                    $fallback->whereNull('cars.ownership_type')
-                        ->where(function (Builder $legacyFlag) {
-                            $legacyFlag->where('cars.is_company_car', false)
-                                ->orWhereNull('cars.is_company_car');
-                        });
-                });
-            });
-        }
+        $query = $this->applyAvailableFleetReadiness($this->baseAvailableFleetQuery());
 
         if ($applyBrandFilter && $this->availableBrand !== 'all') {
             $query->whereHas('carModel', function (Builder $builder) {
@@ -587,6 +551,85 @@ class Dashboard extends Component
         return $query;
     }
 
+    protected function baseAvailableFleetQuery(?string $scope = null): Builder
+    {
+        $query = Car::query()
+            ->select('cars.*', 'latest_returns.latest_returned_at')
+            // Keep cars with no historical return visible in the available fleet list.
+            ->leftJoinSub($this->latestReturnedAtSubquery(), 'latest_returns', function ($join) {
+                $join->on('latest_returns.car_id', '=', 'cars.id');
+            })
+            ->withoutActiveReservations();
+
+        $this->applyAvailableFleetScope($query, $scope);
+
+        return $query;
+    }
+
+    protected function applyAvailableFleetReadiness(Builder $query, ?string $readiness = null): Builder
+    {
+        $readiness ??= $this->availableReadiness;
+
+        if ($readiness === 'available') {
+            return $query->where('cars.availability', true)
+                ->where('cars.status', 'available');
+        }
+
+        if ($readiness === 'available_pre_reserved') {
+            return $query->where('cars.availability', true)
+                ->whereIn('cars.status', ['available', 'pre_reserved']);
+        }
+
+        return $query->where(function (Builder $builder) {
+            $builder->where('cars.availability', false)
+                ->orWhereNotIn('cars.status', ['available', 'pre_reserved'])
+                ->orWhereNull('cars.status');
+        });
+    }
+
+    protected function applyAvailableFleetScope(Builder $query, ?string $scope = null): Builder
+    {
+        $scope ??= $this->availableFleetScope;
+
+        if ($scope === 'our') {
+            $query->where(function (Builder $builder) {
+                $builder->where('cars.ownership_type', 'company')
+                    ->orWhere(function (Builder $fallback) {
+                        $fallback->whereNull('cars.ownership_type')
+                            ->where('cars.is_company_car', true);
+                    });
+            });
+        } elseif ($scope === 'partners') {
+            $query->where(function (Builder $builder) {
+                $builder->where(function (Builder $owned) {
+                    $owned->whereNotNull('cars.ownership_type')
+                        ->where('cars.ownership_type', '!=', 'company');
+                })->orWhere(function (Builder $fallback) {
+                    $fallback->whereNull('cars.ownership_type')
+                        ->where(function (Builder $legacyFlag) {
+                            $legacyFlag->where('cars.is_company_car', false)
+                                ->orWhereNull('cars.is_company_car');
+                        });
+                });
+            });
+        }
+
+        return $query;
+    }
+
+    protected function applyAvailableFleetScopeToContracts(Builder $query, ?string $scope = null): Builder
+    {
+        $scope ??= $this->availableFleetScope;
+
+        if ($scope === 'all') {
+            return $query;
+        }
+
+        return $query->whereHas('car', function (Builder $builder) use ($scope) {
+            $this->applyAvailableFleetScope($builder, $scope);
+        });
+    }
+
     protected function latestReturnedAtSubquery(): Builder
     {
         return ContractStatus::query()
@@ -600,12 +643,12 @@ class Dashboard extends Component
     protected function applyAvailableFleetSort(Builder $query): void
     {
         match ($this->availableSort) {
-            'returned_oldest' => $query->orderBy('latest_returns.latest_returned_at'),
+            'returned_oldest' => $query->orderByRaw('latest_returns.latest_returned_at IS NULL, latest_returns.latest_returned_at ASC'),
             'service_due_soon' => $query->orderByRaw('cars.service_due_date IS NULL, cars.service_due_date ASC'),
             'service_due_late' => $query->orderByRaw('cars.service_due_date IS NULL, cars.service_due_date DESC'),
             'year_newest' => $query->orderByDesc('cars.manufacturing_year'),
             'year_oldest' => $query->orderBy('cars.manufacturing_year'),
-            default => $query->orderByDesc('latest_returns.latest_returned_at'),
+            default => $query->orderByRaw('latest_returns.latest_returned_at IS NULL, latest_returns.latest_returned_at DESC'),
         };
 
         $query

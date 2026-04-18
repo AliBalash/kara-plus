@@ -272,6 +272,7 @@
             $fleetUpcomingPickups = (int) ($fleetStatusSummary['upcoming_pickups'] ?? 0);
             $fleetTotal = (int) ($fleetStatusSummary['total'] ?? 0);
             $fleetAvailabilityRate = (int) ($fleetStatusSummary['availability_rate'] ?? 0);
+            $fleetScopeLabel = 'Our Fleet';
 
             $fleetSummaryCards = [
                 [
@@ -327,9 +328,13 @@
                     <div>
                         <span class="fleet-status-hero__eyebrow">Fleet Status Report</span>
                         <h5 class="fw-bold mb-1">Live machine readiness snapshot</h5>
-                        <p class="text-muted mb-0">Instant view of availability, unavailability, and reservation pressure.</p>
+                        <p class="text-muted mb-0">Instant view of availability, unavailability, and reservation pressure for {{ $fleetScopeLabel }}.</p>
                     </div>
                     <div class="fleet-status-hero__meta">
+                        <span class="fleet-status-hero__pill">
+                            <i class="bi bi-funnel me-1"></i>
+                            Scope <strong>{{ $fleetScopeLabel }}</strong>
+                        </span>
                         <span class="fleet-status-hero__pill">
                             <i class="bi bi-car-front me-1"></i>
                             Total Fleet <strong>{{ number_format($fleetTotal) }}</strong>
@@ -367,8 +372,8 @@
         <div class="card shadow-lg border-0 rounded-4 mb-4">
             <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex flex-wrap gap-3 justify-content-between align-items-center">
                 <div>
-                    <h5 class="fw-bold mb-1"><i class="bi bi-ev-front text-primary me-2"></i>Available Fleet</h5>
-                    <span class="text-muted small">{{ $availableCarsTotal }} returned vehicle{{ $availableCarsTotal === 1 ? '' : 's' }} currently parked</span>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-ev-front text-primary me-2"></i>Fleet Inventory</h5>
+                    <span class="text-muted small">{{ $availableCarsTotal }} vehicle{{ $availableCarsTotal === 1 ? '' : 's' }} currently matching the selected filters</span>
                 </div>
                 <a href="{{ route('car.list') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-card-checklist me-1"></i>Manage Cars
@@ -429,7 +434,7 @@
                 </div>
 
                 @if ($availableCars->isEmpty())
-                    <div class="text-center text-muted py-5">No returned rental-ready vehicles found for the selected filters.</div>
+                    <div class="text-center text-muted py-5">No vehicles found for the selected filters.</div>
                 @else
                     <div class="table-responsive position-relative"
                         wire:key="available-fleet-table-{{ $availableFleetScope }}-{{ $availableReadiness }}-{{ $availableBrand }}-{{ $availableSort }}-{{ md5((string) $availableSearch) }}"

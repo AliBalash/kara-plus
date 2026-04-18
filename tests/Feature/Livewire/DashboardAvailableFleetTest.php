@@ -29,7 +29,7 @@ class DashboardAvailableFleetTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_available_fleet_defaults_to_our_returned_and_available_cars_sorted_by_latest_return(): void
+    public function test_available_fleet_defaults_to_our_available_cars_sorted_by_latest_return_with_never_returned_cars_last(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -67,7 +67,7 @@ class DashboardAvailableFleetTest extends TestCase
             ]
         );
 
-        Car::factory()->available()->create([
+        $ourNoReturn = Car::factory()->available()->create([
             'plate_number' => 'OUR-NORET',
             'ownership_type' => 'company',
             'is_company_car' => true,
@@ -91,8 +91,8 @@ class DashboardAvailableFleetTest extends TestCase
 
         $cars = $component->getAvailableCarsProperty();
 
-        $this->assertSame([$ourLatest->id, $ourOlder->id], $cars->pluck('id')->all());
-        $this->assertSame(2, $component->getAvailableCarsTotalProperty());
+        $this->assertSame([$ourLatest->id, $ourOlder->id, $ourNoReturn->id], $cars->pluck('id')->all());
+        $this->assertSame(3, $component->getAvailableCarsTotalProperty());
     }
 
     public function test_switching_scope_to_all_includes_other_fleets_and_supports_oldest_return_sort(): void
@@ -181,32 +181,138 @@ class DashboardAvailableFleetTest extends TestCase
         $this->assertSame([$availableCar->id, $preReservedCar->id], $carsWithPreReserved->pluck('id')->all());
     }
 
+    public function test_fleet_status_summary_stays_locked_to_our_fleet_when_inventory_scope_changes(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $ourReturned = $this->createReturnedCar(
+            returnedAt: '2026-03-31 08:45:00',
+            carOverrides: [
+                'plate_number' => 'OUR-9201',
+                'ownership_type' => 'company',
+                'is_company_car' => true,
+                'status' => 'available',
+                'availability' => true,
+            ]
+        );
+
+        $ourNeverReturned = Car::factory()->available()->create([
+            'plate_number' => 'OUR-9202',
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        $partnerReturned = $this->createReturnedCar(
+            returnedAt: '2026-03-31 08:15:00',
+            carOverrides: [
+                'plate_number' => 'PTN-9201',
+                'ownership_type' => 'golden_key',
+                'is_company_car' => false,
+                'status' => 'available',
+                'availability' => true,
+            ]
+        );
+
+        $ourBooked = Car::factory()->create([
+            'plate_number' => 'OUR-BOOK',
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+            'status' => 'reserved',
+            'availability' => false,
+        ]);
+
+        $partnerBooked = Car::factory()->create([
+            'plate_number' => 'PTN-BOOK',
+            'ownership_type' => 'liverpool',
+            'is_company_car' => false,
+            'status' => 'reserved',
+            'availability' => false,
+        ]);
+
+        Contract::factory()->create([
+            'car_id' => $ourBooked->id,
+            'current_status' => 'assigned',
+            'pickup_date' => now()->addHours(4),
+            'return_date' => now()->addDays(2),
+        ]);
+
+        Contract::factory()->create([
+            'car_id' => $partnerBooked->id,
+            'current_status' => 'assigned',
+            'pickup_date' => now()->addHours(6),
+            'return_date' => now()->addDays(3),
+        ]);
+
+        $component = app(Dashboard::class);
+        $component->mount();
+
+        $ourFleetSummary = [
+            'total' => 3,
+            'available' => 2,
+            'booked' => 1,
+            'unavailable' => 0,
+            'availability_rate' => 67,
+            'active_reservations' => 1,
+            'upcoming_pickups' => 1,
+        ];
+
+        $this->assertSame($ourFleetSummary, $component->fleetStatusSummary);
+
+        $this->assertSame([$ourReturned->id, $ourNeverReturned->id], $component->getAvailableCarsProperty()->pluck('id')->all());
+        $this->assertSame($component->fleetStatusSummary['available'], $component->getAvailableCarsTotalProperty());
+
+        $component->availableFleetScope = 'all';
+        $component->render();
+
+        $this->assertSame($ourFleetSummary, $component->fleetStatusSummary);
+
+        $this->assertSame(
+            [$ourReturned->id, $partnerReturned->id, $ourNeverReturned->id],
+            $component->getAvailableCarsProperty()->pluck('id')->all()
+        );
+        $this->assertSame(3, $component->getAvailableCarsTotalProperty());
+        $this->assertNotSame($component->fleetStatusSummary['available'], $component->getAvailableCarsTotalProperty());
+    }
+
     public function test_dashboard_builds_fleet_status_summary_with_reservations_and_availability_breakdown(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
 
         Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
             'status' => 'available',
             'availability' => true,
         ]);
 
         Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
             'status' => 'available',
             'availability' => false,
         ]);
 
         Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
             'status' => 'under_maintenance',
             'availability' => false,
         ]);
 
         $bookedNow = Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
             'status' => 'reserved',
             'availability' => false,
         ]);
 
         $bookedUpcoming = Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
             'status' => 'pre_reserved',
             'availability' => true,
         ]);
@@ -264,12 +370,16 @@ class DashboardAvailableFleetTest extends TestCase
             'return_date' => $returnedMoment->copy()->subHours(2),
         ]);
 
-        ContractStatus::factory()->create([
+        $status = ContractStatus::query()->create([
             'contract_id' => $contract->id,
             'status' => 'returned',
+        ]);
+
+        $status->timestamps = false;
+        $status->forceFill([
             'created_at' => $returnedMoment,
             'updated_at' => $returnedMoment,
-        ]);
+        ])->save();
 
         return $car;
     }
