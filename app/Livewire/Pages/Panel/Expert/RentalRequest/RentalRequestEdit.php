@@ -1400,7 +1400,9 @@ TEXT);
         $childSeatAmount = $childSeatQuantity * ($this->services['child_seat']['amount'] ?? 0);
 
         $securityHold = $sumAmount('security_deposit');
-        $customerPayments = (float) $payments->sum('amount_in_aed');
+        $customerPayments = (float) $payments
+            ->whereNotIn('payment_type', ['parking', 'salik', 'salik_4_aed', 'salik_6_aed', 'salik_other_revenue'])
+            ->sum('amount_in_aed');
         $balance = $this->contract->calculateRemainingBalance($payments);
         $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
         $balanceForNote = $balance;

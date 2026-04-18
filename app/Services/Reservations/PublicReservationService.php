@@ -31,7 +31,7 @@ class PublicReservationService
         return [
             'currency' => 'AED',
             'tax_rate' => self::TAX_RATE,
-            'min_pickup_at' => now()->toIso8601String(),
+            'min_pickup_at' => $this->minimumPickupAt()->format('Y-m-d H:i:s'),
             'services' => array_values(array_map(function (string $id, array $service): array {
                 return [
                     'id' => $id,
@@ -99,6 +99,7 @@ class PublicReservationService
         $return = $returnDate ? Carbon::parse($returnDate) : null;
 
         $cars = Car::query()
+            ->where('status', '!=', 'sold')
             ->with([
                 'carModel.image',
                 'options',
@@ -122,7 +123,7 @@ class PublicReservationService
         return $cars->map(function (Car $car) use ($conflictsByCarId): array {
             $conflicts = $conflictsByCarId[$car->id] ?? [];
             $hasConflict = count($conflicts) > 0;
-            $isAvailable = !$hasConflict && $car->status !== 'under_maintenance';
+            $isAvailable = !$hasConflict && $car->isAvailable();
 
             $activeContract = $car->currentContract;
 
@@ -177,8 +178,11 @@ class PublicReservationService
     {
         $normalized = $this->normalizeQuotePayload($payload);
         $car = Car::query()->with('carModel')->findOrFail($normalized['selected_car_id']);
+        $quote = $this->buildQuote($normalized, $car);
 
-        return $this->buildQuote($normalized, $car);
+        $this->ensureReservableOrFail($car, $normalized, $quote);
+
+        return $quote;
     }
 
     public function createReservation(array $payload): array
@@ -190,11 +194,7 @@ class PublicReservationService
             $car = Car::query()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
 
             $quote = $this->buildQuote($normalized, $car);
-            if (($quote['availability']['has_conflict'] ?? false) === true) {
-                throw ValidationException::withMessages([
-                    'selected_car_id' => [$quote['availability']['message'] ?? 'خودروی انتخاب‌شده در بازه زمانی انتخابی در دسترس نیست.'],
-                ]);
-            }
+            $this->ensureReservableOrFail($car, $normalized, $quote);
 
             $phone = PhoneNumber::normalize($payload['phone'] ?? null) ?? trim((string) ($payload['phone'] ?? ''));
             $messengerPhone = PhoneNumber::normalize($payload['messenger_phone'] ?? null) ?? trim((string) ($payload['messenger_phone'] ?? ''));
@@ -959,6 +959,42 @@ class PublicReservationService
     private function roundCurrency(float|int $value): float
     {
         return round((float) $value, 2);
+    }
+
+    private function ensureReservableOrFail(Car $car, array $normalized, array $quote): void
+    {
+        $errors = [];
+
+        if (($normalized['pickup'] ?? null) instanceof Carbon && $normalized['pickup']->lt($this->minimumPickupAt())) {
+            $errors['pickup_date'] = ['زمان تحویل باید از زمان فعلی بزرگ‌تر باشد.'];
+        }
+
+        if ($car->status === 'sold' || !$car->isAvailable()) {
+            $errors['selected_car_id'] = ['خودروی انتخاب‌شده در دسترس نیست.'];
+        }
+
+        if (($quote['availability']['has_conflict'] ?? false) === true) {
+            $errors['selected_car_id'] = [$quote['availability']['message'] ?? 'خودروی انتخاب‌شده در بازه زمانی انتخابی در دسترس نیست.'];
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function minimumPickupAt(): Carbon
+    {
+        $minimum = now()->copy()->addMinutes(30)->second(0);
+        $minutes = (int) $minimum->format('i');
+        $roundedMinutes = (int) (ceil($minutes / 30) * 30);
+
+        if ($roundedMinutes >= 60) {
+            $minimum->addHour()->minute(0);
+        } else {
+            $minimum->minute($roundedMinutes);
+        }
+
+        return $minimum;
     }
 
     private function nullableString(?string $value): ?string
