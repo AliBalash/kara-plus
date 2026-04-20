@@ -51,10 +51,15 @@ if ! $DOCKER_CMD info >/dev/null 2>&1; then
   fi
 fi
 
-echo "[2/7] Build & up (docker compose)"
-$DOCKER_CMD compose --env-file .env.docker -f docker-compose.yml up -d --build
+COMPOSE_ARGS=(--env-file .env.docker -f docker-compose.yml)
 
-APP_CID="$($DOCKER_CMD compose -f docker-compose.yml ps -q app)"
+echo "[1.6/7] Validate docker compose config"
+$DOCKER_CMD compose "${COMPOSE_ARGS[@]}" config >/dev/null
+
+echo "[2/7] Build & up (docker compose)"
+$DOCKER_CMD compose "${COMPOSE_ARGS[@]}" up -d --build
+
+APP_CID="$($DOCKER_CMD compose "${COMPOSE_ARGS[@]}" ps -q app)"
 if [ -z "$APP_CID" ]; then
   echo "Failed to resolve app container id."
   exit 1

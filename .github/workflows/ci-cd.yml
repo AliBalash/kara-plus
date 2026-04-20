@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-cd-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-cd-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -44,6 +44,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
       - name: Prepare Laravel directories
         run: |
           mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache
@@ -57,9 +69,15 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Validate Composer manifest
+        run: composer validate --strict
+
       - name: Get Composer cache dir
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Docker compose config
+        run: docker compose --env-file .env.docker -f docker-compose.yml config >/dev/null
 
       - name: Cache Composer
         uses: actions/cache@v4
