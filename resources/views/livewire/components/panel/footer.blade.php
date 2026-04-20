@@ -5,8 +5,7 @@
             <script>
                 document.write(new Date().getFullYear());
             </script>
-            , made with ❤️ by
-            <a href="https://omidmardan.com" target="_blank" class="footer-link fw-bolder">Omid Mardan</a>
+            Kara Plus. All rights reserved.
         </div>
         {{-- <div>
             <a href="https://themeselection.com/license/" class="footer-link me-4" target="_blank">License</a>
