@@ -271,6 +271,10 @@
                                     <img src="{{ $existingImageUrl }}" width="400" height="200"
                                         style="object-fit: cover; border-radius: 8px;" class="mb-3" loading="lazy"
                                         decoding="async" fetchpriority="low">
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                            wire:click="removeImage">Remove current image</button>
+                                    </div>
                                 @else
                                     <p class="text-muted">No image uploaded yet.</p>
                                 @endif
@@ -280,7 +284,8 @@
                             <div class="input-group mb-3">
                                 <span class="input-group-text">Update Image</span>
                                 <input type="file" class="form-control @error('newImage') is-invalid @enderror"
-                                    wire:model="newImage" accept="image/*">
+                                    wire:key="edit-car-image-{{ $fileInputVersion }}" wire:model="newImage"
+                                    accept="image/*">
                                 @error('newImage')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

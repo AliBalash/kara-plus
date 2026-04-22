@@ -5,8 +5,11 @@ namespace App\Livewire\Pages\Panel\Expert\Car;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Livewire\Concerns\InteractsWithToasts;
-use Illuminate\Validation\Rule;
+use App\Livewire\Concerns\RefreshesFileInputs;
+use App\Services\Media\DeferredImageUploadService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Str;
@@ -15,6 +18,7 @@ class CreateCarForm extends Component
 {
     use WithFileUploads;
     use InteractsWithToasts;
+    use RefreshesFileInputs;
 
     public $carModels;
     public $brands;
@@ -51,6 +55,7 @@ class CreateCarForm extends Component
     public $passing_status = 'done';
     public $registration_status = 'done';
     public $is_featured = false;
+    protected ?DeferredImageUploadService $deferredUploader = null;
     public $car_options = [
         'gear' => '',
         'seats' => '',
@@ -204,6 +209,11 @@ class CreateCarForm extends Component
         $this->carModels = CarModel::all();
     }
 
+    public function boot(DeferredImageUploadService $deferredUploader): void
+    {
+        $this->deferredUploader = $deferredUploader;
+    }
+
     private function loadBrands()
     {
         $this->brands = CarModel::distinct()
@@ -340,6 +350,9 @@ class CreateCarForm extends Component
     public function submit()
     {
         $validated = $this->validate();
+        $validated['car_options'] = is_array($validated['car_options'] ?? null)
+            ? $validated['car_options']
+            : (is_array($this->car_options) ? $this->car_options : []);
 
         if ($validated['status'] === 'sold') {
             $validated['availability'] = false;
@@ -361,69 +374,85 @@ class CreateCarForm extends Component
             $validated[$field] = round((float) $validated[$field], 2);
         }
 
-        $car = Car::create([
-            'car_model_id' => $validated['selectedModelId'],
-            'plate_number' => $validated['plate_number'],
-            'status' => $validated['status'],
-            'availability' => $validated['availability'],
-            'mileage' => $validated['mileage'],
-            'price_per_day_short' => $validated['price_per_day_short'],
-            'price_per_day_mid' => $validated['price_per_day_mid'],
-            'price_per_day_long' => $validated['price_per_day_long'],
-            'ldw_price_short' => $validated['ldw_price_short'],
-            'ldw_price_mid' => $validated['ldw_price_mid'],
-            'ldw_price_long' => $validated['ldw_price_long'],
-            'scdw_price_short' => $validated['scdw_price_short'],
-            'scdw_price_mid' => $validated['scdw_price_mid'],
-            'scdw_price_long' => $validated['scdw_price_long'],
-            'service_due_date' => $validated['service_due_date'],
-            'damage_report' => $validated['damage_report'],
-            'manufacturing_year' => $validated['manufacturing_year'],
-            'color' => $validated['color'],
-            'chassis_number' => $validated['chassis_number'],
-            'gps' => $validated['gps'],
-            'is_company_car' => $validated['ownership_type'] === 'company',
-            'ownership_type' => $validated['ownership_type'],
-            'issue_date' => $validated['issue_date'],
-            'expiry_date' => $validated['expiry_date'],
-            'passing_date' => $validated['passing_date'],
-            'passing_valid_for_days' => $validated['passing_valid_for_days'],
-            'registration_valid_for_days' => $validated['registration_valid_for_days'],
-            'passing_status' => $validated['passing_status'],
-            'registration_status' => $validated['registration_status'],
-            'notes' => $validated['notes'],
-        ]);
+        $uploadedImagePath = null;
 
-        foreach ($validated['car_options'] as $key => $value) {
-            if ($value !== null && $value !== '') {
-                $car->options()->create([
-                    'option_key' => $key,
-                    'option_value' => is_bool($value) ? ($value ? '1' : '0') : $value,
+        try {
+            DB::transaction(function () use ($validated, &$uploadedImagePath) {
+                $car = Car::create([
+                    'car_model_id' => $validated['selectedModelId'],
+                    'plate_number' => $validated['plate_number'],
+                    'status' => $validated['status'],
+                    'availability' => $validated['availability'],
+                    'mileage' => $validated['mileage'],
+                    'price_per_day_short' => $validated['price_per_day_short'],
+                    'price_per_day_mid' => $validated['price_per_day_mid'],
+                    'price_per_day_long' => $validated['price_per_day_long'],
+                    'ldw_price_short' => $validated['ldw_price_short'],
+                    'ldw_price_mid' => $validated['ldw_price_mid'],
+                    'ldw_price_long' => $validated['ldw_price_long'],
+                    'scdw_price_short' => $validated['scdw_price_short'],
+                    'scdw_price_mid' => $validated['scdw_price_mid'],
+                    'scdw_price_long' => $validated['scdw_price_long'],
+                    'service_due_date' => $validated['service_due_date'],
+                    'damage_report' => $validated['damage_report'],
+                    'manufacturing_year' => $validated['manufacturing_year'],
+                    'color' => $validated['color'],
+                    'chassis_number' => $validated['chassis_number'],
+                    'gps' => $validated['gps'],
+                    'is_company_car' => $validated['ownership_type'] === 'company',
+                    'ownership_type' => $validated['ownership_type'],
+                    'issue_date' => $validated['issue_date'],
+                    'expiry_date' => $validated['expiry_date'],
+                    'passing_date' => $validated['passing_date'],
+                    'passing_valid_for_days' => $validated['passing_valid_for_days'],
+                    'registration_valid_for_days' => $validated['registration_valid_for_days'],
+                    'passing_status' => $validated['passing_status'],
+                    'registration_status' => $validated['registration_status'],
+                    'notes' => $validated['notes'],
                 ]);
+
+                foreach ($validated['car_options'] as $key => $value) {
+                    if ($value !== null && $value !== '') {
+                        $car->options()->create([
+                            'option_key' => $key,
+                            'option_value' => is_bool($value) ? ($value ? '1' : '0') : $value,
+                        ]);
+                    }
+                }
+
+                if ($this->newImage) {
+                    $uploadedImagePath = $this->deferredUploader->store(
+                        $this->newImage,
+                        Str::slug($car->fullName()) . '-' . Str::uuid() . '.webp',
+                        'car_pics',
+                        ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080, 'optimize' => false]
+                    );
+
+                    $car->image()->create([
+                        'imageable_id' => $car->id,
+                        'imageable_type' => Car::class,
+                        'file_path' => 'car-pics/',
+                        'file_name' => basename($uploadedImagePath),
+                    ]);
+                }
+
+                $carModel = CarModel::find($validated['selectedModelId']);
+                $carModel->is_featured = $this->is_featured;
+                $carModel->save();
+            });
+        } catch (\Throwable $exception) {
+            if ($uploadedImagePath && Storage::disk('car_pics')->exists(basename($uploadedImagePath))) {
+                Storage::disk('car_pics')->delete(basename($uploadedImagePath));
             }
+
+            $this->toast('error', 'Unable to add the car: ' . $exception->getMessage(), false);
+
+            return;
         }
-
-        if ($this->newImage) {
-            $extension = $this->newImage->getClientOriginalExtension();
-            $carName = $car->fullName();
-            $safeName = Str::slug($carName) . '-' . time() . '.' . $extension;
-
-            Storage::disk('car_pics')->putFileAs('', $this->newImage, $safeName);
-
-            $car->image()->create([
-                'imageable_id' => $car->id,
-                'imageable_type' => Car::class,
-                'file_path' => 'car-pics/',
-                'file_name' => $safeName,
-            ]);
-        }
-
-        $carModel = CarModel::find($validated['selectedModelId']);
-        $carModel->is_featured = $this->is_featured;
-        $carModel->save();
 
         $this->toast('success', 'Car added successfully!');
         $this->resetCarData();
+        $this->refreshFileInputs();
     }
 
     public function render()

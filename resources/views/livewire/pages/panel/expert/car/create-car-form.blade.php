@@ -300,7 +300,8 @@
                                     <span class="input-group-text">Upload Image</span>
                                     <input type="file"
                                         class="form-control @error('newImage') is-invalid @enderror"
-                                        wire:model="newImage">
+                                        wire:key="create-car-image-{{ $fileInputVersion }}" wire:model="newImage"
+                                        accept="image/*">
                                     @error('newImage')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

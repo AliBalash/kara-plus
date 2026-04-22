@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\Car;
 
 use App\Models\Car;
 use App\Livewire\Concerns\InteractsWithToasts;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -51,18 +52,22 @@ class CarList extends Component
     public function deletecar($id)
     {
         $car = Car::findOrFail($id);
+        $imageFileName = $car->image?->file_name;
 
-        $car->options()->delete();
+        DB::transaction(function () use ($car) {
+            $car->options()->delete();
 
-        if ($car->image && Storage::disk('car_pics')->exists($car->image->file_name)) {
-            Storage::disk('car_pics')->delete($car->image->file_name);
+            if ($car->image) {
+                $car->image->delete();
+            }
+
+            $car->delete();
+        });
+
+        if ($imageFileName && Storage::disk('car_pics')->exists($imageFileName)) {
+            Storage::disk('car_pics')->delete($imageFileName);
         }
 
-        if ($car->image) {
-            $car->image->delete();
-        }
-
-        $car->delete();
         $this->toast('success', 'Car has been deleted successfully.');
     }
 

@@ -5,7 +5,9 @@ namespace App\Livewire\Pages\Panel\Expert\Car;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Services\Media\DeferredImageUploadService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -16,6 +18,7 @@ class EditCarForm extends Component
 {
     use WithFileUploads;
     use InteractsWithToasts;
+    use RefreshesFileInputs;
 
     public $car;
     public $carModels;
@@ -320,6 +323,9 @@ class EditCarForm extends Component
     public function submit()
     {
         $validated = $this->validate();
+        $validated['car_options'] = is_array($validated['car_options'] ?? null)
+            ? $validated['car_options']
+            : (is_array($this->car_options) ? $this->car_options : []);
 
         if ($validated['status'] === 'sold') {
             $validated['availability'] = false;
@@ -341,81 +347,126 @@ class EditCarForm extends Component
             $validated[$field] = round((float) $validated[$field], 2);
         }
 
-        $this->car->update([
-            'plate_number' => $validated['plate_number'],
-            'status' => $validated['status'],
-            'availability' => $validated['availability'],
-            'mileage' => $validated['mileage'],
-            'price_per_day_short' => $validated['price_per_day_short'],
-            'price_per_day_mid' => $validated['price_per_day_mid'],
-            'price_per_day_long' => $validated['price_per_day_long'],
-            'ldw_price_short' => $validated['ldw_price_short'],
-            'ldw_price_mid' => $validated['ldw_price_mid'],
-            'ldw_price_long' => $validated['ldw_price_long'],
-            'scdw_price_short' => $validated['scdw_price_short'],
-            'scdw_price_mid' => $validated['scdw_price_mid'],
-            'scdw_price_long' => $validated['scdw_price_long'],
-            'service_due_date' => $validated['service_due_date'],
-            'damage_report' => $validated['damage_report'],
-            'manufacturing_year' => $validated['manufacturing_year'],
-            'color' => $validated['color'],
-            'chassis_number' => $validated['chassis_number'],
-            'gps' => $validated['gps'],
-            'is_company_car' => $validated['ownership_type'] === 'company',
-            'ownership_type' => $validated['ownership_type'],
-            'issue_date' => $validated['issue_date'],
-            'expiry_date' => $validated['expiry_date'],
-            'passing_date' => $validated['passing_date'],
-            'passing_valid_for_days' => $validated['passing_valid_for_days'],
-            'registration_valid_for_days' => $validated['registration_valid_for_days'],
-            'passing_status' => $validated['passing_status'],
-            'registration_status' => $validated['registration_status'],
-            'notes' => $validated['notes'],
-        ]);
+        $oldImageFileName = $this->car->image?->file_name;
+        $newImagePath = null;
 
-        $this->car->options()->delete();
-        foreach ($validated['car_options'] as $key => $value) {
-            if ($value !== null && $value !== '') {
-                $this->car->options()->create([
-                    'option_key' => $key,
-                    'option_value' => is_bool($value) ? ($value ? '1' : '0') : $value,
+        try {
+            DB::transaction(function () use ($validated, &$newImagePath) {
+                $this->car->update([
+                    'plate_number' => $validated['plate_number'],
+                    'status' => $validated['status'],
+                    'availability' => $validated['availability'],
+                    'mileage' => $validated['mileage'],
+                    'price_per_day_short' => $validated['price_per_day_short'],
+                    'price_per_day_mid' => $validated['price_per_day_mid'],
+                    'price_per_day_long' => $validated['price_per_day_long'],
+                    'ldw_price_short' => $validated['ldw_price_short'],
+                    'ldw_price_mid' => $validated['ldw_price_mid'],
+                    'ldw_price_long' => $validated['ldw_price_long'],
+                    'scdw_price_short' => $validated['scdw_price_short'],
+                    'scdw_price_mid' => $validated['scdw_price_mid'],
+                    'scdw_price_long' => $validated['scdw_price_long'],
+                    'service_due_date' => $validated['service_due_date'],
+                    'damage_report' => $validated['damage_report'],
+                    'manufacturing_year' => $validated['manufacturing_year'],
+                    'color' => $validated['color'],
+                    'chassis_number' => $validated['chassis_number'],
+                    'gps' => $validated['gps'],
+                    'is_company_car' => $validated['ownership_type'] === 'company',
+                    'ownership_type' => $validated['ownership_type'],
+                    'issue_date' => $validated['issue_date'],
+                    'expiry_date' => $validated['expiry_date'],
+                    'passing_date' => $validated['passing_date'],
+                    'passing_valid_for_days' => $validated['passing_valid_for_days'],
+                    'registration_valid_for_days' => $validated['registration_valid_for_days'],
+                    'passing_status' => $validated['passing_status'],
+                    'registration_status' => $validated['registration_status'],
+                    'notes' => $validated['notes'],
                 ]);
+
+                $this->car->options()->delete();
+                foreach ($validated['car_options'] as $key => $value) {
+                    if ($value !== null && $value !== '') {
+                        $this->car->options()->create([
+                            'option_key' => $key,
+                            'option_value' => is_bool($value) ? ($value ? '1' : '0') : $value,
+                        ]);
+                    }
+                }
+
+                if ($this->newImage) {
+                    $newImagePath = $this->deferredUploader->store(
+                        $this->newImage,
+                        Str::slug($this->car->fullName()) . '-' . Str::uuid() . '.webp',
+                        'car_pics',
+                        ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080, 'optimize' => false]
+                    );
+
+                    $image = $this->car->image()->updateOrCreate(
+                        [
+                            'imageable_id' => $this->car->id,
+                            'imageable_type' => Car::class,
+                        ],
+                        [
+                            'file_path' => 'car-pics/',
+                            'file_name' => basename($newImagePath),
+                        ]
+                    );
+
+                    $this->car->setRelation('image', $image);
+                }
+
+                $this->car->carModel->is_featured = $this->is_featured;
+                $this->car->carModel->save();
+            });
+        } catch (\Throwable $exception) {
+            if ($newImagePath && Storage::disk('car_pics')->exists(basename($newImagePath))) {
+                Storage::disk('car_pics')->delete(basename($newImagePath));
             }
+
+            $this->toast('error', 'Unable to update the car: ' . $exception->getMessage(), false);
+
+            return;
         }
 
-        if ($this->newImage) {
-            if ($this->car->image && Storage::disk('car_pics')->exists($this->car->image->file_name)) {
-                Storage::disk('car_pics')->delete($this->car->image->file_name);
-            }
-
-            $safeName = Str::slug($this->car->fullName()) . '-' . time() . '.webp';
-            $storedPath = $this->deferredUploader->store(
-                $this->newImage,
-                $safeName,
-                'car_pics',
-                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080, 'optimize' => false]
-            );
-            $safeName = basename($storedPath);
-
-            $image = $this->car->image()->updateOrCreate(
-                [
-                    'imageable_id' => $this->car->id,
-                    'imageable_type' => Car::class,
-                ],
-                [
-                    'file_path' => 'car-pics/',
-                    'file_name' => $safeName,
-                ]
-            );
-
-            $this->car->setRelation('image', $image);
-            $this->existingImageUrl = $this->car->primaryImageUrl();
+        if (
+            $newImagePath
+            && $oldImageFileName
+            && $oldImageFileName !== basename($newImagePath)
+            && Storage::disk('car_pics')->exists($oldImageFileName)
+        ) {
+            Storage::disk('car_pics')->delete($oldImageFileName);
         }
 
-        $this->car->carModel->is_featured = $this->is_featured;
-        $this->car->carModel->save();
+        $this->existingImageUrl = $this->car->fresh(['image', 'carModel.image'])->primaryImageUrl();
+        $this->newImage = null;
+        $this->refreshFileInputs();
 
         $this->toast('success', 'Car updated successfully!');
+    }
+
+    public function removeImage(): void
+    {
+        $image = $this->car->image;
+
+        if (! $image) {
+            return;
+        }
+
+        $fileName = $image->file_name;
+        $image->delete();
+
+        if ($fileName && Storage::disk('car_pics')->exists($fileName)) {
+            Storage::disk('car_pics')->delete($fileName);
+        }
+
+        $this->car->unsetRelation('image');
+        $this->car->load('carModel.image');
+        $this->existingImageUrl = $this->car->primaryImageUrl();
+        $this->newImage = null;
+        $this->refreshFileInputs();
+
+        $this->toast('success', 'Car image removed successfully.');
     }
 
     public function render()
