@@ -154,11 +154,18 @@
 
                     <div class="col-md-6">
                         <label class="form-label">Replace Receipt (optional)</label>
-                        <input type="file" class="form-control" wire:model="receipt">
+                        <input type="file" class="form-control" wire:key="payment-edit-receipt-{{ $fileInputVersion }}"
+                            wire:model="receipt" accept="image/*">
                         @error('receipt') <span class="text-danger">{{ $message }}</span> @enderror
                         <div wire:loading wire:target="receipt" class="text-primary mt-2">
                             <i class="spinner-border spinner-border-sm"></i> Uploading...
                         </div>
+                        @if ($receipt)
+                            <div class="mt-2">
+                                <img src="{{ $receipt->temporaryUrl() }}" alt="New receipt preview" class="img-thumbnail"
+                                    width="200" loading="lazy" decoding="async" fetchpriority="low">
+                            </div>
+                        @endif
                     </div>
 
                     @if ($existingReceipt)

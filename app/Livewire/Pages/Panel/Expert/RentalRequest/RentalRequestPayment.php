@@ -8,6 +8,7 @@ use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Services\Media\DeferredImageUploadService;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\RefreshesFileInputs;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,7 @@ class RentalRequestPayment extends Component
 
     use WithFileUploads;
     use InteractsWithToasts;
+    use RefreshesFileInputs;
     public $contractId;
     public $customerId;
     public $amount;
@@ -393,14 +395,13 @@ class RentalRequestPayment extends Component
         $aedAmount = $this->roundCurrency($aedAmount);
 
 
-        try {
-            $receiptPath = null;
+        $receiptPath = null;
 
+        try {
             if ($this->receipt) {
-                $baseName = "payment_receipt_{$this->contractId}_" . time();
                 $receiptPath = $this->deferredUploader()->store(
                     $this->receipt,
-                    "payment_receipts/{$baseName}.webp",
+                    'payment_receipts/payment-' . $this->contractId . '-' . Str::uuid() . '.webp',
                     'myimage',
                     ['quality' => 30, 'max_width' => 1600, 'max_height' => 1600]
                 );
@@ -433,9 +434,14 @@ class RentalRequestPayment extends Component
             $this->toast('success', 'Payment was successfully added!');
             $this->resetForm();
             $this->loadData();
+            $this->refreshFileInputs();
             $this->dispatch('payment-updated');
-        } catch (\Exception $e) {
-            $this->toast('error', 'Error adding payment: ' . $e->getMessage(), false);
+        } catch (\Throwable $exception) {
+            if ($receiptPath && Storage::disk('myimage')->exists($receiptPath)) {
+                Storage::disk('myimage')->delete($receiptPath);
+            }
+
+            $this->toast('error', 'Error adding payment: ' . $exception->getMessage(), false);
         }
     }
 
@@ -469,22 +475,35 @@ class RentalRequestPayment extends Component
             $meta['security_deposit_note'] = $this->security_note;
         }
 
-        if ($this->security_deposit_image) {
-            $baseName = "security_deposit_{$this->contractId}_" . time();
-            $meta['security_deposit_image'] = $this->deferredUploader()->store(
-                $this->security_deposit_image,
-                "security_deposits/{$baseName}.webp",
-                'myimage',
-                ['quality' => 40, 'max_width' => 2000, 'max_height' => 2000]
-            );
+        $newImagePath = null;
 
-            if ($existingImagePath && Storage::disk('myimage')->exists($existingImagePath)) {
-                Storage::disk('myimage')->delete($existingImagePath);
+        try {
+            if ($this->security_deposit_image) {
+                $newImagePath = $this->deferredUploader()->store(
+                    $this->security_deposit_image,
+                    'security_deposits/security-deposit-' . $this->contractId . '-' . Str::uuid() . '.webp',
+                    'myimage',
+                    ['quality' => 40, 'max_width' => 2000, 'max_height' => 2000]
+                );
+
+                $meta['security_deposit_image'] = $newImagePath;
             }
+
+            $contract->meta = $meta;
+            $contract->save();
+        } catch (\Throwable $exception) {
+            if ($newImagePath && Storage::disk('myimage')->exists($newImagePath)) {
+                Storage::disk('myimage')->delete($newImagePath);
+            }
+
+            $this->toast('error', 'Unable to save security deposit details: ' . $exception->getMessage(), false);
+
+            return;
         }
 
-        $contract->meta = $meta;
-        $contract->save();
+        if ($newImagePath && $existingImagePath && $existingImagePath !== $newImagePath && Storage::disk('myimage')->exists($existingImagePath)) {
+            Storage::disk('myimage')->delete($existingImagePath);
+        }
 
         // هم در دیتابیس ذخیره شد، هم برای ویو آپدیت شد
         $this->contractMeta = $meta;
@@ -492,6 +511,7 @@ class RentalRequestPayment extends Component
         $this->toast('success', 'Security deposit information was successfully saved.');
         $this->security_note = '';
         $this->security_deposit_image = null;
+        $this->refreshFileInputs();
     }
 
     private function validateWithScroll(?array $rules = null): array
@@ -524,7 +544,7 @@ class RentalRequestPayment extends Component
         $this->payment_date = '';
         $this->payment_method = 'cash';
         $this->rate = '';
-        $this->receipt = '';
+        $this->receipt = null;
         $this->note = '';
         $this->is_refundable = false;
         $this->salik_trip_count = '';
@@ -594,9 +614,7 @@ class RentalRequestPayment extends Component
             ->where('customer_id', $this->customerId)
             ->firstOrFail();
 
-        if ($payment->receipt) {
-            Storage::disk('myimage')->delete($payment->receipt);
-        }
+        $receiptPath = $payment->receipt;
 
         DB::transaction(function () use ($payment) {
             if (in_array($payment->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {
@@ -606,9 +624,45 @@ class RentalRequestPayment extends Component
             $payment->delete();
         });
 
+        if ($receiptPath && Storage::disk('myimage')->exists($receiptPath)) {
+            Storage::disk('myimage')->delete($receiptPath);
+        }
+
         $this->toast('success', 'Payment deleted successfully.');
         $this->loadData();
         $this->dispatch('payment-updated');
+    }
+
+    public function removeSecurityDepositImage(): void
+    {
+        $contract = Contract::find($this->contractId);
+
+        if (! $contract) {
+            $this->toast('error', 'Contract not found.', false);
+            return;
+        }
+
+        $meta = $contract->meta ?? [];
+        $path = $meta['security_deposit_image'] ?? null;
+
+        if (! $path) {
+            return;
+        }
+
+        unset($meta['security_deposit_image']);
+
+        $contract->meta = ! empty($meta) ? $meta : null;
+        $contract->save();
+
+        if (Storage::disk('myimage')->exists($path)) {
+            Storage::disk('myimage')->delete($path);
+        }
+
+        $this->contractMeta = $contract->meta ?? [];
+        $this->security_deposit_image = null;
+        $this->refreshFileInputs();
+
+        $this->toast('success', 'Security deposit attachment removed successfully.');
     }
 
     public function render()

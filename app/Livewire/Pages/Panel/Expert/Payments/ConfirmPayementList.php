@@ -80,12 +80,15 @@ class ConfirmPayementList extends Component
     public function deletePayment($paymentId)
     {
         $payment = Payment::findOrFail($paymentId);
+        $receiptPath = $payment->receipt;
 
-        if ($payment->receipt) {
-            Storage::disk('myimage')->delete($payment->receipt);
+        DB::transaction(function () use ($payment) {
+            $payment->delete();
+        });
+
+        if ($receiptPath && Storage::disk('myimage')->exists($receiptPath)) {
+            Storage::disk('myimage')->delete($receiptPath);
         }
-
-        $payment->delete();
 
         $this->toast('success', "Payment #{$paymentId} deleted successfully.");
     }

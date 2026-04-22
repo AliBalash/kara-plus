@@ -223,7 +223,8 @@
 
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Receipt Upload (Optional)</label>
-                        <input type="file" class="form-control" wire:model="receipt">
+                        <input type="file" class="form-control" wire:key="rental-payment-receipt-{{ $fileInputVersion }}"
+                            wire:model="receipt" accept="image/*">
 
                         @error('receipt')
                             <span class="text-danger">{{ $message }}</span>
@@ -263,7 +264,9 @@
                 </div>
                 <div class="col-md-12 mb-3">
                     <label class="form-label">Security Deposit Attachment (optional)</label>
-                    <input type="file" class="form-control" wire:model="security_deposit_image" accept="image/*">
+                    <input type="file" class="form-control"
+                        wire:key="security-deposit-image-{{ $fileInputVersion }}" wire:model="security_deposit_image"
+                        accept="image/*">
                     @error('security_deposit_image')
                         <span class="text-danger">{{ $message }}</span>
                     @enderror
@@ -275,6 +278,8 @@
                             <strong>Current Attachment:</strong><br>
                             <a href="{{ asset('storage/' . ltrim($contractMeta['security_deposit_image'], '/')) }}" target="_blank"
                                 rel="noopener" class="d-inline-block mt-1">View uploaded file</a>
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2"
+                                wire:click="removeSecurityDepositImage">Remove attachment</button>
                         </div>
                     @endif
                 </div>

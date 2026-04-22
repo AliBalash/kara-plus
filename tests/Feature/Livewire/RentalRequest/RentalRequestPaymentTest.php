@@ -13,6 +13,7 @@ use App\Services\Media\DeferredImageUploadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -130,6 +131,40 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertEquals('security_deposits/test-image.webp', $contract->meta['security_deposit_image']);
         $this->assertEquals('Security deposit information was successfully saved.', session('message'));
         $this->assertNull($component->security_deposit_image);
+    }
+
+    public function test_delete_payment_removes_receipt_file_after_record_is_deleted(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for(Car::factory())
+            ->status('payment')
+            ->create(['meta' => []]);
+
+        $payment = Payment::factory()
+            ->for($contract)
+            ->for($customer)
+            ->for($user)
+            ->for($contract->car)
+            ->create([
+                'receipt' => 'payments/existing-receipt.webp',
+                'payment_type' => 'rental_fee',
+            ]);
+
+        Storage::disk('myimage')->put('payments/existing-receipt.webp', 'receipt-content');
+
+        Livewire::test(RentalRequestPayment::class, [
+            'contractId' => $contract->id,
+            'customerId' => $customer->id,
+        ])->call('deletePayment', $payment->id);
+
+        $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
+        Storage::disk('myimage')->assertMissing('payments/existing-receipt.webp');
     }
 
     protected function tearDown(): void
