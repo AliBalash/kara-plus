@@ -6,6 +6,7 @@ use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -52,6 +53,27 @@ class ProfileTest extends TestCase
         $this->assertEquals('Tester', $user->last_name);
         $this->assertEquals('updated@example.com', $user->email);
         $this->assertEquals('Profile updated successfully.', session('message'));
+    }
+
+    public function test_remove_avatar_clears_database_value_and_deletes_file(): void
+    {
+        Storage::fake('myimage');
+
+        $user = User::factory()->create([
+            'avatar' => 'avatars/existing-avatar.webp',
+        ]);
+
+        Storage::disk('myimage')->put('avatars/existing-avatar.webp', 'avatar-content');
+
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->call('removeAvatar')
+            ->assertSet('avatar', null)
+            ->assertSet('fileInputVersion', 1);
+
+        $this->assertNull($user->fresh()->avatar);
+        Storage::disk('myimage')->assertMissing('avatars/existing-avatar.webp');
     }
 
     protected function tearDown(): void

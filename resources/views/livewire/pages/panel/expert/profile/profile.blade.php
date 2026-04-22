@@ -9,16 +9,22 @@
 
             <div class="card-body">
                 <div class="d-flex align-items-start align-items-sm-center gap-4">
-                    <img src="{{ Auth::user()->avatar ? asset('storage/' . ltrim(Auth::user()->avatar, '/')) : asset('assets/panel/assets/img/avatars/unknow.jpg') }}"
+                    <img src="{{ $this->avatarUrl }}"
                         alt="User Avatar" class="d-block rounded" height="100" width="100" decoding="async" />
 
 
 
                     <div class="button-wrapper">
-                        <input type="file" wire:model="new_avatar" id="upload" class="d-none">
+                        <input type="file" wire:key="profile-avatar-{{ $fileInputVersion }}" wire:model="new_avatar"
+                            id="upload" class="d-none" accept="image/*">
                         <label for="upload" class="btn btn-primary me-2 mb-4">
                             <span class="d-none d-sm-block">Upload new photo</span>
                         </label>
+                        @if ($avatar)
+                            <button type="button" class="btn btn-outline-danger mb-4" wire:click="removeAvatar">
+                                Remove photo
+                            </button>
+                        @endif
 
                         {{-- Loading Indicator --}}
                         <div wire:loading wire:target="new_avatar" class="mt-2">
