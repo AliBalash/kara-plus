@@ -3,13 +3,12 @@
 namespace Tests\Unit\Support;
 
 use App\Support\PhoneNumber;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class PhoneNumberTest extends TestCase
 {
-    /**
-     * @dataProvider normalizedPhoneProvider
-     */
+    #[DataProvider('normalizedPhoneProvider')]
     public function test_it_normalizes_phone_numbers(string $raw, string $expected): void
     {
         $this->assertSame($expected, PhoneNumber::normalize($raw));
