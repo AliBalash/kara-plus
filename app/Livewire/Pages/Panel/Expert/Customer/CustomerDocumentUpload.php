@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Customer;
 
+use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Services\Media\DeferredImageUploadService;
@@ -17,6 +18,7 @@ class CustomerDocumentUpload extends Component
 {
     use WithFileUploads;
     use InteractsWithToasts;
+    use RefreshesFileInputs;
 
     public $customerId;
     public $contractId;
@@ -101,22 +103,32 @@ class CustomerDocumentUpload extends Component
 
         $this->validate($validationRules);
 
-        $customerDocument = CustomerDocument::updateOrCreate(
-            ['customer_id' => $this->customerId, 'contract_id' => $this->contractId],
-            []
-        );
+        $storedPaths = [];
 
-        foreach ($this->documentTypes as $type) {
-            if (!empty($this->{$type})) {
-                $storedFiles = $this->storeUploadedFiles($customerDocument, $type, $this->{$type});
-                $customerDocument->{$type} = $storedFiles;
+        try {
+            $customerDocument = CustomerDocument::updateOrCreate(
+                ['customer_id' => $this->customerId, 'contract_id' => $this->contractId],
+                []
+            );
+
+            foreach ($this->documentTypes as $type) {
+                if (!empty($this->{$type})) {
+                    [$storedFiles, $newPaths] = $this->storeUploadedFiles($customerDocument, $type, $this->{$type});
+                    $storedPaths = array_merge($storedPaths, $newPaths);
+                    $customerDocument->{$type} = $storedFiles;
+                }
             }
+
+            $customerDocument->hotel_name = $this->hotel_name;
+            $customerDocument->hotel_address = $this->hotel_address;
+
+            $customerDocument->save();
+        } catch (\Throwable $exception) {
+            $this->deleteStoredFiles($storedPaths);
+            $this->toast('error', 'Unable to save customer documents: ' . $exception->getMessage(), false);
+
+            return;
         }
-
-        $customerDocument->hotel_name = $this->hotel_name;
-        $customerDocument->hotel_address = $this->hotel_address;
-
-        $customerDocument->save();
 
         $this->toast('success', 'Documents uploaded successfully. Images are being optimized in the background.');
         $this->loadExistingFiles($customerDocument);
@@ -125,12 +137,14 @@ class CustomerDocumentUpload extends Component
             $this->$type = [];
             $this->pendingUploads[$type] = [];
         }
+
+        $this->refreshFileInputs();
     }
 
 
     public function removeFile($fileType, $label)
     {
-        if (!in_array($fileType, $this->documentTypes)) {
+        if (! in_array($fileType, $this->documentTypes)) {
             return;
         }
 
@@ -138,7 +152,7 @@ class CustomerDocumentUpload extends Component
             ->where('contract_id', $this->contractId)
             ->first();
 
-        if (!$customerDocument) {
+        if (! $customerDocument) {
             return;
         }
 
@@ -150,16 +164,15 @@ class CustomerDocumentUpload extends Component
 
         $path = $storedFiles[$label];
 
-        if ($path && Storage::disk('myimage')->exists($path)) {
-            Storage::disk('myimage')->delete($path);
-        }
-
         unset($storedFiles[$label]);
 
         $customerDocument->{$fileType} = $storedFiles ?: null;
         $customerDocument->save();
 
+        $this->deleteStoredFiles([$path]);
+
         $this->loadExistingFiles($customerDocument);
+        $this->refreshFileInputs();
 
         $this->toast('success', ucfirst($fileType) . ' file removed.');
     }
@@ -231,6 +244,7 @@ class CustomerDocumentUpload extends Component
     private function storeUploadedFiles(CustomerDocument $customerDocument, string $type, array $uploads): array
     {
         $storedFiles = $this->getStoredFilesFromColumn($customerDocument->{$type});
+        $newPaths = [];
 
         foreach ($uploads as $file) {
             $label = $this->nextAvailableLabel($storedFiles);
@@ -252,9 +266,10 @@ class CustomerDocumentUpload extends Component
             }
 
             $storedFiles[$label] = $path;
+            $newPaths[] = $path;
         }
 
-        return $storedFiles;
+        return [$storedFiles, $newPaths];
     }
 
     private function mergePendingUploads(string $type, $incoming): array
@@ -313,7 +328,17 @@ class CustomerDocumentUpload extends Component
 
     private function buildPublicUrl(string $path): string
     {
-        $trimmed = ltrim($path, '/');
-        return url('storage/' . $trimmed);
+        return Storage::disk('myimage')->url(ltrim($path, '/'));
+    }
+
+    private function deleteStoredFiles(array $paths): void
+    {
+        $disk = Storage::disk('myimage');
+
+        foreach (array_unique(array_filter($paths)) as $path) {
+            if (is_string($path) && $disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
     }
 }

@@ -69,6 +69,7 @@
                             @endforeach
                         @endif
                         <input type="file" class="form-control" wire:model="visa" multiple
+                            wire:key="customer-visa-{{ $fileInputVersion }}" accept=".jpg,.jpeg,.png,.webp,.pdf"
                             wire:loading.attr="disabled" wire:target="visa,passport,license,ticket,uploadDocument"
                             data-upload-field="visa">
                         <small class="text-muted">You can upload up to 3 files total for this document.</small>
@@ -123,6 +124,7 @@
                             @endforeach
                         @endif
                         <input type="file" class="form-control" wire:model="passport" multiple
+                            wire:key="customer-passport-{{ $fileInputVersion }}" accept=".jpg,.jpeg,.png,.webp,.pdf"
                             wire:loading.attr="disabled" wire:target="visa,passport,license,ticket,uploadDocument"
                             data-upload-field="passport">
                         <small class="text-muted">You can upload up to 3 files total for this document.</small>
@@ -177,6 +179,7 @@
                             @endforeach
                         @endif
                         <input type="file" class="form-control" wire:model="license" multiple
+                            wire:key="customer-license-{{ $fileInputVersion }}" accept=".jpg,.jpeg,.png,.webp,.pdf"
                             wire:loading.attr="disabled" wire:target="visa,passport,license,ticket,uploadDocument"
                             data-upload-field="license">
                         <small class="text-muted">You can upload up to 3 files total for this document.</small>
@@ -232,6 +235,7 @@
                         @endif
 
                         <input type="file" class="form-control" wire:model="ticket" multiple
+                            wire:key="customer-ticket-{{ $fileInputVersion }}" accept=".jpg,.jpeg,.png,.webp,.pdf"
                             wire:loading.attr="disabled" wire:target="visa,passport,license,ticket,uploadDocument"
                             data-upload-field="ticket">
                         <small class="text-muted">You can upload up to 3 files total for this document.</small>
