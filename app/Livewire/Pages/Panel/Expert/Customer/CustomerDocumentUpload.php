@@ -33,6 +33,7 @@ class CustomerDocumentUpload extends Component
 
     public $hotel_name;
     public $hotel_address;
+    public bool $supportsHotelFields = false;
 
     protected array $documentTypes = ['visa', 'passport', 'license', 'ticket'];
     protected array $orderedLabels = ['front', 'back'];
@@ -48,6 +49,7 @@ class CustomerDocumentUpload extends Component
     {
         $this->customerId = $customerId;
         $this->contractId = $contractId;
+        $this->supportsHotelFields = CustomerDocument::supportsHotelFields();
         $customerDocument = CustomerDocument::where('customer_id', $this->customerId)
             ->where('contract_id', $this->contractId)
             ->first();
@@ -62,8 +64,7 @@ class CustomerDocumentUpload extends Component
             ->where('contract_id', $this->contractId)
             ->exists();
 
-        if (!empty($customerDocument)) {
-
+        if (!empty($customerDocument) && $this->supportsHotelFields) {
             $this->hotel_name = $customerDocument->hotel_name;
             $this->hotel_address = $customerDocument->hotel_address;
         }
@@ -79,8 +80,6 @@ class CustomerDocumentUpload extends Component
     public function uploadDocument()
     {
         $validationRules = [
-            'hotel_name' => 'required|string',
-            'hotel_address' => 'required|string',
             'visa' => 'nullable|array|max:3',
             'visa.*' => 'file|mimes:jpg,jpeg,png,webp,pdf|max:8000',
             'passport' => 'nullable|array|max:3',
@@ -90,6 +89,11 @@ class CustomerDocumentUpload extends Component
             'ticket' => 'nullable|array|max:3',
             'ticket.*' => 'file|mimes:jpg,jpeg,png,webp,pdf|max:8000',
         ];
+
+        if ($this->supportsHotelFields) {
+            $validationRules['hotel_name'] = 'required|string';
+            $validationRules['hotel_address'] = 'required|string';
+        }
 
         foreach ($this->documentTypes as $type) {
             $existingCount = count($this->existingFiles[$type] ?? []);
@@ -119,8 +123,10 @@ class CustomerDocumentUpload extends Component
                 }
             }
 
-            $customerDocument->hotel_name = $this->hotel_name;
-            $customerDocument->hotel_address = $this->hotel_address;
+            if ($this->supportsHotelFields) {
+                $customerDocument->hotel_name = $this->hotel_name;
+                $customerDocument->hotel_address = $this->hotel_address;
+            }
 
             $customerDocument->save();
         } catch (\Throwable $exception) {

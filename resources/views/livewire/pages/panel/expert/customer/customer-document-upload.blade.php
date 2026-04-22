@@ -265,29 +265,31 @@
                     </div>
 
 
-                    <!-- Hotel Name -->
-                    <div class="col-md-6 mb-3" data-validation-field="hotel_name">
-                        <label class="form-label fw-semibold" for="hotelNameInput">
-                            Hotel Name <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
-                        </label>
-                        <input id="hotelNameInput" type="text" class="form-control" wire:model="hotel_name"
-                            placeholder="Enter hotel name" aria-required="true">
-                        @error('hotel_name')
-                            <span class="text-danger">{{ $message }}</span>
-                        @enderror
-                    </div>
+                    @if ($supportsHotelFields)
+                        <!-- Hotel Name -->
+                        <div class="col-md-6 mb-3" data-validation-field="hotel_name">
+                            <label class="form-label fw-semibold" for="hotelNameInput">
+                                Hotel Name <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <input id="hotelNameInput" type="text" class="form-control" wire:model="hotel_name"
+                                placeholder="Enter hotel name" aria-required="true">
+                            @error('hotel_name')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
 
-                    <!-- Hotel Address -->
-                    <div class="col-md-6 mb-3" data-validation-field="hotel_address">
-                        <label class="form-label fw-semibold" for="hotelAddressInput">
-                            Hotel Address <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
-                        </label>
-                        <input id="hotelAddressInput" type="text" class="form-control" wire:model="hotel_address"
-                            placeholder="Enter hotel address" aria-required="true">
-                        @error('hotel_address')
-                            <span class="text-danger">{{ $message }}</span>
-                        @enderror
-                    </div>
+                        <!-- Hotel Address -->
+                        <div class="col-md-6 mb-3" data-validation-field="hotel_address">
+                            <label class="form-label fw-semibold" for="hotelAddressInput">
+                                Hotel Address <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <input id="hotelAddressInput" type="text" class="form-control" wire:model="hotel_address"
+                                placeholder="Enter hotel address" aria-required="true">
+                            @error('hotel_address')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    @endif
 
                 </div>
 
