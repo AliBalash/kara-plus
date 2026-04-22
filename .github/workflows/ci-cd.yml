@@ -77,7 +77,15 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Validate Docker compose config
-        run: docker compose --env-file .env.docker -f docker-compose.yml config >/dev/null
+        env:
+          COMPOSE_PROJECT_NAME: karaplus-ci
+          APP_ENV: production
+          APP_DEBUG: false
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_pass
+          MYSQL_ROOT_PASSWORD: root_pass
+        run: docker compose -f docker-compose.yml config >/dev/null
 
       - name: Cache Composer
         uses: actions/cache@v4
