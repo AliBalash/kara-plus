@@ -8,7 +8,9 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class RentalRequestReturnDocumentTest extends TestCase
@@ -67,5 +69,26 @@ class RentalRequestReturnDocumentTest extends TestCase
 
         $this->assertEquals('Contract is already in payment status.', session('message'));
         $this->assertEquals(0, $contract->statuses()->count());
+    }
+
+    public function test_upload_documents_requires_dashboard_photo_when_none_exists(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for(Car::factory())
+            ->status('awaiting_return')
+            ->create();
+
+        Livewire::test(RentalRequestReturnDocument::class, ['contractId' => $contract->id])
+            ->set('fuelLevel', 50)
+            ->set('mileage', 15432)
+            ->set('carInsidePhotos', [UploadedFile::fake()->image('inside.jpg')])
+            ->set('carOutsidePhotos', [UploadedFile::fake()->image('outside.jpg')])
+            ->call('uploadDocuments')
+            ->assertHasErrors(['carDashboard']);
     }
 }

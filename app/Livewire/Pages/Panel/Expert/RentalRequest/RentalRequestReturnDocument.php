@@ -6,6 +6,7 @@ use App\Models\Contract;
 use App\Models\ReturnDocument;
 use App\Services\Media\DeferredImageUploadService;
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\RefreshesFileInputs;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -19,6 +20,7 @@ class RentalRequestReturnDocument extends Component
 
     use WithFileUploads;
     use InteractsWithToasts;
+    use RefreshesFileInputs;
 
     public $contractId;
     public $factorContract;
@@ -139,7 +141,7 @@ class RentalRequestReturnDocument extends Component
         if ($this->carDashboard) {
             $validationRules['carDashboard'] = 'required|image|max:8048';
         } elseif (!$this->carDashboard && empty($this->existingFiles['carDashboard'])) {
-            $validationRules['carDashboard'] = 'image|max:8048';
+            $validationRules['carDashboard'] = 'required|image|max:8048';
         }
 
 
@@ -197,6 +199,7 @@ class RentalRequestReturnDocument extends Component
         // Start Database Transaction
         DB::beginTransaction();
         $uploadedPaths = [];
+        $pathsToDelete = [];
 
         try {
             $returnDocument = ReturnDocument::updateOrCreate(
@@ -210,25 +213,27 @@ class RentalRequestReturnDocument extends Component
 
             // Factor Contract Upload
             if ($this->factorContract) {
-                $factorPath = $this->deferredUploader->store(
-                    $this->factorContract,
-                    "ReturnDocument/factor_contract_{$this->contractId}",
-                    'myimage'
+                $previousPath = $this->resolveStoredPathFromRecord(
+                    $returnDocument->factor_contract,
+                    "ReturnDocument/factor_contract_{$this->contractId}"
                 );
+                $factorPath = $this->storeDocumentUpload($this->factorContract, 'factor-contract');
                 $returnDocument->factor_contract = $factorPath;
                 $uploadedPaths[] = $factorPath;
+                $this->queueReplacedPathForDeletion($pathsToDelete, $previousPath, $factorPath);
             }
 
 
             // Car Dashboard  Upload
             if ($this->carDashboard) {
-                $carDashboardPath = $this->deferredUploader->store(
-                    $this->carDashboard,
-                    "ReturnDocument/car_dashboard_{$this->contractId}",
-                    'myimage'
+                $previousPath = $this->resolveStoredPathFromRecord(
+                    $returnDocument->car_dashboard,
+                    "ReturnDocument/car_dashboard_{$this->contractId}"
                 );
+                $carDashboardPath = $this->storeDocumentUpload($this->carDashboard, 'car-dashboard');
                 $returnDocument->car_dashboard = $carDashboardPath;
                 $uploadedPaths[] = $carDashboardPath;
+                $this->queueReplacedPathForDeletion($pathsToDelete, $previousPath, $carDashboardPath);
             }
 
             if ($insideUploadCount > 0) {
@@ -270,16 +275,16 @@ class RentalRequestReturnDocument extends Component
 
 
             DB::commit();
+            $this->deleteStoredFiles($pathsToDelete);
 
             $this->toast('success', 'Documents uploaded successfully. Images are being optimized in the background.');
             $this->mount($this->contractId);
+            $this->refreshFileInputs();
         } catch (\Throwable $e) {
             DB::rollBack();
 
             // حذف فایل‌های آپلود شده در صورت خطا
-            foreach ($uploadedPaths as $path) {
-                Storage::disk('myimage')->delete($path);
-            }
+            $this->deleteStoredFiles($uploadedPaths);
 
             $this->toast('error', 'Error uploading documents: ' . $e->getMessage(), false);
         }
@@ -306,15 +311,12 @@ class RentalRequestReturnDocument extends Component
             "ReturnDocument/{$fileType}_{$this->contractId}"
         );
 
-        if ($storedPath && Storage::disk('myimage')->exists($storedPath)) {
-            Storage::disk('myimage')->delete($storedPath);
-        }
-
-        // پاک کردن مقدار از دیتابیس
         if ($returnDocument) {
             $returnDocument->$dbField = null;
             $returnDocument->save();
         }
+
+        $this->deleteStoredFiles([$storedPath]);
 
         $this->existingFiles[$viewKey] = null;
 
@@ -322,6 +324,7 @@ class RentalRequestReturnDocument extends Component
 
         // بارگذاری مجدد
         $this->mount($this->contractId);
+        $this->refreshFileInputs();
     }
 
 
@@ -361,15 +364,14 @@ class RentalRequestReturnDocument extends Component
             return;
         }
 
-        if (Storage::disk('myimage')->exists($path)) {
-            Storage::disk('myimage')->delete($path);
-        }
-
         $returnDocument->$column = $filteredGallery;
         $returnDocument->save();
 
+        $this->deleteStoredFiles([$path]);
+
         $this->toast('success', 'Photo removed successfully.');
         $this->mount($this->contractId);
+        $this->refreshFileInputs();
     }
 
     public function updatedCarInsidePhotos($photos): void
@@ -495,6 +497,15 @@ class RentalRequestReturnDocument extends Component
         return $storedPath;
     }
 
+    private function storeDocumentUpload(TemporaryUploadedFile $file, string $type): string
+    {
+        return $this->deferredUploader->store(
+            $file,
+            'ReturnDocument/' . $type . '/' . $this->contractId . '/' . $type . '-' . Str::uuid() . '.webp',
+            'myimage'
+        );
+    }
+
     private function sanitizeGalleryArray($items): array
     {
         if (is_string($items)) {
@@ -545,5 +556,23 @@ class RentalRequestReturnDocument extends Component
             })
             ->values()
             ->toArray();
+    }
+
+    private function queueReplacedPathForDeletion(array &$pathsToDelete, ?string $oldPath, string $newPath): void
+    {
+        if ($oldPath && $oldPath !== $newPath) {
+            $pathsToDelete[] = $oldPath;
+        }
+    }
+
+    private function deleteStoredFiles(array $paths): void
+    {
+        $disk = Storage::disk('myimage');
+
+        foreach (array_unique(array_filter($paths)) as $path) {
+            if (is_string($path) && $disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
     }
 }

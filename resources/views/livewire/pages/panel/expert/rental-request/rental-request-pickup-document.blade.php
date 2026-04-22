@@ -109,9 +109,9 @@
                             @endif
                             <input id="tarsContractInput" type="file"
                                 class="form-control @error('tarsContract') is-invalid @enderror"
-                                wire:model="tarsContract" wire:loading.attr="disabled"
+                                wire:key="pickup-tars-{{ $fileInputVersion }}" wire:model="tarsContract" wire:loading.attr="disabled"
                                 wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
-                                data-upload-field="tarsContract"
+                                data-upload-field="tarsContract" accept="image/*"
                                 @if (empty($existingFiles['tarsContract'])) aria-required="true" @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             <div class="mt-3 d-none" data-progress-container="tarsContract"
@@ -174,9 +174,9 @@
                                 @endif
                                 <input id="kardoContractInput" type="file"
                                     class="form-control @error('kardoContract') is-invalid @enderror"
-                                    wire:model="kardoContract" wire:loading.attr="disabled"
+                                    wire:key="pickup-kardo-{{ $fileInputVersion }}" wire:model="kardoContract" wire:loading.attr="disabled"
                                     wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
-                                    data-upload-field="kardoContract"
+                                    data-upload-field="kardoContract" accept="image/*"
                                     @if (empty($existingFiles['kardoContract'])) aria-required="true" @endif>
                                 <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                                 <div class="mt-3 d-none" data-progress-container="kardoContract"
@@ -234,9 +234,9 @@
                             @endif
                             <input id="factorContractInput" type="file"
                                 class="form-control @error('factorContract') is-invalid @enderror"
-                                wire:model="factorContract" wire:loading.attr="disabled"
+                                wire:key="pickup-factor-{{ $fileInputVersion }}" wire:model="factorContract" wire:loading.attr="disabled"
                                 wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
-                                data-upload-field="factorContract" @if (!$paymentOnDelivery) disabled @endif>
+                                data-upload-field="factorContract" accept="image/*" @if (!$paymentOnDelivery) disabled @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             @unless ($paymentOnDelivery)
                                 <small class="text-muted d-block">Not needed when Payment on Delivery is disabled.</small>
@@ -284,9 +284,9 @@
                             @endif
                             <input id="carDashboardInput" type="file"
                                 class="form-control @error('carDashboard') is-invalid @enderror"
-                                wire:model="carDashboard" wire:loading.attr="disabled"
+                                wire:key="pickup-dashboard-{{ $fileInputVersion }}" wire:model="carDashboard" wire:loading.attr="disabled"
                                 wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
-                                data-upload-field="carDashboard"
+                                data-upload-field="carDashboard" accept="image/*"
                                 @if (empty($existingFiles['carDashboard'])) aria-required="true" @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             <div class="mt-3 d-none" data-progress-container="carDashboard"
@@ -349,7 +349,7 @@
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
                                 <input id="pickupCarInsideInput" type="file"
                                     class="form-control @error('carInsidePhotos') is-invalid @enderror @error('carInsidePhotos.*') is-invalid @enderror"
-                                    wire:model="carInsidePhotos" accept="image/*" multiple
+                                    wire:key="pickup-inside-{{ $fileInputVersion }}" wire:model="carInsidePhotos" accept="image/*" multiple
                                     wire:loading.attr="disabled"
                                     wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
                                     data-upload-field="carInsidePhotos"
@@ -423,7 +423,7 @@
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
                                 <input id="pickupCarOutsideInput" type="file"
                                     class="form-control @error('carOutsidePhotos') is-invalid @enderror @error('carOutsidePhotos.*') is-invalid @enderror"
-                                    wire:model="carOutsidePhotos" accept="image/*" multiple
+                                    wire:key="pickup-outside-{{ $fileInputVersion }}" wire:model="carOutsidePhotos" accept="image/*" multiple
                                     wire:loading.attr="disabled"
                                     wire:target="tarsContract,kardoContract,factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
                                     data-upload-field="carOutsidePhotos"

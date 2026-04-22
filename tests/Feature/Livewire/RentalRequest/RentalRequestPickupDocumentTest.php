@@ -10,6 +10,7 @@ use App\Models\PickupDocument;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class RentalRequestPickupDocumentTest extends TestCase
@@ -44,5 +45,31 @@ class RentalRequestPickupDocumentTest extends TestCase
         $this->assertEquals('delivery', $contract->current_status);
         $this->assertEquals('delivery', $contract->statuses()->latest('id')->first()->status);
         $this->assertEquals('Status changed to Delivery successfully.', session('message'));
+    }
+
+    public function test_remove_file_clears_pickup_document_reference_and_deletes_file(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for(Car::factory())
+            ->status('reserved')
+            ->create();
+
+        Storage::disk('myimage')->put('PickupDocument/tars_contract_sample.jpg', 'pickup-file');
+
+        $pickupDocument = PickupDocument::factory()->for($contract)->create([
+            'tars_contract' => 'PickupDocument/tars_contract_sample.jpg',
+        ]);
+
+        Livewire::test(RentalRequestPickupDocument::class, ['contractId' => $contract->id])
+            ->call('removeFile', 'tars_contract')
+            ->assertSet('fileInputVersion', 1);
+
+        $this->assertNull($pickupDocument->fresh()->tars_contract);
+        Storage::disk('myimage')->assertMissing('PickupDocument/tars_contract_sample.jpg');
     }
 }

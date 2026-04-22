@@ -104,9 +104,9 @@
                                 </div>
                             @endif
                             <input type="file" class="form-control @error('factorContract') is-invalid @enderror"
-                                wire:model="factorContract" wire:loading.attr="disabled"
+                                wire:key="return-factor-{{ $fileInputVersion }}" wire:model="factorContract" wire:loading.attr="disabled"
                                 wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
-                                data-upload-field="factorContract">
+                                data-upload-field="factorContract" accept="image/*">
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             <div class="mt-3 d-none" data-progress-container="factorContract"
                                 wire:loading.class.remove="d-none" wire:target="factorContract">
@@ -144,9 +144,9 @@
                                 </div>
                             @endif
                             <input id="returnCarDashboardInput" type="file" class="form-control @error('carDashboard') is-invalid @enderror"
-                                wire:model="carDashboard" wire:loading.attr="disabled"
+                                wire:key="return-dashboard-{{ $fileInputVersion }}" wire:model="carDashboard" wire:loading.attr="disabled"
                                 wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
-                                data-upload-field="carDashboard"
+                                data-upload-field="carDashboard" accept="image/*"
                                 @if ($carDashboardRequired) aria-required="true" @endif>
                             <small class="text-muted d-block mt-2">JPG or PNG up to 8MB</small>
                             <div class="mt-3 d-none" data-progress-container="carDashboard"
@@ -212,7 +212,7 @@
 
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
-                                <input id="returnCarInsideInput" type="file" class="form-control @error('carInsidePhotos') is-invalid @enderror @error('carInsidePhotos.*') is-invalid @enderror" wire:model="carInsidePhotos" accept="image/*"
+                                <input id="returnCarInsideInput" type="file" class="form-control @error('carInsidePhotos') is-invalid @enderror @error('carInsidePhotos.*') is-invalid @enderror" wire:key="return-inside-{{ $fileInputVersion }}" wire:model="carInsidePhotos" accept="image/*"
                                     multiple
                                     wire:loading.attr="disabled"
                                     wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"
@@ -289,7 +289,7 @@
 
                             <div>
                                 <label class="form-label small fw-semibold text-muted mb-2">Add new photos</label>
-                                <input id="returnCarOutsideInput" type="file" class="form-control @error('carOutsidePhotos') is-invalid @enderror @error('carOutsidePhotos.*') is-invalid @enderror" wire:model="carOutsidePhotos" accept="image/*"
+                                <input id="returnCarOutsideInput" type="file" class="form-control @error('carOutsidePhotos') is-invalid @enderror @error('carOutsidePhotos.*') is-invalid @enderror" wire:key="return-outside-{{ $fileInputVersion }}" wire:model="carOutsidePhotos" accept="image/*"
                                     multiple
                                     wire:loading.attr="disabled"
                                     wire:target="factorContract,carDashboard,carInsidePhotos,carOutsidePhotos,uploadDocuments"

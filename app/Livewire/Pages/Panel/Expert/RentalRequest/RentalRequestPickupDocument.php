@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Models\Contract;
 use App\Models\PickupDocument;
+use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Services\Media\DeferredImageUploadService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -19,6 +20,7 @@ class RentalRequestPickupDocument extends Component
 
     use WithFileUploads;
     use InteractsWithToasts;
+    use RefreshesFileInputs;
 
     public $contractId;
     public $tarsContract;
@@ -274,6 +276,7 @@ class RentalRequestPickupDocument extends Component
         // Start Database Transaction
         DB::beginTransaction();
         $uploadedPaths = [];
+        $pathsToDelete = [];
 
         try {
             $pickupDocument = PickupDocument::updateOrCreate(
@@ -288,47 +291,51 @@ class RentalRequestPickupDocument extends Component
 
             // Tars Contract Upload
             if ($this->tarsContract) {
-                $tarsPath = $this->deferredUploader->store(
-                    $this->tarsContract,
-                    "PickupDocument/tars_contract_{$this->contractId}",
-                    'myimage'
+                $previousPath = $this->resolveStoredPathFromRecord(
+                    $pickupDocument->tars_contract,
+                    "PickupDocument/tars_contract_{$this->contractId}"
                 );
+                $tarsPath = $this->storeDocumentUpload($this->tarsContract, 'tars-contract');
                 $pickupDocument->tars_contract = $tarsPath;
                 $uploadedPaths[] = $tarsPath;
+                $this->queueReplacedPathForDeletion($pathsToDelete, $previousPath, $tarsPath);
             }
 
             // Kardo Contract Upload
             if ($this->kardoContract) {
-                $kardoPath = $this->deferredUploader->store(
-                    $this->kardoContract,
-                    "PickupDocument/kardo_contract_{$this->contractId}",
-                    'myimage'
+                $previousPath = $this->resolveStoredPathFromRecord(
+                    $pickupDocument->kardo_contract,
+                    "PickupDocument/kardo_contract_{$this->contractId}"
                 );
+                $kardoPath = $this->storeDocumentUpload($this->kardoContract, 'kardo-contract');
                 $pickupDocument->kardo_contract = $kardoPath;
                 $uploadedPaths[] = $kardoPath;
+                $this->queueReplacedPathForDeletion($pathsToDelete, $previousPath, $kardoPath);
             }
 
             // Factor Contract Upload
             if ($this->contract->payment_on_delivery && $this->factorContract) {
-                $factorPath = $this->deferredUploader->store(
-                    $this->factorContract,
-                    "PickupDocument/factor_contract_{$this->contractId}",
-                    'myimage'
+                $previousPath = $this->resolveStoredPathFromRecord(
+                    $pickupDocument->factor_contract,
+                    "PickupDocument/factor_contract_{$this->contractId}"
                 );
+                $factorPath = $this->storeDocumentUpload($this->factorContract, 'factor-contract');
                 $pickupDocument->factor_contract = $factorPath;
                 $uploadedPaths[] = $factorPath;
+                $this->queueReplacedPathForDeletion($pathsToDelete, $previousPath, $factorPath);
             }
 
 
             // Car Dashboard  Upload
             if ($this->carDashboard) {
-                $carDashboardPath = $this->deferredUploader->store(
-                    $this->carDashboard,
-                    "PickupDocument/car_dashboard_{$this->contractId}",
-                    'myimage'
+                $previousPath = $this->resolveStoredPathFromRecord(
+                    $pickupDocument->car_dashboard,
+                    "PickupDocument/car_dashboard_{$this->contractId}"
                 );
+                $carDashboardPath = $this->storeDocumentUpload($this->carDashboard, 'car-dashboard');
                 $pickupDocument->car_dashboard = $carDashboardPath;
                 $uploadedPaths[] = $carDashboardPath;
+                $this->queueReplacedPathForDeletion($pathsToDelete, $previousPath, $carDashboardPath);
             }
 
             if ($insideUploadCount > 0) {
@@ -371,16 +378,16 @@ class RentalRequestPickupDocument extends Component
 
 
             DB::commit();
+            $this->deleteStoredFiles($pathsToDelete);
 
             $this->toast('success', 'Documents uploaded successfully. Images are being optimized in the background.');
             $this->mount($this->contractId);
+            $this->refreshFileInputs();
         } catch (\Throwable $e) {
             DB::rollBack();
 
             // حذف فایل‌های آپلود شده در صورت خطا
-            foreach ($uploadedPaths as $path) {
-                Storage::disk('myimage')->delete($path);
-            }
+            $this->deleteStoredFiles($uploadedPaths);
 
             $this->toast('error', 'Error uploading documents: ' . $e->getMessage());
         }
@@ -410,18 +417,18 @@ class RentalRequestPickupDocument extends Component
             "PickupDocument/{$fileType}_{$this->contractId}"
         );
 
-        if ($storedPath && Storage::disk('myimage')->exists($storedPath)) {
-            Storage::disk('myimage')->delete($storedPath);
-        }
         if ($pickupDocument) {
             $pickupDocument->$dbField = null;
             $pickupDocument->save();
         }
 
+        $this->deleteStoredFiles([$storedPath]);
+
         $this->existingFiles[$viewKey] = null;
 
         $this->toast('success', 'File deleted successfully.');
         $this->mount($this->contractId);
+        $this->refreshFileInputs();
     }
 
     private function syncContractDriverNote(): void
@@ -469,15 +476,14 @@ class RentalRequestPickupDocument extends Component
             return;
         }
 
-        if (Storage::disk('myimage')->exists($path)) {
-            Storage::disk('myimage')->delete($path);
-        }
-
         $pickupDocument->$column = $filteredGallery;
         $pickupDocument->save();
 
+        $this->deleteStoredFiles([$path]);
+
         $this->toast('success', 'Photo removed successfully.');
         $this->mount($this->contractId);
+        $this->refreshFileInputs();
     }
 
     public function render()
@@ -508,6 +514,15 @@ class RentalRequestPickupDocument extends Component
         $storedPath = $this->deferredUploader->store($photo, $path, 'myimage', ['optimize' => false]);
 
         return $storedPath;
+    }
+
+    private function storeDocumentUpload(TemporaryUploadedFile $file, string $type): string
+    {
+        return $this->deferredUploader->store(
+            $file,
+            'PickupDocument/' . $type . '/' . $this->contractId . '/' . $type . '-' . Str::uuid() . '.webp',
+            'myimage'
+        );
     }
 
     public function updatedCarInsidePhotos($photos): void
@@ -606,6 +621,24 @@ class RentalRequestPickupDocument extends Component
             ->unique()
             ->values()
             ->toArray();
+    }
+
+    private function queueReplacedPathForDeletion(array &$pathsToDelete, ?string $oldPath, string $newPath): void
+    {
+        if ($oldPath && $oldPath !== $newPath) {
+            $pathsToDelete[] = $oldPath;
+        }
+    }
+
+    private function deleteStoredFiles(array $paths): void
+    {
+        $disk = Storage::disk('myimage');
+
+        foreach (array_unique(array_filter($paths)) as $path) {
+            if (is_string($path) && $disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
     }
 
     private function mapGalleryMedia($items): array
