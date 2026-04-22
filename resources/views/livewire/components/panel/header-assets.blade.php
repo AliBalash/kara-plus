@@ -69,7 +69,7 @@
                 z-index: 3;
             }
 
-            .result-card-vehicle > :not(.result-card-overlay) {
+            .result-card-vehicle > :not(.result-card-overlay):not(.reservation-collection) {
                 pointer-events: none;
             }
 
@@ -79,6 +79,12 @@
             .result-card-vehicle select,
             .result-card-vehicle textarea,
             .result-card-vehicle label {
+                pointer-events: auto;
+                position: relative;
+                z-index: 4;
+            }
+
+            .result-card-vehicle>.reservation-collection {
                 pointer-events: auto;
                 position: relative;
                 z-index: 4;
@@ -221,6 +227,9 @@
                 display: flex;
                 flex-direction: column;
                 gap: 1.1rem;
+                pointer-events: auto;
+                position: relative;
+                z-index: 4;
             }
 
             .reservation-card {
@@ -232,6 +241,24 @@
                 display: flex;
                 flex-direction: column;
                 gap: 1.1rem;
+                position: relative;
+                z-index: 4;
+                pointer-events: auto;
+                text-decoration: none;
+                color: inherit;
+                transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            }
+
+            .reservation-card-link:hover,
+            .reservation-card-link:focus-visible {
+                transform: translateY(-2px);
+                border-color: rgba(59, 130, 246, 0.45);
+                box-shadow: 0 18px 34px -24px rgba(37, 99, 235, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            }
+
+            .reservation-card-link:focus-visible {
+                outline: 2px solid rgba(59, 130, 246, 0.45);
+                outline-offset: 2px;
             }
 
             .reservation-card-heading {
@@ -449,6 +476,7 @@
                 box-shadow: 0 18px 34px -20px rgba(37, 99, 235, 0.65);
                 position: relative;
                 z-index: 3;
+                pointer-events: none;
             }
 
             .reservation-actions .btn:hover {

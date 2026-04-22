@@ -252,8 +252,10 @@
                                                 $returnDriver = optional($reservation->returnDriver)->shortName();
                                                 $updatedAt = $reservation->updated_at?->diffForHumans() ?? '—';
                                             @endphp
-                                            <div class="reservation-card" role="listitem"
-                                                wire:key="search-result-{{ $car->id }}-reservation-{{ $reservation->id }}">
+                                            <a href="{{ route('rental-requests.details', [$reservation->id]) }}"
+                                                class="reservation-card reservation-card-link" role="listitem"
+                                                wire:key="search-result-{{ $car->id }}-reservation-{{ $reservation->id }}"
+                                                aria-label="Open request #{{ $reservation->id }} for {{ $customerName }}">
                                                 <div class="reservation-card-heading">
                                                     <i class="bx bx-calendar-event" aria-hidden="true"></i>
                                                     <div class="reservation-heading-body">
@@ -321,14 +323,13 @@
                                                     </div>
                                                 </div>
                                                 <div class="reservation-actions">
-                                                    <a href="{{ route('rental-requests.details', [$reservation->id]) }}"
-                                                        class="btn btn-sm btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2"
-                                                        aria-label="Open request #{{ $reservation->id }}">
+                                                    <span
+                                                        class="btn btn-sm btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2">
                                                         <span>Open request</span>
                                                         <i class="bx bx-chevron-right" aria-hidden="true"></i>
-                                                    </a>
+                                                    </span>
                                                 </div>
-                                            </div>
+                                            </a>
                                         @endforeach
                                     </div>
                                 @endif
