@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Brand;
 
-
+use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Models\CarModel;
 use App\Services\Media\DeferredImageUploadService;
-use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -15,6 +15,7 @@ class BrandForm extends Component
 {
     use WithFileUploads;
     use InteractsWithToasts;
+    use RefreshesFileInputs;
 
     public $brandId;
     public $brand;
@@ -29,16 +30,14 @@ class BrandForm extends Component
         $this->deferredUploader = $deferredUploader;
     }
 
-    public function mount($brandId = null)
+    public function mount($brandId = null): void
     {
         if ($brandId) {
             $this->loadCarModelData($brandId);
         }
-
-
     }
 
-    private function loadCarModelData($brandId)
+    private function loadCarModelData($brandId): void
     {
         $carModel = CarModel::findOrFail($brandId);
 
@@ -47,85 +46,156 @@ class BrandForm extends Component
         $this->model = $carModel->model;
         $this->currentBrandIcon = $carModel->brand_icon;
     }
-    public function save()
+
+    public function save(): void
     {
         $this->validate([
             'brand' => 'required|string|max:255',
             'model' => 'required|string|max:255',
             'brandIcon' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'additionalImage' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5048',
-
         ]);
 
+        $isEditing = (bool) $this->brandId;
         $carModel = $this->brandId ? CarModel::findOrFail($this->brandId) : new CarModel();
+        $existingImageModel = $carModel->exists ? $carModel->image : null;
+        $oldBrandIconPath = $carModel->brand_icon;
+        $oldAdditionalImage = $existingImageModel?->file_name;
+        $newBrandIconPath = null;
+        $newAdditionalImagePath = null;
 
-        $carModel->brand = $this->brand;
-        $carModel->model = $this->model;
+        try {
+            $carModel->brand = $this->brand;
+            $carModel->model = $this->model;
 
+            if ($this->brandIcon) {
+                $newBrandIconPath = $this->deferredUploader->store(
+                    $this->brandIcon,
+                    'brand-icons/' . Str::slug($this->brand . '-' . $this->model) . '-' . Str::uuid() . '.webp',
+                    'myimage',
+                    ['quality' => 50, 'max_width' => 512, 'max_height' => 512]
+                );
 
-
-        if ($this->brandIcon) {
-            if ($carModel->brand_icon && Storage::disk('myimage')->exists($carModel->brand_icon)) {
-                Storage::disk('myimage')->delete($carModel->brand_icon);
+                $carModel->brand_icon = $newBrandIconPath;
             }
 
-            $path = $this->deferredUploader->store(
-                $this->brandIcon,
-                'brand-icons/' . Str::slug($this->brand . '-' . $this->model) . '-' . time() . '.webp',
-                'myimage',
-                ['quality' => 50, 'max_width' => 512, 'max_height' => 512]
-            );
+            $carModel->save();
 
-            $carModel->brand_icon = $path;
+            if ($this->additionalImage) {
+                $newAdditionalImagePath = $this->deferredUploader->store(
+                    $this->additionalImage,
+                    Str::slug($carModel->fullName() ?: ($this->brand . '-' . $this->model)) . '-' . Str::uuid() . '.webp',
+                    'car_pics',
+                    ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080, 'optimize' => false]
+                );
+
+                $carModel->image()->updateOrCreate(
+                    [
+                        'imageable_id' => $carModel->id,
+                        'imageable_type' => CarModel::class,
+                    ],
+                    [
+                        'file_path' => 'car-pics/',
+                        'file_name' => basename($newAdditionalImagePath),
+                    ]
+                );
+            }
+        } catch (\Throwable $exception) {
+            if ($newBrandIconPath && Storage::disk('myimage')->exists($newBrandIconPath)) {
+                Storage::disk('myimage')->delete($newBrandIconPath);
+            }
+
+            if ($newAdditionalImagePath && Storage::disk('car_pics')->exists(basename($newAdditionalImagePath))) {
+                Storage::disk('car_pics')->delete(basename($newAdditionalImagePath));
+            }
+
+            $this->toast('error', 'Unable to save the car model: ' . $exception->getMessage(), false);
+
+            return;
         }
-        $carModel->save();
 
-        // Handle image upload
-        if ($this->additionalImage) {
-            $imageModel = $carModel->image;
-            if ($imageModel && $imageModel->file_name) {
-                Storage::disk('car_pics')->delete($imageModel->file_name);
-            }
-
-            $safeName = Str::slug($carModel->fullname() ?? ($this->brand . '-' . $this->model)) . '-' . time() . '.webp';
-            $storedPath = $this->deferredUploader->store(
-                $this->additionalImage,
-                $safeName,
-                'car_pics',
-                ['quality' => 55, 'max_width' => 1920, 'max_height' => 1080, 'optimize' => false]
-            );
-
-            $fileName = basename($storedPath);
-
-            if (! $imageModel) {
-                $carModel->image()->create([
-                    'file_path' => 'assets/car-pics/',
-                    'file_name' => $fileName,
-                ]);
-            } else {
-                $imageModel->update([
-                    'file_name' => $fileName,
-                ]);
-            }
+        if ($newBrandIconPath && $oldBrandIconPath && $oldBrandIconPath !== $newBrandIconPath && Storage::disk('myimage')->exists($oldBrandIconPath)) {
+            Storage::disk('myimage')->delete($oldBrandIconPath);
         }
 
+        if (
+            $newAdditionalImagePath
+            && $oldAdditionalImage
+            && $oldAdditionalImage !== basename($newAdditionalImagePath)
+            && Storage::disk('car_pics')->exists($oldAdditionalImage)
+        ) {
+            Storage::disk('car_pics')->delete($oldAdditionalImage);
+        }
 
-        $this->toast('success', $this->brandId
+        $this->brandId = $carModel->id;
+        $this->currentBrandIcon = $carModel->brand_icon;
+        $this->brandIcon = null;
+        $this->additionalImage = null;
+        $this->refreshFileInputs();
+
+        $this->toast('success', $isEditing
             ? 'The car model has been successfully updated!'
             : 'A new car model has been successfully added!');
-
-        // return redirect()->route('brand.add');
     }
 
+    public function removeBrandIcon(): void
+    {
+        if (! $this->brandId) {
+            return;
+        }
+
+        $carModel = CarModel::findOrFail($this->brandId);
+        $path = $carModel->brand_icon;
+
+        if (! $path) {
+            return;
+        }
+
+        $carModel->update(['brand_icon' => null]);
+
+        if (Storage::disk('myimage')->exists($path)) {
+            Storage::disk('myimage')->delete($path);
+        }
+
+        $this->currentBrandIcon = null;
+        $this->brandIcon = null;
+        $this->refreshFileInputs();
+
+        $this->toast('success', 'Brand icon removed successfully.');
+    }
+
+    public function removeAdditionalImage(): void
+    {
+        if (! $this->brandId) {
+            return;
+        }
+
+        $carModel = CarModel::findOrFail($this->brandId);
+        $image = $carModel->image;
+
+        if (! $image) {
+            return;
+        }
+
+        $fileName = $image->file_name;
+        $image->delete();
+
+        if ($fileName && Storage::disk('car_pics')->exists($fileName)) {
+            Storage::disk('car_pics')->delete($fileName);
+        }
+
+        $this->additionalImage = null;
+        $this->refreshFileInputs();
+
+        $this->toast('success', 'Additional image removed successfully.');
+    }
 
     public function render()
     {
         $additionalImages = $this->brandId
             ? CarModel::findOrFail($this->brandId)->image
             : null;
-        return view(
-            'livewire.pages.panel.expert.brand.brand-form',
-            compact('additionalImages')
-        );
+
+        return view('livewire.pages.panel.expert.brand.brand-form', compact('additionalImages'));
     }
 }

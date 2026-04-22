@@ -40,10 +40,15 @@
                         <div class="mb-3">
                             <label for="brandIcon" class="form-label">Brand Icon</label>
                             @if ($currentBrandIcon)
-                                <img src="{{ asset('storage/' . ltrim($currentBrandIcon, '/')) }}" alt="Current Brand Icon"
-                                    width="100" height="100" loading="lazy" decoding="async" fetchpriority="low">
+                                <div class="mb-2">
+                                    <img src="{{ asset('storage/' . ltrim($currentBrandIcon, '/')) }}" alt="Current Brand Icon"
+                                        width="100" height="100" loading="lazy" decoding="async" fetchpriority="low">
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger mb-2"
+                                    wire:click="removeBrandIcon">Remove icon</button>
                             @endif
-                            <input type="file" class="form-control" id="brandIcon" wire:model="brandIcon">
+                            <input type="file" class="form-control" id="brandIcon"
+                                wire:key="brand-icon-{{ $fileInputVersion }}" wire:model="brandIcon" accept="image/*">
                             @error('brandIcon')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -52,7 +57,8 @@
                         <div class="mb-3">
                             <label for="additionalImage" class="form-label">Additional Image</label>
                             <input type="file" class="form-control" id="additionalImage"
-                                wire:model="additionalImage">
+                                wire:key="brand-additional-image-{{ $fileInputVersion }}" wire:model="additionalImage"
+                                accept="image/*">
                             <small class="form-text text-muted">Recommended size: 800x450 pixels, format: PNG</small>
 
                             @error('additionalImage')
@@ -68,12 +74,14 @@
                             </div>
                         </div>
 
-
-
                             @if ($additionalImages)
-                                <img src="{{ asset('assets/car-pics/' . $additionalImages->file_name) }}"
-                                    alt="Additional Image" width="100" loading="lazy" decoding="async"
-                                    fetchpriority="low">
+                                <div class="mt-3">
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('car_pics')->url($additionalImages->file_name) }}"
+                                        alt="Additional Image" width="100" loading="lazy" decoding="async"
+                                        fetchpriority="low">
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger mt-2"
+                                    wire:click="removeAdditionalImage">Remove image</button>
                             @else
                                 <img src="{{ asset('assets/car-pics/car test.webp') }}" alt="Default Image" width="100"
                                     loading="lazy" decoding="async" fetchpriority="low">

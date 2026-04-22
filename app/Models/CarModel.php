@@ -84,10 +84,7 @@ class CarModel extends Model
 
         if ($request->hasFile('brand_icon')) {
             $file = $request->file('brand_icon');
-
-            if ($carModel->brand_icon && Storage::disk('myimage')->exists($carModel->brand_icon)) {
-                Storage::disk('myimage')->delete($carModel->brand_icon);
-            }
+            $oldBrandIconPath = $carModel->brand_icon;
 
             $uploader = app(OptimizedUploadService::class);
             $slug = Str::slug(pathinfo($file->getClientOriginalName() ?? $carModel->fullName(), PATHINFO_FILENAME));
@@ -98,7 +95,19 @@ class CarModel extends Model
                 ['quality' => 50, 'max_width' => 512, 'max_height' => 512]
             );
 
-            $carModel->update(['brand_icon' => $storedPath]);
+            try {
+                $carModel->update(['brand_icon' => $storedPath]);
+            } catch (\Throwable $exception) {
+                if (Storage::disk('myimage')->exists($storedPath)) {
+                    Storage::disk('myimage')->delete($storedPath);
+                }
+
+                throw $exception;
+            }
+
+            if ($oldBrandIconPath && $oldBrandIconPath !== $storedPath && Storage::disk('myimage')->exists($oldBrandIconPath)) {
+                Storage::disk('myimage')->delete($oldBrandIconPath);
+            }
         }
 
         return response()->json(['message' => 'Brand icon updated successfully']);

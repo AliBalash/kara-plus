@@ -4,6 +4,8 @@ namespace App\Livewire\Pages\Panel\Expert\Brand;
 
 use App\Models\CarModel;
 use App\Livewire\Concerns\InteractsWithToasts;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -59,8 +61,24 @@ class BrandList extends Component
     public function deleteBrand($id)
     {
         $brand = CarModel::findOrFail($id);
-        // Delete the car record
-        $brand->delete();
+        $brandIconPath = $brand->brand_icon;
+        $additionalImageFileName = $brand->image?->file_name;
+
+        DB::transaction(function () use ($brand) {
+            if ($brand->image) {
+                $brand->image->delete();
+            }
+
+            $brand->delete();
+        });
+
+        if ($brandIconPath && Storage::disk('myimage')->exists($brandIconPath)) {
+            Storage::disk('myimage')->delete($brandIconPath);
+        }
+
+        if ($additionalImageFileName && Storage::disk('car_pics')->exists($additionalImageFileName)) {
+            Storage::disk('car_pics')->delete($additionalImageFileName);
+        }
 
         $this->toast('success', 'Car has been deleted successfully.');
     }
