@@ -37,12 +37,13 @@ foreach ($hostCandidates as $candidate) {
 }
 
 $publicRoot = rtrim(env('PUBLIC_PATH', $hostedPublicPath ?: $defaultPublicPath), DIRECTORY_SEPARATOR);
-$publicUrl = rtrim(env('PUBLIC_URL', env('APP_URL')), '/');
 
 $storageLinkPath = rtrim(env('PUBLIC_STORAGE_PATH', $publicRoot . '/storage'), DIRECTORY_SEPARATOR);
 $storageLinkTarget = rtrim(env('PUBLIC_STORAGE_TARGET', storage_path('app/public')), DIRECTORY_SEPARATOR);
 $publicDiskRoot = rtrim(env('PUBLIC_DISK_ROOT', $storageLinkTarget), DIRECTORY_SEPARATOR);
-$publicDiskUrl = rtrim(env('PUBLIC_DISK_URL', $publicUrl . '/storage'), '/');
+$publicDiskUrl = rtrim((string) env('PUBLIC_DISK_URL', '/storage'), '/');
+$carPicsUrl = rtrim((string) env('CAR_PICS_URL', '/assets/car-pics'), '/');
+$myImageUrl = rtrim((string) env('MYIMAGE_URL', $publicDiskUrl), '/');
 
 return [
 
@@ -84,7 +85,7 @@ return [
         'car_pics' => [
             'driver' => 'local',
             'root' => rtrim(env('CAR_PICS_ROOT', $publicRoot . '/assets/car-pics'), DIRECTORY_SEPARATOR),
-            'url' => rtrim(env('CAR_PICS_URL', $publicUrl . '/assets/car-pics'), '/'),
+            'url' => $carPicsUrl,
             'visibility' => 'public',
         ],
 
@@ -98,7 +99,7 @@ return [
         'myimage' => [
             'driver' => 'local',
             'root' => rtrim(env('MYIMAGE_ROOT', $publicDiskRoot), DIRECTORY_SEPARATOR),
-            'url' => rtrim(env('MYIMAGE_URL', $publicDiskUrl), '/'),
+            'url' => $myImageUrl,
             'visibility' => 'public',
         ],
 
