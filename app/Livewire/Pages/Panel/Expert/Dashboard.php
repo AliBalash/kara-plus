@@ -9,10 +9,13 @@ use App\Models\DiscountCode;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 class Dashboard extends Component
 {
+    protected static ?bool $discountCodesTableExists = null;
+
     public $title = 'Dashboard';
     public $discountCodesCount;
     public $usedDiscountCodes;
@@ -95,14 +98,24 @@ class Dashboard extends Component
             return;
         }
 
-        $this->discountCodesCount = DiscountCode::count();
-        $this->usedDiscountCodes = DiscountCode::where('contacted', true)->count();
-        $this->usageRate = $this->discountCodesCount > 0 ? round(($this->usedDiscountCodes / $this->discountCodesCount) * 100, 2) : 0;
-        $this->averageDiscount = DiscountCode::avg('discount_percentage');
-        $this->latestDiscountCodes = DiscountCode::orderBy('created_at', 'desc')->take(5)->get();
-        $this->userDiscountCodes = DiscountCode::where('phone', Auth::user()->phone)->count();
-        $this->userUsedDiscountCodes = DiscountCode::where('phone', Auth::user()->phone)->where('contacted', true)->count();
-        $this->lastUserDiscountCode = DiscountCode::where('phone', Auth::user()->phone)->latest()->first();
+        $this->initializeDiscountCodeMetrics();
+
+        if ($this->hasDiscountCodesTable()) {
+            $userPhone = Auth::user()?->phone;
+
+            $this->discountCodesCount = DiscountCode::count();
+            $this->usedDiscountCodes = DiscountCode::where('contacted', true)->count();
+            $this->usageRate = $this->discountCodesCount > 0 ? round(($this->usedDiscountCodes / $this->discountCodesCount) * 100, 2) : 0;
+            $this->averageDiscount = (float) (DiscountCode::avg('discount_percentage') ?? 0);
+            $this->latestDiscountCodes = DiscountCode::orderBy('created_at', 'desc')->take(5)->get();
+            $this->userDiscountCodes = $userPhone ? DiscountCode::where('phone', $userPhone)->count() : 0;
+            $this->userUsedDiscountCodes = $userPhone
+                ? DiscountCode::where('phone', $userPhone)->where('contacted', true)->count()
+                : 0;
+            $this->lastUserDiscountCode = $userPhone
+                ? DiscountCode::where('phone', $userPhone)->latest()->first()
+                : null;
+        }
 
 
         // آمار کلی قراردادها
@@ -203,14 +216,18 @@ class Dashboard extends Component
         $monthKeys = $months->map->format('Y-m');
         $monthLabels = $months->map->format('M');
 
+        $monthBucketPickupDate = $this->monthBucketSelect('pickup_date');
+        $monthBucketCreatedAt = $this->monthBucketSelect('created_at');
+        $monthBucketUpdatedAt = $this->monthBucketSelect('updated_at');
+
         $revenueRaw = Contract::whereNotNull('pickup_date')
             ->whereBetween('pickup_date', [$months->first(), $months->last()->copy()->endOfMonth()])
-            ->selectRaw('DATE_FORMAT(pickup_date, "%Y-%m") as month, SUM(total_price) as total')
+            ->selectRaw("{$monthBucketPickupDate} as month, SUM(total_price) as total")
             ->groupBy('month')
             ->pluck('total', 'month');
 
         $contractRaw = Contract::whereBetween('created_at', [$months->first(), $months->last()->copy()->endOfMonth()])
-            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as total')
+            ->selectRaw("{$monthBucketCreatedAt} as month, COUNT(*) as total")
             ->groupBy('month')
             ->pluck('total', 'month');
 
@@ -235,7 +252,7 @@ class Dashboard extends Component
         ];
 
         $statusRaw = Contract::whereBetween('created_at', [$months->first(), $months->last()->copy()->endOfMonth()])
-            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, current_status, COUNT(*) as total')
+            ->selectRaw("{$monthBucketCreatedAt} as month, current_status, COUNT(*) as total")
             ->groupBy('month', 'current_status')
             ->get()
             ->groupBy('month');
@@ -252,22 +269,27 @@ class Dashboard extends Component
             ];
         })->values()->all();
 
-        $discountCreated = DiscountCode::whereBetween('created_at', [$months->first(), $months->last()->copy()->endOfMonth()])
-            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as total')
-            ->groupBy('month')
-            ->pluck('total', 'month');
-
-        $discountUsed = DiscountCode::where('contacted', true)
-            ->whereBetween('updated_at', [$months->first(), $months->last()->copy()->endOfMonth()])
-            ->selectRaw('DATE_FORMAT(updated_at, "%Y-%m") as month, COUNT(*) as total')
-            ->groupBy('month')
-            ->pluck('total', 'month');
-
         $this->discountTrend = [
             'labels' => $monthLabels->all(),
-            'created' => $monthKeys->map(fn ($month) => (int) ($discountCreated[$month] ?? 0))->all(),
-            'used' => $monthKeys->map(fn ($month) => (int) ($discountUsed[$month] ?? 0))->all(),
+            'created' => array_fill(0, $monthKeys->count(), 0),
+            'used' => array_fill(0, $monthKeys->count(), 0),
         ];
+
+        if ($this->hasDiscountCodesTable()) {
+            $discountCreated = DiscountCode::whereBetween('created_at', [$months->first(), $months->last()->copy()->endOfMonth()])
+                ->selectRaw("{$monthBucketCreatedAt} as month, COUNT(*) as total")
+                ->groupBy('month')
+                ->pluck('total', 'month');
+
+            $discountUsed = DiscountCode::where('contacted', true)
+                ->whereBetween('updated_at', [$months->first(), $months->last()->copy()->endOfMonth()])
+                ->selectRaw("{$monthBucketUpdatedAt} as month, COUNT(*) as total")
+                ->groupBy('month')
+                ->pluck('total', 'month');
+
+            $this->discountTrend['created'] = $monthKeys->map(fn ($month) => (int) ($discountCreated[$month] ?? 0))->all();
+            $this->discountTrend['used'] = $monthKeys->map(fn ($month) => (int) ($discountUsed[$month] ?? 0))->all();
+        }
 
         $maintenanceStatuses = ['under_maintenance', 'sold', 'maintenance', 'repair', 'service'];
 
@@ -306,7 +328,7 @@ class Dashboard extends Component
         ];
 
         $this->averageRentalDuration = (float) (Contract::whereNotNull('pickup_date')
-            ->selectRaw('AVG(DATEDIFF(COALESCE(return_date, CURRENT_DATE), pickup_date)) as avg_days')
+            ->selectRaw($this->averageRentalDurationSelect())
             ->value('avg_days') ?? 0);
 
         $this->upcomingReturns = Contract::whereNotNull('return_date')
@@ -654,5 +676,44 @@ class Dashboard extends Component
         $query
             ->orderByDesc('cars.updated_at')
             ->orderByDesc('cars.id');
+    }
+
+    protected function initializeDiscountCodeMetrics(): void
+    {
+        $this->discountCodesCount = 0;
+        $this->usedDiscountCodes = 0;
+        $this->usageRate = 0;
+        $this->averageDiscount = 0;
+        $this->latestDiscountCodes = collect();
+        $this->userDiscountCodes = 0;
+        $this->userUsedDiscountCodes = 0;
+        $this->lastUserDiscountCode = null;
+    }
+
+    protected function hasDiscountCodesTable(): bool
+    {
+        if (self::$discountCodesTableExists !== null) {
+            return self::$discountCodesTableExists;
+        }
+
+        self::$discountCodesTableExists = Schema::hasTable((new DiscountCode())->getTable());
+
+        return self::$discountCodesTableExists;
+    }
+
+    protected function monthBucketSelect(string $column): string
+    {
+        return match (Contract::query()->getConnection()->getDriverName()) {
+            'sqlite' => "strftime('%Y-%m', {$column})",
+            default => "DATE_FORMAT({$column}, '%Y-%m')",
+        };
+    }
+
+    protected function averageRentalDurationSelect(): string
+    {
+        return match (Contract::query()->getConnection()->getDriverName()) {
+            'sqlite' => 'AVG(julianday(COALESCE(return_date, CURRENT_DATE)) - julianday(pickup_date)) as avg_days',
+            default => 'AVG(DATEDIFF(COALESCE(return_date, CURRENT_DATE), pickup_date)) as avg_days',
+        };
     }
 }
