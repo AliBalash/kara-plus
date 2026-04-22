@@ -23,6 +23,8 @@ class PublicReservationApiTest extends TestCase
     {
         parent::setUp();
 
+        Carbon::setTestNow('2026-04-01 09:00:00');
+
         $this->sqlitePath = database_path('testing-public-reservation.sqlite');
         if (file_exists($this->sqlitePath)) {
             unlink($this->sqlitePath);
@@ -43,6 +45,7 @@ class PublicReservationApiTest extends TestCase
 
     protected function tearDown(): void
     {
+        Carbon::setTestNow();
         DB::disconnect('sqlite');
 
         if (isset($this->sqlitePath) && file_exists($this->sqlitePath)) {
@@ -144,8 +147,8 @@ class PublicReservationApiTest extends TestCase
         ]);
 
         $conflictResponse
-            ->assertOk()
-            ->assertJsonPath('data.availability.has_conflict', true);
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['selected_car_id']);
     }
 
     public function test_store_endpoint_creates_contract_and_charges(): void
