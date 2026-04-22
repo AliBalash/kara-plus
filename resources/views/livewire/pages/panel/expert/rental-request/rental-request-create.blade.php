@@ -112,12 +112,106 @@
                                 <span class="input-group-text"><i class="bx bx-envelope"></i></span>
                                 <input id="emailInput" type="email"
                                     class="form-control @error('email') is-invalid @enderror"
-                                    placeholder="Email" wire:model="email" data-bs-toggle="tooltip"
-                                    title="Enter customer's email address">
+                                    placeholder="Type an email to search saved customers"
+                                    wire:model.live.debounce.350ms="email" autocomplete="off"
+                                    data-bs-toggle="tooltip" title="Enter customer's email address">
+                                <span class="input-group-text bg-white border-start-0 customer-email-loading"
+                                    wire:loading.inline-flex wire:target="email">
+                                    <span class="spinner-border spinner-border-sm text-primary" role="status"
+                                        aria-hidden="true"></span>
+                                </span>
                             </div>
                             @error('email')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
+                            @if (!$selectedExistingCustomer && empty($emailCustomerSuggestions))
+                                <div class="form-text mt-2">
+                                    If this email already exists, select the customer and the form will load their
+                                    saved details automatically.
+                                </div>
+                            @endif
+
+                            @if ($selectedExistingCustomer)
+                                <div class="customer-match-card customer-match-card--selected mt-3">
+                                    <div class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3">
+                                        <div class="flex-grow-1">
+                                            <span class="customer-match-card__badge">
+                                                <i class="bx bx-check-shield"></i>
+                                                Existing customer linked
+                                            </span>
+                                            <div class="customer-match-card__name mt-2">
+                                                {{ $selectedExistingCustomer['full_name'] ?: 'Saved Customer' }}
+                                            </div>
+                                            <div class="customer-match-card__meta mt-2">
+                                                <span>
+                                                    <i class="bx bx-envelope"></i>
+                                                    {{ $selectedExistingCustomer['email'] }}
+                                                </span>
+                                                <span>
+                                                    <i class="bx bx-phone"></i>
+                                                    {{ $selectedExistingCustomer['phone'] ?: 'No phone saved' }}
+                                                </span>
+                                                @if (!empty($selectedExistingCustomer['nationality']))
+                                                    <span>
+                                                        <i class="bx bx-flag"></i>
+                                                        {{ $selectedExistingCustomer['nationality'] }}
+                                                    </span>
+                                                @endif
+                                                @if (($selectedExistingCustomer['contracts_count'] ?? 0) > 0)
+                                                    <span>
+                                                        <i class="bx bx-file"></i>
+                                                        {{ $selectedExistingCustomer['contracts_count'] }}
+                                                        {{ \Illuminate\Support\Str::plural('contract', $selectedExistingCustomer['contracts_count']) }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="customer-match-card__hint mt-2">
+                                                Customer fields were loaded from the saved profile. Review anything you
+                                                need, then create the new contract on this customer.
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary align-self-start"
+                                            wire:click="startNewCustomerDraft">
+                                            <i class="bx bx-refresh me-1"></i>
+                                            Use Different Email
+                                        </button>
+                                    </div>
+                                </div>
+                            @elseif (!empty($emailCustomerSuggestions))
+                                <div class="customer-suggestion-panel mt-3">
+                                    <div class="customer-suggestion-panel__header">
+                                        Matching saved customers
+                                    </div>
+                                    @foreach ($emailCustomerSuggestions as $suggestion)
+                                        <button type="button" class="customer-suggestion-item"
+                                            wire:click="selectExistingCustomer({{ $suggestion['id'] }})">
+                                            <span class="customer-suggestion-item__main">
+                                                <span class="customer-suggestion-item__name">
+                                                    {{ $suggestion['full_name'] ?: 'Saved Customer' }}
+                                                </span>
+                                                <span class="customer-suggestion-item__meta">
+                                                    {{ $suggestion['email'] }}
+                                                    @if (!empty($suggestion['phone']))
+                                                        • {{ $suggestion['phone'] }}
+                                                    @endif
+                                                    @if (($suggestion['contracts_count'] ?? 0) > 0)
+                                                        • {{ $suggestion['contracts_count'] }}
+                                                        {{ \Illuminate\Support\Str::plural('contract', $suggestion['contracts_count']) }}
+                                                    @endif
+                                                </span>
+                                            </span>
+                                            <span class="customer-suggestion-item__cta">
+                                                Load profile
+                                            </span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @elseif ($email && str_contains($email, '@') && filter_var($email, FILTER_VALIDATE_EMAIL))
+                                <div class="form-text text-success mt-2">
+                                    No saved customer matches this email yet. A new customer profile will be created
+                                    when you save the contract.
+                                </div>
+                            @endif
                         </div>
 
                         <div class="mb-3" data-validation-field="phone">
@@ -1017,6 +1111,126 @@
             transform: translateY(0);
         }
 
+        .customer-email-loading {
+            min-width: 2.75rem;
+            justify-content: center;
+        }
+
+        .customer-match-card {
+            border-radius: 1rem;
+            border: 1px solid #d8e7fb;
+            padding: 1rem 1.1rem;
+            background: linear-gradient(135deg, rgba(58, 134, 255, 0.08), rgba(0, 212, 255, 0.04));
+            box-shadow: 0 12px 30px rgba(42, 86, 153, 0.08);
+        }
+
+        .customer-match-card__badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(43, 94, 201, 0.12);
+            color: #2b5ec9;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .customer-match-card__name {
+            color: #1f2f47;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .customer-match-card__meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem 1rem;
+            color: #62728b;
+            font-size: 0.85rem;
+        }
+
+        .customer-match-card__meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .customer-match-card__hint {
+            color: #52627a;
+            font-size: 0.86rem;
+            line-height: 1.55;
+        }
+
+        .customer-suggestion-panel {
+            background: #fff;
+            border: 1px solid #d8e7fb;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 12px 28px rgba(31, 47, 71, 0.08);
+        }
+
+        .customer-suggestion-panel__header {
+            padding: 0.8rem 1rem;
+            background: #f7fbff;
+            border-bottom: 1px solid #e7eef9;
+            color: #6f8099;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .customer-suggestion-item {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            padding: 0.95rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            text-align: left;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .customer-suggestion-item+.customer-suggestion-item {
+            border-top: 1px solid #eef3fb;
+        }
+
+        .customer-suggestion-item:hover {
+            background: #f8fbff;
+        }
+
+        .customer-suggestion-item__main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .customer-suggestion-item__name {
+            color: #1f2f47;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .customer-suggestion-item__meta {
+            color: #6b7990;
+            font-size: 0.83rem;
+            line-height: 1.5;
+            white-space: normal;
+        }
+
+        .customer-suggestion-item__cta {
+            color: #2b5ec9;
+            font-size: 0.78rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
         .btn-gradient-ocean {
             background: linear-gradient(135deg, #3a86ff, #4361ee);
             color: #00d4ff;
@@ -1035,6 +1249,22 @@
         .table th,
         .table td {
             vertical-align: middle;
+        }
+
+        @media (max-width: 575.98px) {
+            .customer-suggestion-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .customer-suggestion-item__cta {
+                white-space: normal;
+            }
+
+            .customer-match-card__meta {
+                flex-direction: column;
+                gap: 0.45rem;
+            }
         }
     </style>
 @endpush
