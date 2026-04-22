@@ -369,7 +369,10 @@ class Car extends Model
     private function imageFilesInDirectory(string $relativeDirectory): array
     {
         $normalizedDirectory = trim($relativeDirectory, '/');
-        if (isset(self::$imageDirectoryCache[$normalizedDirectory])) {
+        if (
+            isset(self::$imageDirectoryCache[$normalizedDirectory])
+            && self::$imageDirectoryCache[$normalizedDirectory] !== []
+        ) {
             return self::$imageDirectoryCache[$normalizedDirectory];
         }
 
@@ -382,6 +385,7 @@ class Car extends Model
 
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
         $files = [];
+        clearstatcache(true, $absoluteDirectory);
 
         foreach (scandir($absoluteDirectory) ?: [] as $entry) {
             $entry = trim((string) $entry);
