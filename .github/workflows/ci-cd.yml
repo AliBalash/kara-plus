@@ -87,6 +87,22 @@ jobs:
           MYSQL_ROOT_PASSWORD: root_pass
         run: docker compose -f docker-compose.yml config >/dev/null
 
+      - name: Validate deploy scripts
+        run: |
+          bash -n deploy.sh
+          sh -n docker/nginx/40-ensure-certs.sh
+
+      - name: Build Docker images used in deploy
+        env:
+          COMPOSE_PROJECT_NAME: karaplus-ci
+          APP_ENV: production
+          APP_DEBUG: false
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_pass
+          MYSQL_ROOT_PASSWORD: root_pass
+        run: docker compose -f docker-compose.yml build app web
+
       - name: Cache Composer
         uses: actions/cache@v4
         with:

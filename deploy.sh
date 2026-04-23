@@ -52,12 +52,31 @@ if ! $DOCKER_CMD info >/dev/null 2>&1; then
 fi
 
 COMPOSE_ARGS=(--env-file .env.docker -f docker-compose.yml)
+APP_LOCAL_PORT="$(awk -F= '/^APP_LOCAL_PORT=/{print $2; exit}' .env.docker)"
+APP_LOCAL_PORT="${APP_LOCAL_PORT:-18001}"
+
+smoke_check() {
+  local label="$1"
+  local url="$2"
+
+  echo "Smoke check: $label"
+
+  if ! curl -kfsS --retry 15 --retry-delay 2 --retry-connrefused --max-time 15 "$url" >/dev/null; then
+    echo "Smoke check failed: $label ($url)"
+    $DOCKER_CMD compose "${COMPOSE_ARGS[@]}" ps || true
+    $DOCKER_CMD compose "${COMPOSE_ARGS[@]}" logs --tail=120 app web || true
+    exit 1
+  fi
+}
 
 echo "[1.6/7] Validate docker compose config"
 $DOCKER_CMD compose "${COMPOSE_ARGS[@]}" config >/dev/null
 
-echo "[2/7] Build & up (docker compose)"
-$DOCKER_CMD compose "${COMPOSE_ARGS[@]}" up -d --build
+echo "[2/7] Build images"
+$DOCKER_CMD compose "${COMPOSE_ARGS[@]}" build app web
+
+echo "[3/7] Start services"
+$DOCKER_CMD compose "${COMPOSE_ARGS[@]}" up -d app web queue scheduler
 
 APP_CID="$($DOCKER_CMD compose "${COMPOSE_ARGS[@]}" ps -q app)"
 if [ -z "$APP_CID" ]; then
@@ -65,23 +84,27 @@ if [ -z "$APP_CID" ]; then
   exit 1
 fi
 
-echo "[3/7] Composer install (no-dev)"
+echo "[4/7] Composer install (no-dev)"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "git config --global --add safe.directory /var/www || true"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "composer install --no-interaction --prefer-dist --no-dev"
 
-echo "[4/7] Storage link"
+echo "[5/7] Storage link"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan storage:link --relative --force"
 
-echo "[5/7] Migrate"
+echo "[6/7] Migrate"
 $DOCKER_CMD exec -i "$APP_CID" bash -lc "php artisan migrate --force"
 
-echo "[6/7] Normalize runtime permissions"
+echo "[7/7] Normalize runtime permissions"
 $DOCKER_CMD exec -u 0:0 -i "$APP_CID" bash -lc "mkdir -p /var/www/storage/framework/cache/data /var/www/storage/framework/sessions /var/www/storage/framework/views /var/www/storage/framework/testing /var/www/storage/framework/livewire-tmp /var/www/storage/app/private/livewire-tmp /var/www/storage/app/public/livewire-tmp /var/www/bootstrap/cache /var/www/public/assets/car-pics && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics && find /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics -type d -exec chmod 775 {} + && find /var/www/storage /var/www/bootstrap/cache /var/www/public/assets/car-pics -type f -exec chmod 664 {} + && find /var/www/storage/framework/views -maxdepth 1 -type f ! -name '.gitignore' -delete && rm -f /var/www/bootstrap/cache/*.php"
 
 echo "[6.5/7] Rebuild Laravel caches as www-data"
 $DOCKER_CMD exec -u www-data:www-data -i "$APP_CID" bash -lc "php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache"
 
-echo "[7/7] Restart queue workers"
+echo "[7.5/7] Restart queue workers"
 $DOCKER_CMD exec -u www-data:www-data -i "$APP_CID" bash -lc "php artisan queue:restart || true"
+
+echo "[8/7] Smoke checks"
+smoke_check "auth login" "https://127.0.0.1:${APP_LOCAL_PORT}/auth/login"
+smoke_check "public reservation bootstrap" "https://127.0.0.1:${APP_LOCAL_PORT}/api/public/reservations/bootstrap"
 
 echo "Deploy done and successfuly"

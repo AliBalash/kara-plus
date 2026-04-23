@@ -50,6 +50,8 @@ use App\Livewire\Pages\Panel\Expert\LocationCost\LocationCostList;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\UserRequestStatsController;
 
+Route::redirect('/', '/auth/login');
+
 Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
 
