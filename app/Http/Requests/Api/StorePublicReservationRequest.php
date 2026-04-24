@@ -16,7 +16,7 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
             'messenger_phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'address' => ['nullable', 'string', 'max:255'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
-            'national_code' => ['required', 'string', 'max:50'],
+            'national_code' => ['nullable', 'string'],
             'passport_number' => ['nullable', 'string', 'max:50'],
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
             'nationality' => ['required', 'string', 'max:100'],

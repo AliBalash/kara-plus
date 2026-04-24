@@ -682,7 +682,7 @@ class RentalRequestCreate extends Component
             'messenger_phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'address' => ['nullable', 'string', 'max:255'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
-            'national_code' => ['required', 'string', 'max:10', Rule::unique('customers', 'national_code')->ignore($this->selectedExistingCustomerId)],
+            'national_code' => ['nullable', 'string'],
             'passport_number' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'passport_number')->ignore($this->selectedExistingCustomerId)],
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
             'nationality' => ['required', 'string', 'max:100'],
@@ -757,10 +757,7 @@ class RentalRequestCreate extends Component
         'address.max' => 'Address cannot be longer than 255 characters.',
         'birth_date.date' => 'Please provide a valid birth date.',
         'birth_date.before_or_equal' => 'Birth date cannot be in the future.',
-        'national_code.required' => 'National Code is required.',
         'national_code.string' => 'National Code must be a string.',
-        'national_code.max' => 'National Code cannot be longer than 10 characters.',
-        'national_code.unique' => 'This national code is already registered.',
         'passport_number.string' => 'Passport Number must be a string.',
         'passport_number.max' => 'Passport Number cannot be longer than 50 characters.',
         'passport_number.unique' => 'This passport number is already registered.',
@@ -838,7 +835,7 @@ class RentalRequestCreate extends Component
     private function normalizeCustomerIdentityFields(): void
     {
         $this->email = $this->normalizeEmail($this->email);
-        $this->national_code = trim((string) $this->national_code);
+        $this->national_code = $this->nullableString($this->national_code);
         $this->passport_number = $this->nullableString($this->passport_number);
         $this->license_number = $this->nullableString($this->license_number);
     }

@@ -34,7 +34,7 @@ class Profile extends Component
         'email' => 'required|email|max:255',
         'phone' => 'nullable|string|max:20',
         'new_avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:800',
-        'national_code' => 'nullable|string|max:10',
+        'national_code' => 'nullable|string',
         'address' => 'nullable|string|max:255',
     ];
 
@@ -68,8 +68,21 @@ class Profile extends Component
         $this->validateOnly($propertyName);
     }
 
+    private function normalizeNationalCode(): void
+    {
+        $this->national_code = $this->nullableString($this->national_code);
+    }
+
+    private function nullableString($value): ?string
+    {
+        $normalized = is_string($value) ? trim($value) : null;
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
     public function save(): void
     {
+        $this->normalizeNationalCode();
         $this->validate();
 
         $user = Auth::user();

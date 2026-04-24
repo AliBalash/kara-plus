@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id(); // شناسه اصلی
             $table->string('first_name'); // نام
             $table->string('last_name'); // نام خانوادگی
-            $table->string('national_code', 10)->unique()->nullable(); // کد ملی 
+            $table->string('national_code')->nullable(); // کد ملی
             $table->enum('gender', ['male', 'female', 'other'])->nullable(); // جنسیت
             $table->string('email')->unique(); // ایمیل (منحصر به‌فرد)
             $table->string('phone'); // شماره تماس

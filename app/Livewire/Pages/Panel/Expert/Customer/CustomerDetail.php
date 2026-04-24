@@ -22,7 +22,7 @@ class CustomerDetail extends Component
     protected $rules = [
         'customer.first_name' => 'required|string|max:255',
         'customer.last_name' => 'required|string|max:255',
-        'customer.national_code' => 'nullable|string|max:20',
+        'customer.national_code' => 'nullable|string',
         'customer.email' => 'nullable|email|max:255',
         'customer.phone' => 'required|string|regex:/^\+\d{8,15}$/',
         'customer.messenger_phone' => 'required|string|regex:/^\+\d{8,15}$/',
@@ -41,6 +41,7 @@ class CustomerDetail extends Component
     public function updateCustomer()
     {
         $this->normalizePhoneFields();
+        $this->normalizeNationalCode();
         // Validate and update the customer details
         $this->validate();
         // Find the customer and update with the new data
@@ -62,5 +63,13 @@ class CustomerDetail extends Component
         if (array_key_exists('messenger_phone', $this->customer)) {
             $this->customer['messenger_phone'] = PhoneNumber::normalize($this->customer['messenger_phone']) ?? trim((string) ($this->customer['messenger_phone'] ?? ''));
         }
+    }
+
+    private function normalizeNationalCode(): void
+    {
+        $value = $this->customer['national_code'] ?? null;
+        $normalized = is_string($value) ? trim($value) : null;
+
+        $this->customer['national_code'] = $normalized !== '' ? $normalized : null;
     }
 }

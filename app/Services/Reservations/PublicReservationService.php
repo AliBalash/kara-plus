@@ -200,7 +200,7 @@ class PublicReservationService
             $messengerPhone = PhoneNumber::normalize($payload['messenger_phone'] ?? null) ?? trim((string) ($payload['messenger_phone'] ?? ''));
             $email = isset($payload['email']) ? trim((string) $payload['email']) : null;
             $passportNumber = isset($payload['passport_number']) ? trim((string) $payload['passport_number']) : null;
-            $nationalCode = trim((string) ($payload['national_code'] ?? ''));
+            $nationalCode = $this->nullableString(isset($payload['national_code']) ? (string) $payload['national_code'] : null);
             $licenseNumber = isset($payload['license_number']) ? trim((string) $payload['license_number']) : null;
 
             $customer = $this->resolveCustomer(

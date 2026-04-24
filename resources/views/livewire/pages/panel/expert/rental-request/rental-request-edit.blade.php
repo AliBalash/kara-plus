@@ -273,7 +273,7 @@
 
                         <div class="mb-3" data-validation-field="national_code">
                             <label class="form-label fw-semibold mb-1" for="editNationalCodeInput">
-                                National Code <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                                National Code
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bx bx-id-card"></i></span>

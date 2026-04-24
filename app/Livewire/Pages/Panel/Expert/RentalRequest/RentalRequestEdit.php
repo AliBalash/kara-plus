@@ -565,7 +565,7 @@ class RentalRequestEdit extends Component
             'messenger_phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'address' => ['nullable', 'string', 'max:255'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
-            'national_code' => ['required'],
+            'national_code' => ['nullable', 'string'],
             'passport_number' => [
                 'nullable',
                 'string',
@@ -645,7 +645,7 @@ class RentalRequestEdit extends Component
         'address.max' => 'Address cannot be longer than 255 characters.',
         'birth_date.date' => 'Please provide a valid birth date.',
         'birth_date.before_or_equal' => 'Birth date cannot be in the future.',
-        'national_code.required' => 'National Code is required.',
+        'national_code.string' => 'National Code must be a string.',
         'passport_number.string' => 'Passport Number must be a string.',
         'passport_number.max' => 'Passport Number cannot be longer than 50 characters.',
         'passport_number.unique' => 'This passport number is already registered.',
@@ -714,6 +714,18 @@ class RentalRequestEdit extends Component
     {
         $this->phone = PhoneNumber::normalize($this->phone) ?? trim((string) $this->phone);
         $this->messenger_phone = PhoneNumber::normalize($this->messenger_phone) ?? trim((string) $this->messenger_phone);
+    }
+
+    private function normalizeCustomerIdentityFields(): void
+    {
+        $this->national_code = $this->nullableString($this->national_code);
+    }
+
+    private function nullableString($value): ?string
+    {
+        $normalized = is_string($value) ? trim($value) : null;
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     public function updated($propertyName)
@@ -789,6 +801,7 @@ class RentalRequestEdit extends Component
     public function submit()
     {
         $this->normalizePhoneFields();
+        $this->normalizeCustomerIdentityFields();
         $this->validateWithScroll();
         DB::beginTransaction();
 

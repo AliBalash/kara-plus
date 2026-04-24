@@ -256,9 +256,50 @@ class PublicReservationApiTest extends TestCase
                 'pickup_location',
                 'phone',
                 'messenger_phone',
-                'national_code',
                 'nationality',
             ]);
+    }
+
+    public function test_store_endpoint_allows_empty_national_code(): void
+    {
+        $car = $this->seedCarWithKnownPricing();
+
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Main',
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+
+        Agent::query()->firstOrCreate([
+            'name' => 'Website',
+        ], [
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('http://localhost/api/public/reservations/submit', [
+            'selected_car_id' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Main',
+            'return_location' => 'UAE/Dubai/Main',
+            'pickup_date' => '2026-04-10 10:00:00',
+            'return_date' => '2026-04-12 10:00:00',
+            'first_name' => 'Ali',
+            'last_name' => 'Rezai',
+            'email' => 'ali-without-national-code@example.com',
+            'phone' => '+971501234569',
+            'messenger_phone' => '+971501234570',
+            'national_code' => '',
+            'nationality' => 'Iranian',
+            'kardo_required' => true,
+            'payment_on_delivery' => true,
+        ]);
+
+        $response->assertCreated();
+
+        $this->assertDatabaseHas('customers', [
+            'email' => 'ali-without-national-code@example.com',
+            'national_code' => null,
+        ]);
     }
 
     public function test_cars_endpoint_returns_encoded_image_urls_and_safe_fallback_for_missing_files(): void
