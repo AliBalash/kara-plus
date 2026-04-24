@@ -22,7 +22,7 @@ return new class extends Migration
             $table->rememberToken(); // توکن یادآوری ورود
             $table->enum('status', ['active', 'inactive'])->default('active'); // وضعیت
             $table->timestamp('last_login')->nullable(); // آخرین ورود
-`            $table->string('national_code')->nullable(); // کد ملی (اختیاری)
+            $table->string('national_code')->nullable(); // کد ملی (اختیاری)
             $table->text('address')->nullable(); // آدرس (اختیاری)
             $table->timestamps(); // زمان‌های ایجاد و ویرایش
         });
