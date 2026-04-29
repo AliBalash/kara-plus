@@ -43,4 +43,14 @@ class PickupDocument extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function tarsApprover()
+    {
+        return $this->belongsTo(User::class, 'tars_approved_by');
+    }
+
+    public function kardoApprover()
+    {
+        return $this->belongsTo(User::class, 'kardo_approved_by');
+    }
 }

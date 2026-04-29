@@ -278,7 +278,7 @@ class Contract extends Model
         return $this->hasOne(PickupDocument::class);
     }
 
-    public function ReturnDocument()
+    public function returnDocument()
     {
         return $this->hasOne(ReturnDocument::class);
     }
