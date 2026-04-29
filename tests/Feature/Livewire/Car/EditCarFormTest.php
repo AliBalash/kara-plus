@@ -159,6 +159,65 @@ class EditCarFormTest extends TestCase
         $this->assertFalse($car->availability);
     }
 
+    public function test_accepts_availability_value_from_select_when_updating_car(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $car = Car::factory()->create([
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        $component = Mockery::mock(EditCarForm::class)->makePartial();
+        $component->shouldAllowMockingProtectedMethods();
+        $component->mount($car->id);
+        $component->shouldReceive('validate')->once()->andReturn([
+            'plate_number' => $car->plate_number,
+            'status' => 'available',
+            'availability' => 'false',
+            'mileage' => $car->mileage,
+            'price_per_day_short' => $car->price_per_day_short,
+            'price_per_day_mid' => $car->price_per_day_mid,
+            'price_per_day_long' => $car->price_per_day_long,
+            'ldw_price_short' => $car->ldw_price_short,
+            'ldw_price_mid' => $car->ldw_price_mid,
+            'ldw_price_long' => $car->ldw_price_long,
+            'scdw_price_short' => $car->scdw_price_short,
+            'scdw_price_mid' => $car->scdw_price_mid,
+            'scdw_price_long' => $car->scdw_price_long,
+            'service_due_date' => $car->service_due_date,
+            'damage_report' => $car->damage_report,
+            'manufacturing_year' => $car->manufacturing_year,
+            'color' => $car->color,
+            'chassis_number' => $car->chassis_number,
+            'gps' => $car->gps,
+            'ownership_type' => $car->ownershipType(),
+            'issue_date' => $car->issue_date,
+            'expiry_date' => $car->expiry_date,
+            'passing_date' => $car->passing_date,
+            'passing_valid_for_days' => $car->passing_valid_for_days,
+            'registration_valid_for_days' => $car->registration_valid_for_days,
+            'notes' => $car->notes,
+            'passing_status' => $car->passing_status,
+            'registration_status' => $car->registration_status,
+            'car_options' => [
+                'gear' => '',
+                'seats' => '',
+                'doors' => '',
+                'luggage' => '',
+                'min_days' => '',
+                'fuel_type' => '',
+                'unlimited_km' => 'false',
+                'base_insurance' => 'false',
+            ],
+        ]);
+
+        $component->submit();
+
+        $this->assertFalse($car->fresh()->availability);
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();
