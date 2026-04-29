@@ -166,7 +166,107 @@
                 <div class="card mb-4 shadow-sm border-0">
                     <h5 class="card-header bg-primary text-white mb-3 rounded-top">Customer Information</h5>
                     <div class="card-body demo-vertical-spacing demo-only-element">
-                        <div class="mb-3 mt-3" data-validation-field="first_name">
+                        <div class="mb-3 mt-3" data-validation-field="phone">
+                            <label class="form-label fw-semibold mb-1" for="editPhoneInput">
+                                Phone <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bx bx-phone"></i></span>
+                                <input id="editPhoneInput" type="tel"
+                                    class="form-control @error('phone') is-invalid @enderror"
+                                    placeholder="Type a phone number to search saved customers"
+                                    wire:model.live.debounce.350ms="phone" autocomplete="off" data-bs-toggle="tooltip"
+                                    title="Enter customer's phone number">
+                                <span class="input-group-text bg-white border-start-0 customer-email-loading"
+                                    wire:loading.inline-flex wire:target="phone">
+                                    <span class="spinner-border spinner-border-sm text-primary" role="status"
+                                        aria-hidden="true"></span>
+                                </span>
+                            </div>
+                            @error('phone')
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                            @enderror
+                            @if (!$selectedExistingCustomer && empty($customerPhoneSuggestions))
+                                <div class="form-text mt-2">
+                                    If this phone belongs to another saved customer, load that profile before saving so
+                                    the contract is linked to the right customer.
+                                </div>
+                            @endif
+
+                            @if ($selectedExistingCustomer && $selectedExistingCustomerId !== $originalCustomerId)
+                                <div class="customer-match-card customer-match-card--selected mt-3">
+                                    <div class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3">
+                                        <div class="flex-grow-1">
+                                            <span class="customer-match-card__badge">
+                                                <i class="bx bx-transfer-alt"></i>
+                                                Replacement customer ready
+                                            </span>
+                                            <div class="customer-match-card__name mt-2">
+                                                {{ $selectedExistingCustomer['full_name'] ?: 'Saved Customer' }}
+                                            </div>
+                                            <div class="customer-match-card__meta mt-2">
+                                                <span>
+                                                    <i class="bx bx-phone"></i>
+                                                    {{ $selectedExistingCustomer['phone'] ?: 'No phone saved' }}
+                                                </span>
+                                                @if (!empty($selectedExistingCustomer['email']))
+                                                    <span>
+                                                        <i class="bx bx-envelope"></i>
+                                                        {{ $selectedExistingCustomer['email'] }}
+                                                    </span>
+                                                @endif
+                                                @if (($selectedExistingCustomer['contracts_count'] ?? 0) > 0)
+                                                    <span>
+                                                        <i class="bx bx-file"></i>
+                                                        {{ $selectedExistingCustomer['contracts_count'] }}
+                                                        {{ \Illuminate\Support\Str::plural('contract', $selectedExistingCustomer['contracts_count']) }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="customer-match-card__hint mt-2">
+                                                Saving this form will move the contract onto this saved customer profile.
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary align-self-start"
+                                            wire:click="restoreContractCustomer">
+                                            <i class="bx bx-undo me-1"></i>
+                                            Restore Contract Customer
+                                        </button>
+                                    </div>
+                                </div>
+                            @elseif (!empty($customerPhoneSuggestions))
+                                <div class="customer-suggestion-panel mt-3">
+                                    <div class="customer-suggestion-panel__header">
+                                        Matching saved customers
+                                    </div>
+                                    @foreach ($customerPhoneSuggestions as $suggestion)
+                                        <button type="button" class="customer-suggestion-item"
+                                            wire:click="selectExistingCustomer({{ $suggestion['id'] }})">
+                                            <span class="customer-suggestion-item__main">
+                                                <span class="customer-suggestion-item__name">
+                                                    {{ $suggestion['full_name'] ?: 'Saved Customer' }}
+                                                </span>
+                                                <span class="customer-suggestion-item__meta">
+                                                    {{ $suggestion['phone'] }}
+                                                    @if (!empty($suggestion['email']))
+                                                        • {{ $suggestion['email'] }}
+                                                    @endif
+                                                    @if (($suggestion['contracts_count'] ?? 0) > 0)
+                                                        • {{ $suggestion['contracts_count'] }}
+                                                        {{ \Illuminate\Support\Str::plural('contract', $suggestion['contracts_count']) }}
+                                                    @endif
+                                                </span>
+                                            </span>
+                                            <span class="customer-suggestion-item__cta">
+                                                Replace customer
+                                            </span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="mb-3" data-validation-field="first_name">
                             <label class="form-label fw-semibold mb-1" for="editFirstNameInput">
                                 First Name <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
                             </label>
@@ -208,22 +308,6 @@
                                     title="Enter customer's email address">
                             </div>
                             @error('email')
-                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3" data-validation-field="phone">
-                            <label class="form-label fw-semibold mb-1" for="editPhoneInput">
-                                Phone <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bx bx-phone"></i></span>
-                                <input id="editPhoneInput" type="tel"
-                                    class="form-control @error('phone') is-invalid @enderror"
-                                    placeholder="Phone" wire:model="phone" data-bs-toggle="tooltip"
-                                    title="Enter customer's phone number">
-                            </div>
-                            @error('phone')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
                         </div>
