@@ -31,7 +31,7 @@ class RentalRequestReturnDocumentTest extends TestCase
         $contract = Contract::factory()
             ->for($user)
             ->for(Customer::factory())
-            ->for(Car::factory())
+            ->for(Car::factory()->available())
             ->status('awaiting_return')
             ->create();
 
