@@ -1032,6 +1032,10 @@ class RentalRequestEdit extends Component
             }
             DB::commit();
             $this->toast('success', 'Contract Updated successfully!');
+        } catch (ValidationException $exception) {
+            DB::rollBack();
+            $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
+            throw $exception;
         } catch (\Throwable $e) {
             DB::rollBack();
             $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
@@ -1265,6 +1269,21 @@ class RentalRequestEdit extends Component
         }
 
         $matches = $query->get();
+
+        $currentCustomerId = (int) ($this->originalCustomerId ?? $this->contract?->customer_id ?? 0);
+        $currentCustomerMatch = $matches->firstWhere('id', $currentCustomerId);
+
+        if ($currentCustomerMatch) {
+            return $currentCustomerMatch;
+        }
+
+        if ($this->selectedExistingCustomerId) {
+            $selectedCustomerMatch = $matches->firstWhere('id', (int) $this->selectedExistingCustomerId);
+
+            if ($selectedCustomerMatch) {
+                return $selectedCustomerMatch;
+            }
+        }
 
         if ($matches->count() > 1) {
             throw ValidationException::withMessages([
