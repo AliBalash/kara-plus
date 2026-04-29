@@ -196,6 +196,117 @@ class RentalRequestEditTest extends TestCase
         $this->assertEquals('Contract Updated successfully!', session('info'));
     }
 
+    public function test_submit_relinks_contract_to_selected_existing_customer_by_phone(): void
+    {
+        Carbon::setTestNow('2025-03-01 08:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $carModel = CarModel::factory()->create([
+            'brand' => 'BMW',
+            'model' => 'X5',
+        ]);
+
+        $car = Car::factory()->create([
+            'car_model_id' => $carModel->id,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        $originalCustomer = Customer::factory()->create([
+            'first_name' => 'Original',
+            'last_name' => 'Customer',
+            'email' => 'original@example.com',
+            'phone' => '+971500000010',
+            'messenger_phone' => '+971500000011',
+            'nationality' => 'IR',
+        ]);
+
+        $replacementCustomer = Customer::factory()->create([
+            'first_name' => 'Saved',
+            'last_name' => 'Profile',
+            'email' => 'saved@example.com',
+            'phone' => '+971500000020',
+            'messenger_phone' => '+971500000021',
+            'address' => 'Saved Address',
+            'nationality' => 'IR',
+        ]);
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($originalCustomer)
+            ->for($car)
+            ->status('pending')
+            ->create([
+                'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'pickup_date' => '2025-03-05 10:00:00',
+                'return_date' => '2025-03-08 10:00:00',
+                'total_price' => 1000.55,
+                'kardo_required' => true,
+                'payment_on_delivery' => true,
+            ]);
+
+        $component = Mockery::mock(RentalRequestEdit::class)->makePartial();
+        $component->shouldAllowMockingProtectedMethods();
+        $component->mount($contract->id);
+
+        $component->phone = '+971500000020';
+        $component->updated('phone');
+
+        $this->assertTrue(collect($component->customerPhoneSuggestions)->pluck('id')->contains($replacementCustomer->id));
+
+        $component->selectExistingCustomer($replacementCustomer->id);
+        $component->address = 'Updated Saved Address';
+        $component->notes = 'Relinked contract';
+
+        $component->shouldReceive('validate')->once()->andReturn([
+            'selectedBrand' => $carModel->brand,
+            'selectedModelId' => $carModel->id,
+            'selectedCarId' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+            'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+            'pickup_date' => '2025-03-05T10:00',
+            'return_date' => '2025-03-08T10:00',
+            'first_name' => 'Saved',
+            'last_name' => 'Profile',
+            'email' => 'saved@example.com',
+            'phone' => '+971500000020',
+            'messenger_phone' => '+971500000021',
+            'address' => 'Updated Saved Address',
+            'birth_date' => null,
+            'national_code' => $replacementCustomer->national_code,
+            'passport_number' => $replacementCustomer->passport_number,
+            'passport_expiry_date' => $replacementCustomer->passport_expiry_date,
+            'nationality' => 'IR',
+            'license_number' => $replacementCustomer->license_number,
+            'licensed_driver_name' => null,
+            'selected_insurance' => null,
+            'driving_license_option' => null,
+            'kardo_required' => true,
+            'payment_on_delivery' => true,
+            'apply_discount' => false,
+            'custom_daily_rate' => null,
+            'driver_hours' => 0,
+            'driver_note' => null,
+            'deposit_category' => null,
+            'deposit' => null,
+            'service_quantities' => ['child_seat' => 0],
+        ]);
+
+        $component->submit();
+
+        $contract->refresh();
+        $originalCustomer->refresh();
+        $replacementCustomer->refresh();
+
+        $this->assertSame($replacementCustomer->id, $contract->customer_id);
+        $this->assertSame('Original', $originalCustomer->first_name);
+        $this->assertSame('Updated Saved Address', $replacementCustomer->address);
+        $this->assertSame('Relinked contract', $contract->notes);
+    }
+
     public function test_edit_component_keeps_stored_daily_rate_when_car_price_changes(): void
     {
         Carbon::setTestNow('2025-04-01 08:00:00');
