@@ -264,12 +264,27 @@ class RentalRequestCreate extends Component
 
     private function validateEmailFieldIfReady(): void
     {
-        if ($this->email === null || filter_var($this->email, FILTER_VALIDATE_EMAIL) !== false) {
+        if ($this->email === null) {
             $this->validateOnly('email');
             return;
         }
 
-        $this->resetValidation('email');
+        if (filter_var($this->email, FILTER_VALIDATE_EMAIL) === false) {
+            $this->resetValidation('email');
+            return;
+        }
+
+        $normalizedEmail = $this->normalizeEmail($this->email);
+        $hasExactSuggestion = collect($this->emailCustomerSuggestions)->contains(
+            fn (array $suggestion): bool => Str::lower((string) ($suggestion['email'] ?? '')) === $normalizedEmail
+        );
+
+        if (! $this->selectedExistingCustomerId && $hasExactSuggestion) {
+            $this->resetValidation('email');
+            return;
+        }
+
+        $this->validateOnly('email');
     }
 
     private function syncExistingCustomerSuggestions(): void
@@ -292,15 +307,6 @@ class RentalRequestCreate extends Component
         }
 
         $suggestions = $this->lookupCustomersByEmail($normalizedEmail);
-        $exactMatch = collect($suggestions)->first(
-            fn (array $suggestion): bool => Str::lower((string) ($suggestion['email'] ?? '')) === $normalizedEmail
-        );
-
-        if ($exactMatch) {
-            $this->selectExistingCustomer((int) $exactMatch['id']);
-            return;
-        }
-
         $this->emailCustomerSuggestions = $suggestions;
     }
 
@@ -957,43 +963,7 @@ class RentalRequestCreate extends Component
             ]);
         }
 
-        $email = $this->email;
-        $passportNumber = $this->passport_number;
-        $nationalCode = $this->nullableString($this->national_code);
-        $licenseNumber = $this->license_number;
-
-        if (! $email && ! $passportNumber && ! $nationalCode && ! $licenseNumber) {
-            return new Customer();
-        }
-
-        $matches = Customer::query()
-            ->lockForUpdate()
-            ->where(function ($query) use ($email, $passportNumber, $nationalCode, $licenseNumber) {
-                if ($email) {
-                    $query->orWhereRaw('LOWER(email) = ?', [$email]);
-                }
-
-                if ($passportNumber) {
-                    $query->orWhere('passport_number', $passportNumber);
-                }
-
-                if ($nationalCode) {
-                    $query->orWhere('national_code', $nationalCode);
-                }
-
-                if ($licenseNumber) {
-                    $query->orWhere('license_number', $licenseNumber);
-                }
-            })
-            ->get();
-
-        if ($matches->count() > 1) {
-            throw ValidationException::withMessages([
-                'email' => 'This information matches multiple customers. Please select the correct customer before saving.',
-            ]);
-        }
-
-        return $matches->first() ?? new Customer();
+        return new Customer();
     }
 
     private function prepareContractMeta(): ?array

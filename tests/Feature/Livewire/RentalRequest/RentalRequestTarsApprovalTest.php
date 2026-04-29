@@ -9,11 +9,20 @@ use App\Models\Customer;
 use App\Models\PickupDocument;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class RentalRequestTarsApprovalTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('myimage');
+    }
 
     public function test_complete_inspection_moves_contract_to_awaiting_return(): void
     {
@@ -49,5 +58,29 @@ class RentalRequestTarsApprovalTest extends TestCase
         $this->assertTrue($statuses->contains('agreement_inspection'));
         $this->assertTrue($statuses->contains('awaiting_return'));
         $this->assertEquals('Status changed to awaiting_return.', session('success'));
+    }
+
+    public function test_tars_page_resolves_uploaded_document_from_stored_record_path(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for(Car::factory())
+            ->status('delivery')
+            ->create(['kardo_required' => false]);
+
+        $storedPath = 'PickupDocument/tars-contract/' . $contract->id . '/tars-contract-example.jpg';
+        Storage::disk('myimage')->put($storedPath, 'tars-file');
+
+        PickupDocument::factory()->for($contract)->create([
+            'tars_contract' => $storedPath,
+        ]);
+
+        Livewire::test(RentalRequestTarsApproval::class, ['contractId' => $contract->id])
+            ->assertSet('existingFiles.tarsContract', Storage::disk('myimage')->url($storedPath))
+            ->assertSee('Approve TARS');
     }
 }

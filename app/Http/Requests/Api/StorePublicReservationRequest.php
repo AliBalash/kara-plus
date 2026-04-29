@@ -11,7 +11,7 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
         return array_merge(parent::rules(), [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')],
             'phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'messenger_phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'address' => ['nullable', 'string', 'max:255'],
@@ -37,6 +37,7 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
     {
         return array_merge(parent::messages(), [
             'email.email' => 'فرمت ایمیل معتبر نیست.',
+            'email.unique' => 'This email is already registered.',
             'phone.regex' => 'شماره تماس باید با + شروع شود و بین ۸ تا ۱۵ رقم باشد.',
             'messenger_phone.regex' => 'شماره پیام‌رسان باید با + شروع شود و بین ۸ تا ۱۵ رقم باشد.',
             'birth_date.before_or_equal' => 'تاریخ تولد نمی‌تواند بعد از امروز باشد.',

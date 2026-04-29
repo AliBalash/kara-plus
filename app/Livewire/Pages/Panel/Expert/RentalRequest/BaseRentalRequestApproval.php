@@ -28,10 +28,22 @@ abstract class BaseRentalRequestApproval extends Component
     protected function resolveExistingFiles(): array
     {
         return [
-            'tarsContract' => $this->resolveDocumentUrl("PickupDocument/tars_contract_{$this->contractId}"),
-            'kardoContract' => $this->resolveDocumentUrl("PickupDocument/kardo_contract_{$this->contractId}"),
-            'factorContract' => $this->resolveDocumentUrl("PickupDocument/factor_contract_{$this->contractId}"),
-            'carDashboard' => $this->resolveDocumentUrl("PickupDocument/car_dashboard_{$this->contractId}"),
+            'tarsContract' => $this->resolveDocumentUrlFromRecord(
+                $this->pickupDocument->tars_contract ?? null,
+                "PickupDocument/tars_contract_{$this->contractId}"
+            ),
+            'kardoContract' => $this->resolveDocumentUrlFromRecord(
+                $this->pickupDocument->kardo_contract ?? null,
+                "PickupDocument/kardo_contract_{$this->contractId}"
+            ),
+            'factorContract' => $this->resolveDocumentUrlFromRecord(
+                $this->pickupDocument->factor_contract ?? null,
+                "PickupDocument/factor_contract_{$this->contractId}"
+            ),
+            'carDashboard' => $this->resolveDocumentUrlFromRecord(
+                $this->pickupDocument->car_dashboard ?? null,
+                "PickupDocument/car_dashboard_{$this->contractId}"
+            ),
         ];
     }
 
@@ -142,7 +154,23 @@ abstract class BaseRentalRequestApproval extends Component
     {
         $storedPath = $this->resolveStoredPath($basePath);
 
-        return $storedPath ? Storage::url($storedPath) : null;
+        return $storedPath ? Storage::disk('myimage')->url($storedPath) : null;
+    }
+
+    protected function resolveDocumentUrlFromRecord(?string $storedPath, string $basePath): ?string
+    {
+        $resolvedPath = $this->resolveStoredPathFromRecord($storedPath, $basePath);
+
+        return $resolvedPath ? Storage::disk('myimage')->url($resolvedPath) : null;
+    }
+
+    protected function resolveStoredPathFromRecord(?string $storedPath, string $basePath): ?string
+    {
+        if ($storedPath && Storage::disk('myimage')->exists($storedPath)) {
+            return $storedPath;
+        }
+
+        return $this->resolveStoredPath($basePath);
     }
 
     protected function resolveStoredPath(string $basePath): ?string

@@ -137,7 +137,7 @@ class RentalRequestCreateTest extends TestCase
         $this->assertEquals('Contract created successfully!', session('success'));
     }
 
-    public function test_email_lookup_suggests_and_autofills_existing_customer(): void
+    public function test_email_lookup_suggests_existing_customer_and_requires_explicit_selection(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -173,6 +173,12 @@ class RentalRequestCreateTest extends TestCase
 
         $component->email = 'NILOOFAR@example.com';
         $component->updated('email');
+
+        $this->assertNull($component->selectedExistingCustomerId);
+        $this->assertSame('NILOOFAR@example.com', $component->email);
+        $this->assertTrue(collect($component->emailCustomerSuggestions)->pluck('id')->contains($customer->id));
+
+        $component->selectExistingCustomer($customer->id);
 
         $this->assertSame($customer->id, $component->selectedExistingCustomerId);
         $this->assertSame('Niloofar', $component->first_name);
@@ -305,6 +311,118 @@ class RentalRequestCreateTest extends TestCase
         $this->assertNotNull($contract);
         $this->assertEquals('pending', $contract->current_status);
         $this->assertEquals('Contract created successfully!', session('success'));
+    }
+
+    public function test_submit_does_not_reuse_customer_when_only_national_code_matches(): void
+    {
+        Carbon::setTestNow('2025-01-01 09:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $carModel = CarModel::factory()->create([
+            'brand' => 'Audi',
+            'model' => 'A4',
+        ]);
+
+        $car = Car::factory()->create([
+            'car_model_id' => $carModel->id,
+            'price_per_day_short' => 200.45,
+            'price_per_day_mid' => 180.35,
+            'price_per_day_long' => 150.25,
+            'ldw_price_short' => 25.15,
+            'ldw_price_mid' => 20.05,
+            'ldw_price_long' => 18.95,
+            'scdw_price_short' => 35.55,
+            'scdw_price_mid' => 28.45,
+            'scdw_price_long' => 25.35,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        $existingCustomer = Customer::factory()->create([
+            'first_name' => 'Existing',
+            'last_name' => 'Customer',
+            'email' => 'existing@example.com',
+            'phone' => '+971500000001',
+            'messenger_phone' => '+971500000002',
+            'national_code' => 'NC1234567',
+            'nationality' => 'IR',
+        ]);
+
+        $pickup = Carbon::now()->addDay();
+        $return = Carbon::now()->addDays(4);
+
+        $component = Mockery::mock(RentalRequestCreate::class)->makePartial();
+        $component->shouldAllowMockingProtectedMethods();
+        $component->mount();
+
+        $component->selectedBrand = $carModel->brand;
+        $component->selectedModelId = $carModel->id;
+        $component->selectedCarId = $car->id;
+        $component->pickup_location = 'UAE/Dubai/Clock Tower/Main Branch';
+        $component->return_location = 'UAE/Dubai/Clock Tower/Main Branch';
+        $component->pickup_date = $pickup->format('Y-m-d\TH:i');
+        $component->return_date = $return->format('Y-m-d\TH:i');
+        $component->selected_services = ['child_seat'];
+        $component->selected_insurance = 'basic_insurance';
+        $component->kardo_required = true;
+        $component->payment_on_delivery = true;
+        $component->apply_discount = false;
+        $component->driver_note = 'Collect payment from customer at pickup';
+        $component->first_name = 'New';
+        $component->last_name = 'Customer';
+        $component->email = 'new@example.com';
+        $component->phone = '+971500000010';
+        $component->messenger_phone = '+971500000011';
+        $component->address = 'Dubai Marina';
+        $component->national_code = 'NC1234567';
+        $component->passport_expiry_date = Carbon::now()->addYear()->toDateString();
+        $component->nationality = 'IR';
+
+        $validated = [
+            'selectedBrand' => $carModel->brand,
+            'selectedModelId' => $carModel->id,
+            'selectedCarId' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+            'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+            'pickup_date' => $pickup->format('Y-m-d\TH:i'),
+            'return_date' => $return->format('Y-m-d\TH:i'),
+            'first_name' => 'New',
+            'last_name' => 'Customer',
+            'email' => 'new@example.com',
+            'phone' => '+971500000010',
+            'messenger_phone' => '+971500000011',
+            'address' => 'Dubai Marina',
+            'national_code' => 'NC1234567',
+            'passport_number' => null,
+            'passport_expiry_date' => Carbon::now()->addYear()->toDateString(),
+            'nationality' => 'IR',
+            'license_number' => null,
+            'selected_insurance' => 'basic_insurance',
+            'kardo_required' => true,
+            'payment_on_delivery' => true,
+            'apply_discount' => false,
+            'custom_daily_rate' => null,
+            'selected_services' => ['child_seat'],
+            'driver_note' => 'Collect payment from customer at pickup',
+        ];
+
+        $component->shouldReceive('validate')->once()->andReturn($validated);
+
+        $component->submit();
+
+        $this->assertDatabaseCount('customers', 2);
+        $this->assertDatabaseHas('customers', [
+            'id' => $existingCustomer->id,
+            'email' => 'existing@example.com',
+            'first_name' => 'Existing',
+        ]);
+        $this->assertDatabaseHas('customers', [
+            'email' => 'new@example.com',
+            'first_name' => 'New',
+            'national_code' => 'NC1234567',
+        ]);
     }
 
     public function test_change_status_to_reserve_updates_contract_and_logs_history(): void

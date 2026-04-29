@@ -199,17 +199,11 @@ class PublicReservationService
             $phone = PhoneNumber::normalize($payload['phone'] ?? null) ?? trim((string) ($payload['phone'] ?? ''));
             $messengerPhone = PhoneNumber::normalize($payload['messenger_phone'] ?? null) ?? trim((string) ($payload['messenger_phone'] ?? ''));
             $email = isset($payload['email']) ? trim((string) $payload['email']) : null;
-            $passportNumber = isset($payload['passport_number']) ? trim((string) $payload['passport_number']) : null;
             $nationalCode = $this->nullableString(isset($payload['national_code']) ? (string) $payload['national_code'] : null);
+            $passportNumber = isset($payload['passport_number']) ? trim((string) $payload['passport_number']) : null;
             $licenseNumber = isset($payload['license_number']) ? trim((string) $payload['license_number']) : null;
 
-            $customer = $this->resolveCustomer(
-                $phone,
-                $email,
-                $passportNumber,
-                $nationalCode,
-                $licenseNumber
-            );
+            $customer = $this->resolveCustomer();
 
             $customer->fill([
                 'first_name' => trim((string) ($payload['first_name'] ?? '')),
@@ -652,22 +646,9 @@ class PublicReservationService
         return $value;
     }
 
-    private function resolveCustomer(
-        string $phone,
-        ?string $email,
-        ?string $passportNumber,
-        ?string $nationalCode,
-        ?string $licenseNumber
-    ): Customer {
-        $customer = Customer::query()
-            ->where('phone', $phone)
-            ->when($email, static fn ($query) => $query->orWhere('email', $email))
-            ->when($passportNumber, static fn ($query) => $query->orWhere('passport_number', $passportNumber))
-            ->when($nationalCode, static fn ($query) => $query->orWhere('national_code', $nationalCode))
-            ->when($licenseNumber, static fn ($query) => $query->orWhere('license_number', $licenseNumber))
-            ->first();
-
-        return $customer ?? new Customer();
+    private function resolveCustomer(): Customer
+    {
+        return new Customer();
     }
 
     private function normalizeQuotePayload(array $payload): array

@@ -302,6 +302,102 @@ class PublicReservationApiTest extends TestCase
         ]);
     }
 
+    public function test_store_endpoint_does_not_reuse_customer_by_phone_or_national_code_without_matching_email(): void
+    {
+        $car = $this->seedCarWithKnownPricing();
+
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Main',
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+
+        Agent::query()->firstOrCreate([
+            'name' => 'Website',
+        ], [
+            'is_active' => true,
+        ]);
+
+        $existingCustomer = Customer::factory()->create([
+            'first_name' => 'Existing',
+            'last_name' => 'Customer',
+            'email' => 'existing@example.com',
+            'phone' => '+971501111111',
+            'messenger_phone' => '+971501111112',
+            'national_code' => 'NC-EXISTING',
+        ]);
+
+        $response = $this->postJson('http://localhost/api/public/reservations/submit', [
+            'selected_car_id' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Main',
+            'return_location' => 'UAE/Dubai/Main',
+            'pickup_date' => '2026-04-10 10:00:00',
+            'return_date' => '2026-04-12 10:00:00',
+            'first_name' => 'New',
+            'last_name' => 'Customer',
+            'email' => 'new@example.com',
+            'phone' => '+971501111111',
+            'messenger_phone' => '+971501999999',
+            'national_code' => 'NC-EXISTING',
+            'nationality' => 'Iranian',
+            'kardo_required' => true,
+            'payment_on_delivery' => true,
+        ]);
+
+        $response->assertCreated();
+
+        $this->assertDatabaseCount('customers', 2);
+        $this->assertDatabaseHas('customers', [
+            'id' => $existingCustomer->id,
+            'email' => 'existing@example.com',
+            'first_name' => 'Existing',
+            'phone' => '+971501111111',
+        ]);
+        $this->assertDatabaseHas('customers', [
+            'email' => 'new@example.com',
+            'first_name' => 'New',
+            'phone' => '+971501111111',
+            'national_code' => 'NC-EXISTING',
+        ]);
+    }
+
+    public function test_store_endpoint_rejects_duplicate_email(): void
+    {
+        $car = $this->seedCarWithKnownPricing();
+
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Main',
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+
+        Customer::factory()->create([
+            'email' => 'existing@example.com',
+        ]);
+
+        $response = $this->postJson('http://localhost/api/public/reservations/submit', [
+            'selected_car_id' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Main',
+            'return_location' => 'UAE/Dubai/Main',
+            'pickup_date' => '2026-04-10 10:00:00',
+            'return_date' => '2026-04-12 10:00:00',
+            'first_name' => 'Ali',
+            'last_name' => 'Rezai',
+            'email' => 'existing@example.com',
+            'phone' => '+971501234567',
+            'messenger_phone' => '+971501234568',
+            'nationality' => 'Iranian',
+            'kardo_required' => true,
+            'payment_on_delivery' => true,
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['email']);
+    }
+
     public function test_cars_endpoint_returns_encoded_image_urls_and_safe_fallback_for_missing_files(): void
     {
         $model = CarModel::factory()->create([
