@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\LocationCost;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -23,6 +24,7 @@ class RentalRequestEdit extends Component
 {
     use InteractsWithToasts;
     use HandlesServicePricing;
+    use SearchesCustomerPhone;
     public $cars;
     public $carModels;
     public $selectedBrand;
@@ -39,6 +41,10 @@ class RentalRequestEdit extends Component
     public $first_name;
     public $last_name;
     public $email;
+    public ?int $selectedExistingCustomerId = null;
+    public ?array $selectedExistingCustomer = null;
+    public array $customerPhoneSuggestions = [];
+    public ?int $originalCustomerId = null;
     public $phone;
     public $messenger_phone;
     public $address;
@@ -261,6 +267,9 @@ class RentalRequestEdit extends Component
 
         // Customer data
         $customer = $this->contract->customer()->firstOrFail();
+        $this->originalCustomerId = $customer->id;
+        $this->selectedExistingCustomerId = $customer->id;
+        $this->selectedExistingCustomer = $this->formatCustomerLookupItem($customer);
         $this->first_name = $customer->first_name;
         $this->last_name = $customer->last_name;
         $this->email = $customer->email;
@@ -494,7 +503,7 @@ class RentalRequestEdit extends Component
 
     protected function rules()
     {
-        $customerId = $this->contract ? $this->contract->customer->id : null;
+        $customerId = $this->validationCustomerId();
         return [
             'selectedBrand' => ['required', 'string'],
             'selectedModelId' => ['required', 'exists:car_models,id'],
@@ -718,7 +727,17 @@ class RentalRequestEdit extends Component
 
     private function normalizeCustomerIdentityFields(): void
     {
+        $this->email = $this->normalizeEmail($this->email);
         $this->national_code = $this->nullableString($this->national_code);
+        $this->passport_number = $this->nullableString($this->passport_number);
+        $this->license_number = $this->nullableString($this->license_number);
+    }
+
+    private function normalizeEmail(?string $email): ?string
+    {
+        $normalized = Str::lower(trim((string) $email));
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     private function nullableString($value): ?string
@@ -730,7 +749,16 @@ class RentalRequestEdit extends Component
 
     public function updated($propertyName)
     {
-        $this->validateOnly($propertyName);
+        if ($propertyName === 'phone') {
+            $this->syncExistingCustomerSuggestionsByPhone();
+            $this->validatePhoneFieldIfReady();
+        } elseif ($propertyName === 'email') {
+            $this->email = $this->normalizeEmail($this->email);
+            $this->validateOnly($propertyName);
+        } else {
+            $this->validateOnly($propertyName);
+        }
+
         if ($this->isCostRelatedField($propertyName) || in_array($propertyName, ['apply_discount', 'custom_daily_rate'])) {
             $this->calculateCosts();
         }
@@ -742,6 +770,191 @@ class RentalRequestEdit extends Component
     public function updatedDepositCategory(): void
     {
         $this->deposit = null;
+    }
+
+    private function validatePhoneFieldIfReady(): void
+    {
+        $phone = trim((string) $this->phone);
+
+        if ($phone === '') {
+            $this->validateOnly('phone');
+            return;
+        }
+
+        if (preg_match('/^\+\d{8,15}$/', $phone) !== 1) {
+            $this->resetValidation('phone');
+            return;
+        }
+
+        $this->validateOnly('phone');
+    }
+
+    public function selectExistingCustomer(int $customerId): void
+    {
+        $customer = $this->customerLookupQuery()->findOrFail($customerId);
+
+        $this->selectedExistingCustomerId = $customer->id;
+        $this->selectedExistingCustomer = $this->formatCustomerLookupItem($customer);
+        $this->customerPhoneSuggestions = [];
+        $this->fillCustomerFieldsFromExisting($customer);
+        $this->resetValidation($this->customerFieldNames());
+    }
+
+    public function restoreContractCustomer(): void
+    {
+        $customer = $this->customerLookupQuery()->findOrFail($this->originalCustomerId);
+
+        $this->selectedExistingCustomerId = $customer->id;
+        $this->selectedExistingCustomer = $this->formatCustomerLookupItem($customer);
+        $this->customerPhoneSuggestions = [];
+        $this->fillCustomerFieldsFromExisting($customer);
+        $this->resetValidation($this->customerFieldNames());
+    }
+
+    private function syncExistingCustomerSuggestionsByPhone(): void
+    {
+        $lookupPhone = $this->lookupPhoneValue($this->phone);
+        $selectedPhone = (string) ($this->selectedExistingCustomer['phone'] ?? '');
+
+        if ($this->selectedExistingCustomerId && $lookupPhone === $selectedPhone) {
+            $this->customerPhoneSuggestions = [];
+            return;
+        }
+
+        if ($this->selectedExistingCustomerId && $lookupPhone !== $selectedPhone) {
+            $this->selectedExistingCustomerId = null;
+            $this->selectedExistingCustomer = null;
+        }
+
+        if (! $this->shouldSearchCustomersByPhone($lookupPhone)) {
+            $this->customerPhoneSuggestions = [];
+            return;
+        }
+
+        $this->customerPhoneSuggestions = $this->lookupCustomersByPhone($lookupPhone);
+    }
+
+    private function shouldSearchCustomersByPhone(?string $lookupPhone): bool
+    {
+        return $lookupPhone !== null && $this->isCustomerPhoneSearch($lookupPhone);
+    }
+
+    private function lookupCustomersByPhone(string $lookupPhone): array
+    {
+        return $this->customerLookupQuery()
+            ->when($this->originalCustomerId, fn ($query) => $query->where('id', '!=', $this->originalCustomerId))
+            ->where('phone', 'like', $lookupPhone . '%')
+            ->orderByRaw('CASE WHEN phone = ? THEN 0 ELSE 1 END', [$lookupPhone])
+            ->orderBy('phone')
+            ->limit(5)
+            ->get()
+            ->map(fn (Customer $customer): array => $this->formatCustomerLookupItem($customer))
+            ->all();
+    }
+
+    private function customerLookupQuery()
+    {
+        return Customer::query()
+            ->select([
+                'id',
+                'first_name',
+                'last_name',
+                'email',
+                'phone',
+                'messenger_phone',
+                'nationality',
+                'national_code',
+                'passport_number',
+                'license_number',
+                'address',
+                'birth_date',
+                'passport_expiry_date',
+            ])
+            ->withCount('contracts');
+    }
+
+    private function formatCustomerLookupItem(Customer $customer): array
+    {
+        return [
+            'id' => $customer->id,
+            'full_name' => trim($customer->fullName()),
+            'email' => (string) $customer->email,
+            'phone' => $customer->phone,
+            'messenger_phone' => $customer->messenger_phone,
+            'nationality' => $customer->nationality,
+            'national_code' => $customer->national_code,
+            'passport_number' => $customer->passport_number,
+            'license_number' => $customer->license_number,
+            'contracts_count' => (int) ($customer->contracts_count ?? 0),
+        ];
+    }
+
+    private function fillCustomerFieldsFromExisting(Customer $customer): void
+    {
+        $this->first_name = $customer->first_name;
+        $this->last_name = $customer->last_name;
+        $this->email = $this->normalizeEmail($customer->email);
+        $this->phone = $customer->phone;
+        $this->messenger_phone = $customer->messenger_phone;
+        $this->address = $customer->address;
+        $this->birth_date = $customer->birth_date?->format('Y-m-d');
+        $this->national_code = $customer->national_code;
+        $this->passport_number = $customer->passport_number;
+        $this->passport_expiry_date = $customer->passport_expiry_date?->format('Y-m-d');
+        $this->nationality = $customer->nationality;
+        $this->license_number = $customer->license_number;
+    }
+
+    private function customerFieldNames(): array
+    {
+        return [
+            'email',
+            'first_name',
+            'last_name',
+            'phone',
+            'messenger_phone',
+            'address',
+            'birth_date',
+            'national_code',
+            'passport_number',
+            'passport_expiry_date',
+            'nationality',
+            'license_number',
+        ];
+    }
+
+    private function lookupPhoneValue($phone): ?string
+    {
+        $normalized = PhoneNumber::normalize(is_string($phone) ? $phone : null);
+
+        if ($normalized !== null) {
+            return $normalized;
+        }
+
+        $trimmed = trim((string) $phone);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $trimmed);
+
+        if ($digits === null || $digits === '') {
+            return null;
+        }
+
+        return str_starts_with($trimmed, '+') ? '+' . $digits : $digits;
+    }
+
+    private function validationCustomerId(): ?int
+    {
+        $matchedCustomer = $this->findCustomerByPhone();
+
+        if ($matchedCustomer) {
+            return $matchedCustomer->id;
+        }
+
+        return $this->selectedExistingCustomerId ?? $this->originalCustomerId;
     }
 
     private function captureSelectionSnapshot(): array
@@ -802,6 +1015,7 @@ class RentalRequestEdit extends Component
     {
         $this->normalizePhoneFields();
         $this->normalizeCustomerIdentityFields();
+        $this->syncExistingCustomerSuggestionsByPhone();
         $this->validateWithScroll();
         DB::beginTransaction();
 
@@ -966,6 +1180,8 @@ class RentalRequestEdit extends Component
 
     private function updateCustomer()
     {
+        $customer = $this->resolveCustomerForSubmission();
+
         $customerData = [
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
@@ -980,7 +1196,83 @@ class RentalRequestEdit extends Component
             'nationality' => $this->nationality,
             'license_number' => $this->license_number,
         ];
-        $this->contract->customer->update($customerData);
+
+        $customer->fill($customerData);
+        $customer->save();
+
+        if ((int) $this->contract->customer_id !== (int) $customer->id) {
+            $this->contract->customer()->associate($customer);
+            $this->contract->save();
+        }
+
+        $selectedCustomer = $this->customerLookupQuery()->find($customer->id);
+        $this->selectedExistingCustomerId = $customer->id;
+        $this->selectedExistingCustomer = $selectedCustomer
+            ? $this->formatCustomerLookupItem($selectedCustomer)
+            : $this->selectedExistingCustomer;
+        $this->originalCustomerId = $customer->id;
+        $this->contract->setRelation('customer', $customer);
+    }
+
+    private function resolveCustomerForSubmission(): Customer
+    {
+        $matchedCustomer = $this->findCustomerByPhone(true);
+
+        if ($matchedCustomer) {
+            if (
+                (int) $matchedCustomer->id !== (int) ($this->originalCustomerId ?? 0)
+                && (int) $this->selectedExistingCustomerId !== (int) $matchedCustomer->id
+            ) {
+                throw ValidationException::withMessages([
+                    'phone' => 'This phone number already belongs to an existing customer. Please load that customer before saving the contract.',
+                ]);
+            }
+
+            return $matchedCustomer;
+        }
+
+        if ($this->selectedExistingCustomerId) {
+            $customer = Customer::query()->lockForUpdate()->find($this->selectedExistingCustomerId);
+
+            if ($customer) {
+                return $customer;
+            }
+        }
+
+        $customer = Customer::query()->lockForUpdate()->find($this->originalCustomerId ?? $this->contract->customer_id);
+
+        if ($customer) {
+            return $customer;
+        }
+
+        throw ValidationException::withMessages([
+            'phone' => 'The customer linked to this contract could not be found. Please reload the page and try again.',
+        ]);
+    }
+
+    private function findCustomerByPhone(bool $lockForUpdate = false): ?Customer
+    {
+        $phone = $this->lookupPhoneValue($this->phone);
+
+        if ($phone === null || !str_starts_with($phone, '+')) {
+            return null;
+        }
+
+        $query = Customer::query()->where('phone', $phone)->orderBy('id');
+
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+
+        $matches = $query->get();
+
+        if ($matches->count() > 1) {
+            throw ValidationException::withMessages([
+                'phone' => 'More than one customer already uses this phone number. Please resolve the duplicate customer records first.',
+            ]);
+        }
+
+        return $matches->first();
     }
 
     private function updateContract()
