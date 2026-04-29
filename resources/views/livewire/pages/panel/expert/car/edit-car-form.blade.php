@@ -53,9 +53,9 @@
                                 <span class="input-group-text" id="availability-addon">Availability</span>
                                 <select class="form-select @error('availability') is-invalid @enderror"
                                     wire:model="availability" required>
-                                    <option value="true" {{ $availability == true ? 'selected' : '' }}>Available
+                                    <option value="1" {{ $availability == true ? 'selected' : '' }}>Available
                                     </option>
-                                    <option value="false" {{ $availability == false ? 'selected' : '' }}>Not Available
+                                    <option value="0" {{ $availability == false ? 'selected' : '' }}>Not Available
                                     </option>
                                 </select>
                                 @error('availability')

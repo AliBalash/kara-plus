@@ -261,6 +261,15 @@ class EditCarForm extends Component
 
     protected function prepareForValidation($attributes)
     {
+        $attributes['availability'] = $this->normalizeBooleanValue($attributes['availability'] ?? $this->availability);
+        $attributes['gps'] = $this->normalizeBooleanValue($attributes['gps'] ?? $this->gps);
+        $attributes['car_options']['unlimited_km'] = $this->normalizeBooleanValue(
+            $attributes['car_options']['unlimited_km'] ?? $this->car_options['unlimited_km'] ?? false
+        );
+        $attributes['car_options']['base_insurance'] = $this->normalizeBooleanValue(
+            $attributes['car_options']['base_insurance'] ?? $this->car_options['base_insurance'] ?? false
+        );
+
         $decimalFields = [
             'price_per_day_short',
             'price_per_day_mid',
@@ -320,12 +329,29 @@ class EditCarForm extends Component
         return $attributes;
     }
 
+    private function normalizeBooleanValue($value)
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $value;
+    }
+
     public function submit()
     {
         $validated = $this->validate();
+        $validated['availability'] = $this->normalizeBooleanValue($validated['availability'] ?? false);
+        $validated['gps'] = $this->normalizeBooleanValue($validated['gps'] ?? false);
         $validated['car_options'] = is_array($validated['car_options'] ?? null)
             ? $validated['car_options']
             : (is_array($this->car_options) ? $this->car_options : []);
+        $validated['car_options']['unlimited_km'] = $this->normalizeBooleanValue(
+            $validated['car_options']['unlimited_km'] ?? false
+        );
+        $validated['car_options']['base_insurance'] = $this->normalizeBooleanValue(
+            $validated['car_options']['base_insurance'] ?? false
+        );
 
         if ($validated['status'] === 'sold') {
             $validated['availability'] = false;
