@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\LocationCost;
+use App\Livewire\Concerns\SearchesCustomerPhone;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -23,6 +24,7 @@ class RentalRequestCreate extends Component
 {
     use InteractsWithToasts;
     use HandlesServicePricing;
+    use SearchesCustomerPhone;
     public $selectedBrand;
     public $selectedModelId;
     public $selectedCarId;
@@ -39,7 +41,7 @@ class RentalRequestCreate extends Component
     public $email;
     public ?int $selectedExistingCustomerId = null;
     public ?array $selectedExistingCustomer = null;
-    public array $emailCustomerSuggestions = [];
+    public array $customerPhoneSuggestions = [];
     public $phone;
     public $messenger_phone;
     public $address;
@@ -161,9 +163,11 @@ class RentalRequestCreate extends Component
 
     public function updated($propertyName)
     {
-        if ($propertyName === 'email') {
+        if ($propertyName === 'phone') {
+            $this->syncExistingCustomerSuggestionsByPhone();
+            $this->validatePhoneFieldIfReady();
+        } elseif ($propertyName === 'email') {
             $this->email = $this->normalizeEmail($this->email);
-            $this->syncExistingCustomerSuggestions();
             $this->validateEmailFieldIfReady();
         } else {
             $this->validateOnly($propertyName);
@@ -228,7 +232,7 @@ class RentalRequestCreate extends Component
 
         $this->selectedExistingCustomerId = $customer->id;
         $this->selectedExistingCustomer = $this->formatCustomerLookupItem($customer);
-        $this->emailCustomerSuggestions = [];
+        $this->customerPhoneSuggestions = [];
         $this->fillCustomerFieldsFromExisting($customer);
         $this->resetValidation($this->customerFieldNames());
     }
@@ -236,8 +240,8 @@ class RentalRequestCreate extends Component
     public function startNewCustomerDraft(): void
     {
         $this->clearExistingCustomerSelection();
-        $this->email = null;
-        $this->emailCustomerSuggestions = [];
+        $this->phone = null;
+        $this->customerPhoneSuggestions = [];
         $this->resetValidation($this->customerFieldNames());
     }
 
@@ -274,54 +278,59 @@ class RentalRequestCreate extends Component
             return;
         }
 
-        $normalizedEmail = $this->normalizeEmail($this->email);
-        $hasExactSuggestion = collect($this->emailCustomerSuggestions)->contains(
-            fn (array $suggestion): bool => Str::lower((string) ($suggestion['email'] ?? '')) === $normalizedEmail
-        );
-
-        if (! $this->selectedExistingCustomerId && $hasExactSuggestion) {
-            $this->resetValidation('email');
-            return;
-        }
-
         $this->validateOnly('email');
     }
 
-    private function syncExistingCustomerSuggestions(): void
+    private function validatePhoneFieldIfReady(): void
     {
-        $normalizedEmail = $this->normalizeEmail($this->email);
-        $selectedEmail = Str::lower((string) ($this->selectedExistingCustomer['email'] ?? ''));
+        $phone = trim((string) $this->phone);
 
-        if ($this->selectedExistingCustomerId && $normalizedEmail === $selectedEmail) {
-            $this->emailCustomerSuggestions = [];
+        if ($phone === '') {
+            $this->validateOnly('phone');
             return;
         }
 
-        if ($this->selectedExistingCustomerId && $normalizedEmail !== $selectedEmail) {
+        if (preg_match('/^\+\d{8,15}$/', $phone) !== 1) {
+            $this->resetValidation('phone');
+            return;
+        }
+
+        $this->validateOnly('phone');
+    }
+
+    private function syncExistingCustomerSuggestionsByPhone(): void
+    {
+        $lookupPhone = $this->lookupPhoneValue($this->phone);
+        $selectedPhone = (string) ($this->selectedExistingCustomer['phone'] ?? '');
+
+        if ($this->selectedExistingCustomerId && $lookupPhone === $selectedPhone) {
+            $this->customerPhoneSuggestions = [];
+            return;
+        }
+
+        if ($this->selectedExistingCustomerId && $lookupPhone !== $selectedPhone) {
             $this->clearExistingCustomerSelection();
         }
 
-        if (! $this->shouldSearchCustomersByEmail($normalizedEmail)) {
-            $this->emailCustomerSuggestions = [];
+        if (! $this->shouldSearchCustomersByPhone($lookupPhone)) {
+            $this->customerPhoneSuggestions = [];
             return;
         }
 
-        $suggestions = $this->lookupCustomersByEmail($normalizedEmail);
-        $this->emailCustomerSuggestions = $suggestions;
+        $this->customerPhoneSuggestions = $this->lookupCustomersByPhone($lookupPhone);
     }
 
-    private function shouldSearchCustomersByEmail(?string $normalizedEmail): bool
+    private function shouldSearchCustomersByPhone(?string $lookupPhone): bool
     {
-        return $normalizedEmail !== null && Str::length($normalizedEmail) >= 3;
+        return $lookupPhone !== null && $this->isCustomerPhoneSearch($lookupPhone);
     }
 
-    private function lookupCustomersByEmail(string $normalizedEmail): array
+    private function lookupCustomersByPhone(string $lookupPhone): array
     {
         return $this->customerLookupQuery()
-            ->whereNotNull('email')
-            ->whereRaw('LOWER(email) LIKE ?', [$normalizedEmail . '%'])
-            ->orderByRaw('CASE WHEN LOWER(email) = ? THEN 0 ELSE 1 END', [$normalizedEmail])
-            ->orderBy('email')
+            ->where('phone', 'like', $lookupPhone . '%')
+            ->orderByRaw('CASE WHEN phone = ? THEN 0 ELSE 1 END', [$lookupPhone])
+            ->orderBy('phone')
             ->limit(5)
             ->get()
             ->map(fn (Customer $customer): array => $this->formatCustomerLookupItem($customer))
@@ -385,6 +394,40 @@ class RentalRequestCreate extends Component
     {
         $this->selectedExistingCustomerId = null;
         $this->selectedExistingCustomer = null;
+    }
+
+    private function lookupPhoneValue($phone): ?string
+    {
+        $normalized = PhoneNumber::normalize(is_string($phone) ? $phone : null);
+
+        if ($normalized !== null) {
+            return $normalized;
+        }
+
+        $trimmed = trim((string) $phone);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $trimmed);
+
+        if ($digits === null || $digits === '') {
+            return null;
+        }
+
+        return str_starts_with($trimmed, '+') ? '+' . $digits : $digits;
+    }
+
+    private function validationCustomerId(): ?int
+    {
+        $matchedCustomer = $this->findCustomerByPhone();
+
+        if ($matchedCustomer) {
+            return $matchedCustomer->id;
+        }
+
+        return $this->selectedExistingCustomerId;
     }
 
     private function customerFieldNames(): array
@@ -627,6 +670,8 @@ class RentalRequestCreate extends Component
 
     protected function rules()
     {
+        $customerId = $this->validationCustomerId();
+
         return [
             'selectedBrand' => ['required', 'string'],
             'selectedModelId' => ['required', 'exists:car_models,id'],
@@ -683,16 +728,16 @@ class RentalRequestCreate extends Component
             ],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($this->selectedExistingCustomerId)],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customerId)],
             'phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'messenger_phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'address' => ['nullable', 'string', 'max:255'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'national_code' => ['nullable', 'string'],
-            'passport_number' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'passport_number')->ignore($this->selectedExistingCustomerId)],
+            'passport_number' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'passport_number')->ignore($customerId)],
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
             'nationality' => ['required', 'string', 'max:100'],
-            'license_number' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'license_number')->ignore($this->selectedExistingCustomerId)],
+            'license_number' => ['nullable', 'string', 'max:50', Rule::unique('customers', 'license_number')->ignore($customerId)],
             'licensed_driver_name' => ['nullable', 'string', 'max:255'],
             'selected_insurance' => ['nullable', Rule::in(['', 'basic_insurance', 'ldw_insurance', 'scdw_insurance'])],
             'driving_license_option' => ['nullable', Rule::in(array_keys($this->driving_license_options))],
@@ -857,7 +902,7 @@ class RentalRequestCreate extends Component
     {
         $this->normalizePhoneFields();
         $this->normalizeCustomerIdentityFields();
-        $this->syncExistingCustomerSuggestions();
+        $this->syncExistingCustomerSuggestionsByPhone();
         $this->validateWithScroll();
         DB::beginTransaction();
 
@@ -951,6 +996,18 @@ class RentalRequestCreate extends Component
 
     private function resolveCustomerForSubmission(): Customer
     {
+        $matchedCustomer = $this->findCustomerByPhone(true);
+
+        if ($matchedCustomer) {
+            if ((int) $this->selectedExistingCustomerId !== (int) $matchedCustomer->id) {
+                throw ValidationException::withMessages([
+                    'phone' => 'This phone number already belongs to an existing customer. Please load that customer before saving the contract.',
+                ]);
+            }
+
+            return $matchedCustomer;
+        }
+
         if ($this->selectedExistingCustomerId) {
             $customer = Customer::query()->lockForUpdate()->find($this->selectedExistingCustomerId);
 
@@ -964,6 +1021,31 @@ class RentalRequestCreate extends Component
         }
 
         return new Customer();
+    }
+
+    private function findCustomerByPhone(bool $lockForUpdate = false): ?Customer
+    {
+        $phone = $this->lookupPhoneValue($this->phone);
+
+        if ($phone === null || !str_starts_with($phone, '+')) {
+            return null;
+        }
+
+        $query = Customer::query()->where('phone', $phone)->orderBy('id');
+
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+
+        $matches = $query->get();
+
+        if ($matches->count() > 1) {
+            throw ValidationException::withMessages([
+                'phone' => 'More than one customer already uses this phone number. Please resolve the duplicate customer records first.',
+            ]);
+        }
+
+        return $matches->first();
     }
 
     private function prepareContractMeta(): ?array
