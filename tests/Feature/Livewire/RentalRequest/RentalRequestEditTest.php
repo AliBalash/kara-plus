@@ -307,6 +307,70 @@ class RentalRequestEditTest extends TestCase
         $this->assertSame('Relinked contract', $contract->notes);
     }
 
+    public function test_submit_allows_editing_contract_when_current_customer_phone_has_duplicate_record(): void
+    {
+        Carbon::setTestNow('2025-03-01 08:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $carModel = CarModel::factory()->create([
+            'brand' => 'BMW',
+            'model' => 'X5',
+        ]);
+
+        $car = Car::factory()->create([
+            'car_model_id' => $carModel->id,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        $customer = Customer::factory()->create([
+            'first_name' => 'Current',
+            'last_name' => 'Customer',
+            'email' => 'current@example.com',
+            'phone' => '+971500000030',
+            'messenger_phone' => '+971500000031',
+            'passport_expiry_date' => now()->addYear()->toDateString(),
+            'nationality' => 'IR',
+        ]);
+
+        Customer::factory()->create([
+            'email' => 'duplicate@example.com',
+            'phone' => '+971500000030',
+            'messenger_phone' => '+971500000032',
+            'nationality' => 'IR',
+        ]);
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('pending')
+            ->create([
+                'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'pickup_date' => '2025-03-05 10:00:00',
+                'return_date' => '2025-03-08 10:00:00',
+                'total_price' => 1000,
+                'kardo_required' => true,
+                'payment_on_delivery' => true,
+            ]);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2025-03-10T10:00';
+        $component->notes = 'Extended without changing customer';
+
+        $component->submit();
+
+        $contract->refresh();
+
+        $this->assertSame($customer->id, $contract->customer_id);
+        $this->assertSame('Extended without changing customer', $contract->notes);
+        $this->assertSame('Contract Updated successfully!', session('info'));
+    }
+
     public function test_edit_component_keeps_stored_daily_rate_when_car_price_changes(): void
     {
         Carbon::setTestNow('2025-04-01 08:00:00');
