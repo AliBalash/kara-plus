@@ -12,6 +12,7 @@ use App\Models\Customer;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;
 
@@ -137,7 +138,7 @@ class RentalRequestCreateTest extends TestCase
         $this->assertEquals('Contract created successfully!', session('success'));
     }
 
-    public function test_email_lookup_suggests_existing_customer_and_requires_explicit_selection(): void
+    public function test_phone_lookup_suggests_existing_customer_and_requires_explicit_selection(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -163,20 +164,20 @@ class RentalRequestCreateTest extends TestCase
         $component = app(RentalRequestCreate::class);
         $component->mount();
 
-        $component->email = 'nil';
-        $component->updated('email');
+        $component->phone = '+971500000';
+        $component->updated('phone');
 
-        $suggestedCustomerIds = collect($component->emailCustomerSuggestions)->pluck('id');
+        $suggestedCustomerIds = collect($component->customerPhoneSuggestions)->pluck('id');
 
         $this->assertTrue($suggestedCustomerIds->contains($customer->id));
         $this->assertNull($component->selectedExistingCustomerId);
 
-        $component->email = 'NILOOFAR@example.com';
-        $component->updated('email');
+        $component->phone = '+971500000123';
+        $component->updated('phone');
 
         $this->assertNull($component->selectedExistingCustomerId);
-        $this->assertSame('NILOOFAR@example.com', $component->email);
-        $this->assertTrue(collect($component->emailCustomerSuggestions)->pluck('id')->contains($customer->id));
+        $this->assertSame('+971500000123', $component->phone);
+        $this->assertTrue(collect($component->customerPhoneSuggestions)->pluck('id')->contains($customer->id));
 
         $component->selectExistingCustomer($customer->id);
 
@@ -192,10 +193,10 @@ class RentalRequestCreateTest extends TestCase
         $this->assertSame('2028-05-10', $component->passport_expiry_date);
         $this->assertSame('IR', $component->nationality);
         $this->assertSame('LIC-8899', $component->license_number);
-        $this->assertSame([], $component->emailCustomerSuggestions);
+        $this->assertSame([], $component->customerPhoneSuggestions);
     }
 
-    public function test_submit_reuses_existing_customer_when_email_matches_saved_profile(): void
+    public function test_submit_reuses_existing_customer_when_phone_matches_saved_profile(): void
     {
         Carbon::setTestNow('2025-01-01 09:00:00');
 
@@ -311,6 +312,96 @@ class RentalRequestCreateTest extends TestCase
         $this->assertNotNull($contract);
         $this->assertEquals('pending', $contract->current_status);
         $this->assertEquals('Contract created successfully!', session('success'));
+    }
+
+    public function test_submit_requires_loading_existing_customer_when_phone_matches_saved_profile(): void
+    {
+        Carbon::setTestNow('2025-01-01 09:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $carModel = CarModel::factory()->create([
+            'brand' => 'Audi',
+            'model' => 'A4',
+        ]);
+
+        $car = Car::factory()->create([
+            'car_model_id' => $carModel->id,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        Customer::factory()->create([
+            'first_name' => 'Saved',
+            'last_name' => 'Customer',
+            'email' => 'saved@example.com',
+            'phone' => '+971500000001',
+            'messenger_phone' => '+971500000002',
+            'nationality' => 'IR',
+        ]);
+
+        $pickup = Carbon::now()->addDay();
+        $return = Carbon::now()->addDays(2);
+
+        $component = Mockery::mock(RentalRequestCreate::class)->makePartial();
+        $component->shouldAllowMockingProtectedMethods();
+        $component->mount();
+
+        $component->selectedBrand = $carModel->brand;
+        $component->selectedModelId = $carModel->id;
+        $component->selectedCarId = $car->id;
+        $component->pickup_location = 'UAE/Dubai/Clock Tower/Main Branch';
+        $component->return_location = 'UAE/Dubai/Clock Tower/Main Branch';
+        $component->pickup_date = $pickup->format('Y-m-d\TH:i');
+        $component->return_date = $return->format('Y-m-d\TH:i');
+        $component->first_name = 'New';
+        $component->last_name = 'Customer';
+        $component->email = 'new@example.com';
+        $component->phone = '+971500000001';
+        $component->messenger_phone = '+971500000009';
+        $component->nationality = 'IR';
+
+        $component->shouldReceive('validate')->once()->andReturn([
+            'selectedBrand' => $carModel->brand,
+            'selectedModelId' => $carModel->id,
+            'selectedCarId' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+            'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+            'pickup_date' => $pickup->format('Y-m-d\TH:i'),
+            'return_date' => $return->format('Y-m-d\TH:i'),
+            'first_name' => 'New',
+            'last_name' => 'Customer',
+            'email' => 'new@example.com',
+            'phone' => '+971500000001',
+            'messenger_phone' => '+971500000009',
+            'address' => null,
+            'national_code' => null,
+            'passport_number' => null,
+            'passport_expiry_date' => null,
+            'nationality' => 'IR',
+            'license_number' => null,
+            'selected_insurance' => 'basic_insurance',
+            'kardo_required' => true,
+            'payment_on_delivery' => true,
+            'apply_discount' => false,
+            'custom_daily_rate' => null,
+            'selected_services' => [],
+            'driver_note' => null,
+        ]);
+
+        try {
+            $component->submit();
+            $this->fail('Expected phone-based customer replacement validation to be triggered.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'This phone number already belongs to an existing customer. Please load that customer before saving the contract.',
+                $exception->errors()['phone'][0] ?? null
+            );
+        }
+
+        $this->assertDatabaseCount('customers', 1);
+        $this->assertDatabaseCount('contracts', 0);
     }
 
     public function test_submit_does_not_reuse_customer_when_only_national_code_matches(): void
