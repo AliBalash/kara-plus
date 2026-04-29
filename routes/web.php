@@ -24,6 +24,10 @@ use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
 use App\Livewire\Pages\Panel\Expert\Payments\ConfirmPayementList;
 use App\Livewire\Pages\Panel\Expert\Payments\ProcessedPaymentList;
 use App\Livewire\Pages\Panel\Expert\Profile\Profile;
+use App\Livewire\Pages\Panel\Expert\Reports\CustomerBalanceReport;
+use App\Livewire\Pages\Panel\Expert\Reports\CustomerRequestReport;
+use App\Livewire\Pages\Panel\Expert\Reports\FleetPerformanceReport;
+use App\Livewire\Pages\Panel\Expert\Reports\PaymentCollectionReport;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingPickupList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingReturnList;
@@ -48,6 +52,7 @@ use App\Livewire\Pages\Panel\Expert\User\ManageUserRoles;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
 use App\Livewire\Pages\Panel\Expert\LocationCost\LocationCostList;
 use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\ReportExportController;
 use App\Http\Controllers\UserRequestStatsController;
 
 Route::redirect('/', '/auth/login');
@@ -145,6 +150,19 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     Route::get('/expert/users/create', CreateUser::class)->name('users.create');
     Route::get('/expert/users/roles', ManageUserRoles::class)->name('users.roles');
+
+    Route::get('/expert/reports/customer-requests', CustomerRequestReport::class)->name('reports.customer-requests');
+    Route::get('/expert/reports/customer-requests/export', [ReportExportController::class, 'customerRequests'])
+        ->name('reports.customer-requests.export');
+    Route::get('/expert/reports/customer-balances', CustomerBalanceReport::class)->name('reports.customer-balances');
+    Route::get('/expert/reports/customer-balances/export', [ReportExportController::class, 'customerBalances'])
+        ->name('reports.customer-balances.export');
+    Route::get('/expert/reports/fleet-performance', FleetPerformanceReport::class)->name('reports.fleet-performance');
+    Route::get('/expert/reports/fleet-performance/export', [ReportExportController::class, 'fleetPerformance'])
+        ->name('reports.fleet-performance.export');
+    Route::get('/expert/reports/payment-collections', PaymentCollectionReport::class)->name('reports.payment-collections');
+    Route::get('/expert/reports/payment-collections/export', [ReportExportController::class, 'paymentCollections'])
+        ->name('reports.payment-collections.export');
 
     Route::get('/expert/reports/user-requests/{userId}', [UserRequestStatsController::class, 'show'])
         ->name('reports.user-requests');

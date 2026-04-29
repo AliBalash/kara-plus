@@ -38,6 +38,12 @@
                 ['route' => 'rental-requests.confirm-payment-list', 'label' => 'Confirm Payments'],
                 ['route' => 'rental-requests.processed-payments', 'label' => 'Processed Payments'],
             ];
+            $reportRoutes = [
+                ['route' => 'reports.customer-requests', 'label' => 'Customer Requests'],
+                ['route' => 'reports.customer-balances', 'label' => 'Customer Balances'],
+                ['route' => 'reports.fleet-performance', 'label' => 'Fleet Performance'],
+                ['route' => 'reports.payment-collections', 'label' => 'Payment Collections'],
+            ];
             $rentalPaymentRoutes = [
                 'rental-requests.payment.list',
                 'rental-requests.payment',
@@ -45,6 +51,7 @@
                 'rental-requests.processed-payments',
             ];
             $rentalMenuOpen = request()->routeIs('rental-requests.*') && !request()->routeIs($rentalPaymentRoutes);
+            $reportsMenuOpen = request()->routeIs('reports.customer-requests', 'reports.customer-balances', 'reports.fleet-performance', 'reports.payment-collections');
         @endphp
 
         @if ($isDriver)
@@ -228,6 +235,23 @@
 
                 <li class="menu-header small text-uppercase">
                     <span class="menu-header-text">Administration</span>
+                </li>
+
+                <li class="menu-item {{ $reportsMenuOpen ? 'open' : '' }}">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="menu-icon tf-icons bx bx-bar-chart-square"></i>
+                        <div data-i18n="Layouts">Reports</div>
+                    </a>
+
+                    <ul class="menu-sub">
+                        @foreach ($reportRoutes as $item)
+                            <li class="menu-item {{ Request::routeIs($item['route']) ? 'active' : '' }}">
+                                <a href="{{ route($item['route']) }}" class="menu-link">
+                                    <div data-i18n="Without menu">{{ $item['label'] }}</div>
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
                 </li>
 
 
