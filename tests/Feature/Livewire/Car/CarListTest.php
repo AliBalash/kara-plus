@@ -43,4 +43,38 @@ class CarListTest extends TestCase
         $this->assertDatabaseMissing('car_options', ['car_id' => $car->id]);
         Storage::disk('car_pics')->assertMissing('car-list-delete.webp');
     }
+
+    public function test_available_status_with_false_availability_is_shown_as_unavailable(): void
+    {
+        Car::factory()->create([
+            'plate_number' => '51004-V',
+            'status' => 'available',
+            'availability' => false,
+        ]);
+
+        $car = Car::where('plate_number', '51004-V')->firstOrFail();
+
+        $this->assertSame('unavailable', $car->operationalStatus());
+        $this->assertSame('Unavailable', $car->operationalStatusLabel());
+    }
+
+    public function test_status_filter_uses_operational_availability_not_only_status_column(): void
+    {
+        $unavailable = Car::factory()->create([
+            'status' => 'available',
+            'availability' => false,
+        ]);
+
+        $available = Car::factory()->available()->create();
+
+        $this->assertSame(
+            [$available->id],
+            Car::query()->byOperationalStatus('available')->pluck('id')->all()
+        );
+
+        $this->assertSame(
+            [$unavailable->id],
+            Car::query()->byOperationalStatus('unavailable')->pluck('id')->all()
+        );
+    }
 }

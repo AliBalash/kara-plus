@@ -10,6 +10,8 @@ class Car extends Model
 {
     use HasFactory;
 
+    private const RENTABLE_STATUSES = ['available', 'pre_reserved'];
+
     /**
      * @var array<string, array<int, string>>
      */
@@ -94,7 +96,78 @@ class Car extends Model
      */
     public function isAvailable(): bool
     {
-        return in_array($this->status, ['available', 'pre_reserved'], true) && $this->availability;
+        return in_array($this->status, self::RENTABLE_STATUSES, true) && $this->availability;
+    }
+
+    public function operationalStatus(): string
+    {
+        if ($this->status === 'sold') {
+            return 'sold';
+        }
+
+        if ($this->status === 'under_maintenance') {
+            return 'under_maintenance';
+        }
+
+        if ($this->status === 'reserved') {
+            return 'reserved';
+        }
+
+        if (! $this->availability) {
+            return 'unavailable';
+        }
+
+        if ($this->status === 'pre_reserved') {
+            return 'pre_reserved';
+        }
+
+        if ($this->status === 'available') {
+            return 'available';
+        }
+
+        return $this->status ?: 'unavailable';
+    }
+
+    public function operationalStatusLabel(): string
+    {
+        return match ($this->operationalStatus()) {
+            'available' => 'Available',
+            'pre_reserved' => 'Upcoming booking',
+            'reserved' => 'Active booking',
+            'under_maintenance' => 'Under maintenance',
+            'sold' => 'Sold',
+            'unavailable' => 'Unavailable',
+            default => ucfirst((string) $this->operationalStatus()),
+        };
+    }
+
+    public function operationalStatusBadgeClass(): string
+    {
+        return match ($this->operationalStatus()) {
+            'available' => 'bg-success',
+            'pre_reserved' => 'bg-info',
+            'reserved' => 'bg-warning',
+            'under_maintenance' => 'bg-danger',
+            'sold' => 'bg-dark',
+            'unavailable' => 'bg-secondary',
+            default => 'bg-secondary',
+        };
+    }
+
+    public function scopeByOperationalStatus($query, string $status)
+    {
+        return match ($status) {
+            'available' => $query->where('status', 'available')->where('availability', true),
+            'pre_reserved' => $query->where('status', 'pre_reserved')->where('availability', true),
+            'reserved' => $query->where('status', 'reserved'),
+            'under_maintenance' => $query->where('status', 'under_maintenance'),
+            'sold' => $query->where('status', 'sold'),
+            'unavailable' => $query->where(function ($builder) {
+                $builder->where('availability', false)
+                    ->whereIn('status', self::RENTABLE_STATUSES);
+            }),
+            default => $query->where('status', $status),
+        };
     }
 
     /**

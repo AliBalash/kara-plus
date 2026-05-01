@@ -33,6 +33,7 @@
                 <option value="available">Available</option>
                 <option value="pre_reserved">Upcoming Booking</option>
                 <option value="reserved">Active Booking</option>
+                <option value="unavailable">Unavailable</option>
                 <option value="under_maintenance">Under Maintenance</option>
                 <option value="sold">Sold</option>
             </select>
@@ -97,26 +98,8 @@
                             </div>
                         </td>
                         <td>
-                            <span
-                                class="badge 
-                                @switch($car->status)
-                                    @case('available') bg-success @break
-                                    @case('pre_reserved') bg-info @break
-                                    @case('reserved') bg-warning @break
-                                    @case('under_maintenance') bg-danger @break
-                                    @case('sold') bg-dark @break
-                                    @default bg-secondary
-                                @endswitch">
-                                @php
-                                    $statusLabel = match ($car->status) {
-                                        'pre_reserved' => 'Upcoming booking',
-                                        'reserved' => 'Active booking',
-                                        'under_maintenance' => 'Under maintenance',
-                                        'sold' => 'Sold',
-                                        default => ucfirst($car->status),
-                                    };
-                                @endphp
-                                {{ $statusLabel }}
+                            <span class="badge {{ $car->operationalStatusBadgeClass() }}">
+                                {{ $car->operationalStatusLabel() }}
                             </span>
                         </td>
                         <td>{{ optional(optional($car->currentContract)->pickup_date)->format('d M Y') ?? '-' }}</td>

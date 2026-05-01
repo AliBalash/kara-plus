@@ -398,7 +398,7 @@
                             <select class="form-select form-select-sm" wire:model.defer="availableReadiness">
                                 <option value="available">Available Only</option>
                                 <option value="available_pre_reserved">Available + Pre-Reserved</option>
-                                <option value="unavailable">Un Available</option>
+                                <option value="unavailable">Unavailable</option>
                             </select>
 
                             <select class="form-select form-select-sm" wire:model.defer="availableBrand">
