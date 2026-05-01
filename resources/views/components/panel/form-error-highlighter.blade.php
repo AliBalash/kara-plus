@@ -1,3 +1,5 @@
+@props(['field' => null])
+
 @pushOnce('styles', 'kara-form-error-styles')
     <style>
         .validation-error-highlight {
@@ -21,6 +23,12 @@
         }
     </style>
 @endPushOnce
+
+@if ($field)
+    @error($field)
+        <div class="invalid-feedback d-block">{{ $message }}</div>
+    @enderror
+@endif
 
 @pushOnce('scripts', 'kara-form-error-scripts')
     <script>
