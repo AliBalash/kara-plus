@@ -11,6 +11,8 @@ class Contract extends Model
 {
     use HasFactory;
 
+    public const CUSTOMER_BALANCE_EXCLUDED_STATUSES = ['cancelled', 'rejected'];
+
     /**
      * ویژگی‌های قابل پر کردن (mass assignable).
      *
@@ -85,6 +87,16 @@ class Contract extends Model
     public function isCompleted(): bool
     {
         return $this->current_status === 'complete';
+    }
+
+    public function scopeIncludedInCustomerBalance($query)
+    {
+        return $query->whereNotIn('current_status', self::CUSTOMER_BALANCE_EXCLUDED_STATUSES);
+    }
+
+    public function isIncludedInCustomerBalance(): bool
+    {
+        return ! in_array($this->current_status, self::CUSTOMER_BALANCE_EXCLUDED_STATUSES, true);
     }
 
     /**
