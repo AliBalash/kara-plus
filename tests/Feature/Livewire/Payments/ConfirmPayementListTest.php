@@ -6,7 +6,6 @@ use App\Livewire\Pages\Panel\Expert\Payments\ConfirmPayementList;
 use App\Models\Payment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class ConfirmPayementListTest extends TestCase
@@ -27,8 +26,7 @@ class ConfirmPayementListTest extends TestCase
 
         Storage::disk('myimage')->put('payments/confirm-list-receipt.webp', 'receipt');
 
-        Livewire::test(ConfirmPayementList::class)
-            ->call('deletePayment', $payment->id);
+        app(ConfirmPayementList::class)->deletePayment($payment->id);
 
         $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
         Storage::disk('myimage')->assertMissing('payments/confirm-list-receipt.webp');

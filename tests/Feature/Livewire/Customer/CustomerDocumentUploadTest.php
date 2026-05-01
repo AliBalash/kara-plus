@@ -10,7 +10,6 @@ use App\Models\CustomerDocument;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class CustomerDocumentUploadTest extends TestCase
@@ -49,11 +48,11 @@ class CustomerDocumentUploadTest extends TestCase
             'hotel_address' => 'Dubai Marina',
         ]);
 
-        Livewire::test(CustomerDocumentUpload::class, [
-            'customerId' => $customer->id,
-            'contractId' => $contract->id,
-        ])->call('removeFile', 'passport', 'front')
-            ->assertSet('fileInputVersion', 1);
+        $component = app(CustomerDocumentUpload::class);
+        $component->mount($customer->id, $contract->id);
+        $component->removeFile('passport', 'front');
+
+        $this->assertSame(1, $component->fileInputVersion);
 
         $this->assertSame([
             'back' => 'CustomerDocument/passport-back.pdf',

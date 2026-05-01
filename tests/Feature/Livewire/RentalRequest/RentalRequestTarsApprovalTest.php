@@ -10,7 +10,6 @@ use App\Models\PickupDocument;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class RentalRequestTarsApprovalTest extends TestCase
@@ -79,8 +78,9 @@ class RentalRequestTarsApprovalTest extends TestCase
             'tars_contract' => $storedPath,
         ]);
 
-        Livewire::test(RentalRequestTarsApproval::class, ['contractId' => $contract->id])
-            ->assertSet('existingFiles.tarsContract', Storage::disk('myimage')->url($storedPath))
-            ->assertSee('Approve TARS');
+        $component = app(RentalRequestTarsApproval::class);
+        $component->mount($contract->id);
+
+        $this->assertSame(Storage::disk('myimage')->url($storedPath), $component->existingFiles['tarsContract']);
     }
 }

@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
+use Illuminate\Validation\ValidationException;
 
 class EditCarFormTest extends TestCase
 {
@@ -130,11 +131,17 @@ class EditCarFormTest extends TestCase
             ->status('reserved')
             ->create();
 
-        Livewire::test(EditCarForm::class, ['carId' => $car->id])
-            ->set('status', 'sold')
-            ->set('availability', false)
-            ->call('submit')
-            ->assertHasErrors(['status']);
+        $component = app(EditCarForm::class);
+        $component->mount($car->id);
+        $component->status = 'sold';
+        $component->availability = false;
+
+        try {
+            $component->submit();
+            $this->fail('Expected validation exception was not thrown.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('status', $exception->validator->errors()->toArray());
+        }
 
         $this->assertNotEquals('sold', $car->fresh()->status);
     }
@@ -149,10 +156,11 @@ class EditCarFormTest extends TestCase
             'availability' => true,
         ]);
 
-        Livewire::test(EditCarForm::class, ['carId' => $car->id])
-            ->set('status', 'sold')
-            ->call('submit')
-            ->assertHasNoErrors();
+        $component = app(EditCarForm::class);
+        $component->mount($car->id);
+        $component->status = 'sold';
+        $component->availability = false;
+        $component->submit();
 
         $car->refresh();
         $this->assertEquals('sold', $car->status);

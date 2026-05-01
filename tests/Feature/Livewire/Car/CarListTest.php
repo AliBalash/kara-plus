@@ -7,7 +7,6 @@ use App\Models\Car;
 use App\Models\CarOption;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class CarListTest extends TestCase
@@ -37,8 +36,7 @@ class CarListTest extends TestCase
 
         Storage::disk('car_pics')->put('car-list-delete.webp', 'car-image');
 
-        Livewire::test(CarList::class)
-            ->call('deletecar', $car->id);
+        app(CarList::class)->deletecar($car->id);
 
         $this->assertDatabaseMissing('cars', ['id' => $car->id]);
         $this->assertDatabaseMissing('images', ['id' => $image->id]);

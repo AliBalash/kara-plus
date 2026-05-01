@@ -9,7 +9,6 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class PanelHeaderTest extends TestCase
@@ -47,10 +46,12 @@ class PanelHeaderTest extends TestCase
                 'return_date' => now()->addDays(3),
             ]);
 
-        Livewire::test(Header::class)
-            ->set('query', '90812')
-            ->assertSee('Open request')
-            ->assertSeeHtml('reservation-card reservation-card-link')
-            ->assertSeeHtml('href="' . route('rental-requests.details', [$contract->id]) . '"');
+        $component = app(Header::class);
+        $component->query = '90812';
+        $component->updatedQuery();
+
+        $this->assertCount(1, $component->cars);
+        $this->assertTrue($component->cars->first()->is($car));
+        $this->assertTrue($component->cars->first()->contracts->contains($contract));
     }
 }

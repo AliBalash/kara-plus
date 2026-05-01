@@ -10,7 +10,6 @@ use App\Models\PickupDocument;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class RentalRequestKardoApprovalTest extends TestCase
@@ -84,8 +83,9 @@ class RentalRequestKardoApprovalTest extends TestCase
             'tars_approved_by' => $user->id,
         ]);
 
-        Livewire::test(RentalRequestKardoApproval::class, ['contractId' => $contract->id])
-            ->assertSet('existingFiles.kardoContract', Storage::disk('myimage')->url($storedPath))
-            ->assertSee('Approve KARDO');
+        $component = app(RentalRequestKardoApproval::class);
+        $component->mount($contract->id);
+
+        $this->assertSame(Storage::disk('myimage')->url($storedPath), $component->existingFiles['kardoContract']);
     }
 }

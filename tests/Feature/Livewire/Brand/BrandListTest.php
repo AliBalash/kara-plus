@@ -6,7 +6,6 @@ use App\Livewire\Pages\Panel\Expert\Brand\BrandList;
 use App\Models\CarModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class BrandListTest extends TestCase
@@ -34,8 +33,7 @@ class BrandListTest extends TestCase
         Storage::disk('myimage')->put('brand-icons/test-brand.webp', 'icon');
         Storage::disk('car_pics')->put('brand-gallery.webp', 'gallery-image');
 
-        Livewire::test(BrandList::class)
-            ->call('deleteBrand', $brand->id);
+        app(BrandList::class)->deleteBrand($brand->id);
 
         $this->assertDatabaseMissing('car_models', ['id' => $brand->id]);
         $this->assertDatabaseMissing('images', ['id' => $image->id]);

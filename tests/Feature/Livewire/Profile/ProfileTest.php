@@ -6,7 +6,6 @@ use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -67,10 +66,12 @@ class ProfileTest extends TestCase
 
         $this->actingAs($user);
 
-        Livewire::test(Profile::class)
-            ->call('removeAvatar')
-            ->assertSet('avatar', null)
-            ->assertSet('fileInputVersion', 1);
+        $component = app(Profile::class);
+        $component->mount();
+        $component->removeAvatar();
+
+        $this->assertNull($component->avatar);
+        $this->assertSame(1, $component->fileInputVersion);
 
         $this->assertNull($user->fresh()->avatar);
         Storage::disk('myimage')->assertMissing('avatars/existing-avatar.webp');

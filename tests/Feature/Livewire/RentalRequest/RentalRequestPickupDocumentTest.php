@@ -65,9 +65,11 @@ class RentalRequestPickupDocumentTest extends TestCase
             'tars_contract' => 'PickupDocument/tars_contract_sample.jpg',
         ]);
 
-        Livewire::test(RentalRequestPickupDocument::class, ['contractId' => $contract->id])
-            ->call('removeFile', 'tars_contract')
-            ->assertSet('fileInputVersion', 1);
+        $component = app(RentalRequestPickupDocument::class);
+        $component->mount($contract->id);
+        $component->removeFile('tars_contract');
+
+        $this->assertSame(1, $component->fileInputVersion);
 
         $this->assertNull($pickupDocument->fresh()->tars_contract);
         Storage::disk('myimage')->assertMissing('PickupDocument/tars_contract_sample.jpg');

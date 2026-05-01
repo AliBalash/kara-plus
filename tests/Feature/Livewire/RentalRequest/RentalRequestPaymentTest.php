@@ -158,10 +158,9 @@ class RentalRequestPaymentTest extends TestCase
 
         Storage::disk('myimage')->put('payments/existing-receipt.webp', 'receipt-content');
 
-        Livewire::test(RentalRequestPayment::class, [
-            'contractId' => $contract->id,
-            'customerId' => $customer->id,
-        ])->call('deletePayment', $payment->id);
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $component->deletePayment($payment->id);
 
         $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
         Storage::disk('myimage')->assertMissing('payments/existing-receipt.webp');

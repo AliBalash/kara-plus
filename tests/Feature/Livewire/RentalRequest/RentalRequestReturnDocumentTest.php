@@ -83,12 +83,18 @@ class RentalRequestReturnDocumentTest extends TestCase
             ->status('awaiting_return')
             ->create();
 
-        Livewire::test(RentalRequestReturnDocument::class, ['contractId' => $contract->id])
-            ->set('fuelLevel', 50)
-            ->set('mileage', 15432)
-            ->set('carInsidePhotos', [UploadedFile::fake()->image('inside.jpg')])
-            ->set('carOutsidePhotos', [UploadedFile::fake()->image('outside.jpg')])
-            ->call('uploadDocuments')
-            ->assertHasErrors(['carDashboard']);
+        $component = app(RentalRequestReturnDocument::class);
+        $component->mount($contract->id);
+        $component->fuelLevel = 50;
+        $component->mileage = 15432;
+        $component->carInsidePhotos = [UploadedFile::fake()->image('inside.jpg')];
+        $component->carOutsidePhotos = [UploadedFile::fake()->image('outside.jpg')];
+
+        try {
+            $component->uploadDocuments();
+            $this->fail('Expected validation exception was not thrown.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('carDashboard', $exception->validator->errors()->toArray());
+        }
     }
 }
