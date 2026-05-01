@@ -21,6 +21,7 @@ use App\Livewire\Pages\Panel\Expert\Cashier\CashierDashboard;
 use App\Livewire\Pages\Panel\Expert\DiscountCode\DiscountCodeList;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesForm;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
+use App\Livewire\Pages\Panel\Expert\Lead\LeadList;
 use App\Livewire\Pages\Panel\Expert\Payments\ConfirmPayementList;
 use App\Livewire\Pages\Panel\Expert\Payments\ProcessedPaymentList;
 use App\Livewire\Pages\Panel\Expert\Profile\Profile;
@@ -112,6 +113,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     Route::get('/expert/cashier', CashierDashboard::class)->name('cashier.dashboard');
 
+    Route::get('/expert/leads', LeadList::class)->name('leads.index');
 
 
 

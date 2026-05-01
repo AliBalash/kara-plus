@@ -116,6 +116,13 @@
                     </ul>
                 </li>
 
+                <li class="menu-item {{ Request::routeIs('leads.*') ? 'active' : '' }}">
+                    <a href="{{ route('leads.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-phone-call"></i>
+                        <div data-i18n="Analytics">Leads</div>
+                    </a>
+                </li>
+
                 <li
                     class="menu-item {{ request()->routeIs('rental-requests.payment.list', 'rental-requests.payment', 'rental-requests.confirm-payment-list', 'rental-requests.processed-payments', 'cashier.dashboard') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
