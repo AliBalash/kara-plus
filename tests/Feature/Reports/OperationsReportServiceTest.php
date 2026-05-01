@@ -180,6 +180,61 @@ class OperationsReportServiceTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_customer_balance_report_ignores_cancelled_contracts(): void
+    {
+        Carbon::setTestNow('2025-04-15 12:00:00');
+
+        $customer = Customer::factory()->create([
+            'first_name' => 'Mina',
+            'last_name' => 'Cancelled',
+        ]);
+        $car = Car::factory()->create();
+
+        $activeContract = Contract::factory()
+            ->for($customer)
+            ->for($car)
+            ->status('payment')
+            ->create([
+                'pickup_date' => Carbon::parse('2025-04-01 10:00:00'),
+                'return_date' => Carbon::parse('2025-04-03 10:00:00'),
+                'total_price' => 1000,
+            ]);
+
+        Payment::factory()->for($activeContract)->for($customer)->for($car)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 400,
+            'amount_in_aed' => 400,
+            'payment_date' => '2025-04-02',
+        ]);
+
+        $cancelledContract = Contract::factory()
+            ->for($customer)
+            ->for($car)
+            ->status('cancelled')
+            ->create([
+                'pickup_date' => Carbon::parse('2025-04-05 10:00:00'),
+                'return_date' => Carbon::parse('2025-04-07 10:00:00'),
+                'total_price' => 7000,
+            ]);
+
+        $report = $this->service->customerBalances([
+            'search' => 'Mina',
+            'date_field' => 'pickup_date',
+            'date_from' => '2025-04-01',
+            'date_to' => '2025-04-30',
+        ]);
+
+        $this->assertCount(1, $report['rows']);
+        $this->assertSame(600.0, $report['rows'][0]['outstanding_balance']);
+        $this->assertSame(1000.0, $report['rows'][0]['gross_contract_value']);
+        $this->assertSame((string) $activeContract->id, $report['rows'][0]['open_contract_ids']);
+        $this->assertStringNotContainsString((string) $cancelledContract->id, $report['rows'][0]['open_contract_ids']);
+        $this->assertSame(600.0, $report['summary']['total_outstanding']);
+
+        Carbon::setTestNow();
+    }
+
     public function test_fleet_performance_report_calculates_utilization_and_revenue_in_window(): void
     {
         $car = Car::factory()->create([

@@ -321,6 +321,8 @@ class OperationsReportService
                 });
             })
             ->whereHas('contracts', function (Builder $query) use ($filters) {
+                $query->includedInCustomerBalance();
+
                 $this->applyDateRange(
                     $query,
                     $filters['date_field'],
@@ -330,6 +332,8 @@ class OperationsReportService
             })
             ->with([
                 'contracts' => function ($query) use ($filters) {
+                    $query->includedInCustomerBalance();
+
                     $this->applyDateRange(
                         $query,
                         $filters['date_field'],
