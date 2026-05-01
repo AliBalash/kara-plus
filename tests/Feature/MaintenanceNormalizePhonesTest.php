@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\User;
+use App\Http\Controllers\MaintenanceController;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -25,11 +26,12 @@ class MaintenanceNormalizePhonesTest extends TestCase
             'messenger_phone' => '971501972285',
         ]);
 
-        $response = $this->actingAs($user)->post(route('maintenance.normalize-phones'));
+        $this->actingAs($user);
 
-        $response->assertOk()->assertJson([
-            'normalized' => 2,
-        ]);
+        $response = app(MaintenanceController::class)->normalizeCustomerPhones();
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(2, $response->getData(true)['normalized']);
 
         $this->assertDatabaseHas('customers', [
             'id' => $customerWithIranianNumber->id,

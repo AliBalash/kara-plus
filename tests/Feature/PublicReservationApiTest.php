@@ -18,6 +18,13 @@ class PublicReservationApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('app.url', 'http://localhost');
+    }
+
     public function test_bootstrap_returns_public_reservation_metadata(): void
     {
         Agent::query()->firstOrCreate([
@@ -40,7 +47,7 @@ class PublicReservationApiTest extends TestCase
             'is_active' => false,
         ]);
 
-        $response = $this->getJson('/api/public/reservations/bootstrap');
+        $response = $this->getJson('http://localhost/api/public/reservations/bootstrap');
 
         $response->assertOk()
             ->assertJsonPath('data.default_agent_id', 1)
@@ -81,7 +88,7 @@ class PublicReservationApiTest extends TestCase
             'current_status' => 'reserved',
         ]);
 
-        $response = $this->getJson('/api/public/reservations/cars?pickup_date=2030-05-11%2010:00:00&return_date=2030-05-13%2010:00:00');
+        $response = $this->getJson('http://localhost/api/public/reservations/cars?pickup_date=2030-05-11%2010:00:00&return_date=2030-05-13%2010:00:00');
 
         $response->assertOk();
 
@@ -120,7 +127,7 @@ class PublicReservationApiTest extends TestCase
             'current_status' => 'reserved',
         ]);
 
-        $response = $this->postJson('/api/public/reservations/quote', [
+        $response = $this->postJson('http://localhost/api/public/reservations/quote', [
             'selected_car_id' => $car->id,
             'pickup_location' => 'Dubai Marina',
             'return_location' => 'Dubai Marina',
@@ -161,7 +168,7 @@ class PublicReservationApiTest extends TestCase
             'availability' => true,
         ]);
 
-        $response = $this->postJson('/api/public/reservations/quote', [
+        $response = $this->postJson('http://localhost/api/public/reservations/quote', [
             'selected_car_id' => $car->id,
             'pickup_location' => 'Dubai Marina',
             'return_location' => 'Downtown Dubai',
@@ -216,7 +223,7 @@ class PublicReservationApiTest extends TestCase
                 'availability' => true,
             ]);
 
-            $response = $this->postJson('/api/public/reservations/submit', [
+            $response = $this->postJson('http://localhost/api/public/reservations/submit', [
                 'selected_car_id' => $car->id,
                 'pickup_location' => 'Dubai Marina',
                 'return_location' => 'Dubai Marina',
