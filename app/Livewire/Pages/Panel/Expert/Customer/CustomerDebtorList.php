@@ -72,7 +72,8 @@ class CustomerDebtorList extends Component
 
         $customers = Customer::query()
             ->with(['contracts' => function ($query) {
-                $query->with(['payments', 'car.carModel']);
+                $query->includedInCustomerBalance()
+                    ->with(['payments', 'car.carModel']);
             }])
             ->when($search !== '', function ($query) use ($likeSearch, $isPhoneSearch) {
                 $query->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {

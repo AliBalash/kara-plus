@@ -43,6 +43,7 @@ class CustomerDebt extends Component
         $this->customer->loadMissing(['contracts.car.carModel', 'contracts.payments']);
 
         $contracts = $this->customer->contracts
+            ->filter(fn($contract) => $contract->isIncludedInCustomerBalance())
             ->sortByDesc(function ($contract) {
                 $date = $contract->pickup_date ?? $contract->created_at;
 
