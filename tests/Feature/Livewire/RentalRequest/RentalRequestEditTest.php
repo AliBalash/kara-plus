@@ -269,6 +269,150 @@ class RentalRequestEditTest extends TestCase
         $this->assertEquals('assigned', $contract->current_status);
     }
 
+    public function test_load_cars_excludes_other_sold_cars_for_editing(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $model = CarModel::factory()->create([
+            'brand' => 'Toyota',
+            'model' => 'Corolla',
+        ]);
+
+        $activeCar = Car::factory()->create([
+            'car_model_id' => $model->id,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        $soldCar = Car::factory()->sold()->create([
+            'car_model_id' => $model->id,
+        ]);
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for($activeCar)
+            ->status('pending')
+            ->create();
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+
+        $carIds = collect($component->carsForModel)->pluck('id')->all();
+
+        $this->assertContains($activeCar->id, $carIds);
+        $this->assertNotContains($soldCar->id, $carIds);
+    }
+
+    public function test_load_cars_keeps_current_car_visible_even_if_it_is_sold(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $model = CarModel::factory()->create([
+            'brand' => 'Nissan',
+            'model' => 'Sunny',
+        ]);
+
+        $soldCurrentCar = Car::factory()->sold()->create([
+            'car_model_id' => $model->id,
+        ]);
+
+        Car::factory()->create([
+            'car_model_id' => $model->id,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for($soldCurrentCar)
+            ->status('complete')
+            ->create();
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+
+        $carIds = collect($component->carsForModel)->pluck('id')->all();
+
+        $this->assertContains($soldCurrentCar->id, $carIds);
+    }
+
+    public function test_return_information_excludes_parking_and_salik_from_customer_payments_recorded(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $model = CarModel::factory()->create([
+            'brand' => 'Kia',
+            'model' => 'Sportage',
+        ]);
+
+        $car = Car::factory()->create([
+            'car_model_id' => $model->id,
+            'price_per_day_short' => 100,
+            'price_per_day_mid' => 100,
+            'price_per_day_long' => 100,
+        ]);
+
+        $customer = Customer::factory()->create([
+            'first_name' => 'Mina',
+            'last_name' => 'Rahimi',
+            'phone' => '+971500000321',
+        ]);
+
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('complete')
+            ->create([
+                'pickup_date' => now()->subDays(2),
+                'return_date' => now()->addDay(),
+                'total_price' => 500,
+                'used_daily_rate' => 100,
+            ]);
+
+        foreach ([
+            ['payment_type' => 'rental_fee', 'amount_in_aed' => 200],
+            ['payment_type' => 'security_deposit', 'amount_in_aed' => 100],
+            ['payment_type' => 'parking', 'amount_in_aed' => 30],
+            ['payment_type' => 'fine', 'amount_in_aed' => 40],
+            ['payment_type' => 'carwash', 'amount_in_aed' => 20],
+            ['payment_type' => 'fuel', 'amount_in_aed' => 15],
+            ['payment_type' => 'damage', 'amount_in_aed' => 25],
+            ['payment_type' => 'salik_4_aed', 'amount_in_aed' => 8],
+            ['payment_type' => 'salik_other_revenue', 'amount_in_aed' => 2],
+        ] as $payment) {
+            Payment::factory()->create([
+                'contract_id' => $contract->id,
+                'customer_id' => $customer->id,
+                'user_id' => $user->id,
+                'car_id' => $car->id,
+                'currency' => 'AED',
+                'amount' => $payment['amount_in_aed'],
+                'amount_in_aed' => $payment['amount_in_aed'],
+                'payment_type' => $payment['payment_type'],
+                'payment_date' => now()->toDateString(),
+                'is_paid' => true,
+            ]);
+        }
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+
+        $returnInformation = $component->returnInformationText;
+
+        $this->assertStringContainsString('Customer payments recorded: 300.00 AED', $returnInformation);
+        $this->assertStringContainsString('Salik total: 10.00 AED', $returnInformation);
+        $this->assertStringContainsString('Parking total: 30.00 AED', $returnInformation);
+        $this->assertStringContainsString('Fines total: 40.00 AED', $returnInformation);
+        $this->assertStringNotContainsString('Customer payments recorded: 340.00 AED', $returnInformation);
+        $this->assertStringNotContainsString('Customer payments recorded: 380.00 AED', $returnInformation);
+        $this->assertStringNotContainsString('Customer payments recorded: 440.00 AED', $returnInformation);
+    }
     protected function tearDown(): void
     {
         Mockery::close();
