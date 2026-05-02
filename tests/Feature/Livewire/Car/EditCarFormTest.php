@@ -56,7 +56,6 @@ class EditCarFormTest extends TestCase
         $validated = [
             'plate_number' => $car->plate_number,
             'status' => 'available',
-            'availability' => true,
             'mileage' => 1500,
             'price_per_day_short' => 320.4,
             'price_per_day_mid' => 280.3,
@@ -167,7 +166,7 @@ class EditCarFormTest extends TestCase
         $this->assertFalse($car->availability);
     }
 
-    public function test_accepts_availability_value_from_select_when_updating_car(): void
+    public function test_submit_derives_availability_from_status_when_updating_car(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -182,8 +181,7 @@ class EditCarFormTest extends TestCase
         $component->mount($car->id);
         $component->shouldReceive('validate')->once()->andReturn([
             'plate_number' => $car->plate_number,
-            'status' => 'available',
-            'availability' => 'false',
+            'status' => 'under_maintenance',
             'mileage' => $car->mileage,
             'price_per_day_short' => $car->price_per_day_short,
             'price_per_day_mid' => $car->price_per_day_mid,
@@ -224,6 +222,20 @@ class EditCarFormTest extends TestCase
         $component->submit();
 
         $this->assertFalse($car->fresh()->availability);
+        $this->assertSame('under_maintenance', $car->fresh()->status);
+    }
+
+    public function test_edit_form_shows_final_status_and_hides_manual_availability_controls(): void
+    {
+        $car = Car::factory()->create([
+            'status' => 'available',
+            'availability' => false,
+        ]);
+
+        Livewire::test(EditCarForm::class, ['carId' => $car->id])
+            ->assertSee('Final Status: Available')
+            ->assertSee('Experts can no longer edit the availability flag directly.')
+            ->assertDontSee('Availability Flag');
     }
 
     protected function tearDown(): void

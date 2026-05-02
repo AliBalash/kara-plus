@@ -260,7 +260,7 @@ class RentalRequestCreate extends Component
         }
 
         $this->carsForModel = Car::where('car_model_id', $this->selectedModelId)
-            ->where('status', '!=', 'sold')
+            ->reservableForSelection()
             ->with(['carModel', 'currentContract.customer'])
             ->orderBy('plate_number')
             ->get();
@@ -680,11 +680,17 @@ class RentalRequestCreate extends Component
                 'exists:cars,id',
                 function ($attribute, $value, $fail) {
                     $car = Car::query()
-                        ->select(['id', 'status'])
+                        ->select(['id', 'status', 'availability'])
                         ->find($value);
 
-                    if ($car && $car->status === 'sold') {
-                        $fail('The selected car has been sold and cannot be used for reservations.');
+                    if (! $car) {
+                        return;
+                    }
+
+                    $blockReason = $car->reservationSelectionBlockReason();
+
+                    if ($blockReason !== null) {
+                        $fail($blockReason);
                     }
                 },
             ],

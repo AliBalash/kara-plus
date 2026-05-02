@@ -500,13 +500,13 @@
                                         title="Select available car">
                                         <option value="">Select Car</option>
                                         @foreach ($carsForModel as $car)
-                                            <option value="{{ $car['id'] }}"
+                                        <option value="{{ $car['id'] }}"
                                                 @class([
-                                                    'text-warning' => $car['status'] !== 'available' || ! $car['availability'],
+                                                    'text-warning' => $car->operationalStatus() !== 'available',
                                                 ])>
                                                 {{ $car['plate_number'] }} - {{ $car['manufacturing_year'] }} -
                                                 {{ $car['color'] ?? 'N/A' }} -
-                                                [{{ ucfirst(str_replace('_', ' ', $car['status'])) }}]
+                                                [{{ $car->operationalStatusLabel() }}]
                                             </option>
                                         @endforeach
                                     </select>
@@ -535,15 +535,9 @@
                                         <strong>Color:</strong> {{ $selectedCar->color ?? 'N/A' }}
                                     </div>
                                     <div class="col-md-4 mt-2">
-                                        <strong>Fleet Status:</strong>
-                                        <span class="badge bg-label-{{ $selectedCar->availability ? 'success' : 'danger' }}">
-                                            {{ $selectedCar->availability ? 'Active' : 'Inactive' }}
-                                        </span>
-                                    </div>
-                                    <div class="col-md-4 mt-2">
-                                        <strong>Internal Status:</strong>
-                                        <span class="badge bg-label-secondary text-uppercase">
-                                            {{ str_replace('_', ' ', $selectedCar->status) }}
+                                        <strong>Status:</strong>
+                                        <span class="badge {{ $selectedCar->operationalStatusBadgeClass() }}">
+                                            {{ $selectedCar->operationalStatusLabel() }}
                                         </span>
                                     </div>
                                 </div>

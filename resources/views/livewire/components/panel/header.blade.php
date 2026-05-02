@@ -156,26 +156,9 @@
                     @else
                         @forelse ($cars as $car)
                             @php
-                                $status = $car->status ?? 'unknown';
-                                $statusColor = match ($status) {
-                                    'available' => 'success',
-                                    'pre_reserved' => 'info',
-                                    'reserved' => 'warning',
-                                    'unavailable', 'sold', 'maintenance', 'under_maintenance' => 'danger',
-                                    default => 'secondary',
-                                };
-                                $statusIcon = match ($status) {
-                                    'available' => 'bx bx-check-circle',
-                                    'pre_reserved' => 'bx bx-calendar-event',
-                                    'reserved' => 'bx bx-time-five',
-                                    'unavailable', 'sold', 'maintenance', 'under_maintenance' => 'bx bx-error',
-                                    default => 'bx bx-car',
-                                };
-                                $statusLabel = match ($status) {
-                                    'pre_reserved' => 'Upcoming reservation',
-                                    'under_maintenance' => 'Under maintenance',
-                                    default => \Illuminate\Support\Str::headline($status),
-                                };
+                                $statusColor = $car->operationalStatusTone();
+                                $statusIcon = $car->operationalStatusIcon();
+                                $statusLabel = $car->operationalStatusLabel();
                                 $plate = $car->plate_number ?? 'Plate TBD';
                                 $year = $car->manufacturing_year ?? 'Year —';
                                 $mileage = $car->mileage !== null ? number_format($car->mileage) . ' km' : 'Mileage —';

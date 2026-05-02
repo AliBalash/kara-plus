@@ -373,7 +373,7 @@
                         </div>
                         <div class="col">
                             <span class="text-muted text-uppercase small">Status</span>
-                            <div class="fw-semibold text-body">{{ $contract->car?->status ? \Illuminate\Support\Str::headline($contract->car->status) : '—' }}</div>
+                            <div class="fw-semibold text-body">{{ $contract->car?->operationalStatusLabel() ?? '—' }}</div>
                         </div>
                     </div>
                 </div>

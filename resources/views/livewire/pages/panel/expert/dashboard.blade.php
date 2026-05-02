@@ -451,7 +451,7 @@
                                     <th scope="col">Fleet</th>
                                     <th scope="col">Plate</th>
                                     <th scope="col">Returned At</th>
-                                    <th scope="col">Availability</th>
+                                    <th scope="col">Status</th>
                                     <th scope="col">Next Reservation</th>
                                     <th scope="col">Last Service</th>
                                     <th scope="col" class="text-end">Action</th>
@@ -484,13 +484,9 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @if ($car->status === 'pre_reserved' && $car->availability)
-                                                <span class="badge bg-info-subtle text-info">Available now · booked next</span>
-                                            @elseif ($car->status === 'available' && $car->availability)
-                                                <span class="badge bg-success-subtle text-success">Ready to rent</span>
-                                            @else
-                                                <span class="badge bg-danger-subtle text-danger">Unavailable</span>
-                                            @endif
+                                            <span class="badge {{ $car->operationalStatusSubtleBadgeClass() }}">
+                                                {{ $car->operationalStatusLabel() }}
+                                            </span>
                                         </td>
                                         <td>
                                             @if ($upcomingReservation)

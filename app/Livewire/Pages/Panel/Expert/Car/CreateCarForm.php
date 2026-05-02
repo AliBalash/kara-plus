@@ -74,18 +74,6 @@ class CreateCarForm extends Component
             'selectedModelId' => 'required|exists:car_models,id',
             'plate_number' => 'required|string|max:255|unique:cars,plate_number',
             'status' => ['required', Rule::in(['available', 'pre_reserved', 'reserved', 'under_maintenance', 'sold'])],
-            'availability' => [
-                'required',
-                'boolean',
-                function ($attribute, $value, $fail) {
-                    if (
-                        $this->status === 'sold'
-                        && in_array($value, [true, 1, '1', 'true'], true)
-                    ) {
-                        $fail('Sold cars cannot be marked as available.');
-                    }
-                },
-            ],
             'mileage' => 'required|numeric|min:0',
             'price_per_day_short' => 'required|numeric|min:0',
             'price_per_day_mid' => 'required|numeric|min:0',
@@ -132,7 +120,6 @@ class CreateCarForm extends Component
         'plate_number.unique' => 'The plate number is already in use.',
         'status.required' => 'The status is required.',
         'status.in' => 'The status must be one of available, pre-reserved, reserved, under maintenance, or sold.',
-        'availability.required' => 'The availability is required.',
         'mileage.required' => 'The mileage is required.',
         'mileage.numeric' => 'The mileage must be a number.',
         'mileage.min' => 'The mileage cannot be negative.',
@@ -235,9 +222,7 @@ class CreateCarForm extends Component
 
     public function updatedStatus($status): void
     {
-        if ($status === 'sold') {
-            $this->availability = false;
-        }
+        $this->syncStatusPreview();
     }
 
     private function resetCarData()
@@ -285,6 +270,8 @@ class CreateCarForm extends Component
             'unlimited_km' => false,
             'base_insurance' => false,
         ];
+
+        $this->syncStatusPreview();
     }
 
     private function formatDecimalValue($value): string
@@ -292,9 +279,37 @@ class CreateCarForm extends Component
         return number_format((float) ($value ?? 0), 2, '.', '');
     }
 
+    public function getEffectiveStatusLabelProperty(): string
+    {
+        $previewState = $this->statusPreviewState();
+
+        return Car::operationalStatusLabelFor($previewState['status'], $previewState['availability']);
+    }
+
+    public function getEffectiveStatusExplanationProperty(): ?string
+    {
+        $previewState = $this->statusPreviewState();
+        $effectiveStatus = Car::resolveOperationalStatus($previewState['status'], $previewState['availability']);
+
+        if (
+            in_array($this->status, ['reserved', 'pre_reserved'], true)
+            && $previewState['status'] === 'available'
+        ) {
+            return 'Booked statuses are synchronized from contract dates. A newly created vehicle with no contract will be saved as Ready.';
+        }
+
+        return match ($effectiveStatus) {
+            'available' => 'Ready vehicles stay available for search, Fleet Inventory, and reservation assignment.',
+            'pre_reserved' => 'This vehicle is currently rentable, but it already has an upcoming booking.',
+            'reserved' => 'This vehicle is tied to an active booking window.',
+            'under_maintenance' => 'Under maintenance vehicles are always blocked from reservation assignment until they are returned to Ready.',
+            'sold' => 'Sold vehicles are always treated as unavailable for operations.',
+            default => null,
+        };
+    }
+
     protected function prepareForValidation($attributes)
     {
-        $attributes['availability'] = $this->normalizeBooleanValue($attributes['availability'] ?? $this->availability);
         $attributes['gps'] = $this->normalizeBooleanValue($attributes['gps'] ?? $this->gps);
         $attributes['car_options']['unlimited_km'] = $this->normalizeBooleanValue(
             $attributes['car_options']['unlimited_km'] ?? $this->car_options['unlimited_km'] ?? false
@@ -368,7 +383,7 @@ class CreateCarForm extends Component
     public function submit()
     {
         $validated = $this->validate();
-        $validated['availability'] = $this->normalizeBooleanValue($validated['availability'] ?? false);
+        $validated['availability'] = Car::availabilityForStatus($validated['status']);
         $validated['gps'] = $this->normalizeBooleanValue($validated['gps'] ?? false);
         $validated['car_options'] = is_array($validated['car_options'] ?? null)
             ? $validated['car_options']
@@ -379,10 +394,6 @@ class CreateCarForm extends Component
         $validated['car_options']['base_insurance'] = $this->normalizeBooleanValue(
             $validated['car_options']['base_insurance'] ?? false
         );
-
-        if ($validated['status'] === 'sold') {
-            $validated['availability'] = false;
-        }
 
         $decimalFields = [
             'price_per_day_short',
@@ -437,6 +448,8 @@ class CreateCarForm extends Component
                     'notes' => $validated['notes'],
                 ]);
 
+                $car->syncOperationalState();
+
                 foreach ($validated['car_options'] as $key => $value) {
                     if ($value !== null && $value !== '') {
                         $car->options()->create([
@@ -484,5 +497,18 @@ class CreateCarForm extends Component
     public function render()
     {
         return view('livewire.pages.panel.expert.car.create-car-form');
+    }
+
+    private function syncStatusPreview(): void
+    {
+        $this->availability = $this->statusPreviewState()['availability'];
+    }
+
+    /**
+     * @return array{status: string|null, availability: bool}
+     */
+    private function statusPreviewState(): array
+    {
+        return Car::synchronizedStateForReservationWindow($this->status, false, false);
     }
 }

@@ -1015,7 +1015,7 @@ class OperationsReportService
             'car_name' => $car->modelName(),
             'plate_number' => $car->plate_number ?? '—',
             'ownership' => $car->ownershipLabel(),
-            'availability' => $car->isAvailable() ? 'Ready' : Str::headline(str_replace('_', ' ', $car->status ?? 'offline')),
+            'availability' => $car->operationalStatusLabel(),
             'contracts_count' => $contracts->count(),
             'unique_customers' => $contracts->pluck('customer_id')->filter()->unique()->count(),
             'revenue' => $revenue,

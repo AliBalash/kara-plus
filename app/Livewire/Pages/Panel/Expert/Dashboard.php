@@ -436,9 +436,8 @@ class Dashboard extends Component
             $this->baseAvailableFleetQuery($summaryScope),
             'available'
         )->count('cars.id');
-        $booked = (int) (clone $carsInScope)
-            ->whereIn('cars.status', ['reserved', 'pre_reserved'])
-            ->count('cars.id');
+        $booked = (int) (clone $carsInScope)->byOperationalStatus('reserved')->count('cars.id')
+            + (int) (clone $carsInScope)->byOperationalStatus('pre_reserved')->count('cars.id');
         $unavailable = max($total - ($available + $booked), 0);
 
         $reservationStatuses = array_values(array_diff(Car::reservingStatuses(), ['pending']));

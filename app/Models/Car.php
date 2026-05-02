@@ -11,6 +11,7 @@ class Car extends Model
     use HasFactory;
 
     private const RENTABLE_STATUSES = ['available', 'pre_reserved'];
+    private const RESERVATION_SELECTION_BLOCKED_STATUSES = ['sold', 'under_maintenance', 'unavailable'];
 
     /**
      * @var array<string, array<int, string>>
@@ -99,45 +100,165 @@ class Car extends Model
         return in_array($this->status, self::RENTABLE_STATUSES, true) && $this->availability;
     }
 
+    public static function availabilityForStatus(?string $status): bool
+    {
+        return in_array($status, self::RENTABLE_STATUSES, true);
+    }
+
+    /**
+     * Keep reservation-driven states system-managed so stored status and availability cannot drift apart.
+     *
+     * @return array{status: string|null, availability: bool}
+     */
+    public static function synchronizedStateForReservationWindow(
+        ?string $status,
+        bool $hasActiveReservation,
+        bool $hasUpcomingReservation
+    ): array {
+        if ($status === 'sold') {
+            return ['status' => 'sold', 'availability' => false];
+        }
+
+        if ($status === 'under_maintenance') {
+            return ['status' => 'under_maintenance', 'availability' => false];
+        }
+
+        if ($hasActiveReservation) {
+            return ['status' => 'reserved', 'availability' => false];
+        }
+
+        if ($hasUpcomingReservation) {
+            return ['status' => 'pre_reserved', 'availability' => true];
+        }
+
+        $normalizedStatus = in_array($status, ['reserved', 'pre_reserved'], true)
+            ? 'available'
+            : ($status ?: 'available');
+
+        return [
+            'status' => $normalizedStatus,
+            'availability' => static::availabilityForStatus($normalizedStatus),
+        ];
+    }
+
+    /**
+     * @return array{status: string|null, availability: bool}
+     */
+    public function synchronizedOperationalState(?Carbon $now = null): array
+    {
+        $now ??= Carbon::now();
+
+        $hasActiveReservation = $this->hasActiveReservationWindow($now);
+        $hasUpcomingReservation = ! $hasActiveReservation && $this->hasUpcomingReservationWindow($now);
+
+        return static::synchronizedStateForReservationWindow(
+            $this->status,
+            $hasActiveReservation,
+            $hasUpcomingReservation
+        );
+    }
+
+    public function syncOperationalState(?Carbon $now = null): bool
+    {
+        $attributes = $this->synchronizedOperationalState($now);
+        $currentAvailability = (bool) $this->availability;
+
+        if (
+            $this->status === $attributes['status']
+            && $currentAvailability === $attributes['availability']
+        ) {
+            return false;
+        }
+
+        $this->forceFill($attributes);
+        $this->saveQuietly();
+
+        return true;
+    }
+
     public function operationalStatus(): string
     {
-        if ($this->status === 'sold') {
+        return static::resolveOperationalStatus($this->status, $this->availability);
+    }
+
+    public static function resolveOperationalStatus(?string $status, bool $availability): string
+    {
+        if ($status === 'sold') {
             return 'sold';
         }
 
-        if ($this->status === 'under_maintenance') {
+        if ($status === 'under_maintenance') {
             return 'under_maintenance';
         }
 
-        if ($this->status === 'reserved') {
+        if ($status === 'reserved') {
             return 'reserved';
         }
 
-        if (! $this->availability) {
+        if (! $availability) {
             return 'unavailable';
         }
 
-        if ($this->status === 'pre_reserved') {
+        if ($status === 'pre_reserved') {
             return 'pre_reserved';
         }
 
-        if ($this->status === 'available') {
+        if ($status === 'available') {
             return 'available';
         }
 
-        return $this->status ?: 'unavailable';
+        return $status ?: 'unavailable';
     }
 
     public function operationalStatusLabel(): string
     {
-        return match ($this->operationalStatus()) {
+        return static::operationalStatusLabelFor($this->status, $this->availability);
+    }
+
+    public static function operationalStatusLabelFor(?string $status, bool $availability): string
+    {
+        return match (static::resolveOperationalStatus($status, $availability)) {
             'available' => 'Available',
             'pre_reserved' => 'Upcoming booking',
             'reserved' => 'Active booking',
             'under_maintenance' => 'Under maintenance',
             'sold' => 'Sold',
             'unavailable' => 'Unavailable',
-            default => ucfirst((string) $this->operationalStatus()),
+            default => ucfirst((string) static::resolveOperationalStatus($status, $availability)),
+        };
+    }
+
+    public function operationalStatusTone(): string
+    {
+        return static::operationalStatusToneFor($this->status, $this->availability);
+    }
+
+    public static function operationalStatusToneFor(?string $status, bool $availability): string
+    {
+        return match (static::resolveOperationalStatus($status, $availability)) {
+            'available' => 'success',
+            'pre_reserved' => 'info',
+            'reserved' => 'warning',
+            'under_maintenance', 'sold' => 'danger',
+            'unavailable' => 'secondary',
+            default => 'secondary',
+        };
+    }
+
+    public function operationalStatusIcon(): string
+    {
+        return static::operationalStatusIconFor($this->status, $this->availability);
+    }
+
+    public static function operationalStatusIconFor(?string $status, bool $availability): string
+    {
+        return match (static::resolveOperationalStatus($status, $availability)) {
+            'available' => 'bx bx-check-circle',
+            'pre_reserved' => 'bx bx-calendar-event',
+            'reserved' => 'bx bx-time-five',
+            'under_maintenance', 'sold' => 'bx bx-error',
+            'unavailable' => 'bx bx-block',
+            default => 'bx bx-car',
         };
     }
 
@@ -154,6 +275,23 @@ class Car extends Model
         };
     }
 
+    public function operationalStatusSubtleBadgeClass(): string
+    {
+        return static::operationalStatusSubtleBadgeClassFor($this->status, $this->availability);
+    }
+
+    public static function operationalStatusSubtleBadgeClassFor(?string $status, bool $availability): string
+    {
+        return match (static::resolveOperationalStatus($status, $availability)) {
+            'available' => 'bg-success-subtle text-success',
+            'pre_reserved' => 'bg-info-subtle text-info',
+            'reserved' => 'bg-warning-subtle text-warning',
+            'under_maintenance', 'sold' => 'bg-danger-subtle text-danger',
+            'unavailable' => 'bg-secondary-subtle text-secondary',
+            default => 'bg-secondary-subtle text-secondary',
+        };
+    }
+
     public function scopeByOperationalStatus($query, string $status)
     {
         return match ($status) {
@@ -167,6 +305,46 @@ class Car extends Model
                     ->whereIn('status', self::RENTABLE_STATUSES);
             }),
             default => $query->where('status', $status),
+        };
+    }
+
+    public function scopeReservableForSelection($query)
+    {
+        return $query->where(function ($builder) {
+            $builder->where('status', 'reserved')
+                ->orWhere(function ($readyBuilder) {
+                    $readyBuilder->whereIn('status', self::RENTABLE_STATUSES)
+                        ->where('availability', true);
+                });
+        });
+    }
+
+    public function isSelectableForReservation(): bool
+    {
+        return static::isSelectableForReservationState($this->status, $this->availability);
+    }
+
+    public static function isSelectableForReservationState(?string $status, bool $availability): bool
+    {
+        return ! in_array(
+            static::resolveOperationalStatus($status, $availability),
+            self::RESERVATION_SELECTION_BLOCKED_STATUSES,
+            true
+        );
+    }
+
+    public function reservationSelectionBlockReason(): ?string
+    {
+        return static::reservationSelectionBlockReasonFor($this->status, $this->availability);
+    }
+
+    public static function reservationSelectionBlockReasonFor(?string $status, bool $availability): ?string
+    {
+        return match (static::resolveOperationalStatus($status, $availability)) {
+            'sold' => 'The selected car has been sold and cannot be used for reservations.',
+            'under_maintenance' => 'The selected car is under maintenance and cannot be used for reservations.',
+            'unavailable' => 'The selected car is marked unavailable and cannot be used for reservations until it is reactivated.',
+            default => null,
         };
     }
 
@@ -254,6 +432,31 @@ class Car extends Model
     public function contracts()
     {
         return $this->hasMany(Contract::class);
+    }
+
+    public function hasActiveReservationWindow(?Carbon $now = null): bool
+    {
+        $now ??= Carbon::now();
+
+        return $this->contracts()
+            ->whereIn('current_status', static::reservingStatuses())
+            ->whereNotNull('pickup_date')
+            ->where('pickup_date', '<=', $now)
+            ->where(function ($query) use ($now) {
+                $query->whereNull('return_date')->orWhere('return_date', '>=', $now);
+            })
+            ->exists();
+    }
+
+    public function hasUpcomingReservationWindow(?Carbon $now = null): bool
+    {
+        $now ??= Carbon::now();
+
+        return $this->contracts()
+            ->whereIn('current_status', static::reservingStatuses())
+            ->whereNotNull('pickup_date')
+            ->where('pickup_date', '>', $now)
+            ->exists();
     }
 
     public function scopeWithoutActiveReservations($query)

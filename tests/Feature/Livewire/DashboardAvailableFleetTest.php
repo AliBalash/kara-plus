@@ -352,6 +352,32 @@ class DashboardAvailableFleetTest extends TestCase
         ], $component->fleetStatusSummary);
     }
 
+    public function test_dashboard_treats_pre_reserved_with_false_availability_as_unavailable(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+            'status' => 'pre_reserved',
+            'availability' => false,
+        ]);
+
+        $component = app(Dashboard::class);
+        $component->mount();
+
+        $this->assertSame([
+            'total' => 1,
+            'available' => 0,
+            'booked' => 0,
+            'unavailable' => 1,
+            'availability_rate' => 0,
+            'active_reservations' => 0,
+            'upcoming_pickups' => 0,
+        ], $component->fleetStatusSummary);
+    }
+
     private function createReturnedCar(string $returnedAt, array $carOverrides = []): Car
     {
         $car = Car::factory()->create(array_merge([

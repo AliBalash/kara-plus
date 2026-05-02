@@ -8,6 +8,7 @@ use App\Models\CarModel;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -49,7 +50,6 @@ class CreateCarFormTest extends TestCase
             'selectedModelId' => $carModel->id,
             'plate_number' => 'AB-1234',
             'status' => 'available',
-            'availability' => true,
             'mileage' => 1200,
             'price_per_day_short' => 300.75,
             'price_per_day_mid' => 250.5,
@@ -93,6 +93,22 @@ class CreateCarFormTest extends TestCase
         $this->assertEquals(8, $car->options()->count());
         $this->assertTrue($carModel->fresh()->is_featured);
         $this->assertEquals('Car added successfully!', session('message'));
+    }
+
+    public function test_create_form_previews_booked_statuses_as_system_managed(): void
+    {
+        $carModel = CarModel::factory()->create([
+            'brand' => 'Tesla',
+            'model' => 'Model 3',
+        ]);
+
+        Livewire::test(CreateCarForm::class)
+            ->set('selectedBrand', $carModel->brand)
+            ->set('selectedModelId', (string) $carModel->id)
+            ->set('status', 'reserved')
+            ->assertSee('Final Status: Available')
+            ->assertSee('Booked statuses are synchronized from contract dates.')
+            ->assertDontSee('Availability Flag');
     }
 
     protected function tearDown(): void

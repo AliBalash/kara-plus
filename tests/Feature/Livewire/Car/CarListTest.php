@@ -77,4 +77,37 @@ class CarListTest extends TestCase
             Car::query()->byOperationalStatus('unavailable')->pluck('id')->all()
         );
     }
+
+    public function test_reservation_selection_scope_blocks_unavailable_and_maintenance_cars(): void
+    {
+        $unavailable = Car::factory()->create([
+            'status' => 'available',
+            'availability' => false,
+        ]);
+
+        $maintenance = Car::factory()->create([
+            'status' => 'under_maintenance',
+            'availability' => false,
+        ]);
+
+        $reserved = Car::factory()->create([
+            'status' => 'reserved',
+            'availability' => false,
+        ]);
+
+        $preReserved = Car::factory()->create([
+            'status' => 'pre_reserved',
+            'availability' => true,
+        ]);
+
+        $this->assertFalse($unavailable->isSelectableForReservation());
+        $this->assertFalse($maintenance->isSelectableForReservation());
+        $this->assertTrue($reserved->isSelectableForReservation());
+        $this->assertTrue($preReserved->isSelectableForReservation());
+
+        $this->assertSame(
+            [$reserved->id, $preReserved->id],
+            Car::query()->reservableForSelection()->orderBy('id')->pluck('id')->all()
+        );
+    }
 }

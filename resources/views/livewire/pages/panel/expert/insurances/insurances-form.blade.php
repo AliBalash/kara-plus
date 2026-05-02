@@ -40,7 +40,7 @@
                             </div>
                             <div class="input-group mt-2">
                                 <span class="input-group-text">Car Status</span>
-                                <input type="text" class="form-control" value="{{ $car->status }}" disabled>
+                                <input type="text" class="form-control" value="{{ $car->operationalStatusLabel() }}" disabled>
                             </div>
                         @endif
                     </div>

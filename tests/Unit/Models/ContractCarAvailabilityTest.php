@@ -201,4 +201,46 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertEquals('available', $car->status);
         $this->assertTrue($car->availability);
     }
+
+    public function test_sync_operational_state_restores_ready_car_availability_when_no_reservation_exists(): void
+    {
+        $car = Car::factory()->create([
+            'status' => 'available',
+            'availability' => false,
+        ]);
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame('available', $car->status);
+        $this->assertTrue($car->availability);
+    }
+
+    public function test_sync_operational_state_disables_under_maintenance_car_even_without_reservation(): void
+    {
+        $car = Car::factory()->create([
+            'status' => 'under_maintenance',
+            'availability' => true,
+        ]);
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame('under_maintenance', $car->status);
+        $this->assertFalse($car->availability);
+    }
+
+    public function test_sync_operational_state_releases_stale_pre_reserved_status_without_upcoming_reservation(): void
+    {
+        $car = Car::factory()->create([
+            'status' => 'pre_reserved',
+            'availability' => true,
+        ]);
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame('available', $car->status);
+        $this->assertTrue($car->availability);
+    }
 }

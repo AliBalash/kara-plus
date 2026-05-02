@@ -29,7 +29,7 @@
         <!-- Status Filter -->
         <div class="col-md-3 mb-2">
             <select class="form-select" wire:model.live="statusFilter">
-                <option value="">All Status</option>
+                <option value="">All Statuses</option>
                 <option value="available">Available</option>
                 <option value="pre_reserved">Upcoming Booking</option>
                 <option value="reserved">Active Booking</option>

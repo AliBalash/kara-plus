@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PanelHeaderTest extends TestCase
@@ -53,5 +54,28 @@ class PanelHeaderTest extends TestCase
         $this->assertCount(1, $component->cars);
         $this->assertTrue($component->cars->first()->is($car));
         $this->assertTrue($component->cars->first()->contracts->contains($contract));
+    }
+
+    public function test_quick_vehicle_search_uses_operational_status_label(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $carModel = CarModel::factory()->create([
+            'brand' => 'Toyota',
+            'model' => 'Corolla',
+        ]);
+
+        Car::factory()->create([
+            'car_model_id' => $carModel->id,
+            'plate_number' => 'SYNC-51004',
+            'status' => 'available',
+            'availability' => false,
+        ]);
+
+        Livewire::test(Header::class)
+            ->set('query', '51004')
+            ->assertSee('Unavailable')
+            ->assertDontSee('Upcoming booking');
     }
 }

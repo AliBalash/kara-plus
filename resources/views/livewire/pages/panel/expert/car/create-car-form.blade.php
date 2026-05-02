@@ -54,17 +54,17 @@
                                     @enderror
                                 </div>
 
-                                <!-- Status -->
+                                <!-- Vehicle Status -->
                                 <div class="input-group">
-                                    <span class="input-group-text" id="status-addon">Status</span>
+                                    <span class="input-group-text" id="status-addon">Vehicle Status</span>
                                     <select
                                         class="form-control border border-warning @error('status') is-invalid @enderror"
                                         name="status" wire:model="status" required>
                                         <option value="available" {{ $status == 'available' ? 'selected' : '' }}>
-                                            Available</option>
+                                            Ready</option>
                                         <option value="pre_reserved" {{ $status == 'pre_reserved' ? 'selected' : '' }}>
-                                            Upcoming Booking</option>
-                                        <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Booking
+                                            Booked Next</option>
+                                        <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Booked Now
                                         </option>
                                         <option value="under_maintenance"
                                             {{ $status == 'under_maintenance' ? 'selected' : '' }}>Under Maintenance
@@ -76,18 +76,15 @@
                                     @enderror
                                 </div>
 
-                                <!-- Availability -->
-                                <div class="input-group">
-                                    <span class="input-group-text" id="availability-addon">Availability</span>
-                                    <select class="form-select @error('availability') is-invalid @enderror"
-                                        wire:model="availability" required>
-                                        <option value="1" {{ $availability ? 'selected' : '' }}>Available</option>
-                                        <option value="0" {{ !$availability ? 'selected' : '' }}>Not Available
-                                        </option>
-                                    </select>
-                                    @error('availability')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                <div class="alert alert-secondary py-2 px-3 mb-0" role="alert">
+                                    <div class="fw-semibold">Final Status: {{ $this->effectiveStatusLabel }}</div>
+                                    <div class="small text-muted">
+                                        Availability is synchronized automatically from this status. Experts can no
+                                        longer edit the availability flag directly.
+                                    </div>
+                                    @if ($this->effectiveStatusExplanation)
+                                        <div class="small mt-1">{{ $this->effectiveStatusExplanation }}</div>
+                                    @endif
                                 </div>
 
                                 <!-- Ownership -->
