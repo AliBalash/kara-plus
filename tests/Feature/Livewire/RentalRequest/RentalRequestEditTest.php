@@ -576,6 +576,10 @@ class RentalRequestEditTest extends TestCase
             ['payment_type' => 'rental_fee', 'amount_in_aed' => 200],
             ['payment_type' => 'security_deposit', 'amount_in_aed' => 100],
             ['payment_type' => 'parking', 'amount_in_aed' => 30],
+            ['payment_type' => 'fine', 'amount_in_aed' => 40],
+            ['payment_type' => 'carwash', 'amount_in_aed' => 20],
+            ['payment_type' => 'fuel', 'amount_in_aed' => 15],
+            ['payment_type' => 'damage', 'amount_in_aed' => 25],
             ['payment_type' => 'salik_4_aed', 'amount_in_aed' => 8],
             ['payment_type' => 'salik_other_revenue', 'amount_in_aed' => 2],
         ] as $payment) {
@@ -601,7 +605,10 @@ class RentalRequestEditTest extends TestCase
         $this->assertStringContainsString('Customer payments recorded: 300.00 AED', $returnInformation);
         $this->assertStringContainsString('Salik total: 10.00 AED', $returnInformation);
         $this->assertStringContainsString('Parking total: 30.00 AED', $returnInformation);
+        $this->assertStringContainsString('Fines total: 40.00 AED', $returnInformation);
         $this->assertStringNotContainsString('Customer payments recorded: 340.00 AED', $returnInformation);
+        $this->assertStringNotContainsString('Customer payments recorded: 380.00 AED', $returnInformation);
+        $this->assertStringNotContainsString('Customer payments recorded: 440.00 AED', $returnInformation);
     }
 
     protected function tearDown(): void

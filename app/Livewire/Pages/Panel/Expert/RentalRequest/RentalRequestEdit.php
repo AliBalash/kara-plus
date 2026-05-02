@@ -1725,7 +1725,7 @@ TEXT);
 
         $securityHold = $sumAmount('security_deposit');
         $customerPayments = (float) $payments
-            ->whereNotIn('payment_type', ['parking', 'salik', 'salik_4_aed', 'salik_6_aed', 'salik_other_revenue'])
+            ->whereNotIn('payment_type', ['parking', 'salik', 'salik_4_aed', 'salik_6_aed', 'salik_other_revenue', 'fine', 'fuel', 'carwash', 'damage'])
             ->sum('amount_in_aed');
         $balance = $this->contract->calculateRemainingBalance($payments);
         $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
