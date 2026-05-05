@@ -201,19 +201,19 @@ class RentalRequestAwaitingPickupList extends Component
         $user = Auth::user();
 
         if (! $user || ! $user->hasRole('driver')) {
-            $this->toast('error', 'Only drivers can claim delivery tasks.', false);
+            $this->toast('error', 'Only drivers can claim delivery tasks.', true);
             return;
         }
 
         $contract = Contract::query()->whereKey($contractId)->first();
 
         if (! $contract) {
-            $this->toast('error', 'The selected contract could not be found.', false);
+            $this->toast('error', 'The selected contract could not be found.', true);
             return;
         }
 
         if ($contract->delivery_driver_id && $contract->delivery_driver_id !== $user->id) {
-            $this->toast('error', 'This delivery is already assigned to another driver.', false);
+            $this->toast('error', 'This delivery is already assigned to another driver.', true);
             return;
         }
 
