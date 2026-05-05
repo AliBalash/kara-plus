@@ -5,26 +5,14 @@ namespace App\Livewire\Pages\Panel\Expert;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\ContractStatus;
-use App\Models\DiscountCode;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 class Dashboard extends Component
 {
-    protected static ?bool $discountCodesTableExists = null;
-
     public $title = 'Dashboard';
-    public $discountCodesCount;
-    public $usedDiscountCodes;
-    public $usageRate;
-    public $averageDiscount;
-    public $latestDiscountCodes;
-    public $userDiscountCodes;
-    public $userUsedDiscountCodes;
-    public $lastUserDiscountCode;
 
     public $totalContracts;
     public $activeContracts;
@@ -43,7 +31,6 @@ class Dashboard extends Component
     public $currentMonthRevenue;
     public $currentMonthContracts;
     public $contractStatusTrend;
-    public $discountTrend;
     public $fleetBreakdown;
     public $fleetUtilization;
     public $totalCars;
@@ -54,6 +41,7 @@ class Dashboard extends Component
         'available' => 0,
         'booked' => 0,
         'unavailable' => 0,
+        'under_maintenance' => 0,
         'availability_rate' => 0,
         'active_reservations' => 0,
         'upcoming_pickups' => 0,
@@ -97,26 +85,6 @@ class Dashboard extends Component
             $this->prepareDriverDashboard();
             return;
         }
-
-        $this->initializeDiscountCodeMetrics();
-
-        if ($this->hasDiscountCodesTable()) {
-            $userPhone = Auth::user()?->phone;
-
-            $this->discountCodesCount = DiscountCode::count();
-            $this->usedDiscountCodes = DiscountCode::where('contacted', true)->count();
-            $this->usageRate = $this->discountCodesCount > 0 ? round(($this->usedDiscountCodes / $this->discountCodesCount) * 100, 2) : 0;
-            $this->averageDiscount = (float) (DiscountCode::avg('discount_percentage') ?? 0);
-            $this->latestDiscountCodes = DiscountCode::orderBy('created_at', 'desc')->take(5)->get();
-            $this->userDiscountCodes = $userPhone ? DiscountCode::where('phone', $userPhone)->count() : 0;
-            $this->userUsedDiscountCodes = $userPhone
-                ? DiscountCode::where('phone', $userPhone)->where('contacted', true)->count()
-                : 0;
-            $this->lastUserDiscountCode = $userPhone
-                ? DiscountCode::where('phone', $userPhone)->latest()->first()
-                : null;
-        }
-
 
         // آمار کلی قراردادها
         $this->totalContracts = Contract::count();
@@ -218,7 +186,6 @@ class Dashboard extends Component
 
         $monthBucketPickupDate = $this->monthBucketSelect('pickup_date');
         $monthBucketCreatedAt = $this->monthBucketSelect('created_at');
-        $monthBucketUpdatedAt = $this->monthBucketSelect('updated_at');
 
         $revenueRaw = Contract::whereNotNull('pickup_date')
             ->whereBetween('pickup_date', [$months->first(), $months->last()->copy()->endOfMonth()])
@@ -268,28 +235,6 @@ class Dashboard extends Component
                 'data' => $data->all(),
             ];
         })->values()->all();
-
-        $this->discountTrend = [
-            'labels' => $monthLabels->all(),
-            'created' => array_fill(0, $monthKeys->count(), 0),
-            'used' => array_fill(0, $monthKeys->count(), 0),
-        ];
-
-        if ($this->hasDiscountCodesTable()) {
-            $discountCreated = DiscountCode::whereBetween('created_at', [$months->first(), $months->last()->copy()->endOfMonth()])
-                ->selectRaw("{$monthBucketCreatedAt} as month, COUNT(*) as total")
-                ->groupBy('month')
-                ->pluck('total', 'month');
-
-            $discountUsed = DiscountCode::where('contacted', true)
-                ->whereBetween('updated_at', [$months->first(), $months->last()->copy()->endOfMonth()])
-                ->selectRaw("{$monthBucketUpdatedAt} as month, COUNT(*) as total")
-                ->groupBy('month')
-                ->pluck('total', 'month');
-
-            $this->discountTrend['created'] = $monthKeys->map(fn ($month) => (int) ($discountCreated[$month] ?? 0))->all();
-            $this->discountTrend['used'] = $monthKeys->map(fn ($month) => (int) ($discountUsed[$month] ?? 0))->all();
-        }
 
         $maintenanceStatuses = ['under_maintenance', 'sold', 'maintenance', 'repair', 'service'];
 
@@ -436,6 +381,7 @@ class Dashboard extends Component
             $this->baseAvailableFleetQuery($summaryScope),
             'available'
         )->count('cars.id');
+        $underMaintenance = (int) (clone $carsInScope)->where('cars.status', 'under_maintenance')->count('cars.id');
         $booked = (int) (clone $carsInScope)->byOperationalStatus('reserved')->count('cars.id')
             + (int) (clone $carsInScope)->byOperationalStatus('pre_reserved')->count('cars.id');
         $unavailable = max($total - ($available + $booked), 0);
@@ -446,7 +392,14 @@ class Dashboard extends Component
             ->whereIn('current_status', $reservationStatuses);
         $this->applyAvailableFleetScopeToContracts($reservationsInScope, $summaryScope);
 
-        $activeReservations = (int) (clone $reservationsInScope)->count();
+        $activeReservations = (int) (clone $reservationsInScope)
+            ->whereNotNull('pickup_date')
+            ->where('pickup_date', '<=', Carbon::now())
+            ->where(function (Builder $query) {
+                $query->whereNull('return_date')
+                    ->orWhere('return_date', '>=', Carbon::now());
+            })
+            ->count();
 
         $upcomingPickups = (int) (clone $reservationsInScope)
             ->whereNotNull('pickup_date')
@@ -458,6 +411,7 @@ class Dashboard extends Component
             'available' => $available,
             'booked' => $booked,
             'unavailable' => $unavailable,
+            'under_maintenance' => $underMaintenance,
             'availability_rate' => $total > 0 ? (int) round(($available / $total) * 100) : 0,
             'active_reservations' => $activeReservations,
             'upcoming_pickups' => $upcomingPickups,
@@ -675,29 +629,6 @@ class Dashboard extends Component
         $query
             ->orderByDesc('cars.updated_at')
             ->orderByDesc('cars.id');
-    }
-
-    protected function initializeDiscountCodeMetrics(): void
-    {
-        $this->discountCodesCount = 0;
-        $this->usedDiscountCodes = 0;
-        $this->usageRate = 0;
-        $this->averageDiscount = 0;
-        $this->latestDiscountCodes = collect();
-        $this->userDiscountCodes = 0;
-        $this->userUsedDiscountCodes = 0;
-        $this->lastUserDiscountCode = null;
-    }
-
-    protected function hasDiscountCodesTable(): bool
-    {
-        if (self::$discountCodesTableExists !== null) {
-            return self::$discountCodesTableExists;
-        }
-
-        self::$discountCodesTableExists = Schema::hasTable((new DiscountCode())->getTable());
-
-        return self::$discountCodesTableExists;
     }
 
     protected function monthBucketSelect(string $column): string

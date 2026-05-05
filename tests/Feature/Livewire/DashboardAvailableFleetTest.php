@@ -254,8 +254,9 @@ class DashboardAvailableFleetTest extends TestCase
             'available' => 2,
             'booked' => 1,
             'unavailable' => 0,
+            'under_maintenance' => 0,
             'availability_rate' => 67,
-            'active_reservations' => 1,
+            'active_reservations' => 0,
             'upcoming_pickups' => 1,
         ];
 
@@ -346,8 +347,9 @@ class DashboardAvailableFleetTest extends TestCase
             'available' => 1,
             'booked' => 2,
             'unavailable' => 2,
+            'under_maintenance' => 1,
             'availability_rate' => 20,
-            'active_reservations' => 2,
+            'active_reservations' => 1,
             'upcoming_pickups' => 1,
         ], $component->fleetStatusSummary);
     }
@@ -372,6 +374,7 @@ class DashboardAvailableFleetTest extends TestCase
             'available' => 0,
             'booked' => 0,
             'unavailable' => 1,
+            'under_maintenance' => 0,
             'availability_rate' => 0,
             'active_reservations' => 0,
             'upcoming_pickups' => 0,

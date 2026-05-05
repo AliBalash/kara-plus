@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('licensed_driver_name')->nullable();
             $table->unsignedBigInteger('car_id'); // ارجاع به جدول خودروها
             $table->string('agent_sale')->nullable(); // نام نماینده‌ی فروش
-            $table->string('communication_channel')->nullable()->after('agent_id');
+            $table->string('communication_channel')->nullable();
             $table->string('submitted_by_name')->nullable()->default('Website');
             $table->dateTime('pickup_date'); // تاریخ و ساعت تحویل
             $table->dateTime('return_date')->nullable(); // تاریخ و ساعت بازگشت
