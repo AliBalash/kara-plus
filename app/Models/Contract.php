@@ -12,6 +12,21 @@ class Contract extends Model
     use HasFactory;
 
     public const CUSTOMER_BALANCE_EXCLUDED_STATUSES = ['cancelled', 'rejected'];
+    public const COMMUNICATION_CHANNELS = [
+        'google_ads',
+        'meta_ads',
+        'whatsapp',
+        'telegram',
+        'instagram',
+        'dubizzle',
+        'one_click',
+        'youtube',
+        'snapchat',
+        'tiktok',
+        'influencer',
+        'google_search',
+        'invigo',
+    ];
 
     /**
      * ویژگی‌های قابل پر کردن (mass assignable).
@@ -23,6 +38,7 @@ class Contract extends Model
         'customer_id',
         'car_id',
         'agent_id',
+        'communication_channel',
         'submitted_by_name',
         'pickup_date',
         'pickup_location',
