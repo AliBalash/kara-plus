@@ -145,32 +145,6 @@
         @php
             $stats = [
                 [
-                    'label' => 'Total Discount Codes',
-                    'value' => $discountCodesCount,
-                    'icon' => 'ticket-perforated-fill',
-                    'color' => 'primary',
-                ],
-                [
-                    'label' => 'Used Discount Codes',
-                    'value' => "$usedDiscountCodes ($usageRate%)",
-                    'icon' => 'check-circle-fill',
-                    'color' => 'success',
-                ],
-                [
-                    'label' => 'Average Discount %',
-                    'value' => $averageDiscount ? number_format($averageDiscount, 1) . '%' : '0%',
-                    'icon' => 'percent',
-                    'color' => 'info',
-                ],
-                [
-                    'label' => 'My Discount Codes',
-                    'value' => $userDiscountCodes
-                        ? $userUsedDiscountCodes . ' used / ' . $userDiscountCodes . ' total'
-                        : '0',
-                    'icon' => 'gift-fill',
-                    'color' => 'warning',
-                ],
-                [
                     'label' => 'Total Contracts',
                     'value' => $totalContracts,
                     'icon' => 'file-earmark-text-fill',
@@ -236,8 +210,6 @@
                 ],
             ];
 
-            $usagePercent = min(max($usageRate, 0), 100);
-
             $insights = [
                 [
                     'label' => 'Avg Rental Duration',
@@ -266,13 +238,77 @@
             ];
 
             $fleetAvailable = (int) ($fleetStatusSummary['available'] ?? 0);
-            $fleetBooked = (int) ($fleetStatusSummary['booked'] ?? 0);
             $fleetUnavailable = (int) ($fleetStatusSummary['unavailable'] ?? 0);
+            $fleetUnderMaintenance = (int) ($fleetStatusSummary['under_maintenance'] ?? 0);
             $fleetReservations = (int) ($fleetStatusSummary['active_reservations'] ?? 0);
             $fleetUpcomingPickups = (int) ($fleetStatusSummary['upcoming_pickups'] ?? 0);
             $fleetTotal = (int) ($fleetStatusSummary['total'] ?? 0);
             $fleetAvailabilityRate = (int) ($fleetStatusSummary['availability_rate'] ?? 0);
             $fleetScopeLabel = 'Our Fleet';
+            $fleetUtilizationValue = (int) ($fleetUtilization ?? 0);
+            $activeVehiclesValue = (int) ($activeVehicles ?? 0);
+            $offlineVehiclesValue = (int) ($offlineVehicles ?? 0);
+            $currentMonthRevenueValue = (float) ($currentMonthRevenue ?? 0);
+            $currentMonthContractsValue = (int) ($currentMonthContracts ?? 0);
+
+            $operationsHighlights = [
+                [
+                    'label' => 'Fleet Utilization',
+                    'value' => $fleetUtilizationValue . '%',
+                    'sub' => $activeVehiclesValue . ' active of ' . number_format($fleetTotal) . ' vehicles',
+                    'icon' => 'bi bi-speedometer2',
+                    'tone' => 'primary',
+                ],
+                [
+                    'label' => 'Current Month Revenue',
+                    'value' => '$' . number_format($currentMonthRevenueValue, 2),
+                    'sub' => number_format($currentMonthContractsValue) . ' contracts this month',
+                    'icon' => 'bi bi-cash-coin',
+                    'tone' => 'success',
+                ],
+                [
+                    'label' => 'Upcoming Pickups',
+                    'value' => number_format($fleetUpcomingPickups),
+                    'sub' => 'Scheduled handovers ahead',
+                    'icon' => 'bi bi-calendar2-check',
+                    'tone' => 'info',
+                ],
+                [
+                    'label' => 'Maintenance Pressure',
+                    'value' => number_format($offlineVehiclesValue),
+                    'sub' => 'Vehicles currently offline',
+                    'icon' => 'bi bi-wrench-adjustable-circle',
+                    'tone' => 'warning',
+                ],
+                [
+                    'label' => 'Avg Rental Duration',
+                    'value' => number_format($averageRentalDuration, 1) . ' days',
+                    'sub' => 'Average contract time span',
+                    'icon' => 'bi bi-clock-history',
+                    'tone' => 'primary',
+                ],
+                [
+                    'label' => 'Overdue Contracts',
+                    'value' => number_format($overdueContracts),
+                    'sub' => 'Requires immediate follow-up',
+                    'icon' => 'bi bi-exclamation-octagon',
+                    'tone' => 'warning',
+                ],
+                [
+                    'label' => 'Returns (next 7 days)',
+                    'value' => number_format($upcomingReturns),
+                    'sub' => 'Planned incoming vehicles',
+                    'icon' => 'bi bi-calendar-event',
+                    'tone' => 'info',
+                ],
+                [
+                    'label' => 'Service Checks Due',
+                    'value' => number_format($serviceAlerts),
+                    'sub' => 'Cars due for service inspection',
+                    'icon' => 'bi bi-tools',
+                    'tone' => 'success',
+                ],
+            ];
 
             $fleetSummaryCards = [
                 [
@@ -290,18 +326,58 @@
                     'tone' => 'unavailable',
                 ],
                 [
-                    'label' => 'Booked Cars',
-                    'value' => $fleetBooked,
-                    'hint' => 'Reserved or pre-reserved',
-                    'icon' => 'bi bi-calendar2-check',
+                    'label' => 'Under maintenance',
+                    'value' => $fleetUnderMaintenance,
+                    'hint' => 'Currently in service bay',
+                    'icon' => 'bi bi-tools',
                     'tone' => 'booked',
                 ],
                 [
                     'label' => 'Reservations',
                     'value' => $fleetReservations,
-                    'hint' => 'Active reservation contracts',
+                    'hint' => 'Cars currently with customers',
                     'icon' => 'bi bi-journal-check',
                     'tone' => 'reservations',
+                ],
+            ];
+
+            $cancellationRate = $totalContracts > 0
+                ? round(($cancelledContracts / $totalContracts) * 100, 1)
+                : 0;
+            $activeShare = $totalContracts > 0
+                ? round(($activeContracts / $totalContracts) * 100, 1)
+                : 0;
+            $readyCars = max($fleetTotal - $fleetUnavailable, 0);
+            $readinessGap = max($fleetTotal - $readyCars, 0);
+
+            $operationsWatchlist = [
+                [
+                    'label' => 'Under Review Queue',
+                    'value' => number_format($underReviewContracts),
+                    'hint' => 'Contracts waiting for final decision',
+                    'icon' => 'search',
+                    'color' => 'warning',
+                ],
+                [
+                    'label' => 'Cancellation Rate',
+                    'value' => $cancellationRate . '%',
+                    'hint' => number_format($cancelledContracts) . ' cancelled out of ' . number_format($totalContracts),
+                    'icon' => 'x-octagon',
+                    'color' => 'danger',
+                ],
+                [
+                    'label' => 'Active Contract Share',
+                    'value' => $activeShare . '%',
+                    'hint' => number_format($activeContracts) . ' active contracts now',
+                    'icon' => 'pie-chart',
+                    'color' => 'info',
+                ],
+                [
+                    'label' => 'Fleet Readiness Gap',
+                    'value' => number_format($readinessGap),
+                    'hint' => 'Vehicles not immediately ready for dispatch',
+                    'icon' => 'shield-exclamation',
+                    'color' => 'primary',
                 ],
             ];
         @endphp
@@ -789,72 +865,49 @@
             </div>
         </div>
 
-        <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-xl-4 mb-4">
-            @foreach ($stats as $stat)
-                <div class="col">
-                    <div class="card border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body d-flex align-items-center gap-3">
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-3 bg-{{ $stat['color'] }} bg-opacity-10 text-{{ $stat['color'] }}" style="width: 52px; height: 52px;">
-                                <i class="bi bi-{{ $stat['icon'] }} fs-4"></i>
-                            </span>
-                            <div class="flex-grow-1">
-                                <div class="text-muted small text-uppercase">{{ $stat['label'] }}</div>
-                                <div class="fs-5 fw-bold mt-1">{{ $stat['value'] }}</div>
-                            </div>
-                        </div>
+        <div class="card shadow-lg border-0 rounded-4 mb-4 operations-hero">
+            <div class="card-body p-4">
+                <div class="operations-hero__header mb-3">
+                    <div>
+                        <span class="operations-hero__eyebrow">Operations Intelligence</span>
+                        <h5 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Operational Highlights</h5>
+                        <p class="text-muted mb-0">Critical KPIs for today’s fleet and contract operations.</p>
+                    </div>
+                    <div class="operations-hero__meta">
+                        <span class="operations-hero__pill">
+                            <i class="bi bi-activity me-1"></i>
+                            Live snapshot
+                        </span>
+                        <span class="operations-hero__pill">
+                            <i class="bi bi-lightning-charge me-1"></i>
+                            Decision ready
+                        </span>
                     </div>
                 </div>
-            @endforeach
-        </div>
 
-        <div class="row g-3 row-cols-2 row-cols-lg-4 mb-4">
-            @foreach ($insights as $insight)
-                <div class="col">
-                    <div class="card border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body d-flex align-items-center gap-3">
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-{{ $insight['color'] }} bg-opacity-10 text-{{ $insight['color'] }}" style="width: 48px; height: 48px;">
-                                <i class="bi bi-{{ $insight['icon'] }} fs-5"></i>
-                            </span>
-                            <div>
-                                <div class="text-muted small text-uppercase">{{ $insight['label'] }}</div>
-                                <div class="fw-semibold fs-6 mt-1">{{ $insight['value'] }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-
-
-        <div class="row g-4 mb-4">
-            <div class="col-12 col-xxl-5">
-                <div class="card shadow-lg border-0 rounded-4 h-100">
-                    <div class="card-header border-0 bg-transparent pt-4 px-4">
-                        <h5 class="fw-bold mb-1"><i class="bi bi-percent text-warning me-2"></i>Discount Momentum</h5>
-                        <span class="text-muted small">Creation vs usage trend</span>
-                    </div>
-                    <div class="card-body pt-0 pb-4 px-4 d-flex flex-column gap-4">
-                        <div id="discountUsageChart" style="min-height: 280px;" wire:ignore></div>
-                        <div class="d-flex flex-column gap-2">
-                            @forelse ($latestDiscountCodes as $code)
-                                <div class="d-flex align-items-center justify-content-between border rounded-4 px-3 py-2">
-                                    <div>
-                                        <div class="fw-semibold">{{ $code->code }}</div>
-                                        <div class="text-muted small">{{ $code->created_at->format('d M Y') }}</div>
-                                    </div>
-                                    <div class="text-end">
-                                        <span class="badge {{ $code->contacted ? 'bg-success' : 'bg-light text-dark' }}">{{ $code->contacted ? 'Used' : 'Unused' }}</span>
-                                        <div class="text-warning fw-semibold">{{ $code->discount_percentage }}%</div>
+                <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-xl-4">
+                    @foreach ($operationsHighlights as $highlight)
+                        <div class="col">
+                            <div class="card border-0 rounded-4 h-100 dashboard-highlight-card dashboard-highlight-card--{{ $highlight['tone'] }}">
+                                <div class="card-body d-flex align-items-center gap-3">
+                                    <span class="d-inline-flex align-items-center justify-content-center rounded-3 dashboard-highlight-card__icon">
+                                        <i class="{{ $highlight['icon'] }} fs-4"></i>
+                                    </span>
+                                    <div class="flex-grow-1">
+                                        <div class="text-muted small text-uppercase">{{ $highlight['label'] }}</div>
+                                        <div class="fs-5 fw-bold mt-1">{{ $highlight['value'] }}</div>
+                                        <div class="small text-muted mt-1">{{ $highlight['sub'] }}</div>
                                     </div>
                                 </div>
-                            @empty
-                                <div class="text-center text-muted py-3">No discount codes generated yet.</div>
-                            @endforelse
+                            </div>
                         </div>
-                    </div>
+                    @endforeach
                 </div>
             </div>
-            <div class="col-12 col-xxl-7">
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-xxl-8">
                 <div class="card shadow-lg border-0 rounded-4 h-100">
                     <div class="card-header border-0 bg-transparent pt-4 px-4">
                         <h5 class="fw-bold mb-1"><i class="bi bi-clock-history text-info me-2"></i>Latest Contracts</h5>
@@ -880,6 +933,32 @@
                                 <li class="list-group-item text-muted text-center py-4">No recent contracts available.</li>
                             @endforelse
                         </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xxl-4">
+                <div class="card shadow-lg border-0 rounded-4 h-100">
+                    <div class="card-header border-0 bg-transparent pt-4 px-4">
+                        <h5 class="fw-bold mb-1"><i class="bi bi-binoculars-fill text-primary me-2"></i>Operations Watchlist</h5>
+                        <span class="text-muted small">High-signal indicators for the next actions</span>
+                    </div>
+                    <div class="card-body pt-0 pb-4 px-4">
+                        <div class="d-flex flex-column gap-3">
+                            @foreach ($operationsWatchlist as $item)
+                                <div class="d-flex align-items-center justify-content-between rounded-4 border px-3 py-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-{{ $item['color'] }} bg-opacity-10 text-{{ $item['color'] }}" style="width: 42px; height: 42px;">
+                                            <i class="bi bi-{{ $item['icon'] }}"></i>
+                                        </span>
+                                        <div>
+                                            <div class="text-muted small text-uppercase">{{ $item['label'] }}</div>
+                                            <div class="fw-semibold">{{ $item['value'] }}</div>
+                                            <div class="text-muted small">{{ $item['hint'] }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
             </div>
@@ -935,7 +1014,6 @@
             $dashboardMetrics = [
                 'revenue' => $revenueTrend,
                 'statusTrend' => $contractStatusTrend,
-                'discount' => $discountTrend,
                 'fleet' => $fleetBreakdown,
                 'topBrands' => $topBrandsChart,
             ];
