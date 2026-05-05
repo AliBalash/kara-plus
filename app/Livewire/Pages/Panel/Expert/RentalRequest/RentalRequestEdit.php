@@ -32,6 +32,7 @@ class RentalRequestEdit extends Component
     public $selectedCar;
     public $total_price;
     public $agent_id;
+    public $communication_channel;
     public $pickup_location;
     public $return_location;
     public $return_date;
@@ -106,6 +107,7 @@ class RentalRequestEdit extends Component
     public $deposit = null;
     public $deposit_category = null;
     public $salesAgents = [];
+    public array $communicationChannelOptions = [];
 
     public array $locationCosts = [];
     public array $locationOptions = [];
@@ -118,6 +120,7 @@ class RentalRequestEdit extends Component
         $this->salesAgents = Agent::query()
             ->orderBy('name')
             ->get();
+        $this->communicationChannelOptions = Contract::COMMUNICATION_CHANNELS;
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
         $this->contract = Contract::with(['customer', 'car.carModel', 'payments'])->findOrFail($contractId);
 
@@ -246,6 +249,7 @@ class RentalRequestEdit extends Component
     {
         $this->total_price = $this->contract->total_price;
         $this->agent_id = $this->contract->agent_id;
+        $this->communication_channel = $this->contract->communication_channel;
         $this->pickup_location = $this->contract->pickup_location;
         $this->return_location = $this->contract->return_location;
         $this->pickup_date = \Carbon\Carbon::parse($this->contract->pickup_date)->format('Y-m-d\TH:i');
@@ -527,6 +531,7 @@ class RentalRequestEdit extends Component
                 },
             ],
             'agent_id' => ['nullable', 'exists:agents,id'],
+            'communication_channel' => ['nullable', Rule::in(Contract::COMMUNICATION_CHANNELS)],
             'pickup_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'return_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'pickup_date' => [
@@ -719,6 +724,7 @@ class RentalRequestEdit extends Component
         'deposit_category' => 'security hold category',
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
+        'communication_channel' => 'communication channel',
     ];
 
     private function normalizePhoneFields(): void
@@ -1335,6 +1341,7 @@ class RentalRequestEdit extends Component
             'car_id' => $this->selectedCarId,
             'total_price' => $this->roundCurrency($this->final_total),
             'agent_id' => $this->agent_id,
+            'communication_channel' => $this->communication_channel,
             'pickup_location' => $this->pickup_location,
             'return_location' => $this->return_location,
             'pickup_date' => $this->pickup_date,

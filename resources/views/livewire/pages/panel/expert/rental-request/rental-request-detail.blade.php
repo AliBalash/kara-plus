@@ -87,6 +87,22 @@
         $returnLocation = $contract->return_location ?? '—';
         $submittedBy = $contract->submitted_by_name
             ?? (optional($contract->user)->fullName() ?? optional($contract->user)->name ?? 'Website');
+        $communicationChannelLabels = [
+            'google_ads' => 'Google Ads',
+            'meta_ads' => 'Meta Ads',
+            'whatsapp' => 'WhatsApp',
+            'telegram' => 'Telegram',
+            'instagram' => 'Instagram',
+            'dubizzle' => 'Dubizzle',
+            'one_click' => 'One Click',
+            'youtube' => 'YouTube',
+            'snapchat' => 'Snapchat',
+            'tiktok' => 'TikTok',
+            'influencer' => 'Influencer',
+            'google_search' => 'Google Search',
+            'invigo' => 'Invigo',
+        ];
+        $communicationChannel = $communicationChannelLabels[$contract->communication_channel ?? ''] ?? '—';
 
         $payments = $contract->relationLoaded('payments')
             ? $contract->payments
@@ -123,6 +139,7 @@
                             @if ($paymentMethod)
                                 <span class="badge bg-label-info">{{ $paymentMethod }}</span>
                             @endif
+                            <span class="badge bg-label-warning">Channel: {{ $communicationChannel }}</span>
                             <span class="badge bg-label-secondary">{{ $submittedBy }}</span>
                         </div>
                     </div>

@@ -858,6 +858,21 @@
                         </div>
 
                         <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="bx bx-share-alt"></i></span>
+                            <select class="form-control @error('communication_channel') is-invalid @enderror"
+                                wire:model="communication_channel" data-bs-toggle="tooltip"
+                                title="Where did this customer find us?">
+                                <option value="">Communication Channel</option>
+                                @foreach ($communicationChannelOptions as $channel)
+                                    <option value="{{ $channel }}">{{ str_replace('_', ' ', ucfirst($channel)) }}</option>
+                                @endforeach
+                            </select>
+                            @error('communication_channel')
+                                <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-note"></i></span>
                             <textarea class="form-control" wire:model="notes" placeholder="Contract Notes" data-bs-toggle="tooltip"
                                 title="Add any contract notes">{{ $contract?->notes }}</textarea>

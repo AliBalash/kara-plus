@@ -35,6 +35,7 @@ class RentalRequestCreate extends Component
     public $notes;
     public $driver_note;
     public $agent_id;
+    public $communication_channel;
     public $submitted_by_name;
     public $first_name;
     public $last_name;
@@ -96,6 +97,7 @@ class RentalRequestCreate extends Component
     public $deposit = null;
     public $deposit_category = null;
     public $salesAgents = [];
+    public array $communicationChannelOptions = [];
 
     public array $locationCosts = [];
     public array $locationOptions = [];
@@ -110,6 +112,7 @@ class RentalRequestCreate extends Component
             ->orderBy('name')
             ->get();
         $this->agent_id = Agent::query()->where('name', 'Website')->value('id');
+        $this->communicationChannelOptions = Contract::COMMUNICATION_CHANNELS;
         $this->loadLocationCosts();
     }
 
@@ -695,6 +698,7 @@ class RentalRequestCreate extends Component
                 },
             ],
             'agent_id' => ['nullable', 'exists:agents,id'],
+            'communication_channel' => ['nullable', Rule::in(Contract::COMMUNICATION_CHANNELS)],
             'pickup_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'return_location' => ['required', Rule::in(array_keys($this->locationCosts))],
             'pickup_date' => [
@@ -874,6 +878,7 @@ class RentalRequestCreate extends Component
         'deposit_category' => 'security hold category',
         'custom_daily_rate' => 'custom daily rate',
         'service_quantities.child_seat' => 'child seat quantity',
+        'communication_channel' => 'communication channel',
     ];
 
     private function normalizePhoneFields(): void
@@ -943,6 +948,7 @@ class RentalRequestCreate extends Component
                 'car_id' => $this->selectedCarId,
                 'total_price' => $this->roundCurrency($this->final_total),
                 'agent_id' => $this->agent_id,
+                'communication_channel' => $this->communication_channel,
                 'submitted_by_name' => $this->submitted_by_name ?: $this->determineDefaultSubmitterName(),
                 'pickup_location' => $this->pickup_location,
                 'return_location' => $this->return_location,
