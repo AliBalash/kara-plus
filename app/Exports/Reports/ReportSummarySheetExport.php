@@ -81,9 +81,12 @@ class ReportSummarySheetExport extends ReportValueBinder implements FromArray, S
 
                 for ($row = 1; $row <= $highestRow; $row++) {
                     $label = trim((string) $sheet->getCell("A{$row}")->getValue());
-                    $value = trim((string) $sheet->getCell("B{$row}")->getValue());
+                    $valueCell = $sheet->getCell("B{$row}");
+                    $rawValue = $valueCell->getValue();
+                    $value = trim((string) $rawValue);
+                    $isTrulyEmpty = $rawValue === null;
 
-                    if ($label !== '' && $value === '' && $row !== 1) {
+                    if ($label !== '' && $value === '' && $isTrulyEmpty && $row !== 1) {
                         $sheet->mergeCells("A{$row}:B{$row}");
                         $sheet->getStyle("A{$row}:B{$row}")->applyFromArray([
                             'font' => ['bold' => true, 'color' => ['rgb' => '0F172A']],

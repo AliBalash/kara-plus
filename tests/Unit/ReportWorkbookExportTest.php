@@ -29,9 +29,20 @@ class ReportWorkbookExportTest extends TestCase
         file_put_contents($path, $contents);
 
         $spreadsheet = IOFactory::load($path);
+        $summarySheet = $spreadsheet->getSheetByName('Summary');
+        $customerSearchRow = null;
 
-        $this->assertSame("====\nChange to under_review by Expert", $spreadsheet->getSheetByName('Summary')->getCell('B6')->getValue());
-        $this->assertSame(DataType::TYPE_STRING, $spreadsheet->getSheetByName('Summary')->getCell('B6')->getDataType());
+        for ($row = 1; $row <= 50; $row++) {
+            if ($summarySheet->getCell("A{$row}")->getValue() === 'Customer Search') {
+                $customerSearchRow = $row;
+                break;
+            }
+        }
+
+        $this->assertNotNull($customerSearchRow, 'Customer Search row was not found in Summary sheet.');
+
+        $this->assertSame("====\nChange to under_review by Expert", $summarySheet->getCell("B{$customerSearchRow}")->getValue());
+        $this->assertSame(DataType::TYPE_STRING, $summarySheet->getCell("B{$customerSearchRow}")->getDataType());
         $this->assertSame('=SUM(1,1)', $spreadsheet->getSheetByName('Customer Requests')->getCell('A2')->getValue());
         $this->assertSame(DataType::TYPE_STRING, $spreadsheet->getSheetByName('Customer Requests')->getCell('A2')->getDataType());
 
