@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Str;
 use App\Models\Car;
 use App\Models\ContractBalanceTransfer;
 
@@ -25,7 +27,25 @@ class Contract extends Model
         'tiktok',
         'influencer',
         'google_search',
-        'invigo',
+        'invygo',
+    ];
+    public const COMMUNICATION_CHANNEL_ALIASES = [
+        'invigo' => 'invygo',
+    ];
+    public const COMMUNICATION_CHANNEL_LABELS = [
+        'google_ads' => 'Google Ads',
+        'meta_ads' => 'Meta Ads',
+        'whatsapp' => 'WhatsApp',
+        'telegram' => 'Telegram',
+        'instagram' => 'Instagram',
+        'dubizzle' => 'Dubizzle',
+        'one_click' => 'One Click',
+        'youtube' => 'YouTube',
+        'snapchat' => 'Snapchat',
+        'tiktok' => 'TikTok',
+        'influencer' => 'Influencer',
+        'google_search' => 'Google Search',
+        'invygo' => 'Invygo',
     ];
 
     /**
@@ -74,6 +94,35 @@ class Contract extends Model
         'custom_daily_rate_enabled' => 'boolean',
         'meta' => 'array',
     ];
+
+    protected function communicationChannel(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => self::normalizeCommunicationChannel($value),
+            set: fn (?string $value) => self::normalizeCommunicationChannel($value),
+        );
+    }
+
+    public static function normalizeCommunicationChannel(?string $channel): ?string
+    {
+        if ($channel === null || $channel === '') {
+            return $channel;
+        }
+
+        return self::COMMUNICATION_CHANNEL_ALIASES[$channel] ?? $channel;
+    }
+
+    public static function communicationChannelLabel(?string $channel): string
+    {
+        $normalizedChannel = self::normalizeCommunicationChannel($channel);
+
+        if ($normalizedChannel === null || $normalizedChannel === '') {
+            return '—';
+        }
+
+        return self::COMMUNICATION_CHANNEL_LABELS[$normalizedChannel]
+            ?? Str::headline(str_replace('_', ' ', $normalizedChannel));
+    }
 
     /**
      * متد برای دریافت وضعیت قرارداد.
