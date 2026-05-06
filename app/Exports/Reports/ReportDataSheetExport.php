@@ -4,6 +4,7 @@ namespace App\Exports\Reports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
@@ -13,7 +14,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ReportDataSheetExport implements FromArray, ShouldAutoSize, WithEvents, WithStyles, WithTitle
+class ReportDataSheetExport extends ReportValueBinder implements FromArray, ShouldAutoSize, WithCustomValueBinder, WithEvents, WithStyles, WithTitle
 {
     /**
      * @param  array<int, string>  $headings

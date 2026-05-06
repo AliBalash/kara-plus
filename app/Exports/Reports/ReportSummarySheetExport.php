@@ -5,6 +5,7 @@ namespace App\Exports\Reports;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
@@ -14,7 +15,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ReportSummarySheetExport implements FromArray, ShouldAutoSize, WithEvents, WithStyles, WithTitle
+class ReportSummarySheetExport extends ReportValueBinder implements FromArray, ShouldAutoSize, WithCustomValueBinder, WithEvents, WithStyles, WithTitle
 {
     /**
      * @param  array<string, array<string, string|int|float>>  $summarySections
