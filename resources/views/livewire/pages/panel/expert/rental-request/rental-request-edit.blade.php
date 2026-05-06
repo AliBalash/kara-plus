@@ -64,6 +64,31 @@
         'subtitle' => 'We are syncing your latest changes. Hang tight for a moment.',
     ])
 
+    @pushOnce('styles', 'contract-validation-summary-styles')
+        <style>
+            .contract-validation-summary {
+                border: 1px solid rgba(220, 53, 69, 0.25);
+                border-radius: 14px;
+                background: linear-gradient(135deg, rgba(220, 53, 69, 0.08), rgba(255, 193, 7, 0.08));
+                box-shadow: 0 10px 30px rgba(220, 53, 69, 0.08);
+            }
+
+            .contract-validation-summary__title {
+                font-size: 0.98rem;
+                letter-spacing: 0.01em;
+            }
+
+            .contract-validation-summary__list {
+                margin: 0;
+                padding-left: 1.1rem;
+            }
+
+            .contract-validation-summary__list li + li {
+                margin-top: 0.3rem;
+            }
+        </style>
+    @endPushOnce
+
     <div class="card info-launch-card border-0 shadow-sm mb-4">
         <div class="card-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-lg-between gap-3">
             <div class="d-flex align-items-center gap-3">
@@ -160,6 +185,29 @@
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
     <form wire:submit.prevent="submit" novalidate>
+        @if ($errors->any())
+            <div class="contract-validation-summary p-3 p-md-4 mb-4 animate__animated animate__fadeIn" role="alert">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="fs-4 text-danger lh-1"><i class="bx bx-error-circle"></i></div>
+                    <div class="w-100">
+                        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-2">
+                            <h6 class="contract-validation-summary__title text-danger fw-bold mb-0">
+                                Contract was not saved. Please review the highlighted fields.
+                            </h6>
+                            <span class="badge rounded-pill bg-danger-subtle text-danger">
+                                {{ $errors->count() }} validation {{ \Illuminate\Support\Str::plural('error', $errors->count()) }}
+                            </span>
+                        </div>
+                        <ul class="contract-validation-summary__list text-danger small">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="row">
             <!-- Customer Information -->
             <div class="col-md-6">
