@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+
 ROOT="/opt/apps/kara-plus"
 SSH_KEY=""
 for candidate in "$HOME/.ssh/kara_plus_deploy" "/home/actions/.ssh/kara_plus_deploy" "/home/deploy/.ssh/kara_plus_deploy" "/home/runner/.ssh/kara_plus_deploy" "/root/.ssh/kara_plus_deploy"; do
