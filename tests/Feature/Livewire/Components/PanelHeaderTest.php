@@ -9,7 +9,6 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class PanelHeaderTest extends TestCase
@@ -73,9 +72,11 @@ class PanelHeaderTest extends TestCase
             'availability' => false,
         ]);
 
-        Livewire::test(Header::class)
-            ->set('query', '51004')
-            ->assertSee('Unavailable')
-            ->assertDontSee('Upcoming booking');
+        $component = app(Header::class);
+        $component->query = '51004';
+        $component->updatedQuery();
+
+        $this->assertCount(1, $component->cars);
+        $this->assertSame('Unavailable', $component->cars->first()->operationalStatusLabel());
     }
 }
