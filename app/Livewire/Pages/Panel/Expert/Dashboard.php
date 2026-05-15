@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\ContractStatus;
+use App\Services\Reports\OperationsReportService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -64,6 +65,20 @@ class Dashboard extends Component
     public string $availableReadiness = 'available';
     public string $availableSort = 'returned_latest';
     public string $availableSearch = '';
+    public string $upcomingDeliverySearch = '';
+    public string $upcomingDeliveryDaysAhead = '28';
+    public string $upcomingDeliveryStatusScope = 'booked';
+    public string $upcomingDeliveryOwnership = 'all';
+    public array $upcomingDeliveryReport = [
+        'summary' => [
+            'matching_contracts' => 0,
+            'unique_customers' => 0,
+            'deliveries_within_72h' => 0,
+            'average_lead_time_days' => 0,
+        ],
+        'filter_summary' => [],
+        'rows' => [],
+    ];
 
     private const AVAILABLE_FLEET_SCOPES = ['our', 'all', 'partners'];
     private const AVAILABLE_READINESS_FILTERS = ['available', 'available_pre_reserved', 'unavailable'];
@@ -75,6 +90,8 @@ class Dashboard extends Component
         'year_newest',
         'year_oldest',
     ];
+    private const UPCOMING_DELIVERY_SCOPES = ['booked', 'active', 'all'];
+    private const UPCOMING_DELIVERY_OWNERSHIP_SCOPES = ['all', 'company', 'golden_key', 'liverpool', 'safe_drive', 'other'];
 
 
     public function mount()
@@ -153,6 +170,7 @@ class Dashboard extends Component
             $this->normalizeAvailableFleetFilters();
             $this->buildFleetStatusSummary();
             $this->prepareAvailableBrands();
+            $this->loadUpcomingDeliveryReport();
             $data['availableCars'] = $this->availableCars;
             $data['availableBrands'] = $this->availableBrands;
             $data['availableCarsTotal'] = $this->availableCarsTotal;
@@ -483,6 +501,19 @@ class Dashboard extends Component
         $this->prepareAvailableBrands();
     }
 
+    public function resetUpcomingDeliveryFilters(): void
+    {
+        $this->upcomingDeliverySearch = '';
+        $this->upcomingDeliveryDaysAhead = '28';
+        $this->upcomingDeliveryStatusScope = 'booked';
+        $this->upcomingDeliveryOwnership = 'all';
+    }
+
+    public function applyUpcomingDeliveryFilters(): void
+    {
+        $this->normalizeUpcomingDeliveryFilters();
+    }
+
     protected function normalizeAvailableFleetFilters(): void
     {
         $this->availableSearch = trim($this->availableSearch);
@@ -497,6 +528,44 @@ class Dashboard extends Component
 
         if (! in_array($this->availableSort, self::AVAILABLE_SORT_OPTIONS, true)) {
             $this->availableSort = 'returned_latest';
+        }
+    }
+
+    protected function loadUpcomingDeliveryReport(): void
+    {
+        $this->normalizeUpcomingDeliveryFilters();
+
+        $this->upcomingDeliveryReport = app(OperationsReportService::class)->upcomingDeliveries([
+            'search' => $this->upcomingDeliverySearch,
+            'days_ahead' => $this->upcomingDeliveryDaysAhead,
+            'status_scope' => $this->upcomingDeliveryStatusScope,
+            'ownership' => $this->upcomingDeliveryOwnership,
+        ]);
+    }
+
+    protected function normalizeUpcomingDeliveryFilters(): void
+    {
+        $this->upcomingDeliverySearch = trim($this->upcomingDeliverySearch);
+        $rawDaysAhead = trim((string) $this->upcomingDeliveryDaysAhead);
+
+        // 28 is only the default value. Any valid positive number can be used after that.
+        if ($rawDaysAhead === '') {
+            $rawDaysAhead = '28';
+        }
+
+        if (! ctype_digit($rawDaysAhead)) {
+            $rawDaysAhead = '28';
+        }
+
+        $daysAhead = max(1, min((int) $rawDaysAhead, 365));
+        $this->upcomingDeliveryDaysAhead = (string) $daysAhead;
+
+        if (! in_array($this->upcomingDeliveryStatusScope, self::UPCOMING_DELIVERY_SCOPES, true)) {
+            $this->upcomingDeliveryStatusScope = 'booked';
+        }
+
+        if (! in_array($this->upcomingDeliveryOwnership, self::UPCOMING_DELIVERY_OWNERSHIP_SCOPES, true)) {
+            $this->upcomingDeliveryOwnership = 'all';
         }
     }
 

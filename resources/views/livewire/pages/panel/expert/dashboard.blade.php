@@ -595,6 +595,151 @@
             </div>
         </div>
 
+        @php
+            $upcomingRows = $upcomingDeliveryReport['rows'] ?? collect();
+            $upcomingSummary = $upcomingDeliveryReport['summary'] ?? [];
+            $upcomingFilterSummary = $upcomingDeliveryReport['filter_summary'] ?? [];
+            $upcomingStatusScopeOptions = [
+                'booked' => 'Booked deliveries only',
+                'active' => 'All active lifecycle',
+                'all' => 'All non-cancelled',
+            ];
+            $upcomingOwnershipOptions = [
+                'all' => 'All fleets',
+                'company' => 'Our fleet',
+                'golden_key' => 'Golden Key',
+                'liverpool' => 'Liverpool',
+                'safe_drive' => 'Safe Drive',
+                'other' => 'Other fleet',
+            ];
+        @endphp
+        <div class="card shadow-lg border-0 rounded-4 mb-4 upcoming-delivery-card">
+            <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex flex-wrap gap-3 justify-content-between align-items-start">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-calendar2-check text-primary me-2"></i>Upcoming Delivery Report</h5>
+                    <span class="text-muted small">Closed contracts scheduled for handover in the next X days.</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-light text-dark">Contracts {{ number_format((int) ($upcomingSummary['matching_contracts'] ?? 0)) }}</span>
+                    <span class="badge bg-light text-dark">Customers {{ number_format((int) ($upcomingSummary['unique_customers'] ?? 0)) }}</span>
+                    <span class="badge bg-light text-dark">Within 72h {{ number_format((int) ($upcomingSummary['deliveries_within_72h'] ?? 0)) }}</span>
+                </div>
+            </div>
+            <div class="card-body pt-0 px-4 pb-4">
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-lg-4">
+                        <div class="upcoming-filter-field">
+                            <label class="small text-uppercase text-muted fw-semibold mb-1">Search</label>
+                            <input type="search" class="form-control" placeholder="Customer, contract, plate, passport"
+                                wire:model.defer="upcomingDeliverySearch">
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <div class="upcoming-filter-field">
+                            <label class="small text-uppercase text-muted fw-semibold mb-1">Days Ahead</label>
+                            <input type="number" min="1" max="365" class="form-control"
+                                wire:model.defer="upcomingDeliveryDaysAhead">
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="upcoming-filter-field">
+                            <label class="small text-uppercase text-muted fw-semibold mb-1">Status Scope</label>
+                            <select class="form-select" wire:model.defer="upcomingDeliveryStatusScope">
+                                @foreach ($upcomingStatusScopeOptions as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-8 col-lg-2">
+                        <div class="upcoming-filter-field">
+                            <label class="small text-uppercase text-muted fw-semibold mb-1">Fleet Scope</label>
+                            <select class="form-select" wire:model.defer="upcomingDeliveryOwnership">
+                                @foreach ($upcomingOwnershipOptions as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-1 d-grid d-lg-flex flex-lg-column gap-2 justify-content-lg-end">
+                        <button type="button" class="btn btn-dark btn-sm" wire:click="applyUpcomingDeliveryFilters">
+                            Apply Filters
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" wire:click="resetUpcomingDeliveryFilters">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                @if (!empty($upcomingFilterSummary))
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @foreach ($upcomingFilterSummary as $label => $value)
+                            <span class="badge upcoming-filter-badge">{{ $label }}: {{ $value }}</span>
+                        @endforeach
+                    </div>
+                @endif
+
+                @if ($upcomingRows->count())
+                    <div class="table-responsive" style="max-height: 460px; overflow-y: auto;">
+                        <table class="table table-hover align-middle mb-0 upcoming-delivery-table">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Contract</th>
+                                    <th>Customer</th>
+                                    <th>Vehicle</th>
+                                    <th>Timeline</th>
+                                    <th>Ops Owner</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($upcomingRows as $row)
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">#{{ $row['contract_id'] }}</div>
+                                            <div class="text-muted small">Request {{ $row['request_date'] }}</div>
+                                            <div class="text-muted small">Agreement {{ $row['agreement_number'] }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold">{{ $row['customer_name'] }}</div>
+                                            <div class="text-muted small">{{ $row['customer_phone'] }}</div>
+                                            <div class="text-muted small">Payment on delivery: {{ $row['payment_on_delivery'] }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold">{{ $row['car_name'] }}</div>
+                                            <div class="text-muted small">Plate: {{ $row['plate_number'] }} | {{ $row['ownership'] }}</div>
+                                            <div class="text-muted small">{{ $row['pickup_location'] }} → {{ $row['return_location'] }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold">Pickup {{ $row['pickup_date'] }}</div>
+                                            <div class="text-muted small">Return {{ $row['return_date'] }}</div>
+                                            <div class="text-muted small">In {{ number_format($row['days_until_delivery']) }} day(s)</div>
+                                            <div class="text-muted small">Lead time {{ number_format($row['lead_time_days']) }} day(s)</div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold">{{ $row['assigned_expert'] }}</div>
+                                            <div class="text-muted small">Sales: {{ $row['sales_agent'] }}</div>
+                                        </td>
+                                        <td>
+                                            <x-status-badge :status="$row['status']" />
+                                            <div class="mt-2">
+                                                <a href="{{ route('rental-requests.details', $row['contract_id']) }}"
+                                                    class="btn btn-sm btn-outline-primary">
+                                                    <i class="bx bx-detail me-1"></i> Details
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center text-muted py-5">No upcoming delivery contracts found in this time window.</div>
+                @endif
+            </div>
+        </div>
+
         <div class="row g-4 mb-4">
             <div class="col-12 col-xxl-6">
                 <div class="card shadow-lg border-0 rounded-4 h-100">

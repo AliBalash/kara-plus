@@ -684,6 +684,36 @@
                 color: #9f6700;
             }
 
+            .upcoming-delivery-card {
+                background: linear-gradient(160deg, #ffffff 0%, #f7fbff 56%, #f4f9ff 100%);
+                border: 1px solid rgba(188, 211, 236, 0.58);
+            }
+
+            .upcoming-filter-field {
+                display: flex;
+                flex-direction: column;
+                gap: 0.35rem;
+                padding: 0.8rem 0.9rem;
+                border-radius: 0.85rem;
+                border: 1px solid rgba(205, 217, 233, 0.74);
+                background: rgba(255, 255, 255, 0.84);
+            }
+
+            .upcoming-filter-badge {
+                background: #e8f0fb;
+                color: #264b7f;
+                border: 1px solid rgba(135, 168, 209, 0.45);
+                font-weight: 600;
+            }
+
+            .upcoming-delivery-table thead th {
+                font-size: 0.73rem;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: #59728f;
+                white-space: nowrap;
+            }
+
             @media (max-width: 991.98px) {
                 .operations-hero__header {
                     flex-direction: column;
