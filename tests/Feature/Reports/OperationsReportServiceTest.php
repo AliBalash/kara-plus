@@ -290,6 +290,115 @@ class OperationsReportServiceTest extends TestCase
         $this->assertSame(1500.0, $report['summary']['revenue']);
     }
 
+    public function test_fleet_performance_report_normalizes_reversed_date_window(): void
+    {
+        $car = Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+
+        Contract::factory()->for($car)->create([
+            'pickup_date' => Carbon::parse('2025-03-05 10:00:00'),
+            'return_date' => Carbon::parse('2025-03-06 10:00:00'),
+            'current_status' => 'complete',
+            'total_price' => 500,
+        ]);
+
+        $report = $this->service->fleetPerformance([
+            'date_from' => '2025-03-10',
+            'date_to' => '2025-03-01',
+            'ownership' => 'company',
+        ]);
+
+        $this->assertCount(1, $report['rows']);
+        $this->assertSame('2025-03-01', $report['filter_summary']['Pickup Date From']);
+        $this->assertSame('2025-03-10', $report['filter_summary']['Return Date To']);
+    }
+
+    public function test_fleet_performance_report_filters_cars_with_upcoming_reservations_in_next_x_days(): void
+    {
+        Carbon::setTestNow('2025-03-01 09:00:00');
+
+        $inWindowCar = Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+        Contract::factory()->for($inWindowCar)->status('reserved')->create([
+            'pickup_date' => Carbon::parse('2025-03-03 10:00:00'),
+            'return_date' => Carbon::parse('2025-03-05 10:00:00'),
+            'total_price' => 700,
+        ]);
+
+        $outsideWindowCar = Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+        Contract::factory()->for($outsideWindowCar)->status('reserved')->create([
+            'pickup_date' => Carbon::parse('2025-03-10 10:00:00'),
+            'return_date' => Carbon::parse('2025-03-12 10:00:00'),
+            'total_price' => 800,
+        ]);
+
+        $report = $this->service->fleetPerformance([
+            'date_from' => '2025-02-01',
+            'date_to' => '2025-03-01',
+            'ownership' => 'company',
+            'reservation_days_ahead' => '5',
+        ]);
+
+        $this->assertCount(1, $report['rows']);
+        $this->assertSame($inWindowCar->id, $report['rows'][0]['car_id']);
+        $this->assertSame(1, $report['rows'][0]['contracts_count']);
+        $this->assertSame('5', $report['filter_summary']['Reserved In Next Days']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_fleet_performance_report_filters_by_pickup_from_and_return_to_fields(): void
+    {
+        $matchingCar = Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+        Contract::factory()->for($matchingCar)->create([
+            'pickup_date' => Carbon::parse('2025-03-05 10:00:00'),
+            'return_date' => Carbon::parse('2025-03-08 10:00:00'),
+            'current_status' => 'complete',
+            'total_price' => 500,
+        ]);
+
+        $pickupBeforeFromCar = Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+        Contract::factory()->for($pickupBeforeFromCar)->create([
+            'pickup_date' => Carbon::parse('2025-03-01 10:00:00'),
+            'return_date' => Carbon::parse('2025-03-06 10:00:00'),
+            'current_status' => 'complete',
+            'total_price' => 500,
+        ]);
+
+        $returnAfterToCar = Car::factory()->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+        Contract::factory()->for($returnAfterToCar)->create([
+            'pickup_date' => Carbon::parse('2025-03-06 10:00:00'),
+            'return_date' => Carbon::parse('2025-03-12 10:00:00'),
+            'current_status' => 'complete',
+            'total_price' => 500,
+        ]);
+
+        $report = $this->service->fleetPerformance([
+            'date_from' => '2025-03-05',
+            'date_to' => '2025-03-10',
+            'ownership' => 'company',
+        ]);
+
+        $this->assertCount(1, $report['rows']);
+        $this->assertSame($matchingCar->id, $report['rows'][0]['car_id']);
+    }
+
     public function test_payment_collections_report_filters_unpaid_records_and_summarizes_amounts(): void
     {
         $customer = Customer::factory()->create([

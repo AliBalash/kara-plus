@@ -139,14 +139,14 @@ class CustomerDebt extends Component
         $risk = $this->defineRiskLevel($status, $outstanding);
 
         $updatedAt = $payments->sortByDesc('payment_date')->first()?->payment_date;
-        $latestPayment = $updatedAt instanceof Carbon ? $updatedAt->format('d M Y') : null;
+        $latestPayment = $updatedAt instanceof Carbon ? $updatedAt->format('Y-m-d') : null;
 
         return [
             'id' => $contract->id,
             'label' => 'Contract #' . $contract->id,
             'car' => optional($contract->car)->fullName() ?? '—',
-            'pickup_date' => optional($contract->pickup_date)?->format('d M Y'),
-            'return_date' => optional($contract->return_date)?->format('d M Y'),
+            'pickup_date' => optional($contract->pickup_date)?->format('Y-m-d'),
+            'return_date' => optional($contract->return_date)?->format('Y-m-d'),
             'current_status' => $contract->current_status,
             'total' => (float) ($contract->total_price ?? 0),
             'paid' => $totalPaid,

@@ -126,7 +126,7 @@
                                 <x-car-ownership-badge :car="$awaitContract->car" />
                             </div>
                         </td>
-                        <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('d M Y H:i') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($awaitContract->return_date)->format('Y-m-d H:i') }}</td>
                         <td>{{ $awaitContract->return_location }}</td>
                         <td>
                             @php

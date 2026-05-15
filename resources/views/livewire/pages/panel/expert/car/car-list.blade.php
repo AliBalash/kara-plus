@@ -102,8 +102,8 @@
                                 {{ $car->operationalStatusLabel() }}
                             </span>
                         </td>
-                        <td>{{ optional(optional($car->currentContract)->pickup_date)->format('d M Y') ?? '-' }}</td>
-                        <td>{{ optional(optional($car->currentContract)->return_date)->format('d M Y') ?? '-' }}</td>
+                        <td>{{ optional(optional($car->currentContract)->pickup_date)->format('Y-m-d') ?? '—' }}</td>
+                        <td>{{ optional(optional($car->currentContract)->return_date)->format('Y-m-d') ?? '—' }}</td>
                     </tr>
                 @empty
                     <tr>

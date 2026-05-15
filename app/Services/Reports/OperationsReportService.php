@@ -456,7 +456,25 @@ class OperationsReportService
                     $query->with(['customer', 'payments'])
                         ->whereNotIn('current_status', ['cancelled', 'rejected']);
 
-                    $this->applyContractWindow($query, $filters['date_from'], $filters['date_to']);
+                    $hasDateWindow = $filters['date_from'] !== null || $filters['date_to'] !== null;
+
+                    if ($hasDateWindow || $filters['reservation_days_ahead'] !== null) {
+                        $query->where(function (Builder $windowQuery) use ($filters, $hasDateWindow) {
+                            if ($hasDateWindow) {
+                                $windowQuery->where(function (Builder $dateWindowQuery) use ($filters) {
+                                    $this->applyContractWindow($dateWindowQuery, $filters['date_from'], $filters['date_to']);
+                                });
+                            }
+
+                            if ($filters['reservation_days_ahead'] !== null) {
+                                $method = $hasDateWindow ? 'orWhere' : 'where';
+
+                                $windowQuery->{$method}(function (Builder $upcomingQuery) use ($filters) {
+                                    $this->applyUpcomingReservationWindow($upcomingQuery, $filters['reservation_days_ahead']);
+                                });
+                            }
+                        });
+                    }
                 },
             ])
             ->when($filters['search'] !== '', function (Builder $query) use ($filters) {
@@ -474,9 +492,34 @@ class OperationsReportService
                 $filters['ownership'] !== 'all',
                 fn (Builder $query) => $query->where('ownership_type', $filters['ownership'])
             )
+            ->when($filters['reservation_days_ahead'] !== null, function (Builder $query) use ($filters) {
+                $query->whereHas('contracts', function (Builder $contractQuery) use ($filters) {
+                    $contractQuery->whereNotIn('current_status', ['cancelled', 'rejected']);
+                    $this->applyUpcomingReservationWindow($contractQuery, $filters['reservation_days_ahead']);
+                });
+            })
             ->whereHas('contracts', function (Builder $query) use ($filters) {
                 $query->whereNotIn('current_status', ['cancelled', 'rejected']);
-                $this->applyContractWindow($query, $filters['date_from'], $filters['date_to']);
+
+                $hasDateWindow = $filters['date_from'] !== null || $filters['date_to'] !== null;
+
+                if ($hasDateWindow || $filters['reservation_days_ahead'] !== null) {
+                    $query->where(function (Builder $windowQuery) use ($filters, $hasDateWindow) {
+                        if ($hasDateWindow) {
+                            $windowQuery->where(function (Builder $dateWindowQuery) use ($filters) {
+                                $this->applyContractWindow($dateWindowQuery, $filters['date_from'], $filters['date_to']);
+                            });
+                        }
+
+                        if ($filters['reservation_days_ahead'] !== null) {
+                            $method = $hasDateWindow ? 'orWhere' : 'where';
+
+                            $windowQuery->{$method}(function (Builder $upcomingQuery) use ($filters) {
+                                $this->applyUpcomingReservationWindow($upcomingQuery, $filters['reservation_days_ahead']);
+                            });
+                        }
+                    });
+                }
             })
             ->get();
 
@@ -502,9 +545,10 @@ class OperationsReportService
             'filters' => $filters,
             'filter_summary' => [
                 'Vehicle Search' => $filters['search'] !== '' ? $filters['search'] : 'Entire fleet',
-                'Date From' => $filters['date_from'] ?? 'Open',
-                'Date To' => $filters['date_to'] ?? 'Open',
+                'Pickup Date From' => $filters['date_from'] ?? 'Open',
+                'Return Date To' => $filters['date_to'] ?? 'Open',
                 'Fleet Scope' => $filters['ownership'] === 'all' ? 'All fleets' : Str::headline(str_replace('_', ' ', $filters['ownership'])),
+                'Reserved In Next Days' => $filters['reservation_days_ahead'] !== null ? (string) $filters['reservation_days_ahead'] : 'All',
             ],
             'summary' => $summary,
             'summary_sections' => [
@@ -1091,11 +1135,19 @@ class OperationsReportService
 
     private function normalizeFleetFilters(array $filters): array
     {
+        $dateFrom = $this->normalizeDateString($filters['date_from'] ?? null);
+        $dateTo = $this->normalizeDateString($filters['date_to'] ?? null);
+
+        if ($dateFrom !== null && $dateTo !== null && Carbon::parse($dateFrom)->greaterThan(Carbon::parse($dateTo))) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
         return [
             'search' => trim((string) ($filters['search'] ?? '')),
-            'date_from' => $this->normalizeDateString($filters['date_from'] ?? null),
-            'date_to' => $this->normalizeDateString($filters['date_to'] ?? null),
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
             'ownership' => trim((string) ($filters['ownership'] ?? 'all')) ?: 'all',
+            'reservation_days_ahead' => $this->normalizePositiveInt($filters['reservation_days_ahead'] ?? null),
         ];
     }
 
@@ -1161,16 +1213,21 @@ class OperationsReportService
 
     private function applyContractWindow(Builder|Relation $query, ?string $from, ?string $to): void
     {
-        if ($to !== null) {
-            $query->whereDate('pickup_date', '<=', $to);
+        if ($from !== null) {
+            $query->whereDate('pickup_date', '>=', $from);
         }
 
-        if ($from !== null) {
-            $query->where(function (Builder $windowQuery) use ($from) {
-                $windowQuery->whereNull('return_date')
-                    ->orWhereDate('return_date', '>=', $from);
-            });
+        if ($to !== null) {
+            $query->whereDate('return_date', '<=', $to);
         }
+    }
+
+    private function applyUpcomingReservationWindow(Builder|Relation $query, int $daysAhead): void
+    {
+        $start = Carbon::now()->startOfDay();
+        $end = Carbon::now()->addDays($daysAhead)->endOfDay();
+
+        $query->whereBetween('pickup_date', [$start, $end]);
     }
 
     private function likeValue(string $search): string
@@ -1312,6 +1369,27 @@ class OperationsReportService
         }
 
         return Carbon::parse($string)->toDateString();
+    }
+
+    private function normalizePositiveInt(mixed $value): ?int
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '' || ! ctype_digit($normalized)) {
+            return null;
+        }
+
+        $integer = (int) $normalized;
+
+        if ($integer <= 0) {
+            return null;
+        }
+
+        return min($integer, 365);
     }
 
     private function timestampValue(mixed $value): int

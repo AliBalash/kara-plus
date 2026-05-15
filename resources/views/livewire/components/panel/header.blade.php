@@ -226,8 +226,8 @@
                                                     default => 'bx bx-file',
                                                 };
                                                 $reservationLabel = \Illuminate\Support\Str::headline($reservationStatus);
-                                                $pickupDate = optional($reservation->pickup_date)->format('d M Y · H:i');
-                                                $returnDate = optional($reservation->return_date)->format('d M Y · H:i');
+                                                $pickupDate = optional($reservation->pickup_date)->format('Y-m-d H:i');
+                                                $returnDate = optional($reservation->return_date)->format('Y-m-d H:i');
                                                 $pickupLocation = $reservation->pickup_location ?? 'Location TBD';
                                                 $returnLocation = $reservation->return_location ?? 'Location TBD';
                                                 $customerName = optional($reservation->customer)->fullName() ?? 'Customer TBD';
@@ -400,8 +400,8 @@
                                 $statusLabel = \Illuminate\Support\Str::headline($status);
                                 $car = $contract->car;
                                 $customer = $contract->customer;
-                                $pickupDate = optional($contract->pickup_date)->format('d M Y · H:i');
-                                $returnDate = optional($contract->return_date)->format('d M Y · H:i');
+                                $pickupDate = optional($contract->pickup_date)->format('Y-m-d H:i');
+                                $returnDate = optional($contract->return_date)->format('Y-m-d H:i');
                             @endphp
                             <a href="{{ route('rental-requests.details', [$contract->id]) }}" class="result-card"
                                 role="listitem" wire:key="agreement-result-{{ $contract->id }}-{{ $agreementNumber }}">

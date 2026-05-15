@@ -21,7 +21,7 @@
                 <div class="card-body">
                     <span class="fw-semibold text-muted d-block mb-2">Today</span>
                     <h3 class="mb-2">{{ number_format($todayCashAed, 2) }}</h3>
-                    <small class="text-muted">Cash approved on {{ now()->format('d M Y') }}.</small>
+                    <small class="text-muted">Cash approved on {{ now()->format('Y-m-d') }}.</small>
                 </div>
             </div>
         </div>
@@ -30,7 +30,7 @@
                 <div class="card-body">
                     <span class="fw-semibold text-muted d-block mb-2">This Week</span>
                     <h3 class="mb-2">{{ number_format($weeklyCashAed, 2) }}</h3>
-                    <small class="text-muted">Approvals from {{ \Carbon\Carbon::now()->startOfWeek()->format('d M') }} to {{ \Carbon\Carbon::now()->endOfWeek()->format('d M') }}.</small>
+                    <small class="text-muted">Approvals from {{ \Carbon\Carbon::now()->startOfWeek()->format('Y-m-d') }} to {{ \Carbon\Carbon::now()->endOfWeek()->format('Y-m-d') }}.</small>
                 </div>
             </div>
         </div>
@@ -137,7 +137,7 @@
                                             <td>{{ $payment->currency }}</td>
                                             <td>{{ number_format($payment->amount_in_aed, 2) }}</td>
                                             <td>{{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}</td>
-                                            <td>{{ $payment->payment_date ? \Illuminate\Support\Carbon::parse($payment->payment_date)->format('d M Y') : '-' }}</td>
+                                            <td>{{ $payment->payment_date ? \Illuminate\Support\Carbon::parse($payment->payment_date)->format('Y-m-d') : '—' }}</td>
                                             <td>
                                                 @if ($payment->receipt)
                                                     <a href="{{ asset('storage/' . ltrim($payment->receipt, '/')) }}" target="_blank" class="btn btn-sm btn-outline-primary">

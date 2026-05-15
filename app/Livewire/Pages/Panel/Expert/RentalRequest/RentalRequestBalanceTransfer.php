@@ -209,7 +209,7 @@ class RentalRequestBalanceTransfer extends Component
                     'notes' => $transfer->notes,
                     'meta' => $transfer->meta ?? [],
                     'created_by' => $transfer->createdBy?->shortName() ?? $transfer->createdBy?->name,
-                    'transferred_at' => optional($transfer->transferred_at ?? $transfer->created_at)->format('d M Y · H:i'),
+                    'transferred_at' => optional($transfer->transferred_at ?? $transfer->created_at)->format('Y-m-d H:i'),
                     'from_contract' => $transfer->fromContract,
                     'to_contract' => $transfer->toContract,
                 ];

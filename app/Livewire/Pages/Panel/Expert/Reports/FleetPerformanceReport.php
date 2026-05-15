@@ -17,6 +17,7 @@ class FleetPerformanceReport extends Component
     public string $dateFrom = '';
     public string $dateTo = '';
     public string $ownership = 'all';
+    public string $reservationDaysAhead = '';
     public int $perPage = 12;
 
     protected $queryString = [
@@ -24,6 +25,7 @@ class FleetPerformanceReport extends Component
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
         'ownership' => ['except' => 'all'],
+        'reservationDaysAhead' => ['except' => ''],
     ];
 
     public function mount(): void
@@ -50,6 +52,7 @@ class FleetPerformanceReport extends Component
         $this->ownership = 'all';
         $this->dateFrom = Carbon::now()->subDays(89)->toDateString();
         $this->dateTo = Carbon::now()->toDateString();
+        $this->reservationDaysAhead = '';
 
         $this->resetPage();
     }
@@ -79,6 +82,7 @@ class FleetPerformanceReport extends Component
             'date_from' => $this->dateFrom,
             'date_to' => $this->dateTo,
             'ownership' => $this->ownership,
+            'reservation_days_ahead' => $this->reservationDaysAhead,
         ];
     }
 

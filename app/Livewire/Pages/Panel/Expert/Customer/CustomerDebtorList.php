@@ -158,11 +158,11 @@ class CustomerDebtorList extends Component
                 'id' => $contract->id,
                 'label' => 'Contract #' . $contract->id,
                 'car' => optional($contract->car)->fullName() ?? '—',
-                'pickup_date' => optional($contract->pickup_date)?->format('d M Y'),
+                'pickup_date' => optional($contract->pickup_date)?->format('Y-m-d'),
                 'status' => $status,
                 'outstanding' => $outstanding,
                 'credit' => $credit,
-                'last_activity' => $lastTouchpoint instanceof Carbon ? $lastTouchpoint->format('d M Y') : null,
+                'last_activity' => $lastTouchpoint instanceof Carbon ? $lastTouchpoint->format('Y-m-d') : null,
                 'risk' => $this->determineRiskBadge($status, $outstanding),
             ];
         });

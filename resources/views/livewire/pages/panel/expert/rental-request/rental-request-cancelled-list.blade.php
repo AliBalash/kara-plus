@@ -111,9 +111,9 @@
                                 <x-car-ownership-badge :car="$contract->car" />
                             </div>
                         </td>
-                        <td>{{ optional($contract->pickup_date)->format('d M Y') }}</td>
-                        <td>{{ optional($contract->return_date)->format('d M Y') }}</td>
-                        <td>{{ optional($contract->updated_at)->format('d M Y H:i') }}</td>
+                        <td>{{ optional($contract->pickup_date)->format('Y-m-d') }}</td>
+                        <td>{{ optional($contract->return_date)->format('Y-m-d') }}</td>
+                        <td>{{ optional($contract->updated_at)->format('Y-m-d H:i') }}</td>
                         <td>
                             <div class="dropdown">
                                 <button class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">

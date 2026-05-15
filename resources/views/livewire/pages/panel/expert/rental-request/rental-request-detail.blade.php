@@ -117,7 +117,7 @@
                 <div class="card-body">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
                         <div>
-                            <div class="text-muted small">Created {{ $createdAt?->format('d M Y · H:i') ?? '—' }}</div>
+                            <div class="text-muted small">Created {{ $createdAt?->format('Y-m-d H:i') ?? '—' }}</div>
                             <div class="fw-semibold text-body">Managed by {{ $agentName }}</div>
                         </div>
                         <div class="d-flex gap-2">
@@ -225,14 +225,14 @@
                                         <span class="badge bg-label-primary me-2">Pick</span>
                                         <div>
                                             <div class="fw-semibold text-body">Pickup</div>
-                                            <div class="text-muted small">{{ $pickupDate?->format('d M Y · H:i') ?? '—' }} — {{ $pickupLocation }}</div>
+                                            <div class="text-muted small">{{ $pickupDate?->format('Y-m-d H:i') ?? '—' }} — {{ $pickupLocation }}</div>
                                         </div>
                                     </li>
                                     <li class="d-flex align-items-start mb-3">
                                         <span class="badge bg-label-success me-2">Ret</span>
                                         <div>
                                             <div class="fw-semibold text-body">Return</div>
-                                            <div class="text-muted small">{{ $returnDate?->format('d M Y · H:i') ?? '—' }} — {{ $returnLocation }}</div>
+                                            <div class="text-muted small">{{ $returnDate?->format('Y-m-d H:i') ?? '—' }} — {{ $returnLocation }}</div>
                                         </div>
                                     </li>
                                     <li class="d-flex align-items-start mb-3">

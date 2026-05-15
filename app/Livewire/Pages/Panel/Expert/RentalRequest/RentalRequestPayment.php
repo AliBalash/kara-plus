@@ -311,7 +311,7 @@ class RentalRequestPayment extends Component
                     'notes' => $transfer->notes,
                     'meta' => $transfer->meta ?? [],
                     'by' => $transfer->createdBy?->shortName() ?? $transfer->createdBy?->name ?? 'System',
-                    'at' => optional($transfer->transferred_at ?? $transfer->created_at)->format('d M Y · H:i'),
+                    'at' => optional($transfer->transferred_at ?? $transfer->created_at)->format('Y-m-d H:i'),
                     'counterparty_contract' => $counterparty?->id,
                     'counterparty_car' => optional($counterparty?->car)->fullName()
                         ?? optional($counterparty?->car)->name

@@ -202,7 +202,7 @@
                                         @if ($kardoApproved)
                                             <p class="text-muted small mt-1 mb-0">
                                                 Approved on
-                                                {{ optional($pickupDocument->kardo_approved_at)->format('d M Y H:i') }}
+                                                {{ optional($pickupDocument->kardo_approved_at)->format('Y-m-d H:i') }}
                                             </p>
                                         @endif
                                     @else
@@ -239,7 +239,7 @@
                             <div class="mt-3">
                                 @if ($tarsApproved)
                                     <p class="text-muted small mb-2">Approved on
-                                        {{ optional($pickupDocument->tars_approved_at)->format('d M Y H:i') }}</p>
+                                        {{ optional($pickupDocument->tars_approved_at)->format('Y-m-d H:i') }}</p>
                                 @else
                                     <p class="text-muted small mb-3">Complete the TARS review before finishing KARDO.
                                     </p>

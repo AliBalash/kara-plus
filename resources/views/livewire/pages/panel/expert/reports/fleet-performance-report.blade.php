@@ -75,7 +75,7 @@
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                 <div>
                     <h5 class="mb-1">Set the fleet window</h5>
-                    <p class="text-muted mb-0">Default view is the last 90 days. Narrow by vehicle or ownership group.</p>
+                    <p class="text-muted mb-0">Pickup Date From filters pickups from that date onward. Return Date To limits by return date.</p>
                 </div>
                 <button type="button" class="btn btn-outline-secondary" wire:click="clearFilters">
                     <i class="bx bx-reset me-1"></i> Reset Filters
@@ -83,7 +83,7 @@
             </div>
 
             <div class="row g-3">
-                <div class="col-lg-4">
+                <div class="col-lg-3">
                     <div class="filter-field">
                         <div class="d-flex justify-content-between align-items-center">
                             <label class="filter-label" for="fleetSearch">Vehicle Search</label>
@@ -95,17 +95,27 @@
                 </div>
                 <div class="col-lg-2">
                     <div class="filter-field">
-                        <label class="filter-label" for="fleetDateFrom">Date From</label>
-                        <input id="fleetDateFrom" type="date" class="form-control" wire:model.live="dateFrom">
+                        <label class="filter-label" for="fleetDateFrom">Pickup Date From</label>
+                        <input
+                            id="fleetDateFrom"
+                            type="date"
+                            class="form-control"
+                            wire:model.live="dateFrom"
+                        >
                     </div>
                 </div>
                 <div class="col-lg-2">
                     <div class="filter-field">
-                        <label class="filter-label" for="fleetDateTo">Date To</label>
-                        <input id="fleetDateTo" type="date" class="form-control" wire:model.live="dateTo">
+                        <label class="filter-label" for="fleetDateTo">Return Date To</label>
+                        <input
+                            id="fleetDateTo"
+                            type="date"
+                            class="form-control"
+                            wire:model.live="dateTo"
+                        >
                     </div>
                 </div>
-                <div class="col-lg-4">
+                <div class="col-lg-3">
                     <div class="filter-field">
                         <label class="filter-label" for="fleetOwnership">Fleet Scope</label>
                         <select id="fleetOwnership" class="form-select" wire:model.live="ownership">
@@ -113,6 +123,23 @@
                                 <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                             @endforeach
                         </select>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <div class="filter-field">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="filter-label" for="fleetReservationDaysAhead">Reserved In +X Days</label>
+                            <span class="filter-hint">Future window</span>
+                        </div>
+                        <input
+                            id="fleetReservationDaysAhead"
+                            type="number"
+                            min="1"
+                            max="365"
+                            class="form-control"
+                            placeholder="All"
+                            wire:model.live="reservationDaysAhead"
+                        >
                     </div>
                 </div>
             </div>

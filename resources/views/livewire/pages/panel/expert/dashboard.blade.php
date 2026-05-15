@@ -25,7 +25,7 @@
                             <x-car-ownership-badge :car="$taskContract->car" />
                         </div>
                         <div class="text-muted small mb-1"><i class="bx bx-user-circle me-1"></i>{{ optional($taskContract->customer)->fullName() ?? 'Customer TBD' }}</div>
-                        <div class="text-muted small mb-1"><i class="bx bx-time me-1"></i>{{ $taskMoment->format('d M Y · H:i') }}</div>
+                        <div class="text-muted small mb-1"><i class="bx bx-time me-1"></i>{{ $taskMoment->format('Y-m-d H:i') }}</div>
                         <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $isPickupTask ? ($taskContract->pickup_location ?? 'Pickup location TBD') : ($taskContract->return_location ?? 'Return location TBD') }}</div>
                     @else
                         <span class="next-task-label next-task-label--idle">No upcoming tasks</span>
@@ -98,7 +98,7 @@
                                         <x-car-ownership-badge :car="$pickup->car" />
                                     </div>
                                     <div class="text-muted small"><i class="bx bx-user-circle me-1"></i>{{ optional($pickup->customer)->fullName() ?? 'Customer TBD' }}</div>
-                                    <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($pickup->pickup_date)->format('d M · H:i') }}</div>
+                                    <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($pickup->pickup_date)->format('Y-m-d H:i') }}</div>
                                     <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $pickup->pickup_location ?? 'Pickup location TBD' }}</div>
                                 </div>
                                 <a href="{{ route('rental-requests.pickup-document', [$pickup->id]) }}" class="btn btn-sm btn-outline-primary">Open</a>
@@ -127,7 +127,7 @@
                                         <x-car-ownership-badge :car="$returnContract->car" />
                                     </div>
                                     <div class="text-muted small"><i class="bx bx-user-circle me-1"></i>{{ optional($returnContract->customer)->fullName() ?? 'Customer TBD' }}</div>
-                                    <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($returnContract->return_date)->format('d M · H:i') }}</div>
+                                    <div class="text-muted small"><i class="bx bx-time me-1"></i>{{ \Carbon\Carbon::parse($returnContract->return_date)->format('Y-m-d H:i') }}</div>
                                     <div class="text-muted small"><i class="bx bx-map me-1"></i>{{ $returnContract->return_location ?? 'Return location TBD' }}</div>
                                 </div>
                                 <a href="{{ route('rental-requests.return-document', [$returnContract->id]) }}" class="btn btn-sm btn-outline-success">Open</a>
@@ -392,7 +392,7 @@
             </div>
             <div class="col-12 col-md-auto">
                 <div class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
-                    <span class="badge bg-light text-dark px-3 py-2"><i class="bi bi-clock-history me-1"></i>Updated {{ now()->format('d M Y - H:i') }}</span>
+                    <span class="badge bg-light text-dark px-3 py-2"><i class="bi bi-clock-history me-1"></i>Updated {{ now()->format('Y-m-d H:i') }}</span>
                     <a href="{{ route('rental-requests.list') }}" class="btn btn-dark btn-sm px-3"><i class="bi bi-card-list me-1"></i>View Requests</a>
                 </div>
             </div>
@@ -538,7 +538,7 @@
                                     @php
                                         $brand = optional($car->carModel)->brand;
                                         $model = optional($car->carModel)->model;
-                                        $serviceDue = $car->service_due_date ? \Carbon\Carbon::parse($car->service_due_date)->format('d M Y') : 'N/A';
+                                        $serviceDue = $car->service_due_date ? \Carbon\Carbon::parse($car->service_due_date)->format('Y-m-d') : '—';
                                         $upcomingReservation = $car->upcomingReservation;
                                         $returnedAt = $car->latest_returned_at ? \Carbon\Carbon::parse($car->latest_returned_at) : null;
                                     @endphp
@@ -553,7 +553,7 @@
                                         <td>{{ $car->plate_number ?? '—' }}</td>
                                         <td>
                                             @if ($returnedAt)
-                                                <div class="fw-semibold">{{ $returnedAt->format('d M Y · H:i') }}</div>
+                                                <div class="fw-semibold">{{ $returnedAt->format('Y-m-d H:i') }}</div>
                                                 <div class="text-muted small">{{ $returnedAt->diffForHumans() }}</div>
                                             @else
                                                 <span class="text-muted">—</span>
@@ -568,7 +568,7 @@
                                             @if ($upcomingReservation)
                                                 <div class="d-flex flex-column gap-1">
                                                     <div class="fw-semibold">
-                                                        {{ optional($upcomingReservation->pickup_date)->format('d M Y · H:i') }}
+                                                        {{ optional($upcomingReservation->pickup_date)->format('Y-m-d H:i') }}
                                                     </div>
                                                     <div class="text-muted small">
                                                         <i class="bi bi-geo-alt me-1"></i>{{ $upcomingReservation->pickup_location ?? 'Location TBD' }}
@@ -691,7 +691,7 @@
                                             <div class="booking-timeline">
                                                 <div class="booking-timeline__leg">
                                                     <span class="booking-timeline__label">Pickup</span>
-                                                    <span class="booking-timeline__date">{{ $pickupAt ? $pickupAt->format('d M Y · H:i') : 'TBD' }}</span>
+                                                    <span class="booking-timeline__date">{{ $pickupAt ? $pickupAt->format('Y-m-d H:i') : '—' }}</span>
                                                     <span class="booking-timeline__meta">
                                                         <i class="bi bi-geo-alt me-1"></i>{{ $contract->pickup_location ?? 'Pickup TBD' }}
                                                     </span>
@@ -702,7 +702,7 @@
                                                 </div>
                                                 <div class="booking-timeline__leg booking-timeline__leg--accent">
                                                     <span class="booking-timeline__label">Return</span>
-                                                    <span class="booking-timeline__date">{{ $returnAt ? $returnAt->format('d M Y · H:i') : 'TBD' }}</span>
+                                                    <span class="booking-timeline__date">{{ $returnAt ? $returnAt->format('Y-m-d H:i') : '—' }}</span>
                                                     <span class="booking-timeline__meta">
                                                         <i class="bi bi-flag me-1"></i>{{ $contract->return_location ?? 'Return TBD' }}
                                                     </span>
@@ -825,7 +825,7 @@
                                             <div class="booking-timeline">
                                                 <div class="booking-timeline__leg">
                                                     <span class="booking-timeline__label">Pickup</span>
-                                                    <span class="booking-timeline__date">{{ $pickupAt ? $pickupAt->format('d M Y · H:i') : 'TBD' }}</span>
+                                                    <span class="booking-timeline__date">{{ $pickupAt ? $pickupAt->format('Y-m-d H:i') : '—' }}</span>
                                                     <span class="booking-timeline__meta">
                                                         <i class="bi bi-geo-alt me-1"></i>{{ $contract->pickup_location ?? 'Pickup TBD' }}
                                                     </span>
@@ -836,7 +836,7 @@
                                                 </div>
                                                 <div class="booking-timeline__leg booking-timeline__leg--accent">
                                                     <span class="booking-timeline__label">Drop-off</span>
-                                                    <span class="booking-timeline__date">{{ $returnAt ? $returnAt->format('d M Y · H:i') : 'TBD' }}</span>
+                                                    <span class="booking-timeline__date">{{ $returnAt ? $returnAt->format('Y-m-d H:i') : '—' }}</span>
                                                     <span class="booking-timeline__meta">
                                                         <i class="bi bi-flag me-1"></i>{{ $contract->return_location ?? 'Drop-off TBD' }}
                                                     </span>
@@ -920,7 +920,7 @@
                                     <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2">
                                         <div class="d-flex align-items-center gap-2">
                                             <span class="badge rounded-pill bg-light text-dark"><i class="bi bi-person-fill me-1"></i>{{ optional($contract->customer)->name ?? 'Customer' }}</span>
-                                            <span class="text-muted small"><i class="bi bi-calendar-event me-1"></i>{{ $contract->created_at->format('d M Y') }}</span>
+                                            <span class="text-muted small"><i class="bi bi-calendar-event me-1"></i>{{ $contract->created_at->format('Y-m-d') }}</span>
                                         </div>
                                         <div class="d-flex align-items-center gap-3">
                                             <x-status-badge :status="$contract->current_status" />

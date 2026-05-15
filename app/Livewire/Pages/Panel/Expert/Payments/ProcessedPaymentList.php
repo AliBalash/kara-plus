@@ -237,7 +237,7 @@ class ProcessedPaymentList extends Component
                     'reference' => $transfer->reference,
                     'notes' => $transfer->notes,
                     'meta' => $transfer->meta ?? [],
-                    'timestamp' => optional($transfer->transferred_at ?? $transfer->created_at)->format('d M Y · H:i'),
+                    'timestamp' => optional($transfer->transferred_at ?? $transfer->created_at)->format('Y-m-d H:i'),
                 ];
             }
 
@@ -250,7 +250,7 @@ class ProcessedPaymentList extends Component
                     'reference' => $transfer->reference,
                     'notes' => $transfer->notes,
                     'meta' => $transfer->meta ?? [],
-                    'timestamp' => optional($transfer->transferred_at ?? $transfer->created_at)->format('d M Y · H:i'),
+                    'timestamp' => optional($transfer->transferred_at ?? $transfer->created_at)->format('Y-m-d H:i'),
                 ];
             }
         }

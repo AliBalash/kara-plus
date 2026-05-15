@@ -191,8 +191,8 @@
                                 <x-car-ownership-badge :car="$contract->car" />
                             </div>
                         </td>
-                        <td>{{ $contract->pickup_date?->format('d M Y H:i') ?? '—' }}</td>
-                        <td>{{ $contract->return_date?->format('d M Y H:i') ?? '—' }}</td>
+                        <td>{{ $contract->pickup_date?->format('Y-m-d H:i') ?? '—' }}</td>
+                        <td>{{ $contract->return_date?->format('Y-m-d H:i') ?? '—' }}</td>
                         <td>
                             <div class="btn-group" role="group" aria-label="Approval links">
                                 <a href="{{ route('rental-requests.tars-approval', $contract->id) }}"

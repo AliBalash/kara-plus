@@ -164,8 +164,8 @@
                                 <x-car-ownership-badge :car="$contract->car" />
                             </div>
                         </td>
-                        <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('Y-m-d') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('Y-m-d') }}</td>
                         <td>
                             <div class="dropdown">
                                 <button class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">

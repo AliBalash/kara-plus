@@ -216,7 +216,7 @@
                                     @if ($tarsApproved)
                                         <p class="text-muted small mt-2 mb-0">
                                             Approved on
-                                            {{ optional($pickupDocument->tars_approved_at)->format('d M Y H:i') }}
+                                            {{ optional($pickupDocument->tars_approved_at)->format('Y-m-d H:i') }}
                                         </p>
                                     @endif
                                 @else

@@ -56,9 +56,9 @@
                                                     <x-car-ownership-badge :car="$contract->car" />
                                                 </div>
                                             </td>
-                                            <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('d M Y') }}
+                                            <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('Y-m-d') }}
                                             </td>
-                                            <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('d M Y') }}
+                                            <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('Y-m-d') }}
                                             </td>
                                             <td>{{ $contract->agent?->name }}</td>
 

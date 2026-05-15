@@ -38,8 +38,8 @@
                                         <x-car-ownership-badge :car="$status->contract->car" />
                                     </div>
                                 </td>
-                                <td>{{ \Carbon\Carbon::parse($status->created_at)->format('d M Y') }}</td>
-                                <td>{{ $status->contract->return_date ? \Carbon\Carbon::parse($status->contract->return_date)->format('d M Y') : 'N/A' }}
+                                <td>{{ \Carbon\Carbon::parse($status->created_at)->format('Y-m-d') }}</td>
+                                <td>{{ $status->contract->return_date ? \Carbon\Carbon::parse($status->contract->return_date)->format('Y-m-d') : '—' }}
                                 </td>
                         <td>{{ $status->contract->agent?->name }}</td>
 
@@ -93,7 +93,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    {{ $status->created_at?->timezone(config('app.timezone'))?->format('d M Y - H:i') ?? '—' }}
+                                    {{ $status->created_at?->timezone(config('app.timezone'))?->format('Y-m-d H:i') ?? '—' }}
                                 </td>
                             </tr>
                         @endforeach
@@ -109,8 +109,8 @@
                                     <x-car-ownership-badge :car="$contract->car" />
                                 </div>
                             </td>
-                            <td>{{ \Carbon\Carbon::parse($contract->pickup_date ?? $contract->created_at)->format('d M Y') }}</td>
-                            <td>{{ $contract->return_date ? \Carbon\Carbon::parse($contract->return_date)->format('d M Y') : 'N/A' }}</td>
+                            <td>{{ \Carbon\Carbon::parse($contract->pickup_date ?? $contract->created_at)->format('Y-m-d') }}</td>
+                            <td>{{ $contract->return_date ? \Carbon\Carbon::parse($contract->return_date)->format('Y-m-d') : '—' }}</td>
                             <td>{{ $contract->agent?->name }}</td>
 
                             <td>
@@ -155,7 +155,7 @@
                                 </span>
                             </td>
                             <td>
-                                {{ $contract->created_at?->timezone(config('app.timezone'))?->format('d M Y - H:i') ?? '—' }}
+                                {{ $contract->created_at?->timezone(config('app.timezone'))?->format('Y-m-d H:i') ?? '—' }}
                             </td>
                         </tr>
                     </tbody>

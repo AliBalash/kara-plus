@@ -168,7 +168,7 @@
                                 <x-car-ownership-badge :car="$reservedContract->car" />
                             </div>
                         </td>
-                        <td>{{ \Carbon\Carbon::parse($reservedContract->pickup_date)->format('d M Y H:i') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($reservedContract->pickup_date)->format('Y-m-d H:i') }}</td>
                         <td>{{ $reservedContract->pickup_location }}</td>
                         <td>
                             <span class="badge {{ $reservedContract->agent?->name ? 'bg-label-primary text-primary' : 'bg-label-secondary text-muted' }}">

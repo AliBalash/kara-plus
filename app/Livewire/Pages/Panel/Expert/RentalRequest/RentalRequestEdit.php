@@ -2267,7 +2267,7 @@ TEXT);
         }
 
         try {
-            return Carbon::parse($value)->format('d M Y H:i');
+            return Carbon::parse($value)->format('Y-m-d H:i');
         } catch (\Exception $exception) {
             return $value;
         }

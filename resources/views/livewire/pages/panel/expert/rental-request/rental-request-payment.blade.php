@@ -708,7 +708,7 @@
                         <td>{{ ucfirst($payment->payment_method) }}</td>
                         <td>{{ $payment->is_refundable == true ? 'Yes' : 'No' }}</td>
                         <td>{{ $payment->user?->shortName() ?? '—' }}</td>
-                        <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('Y-m-d') }}</td>
                         <td>
                             @if ($payment->note)
                                 {{ \Illuminate\Support\Str::limit($payment->note, 80) }}
