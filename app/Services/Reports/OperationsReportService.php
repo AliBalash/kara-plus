@@ -21,6 +21,13 @@ class OperationsReportService
 
     private const PAYMENT_DATE_FIELDS = ['payment_date', 'created_at'];
 
+    private const UPCOMING_DELIVERY_SCOPE_STATUSES = [
+        'booked' => ['assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection'],
+        'active' => ['assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection', 'awaiting_return', 'payment', 'returned'],
+    ];
+
+    private const UPCOMING_DELIVERY_OWNERSHIP_SCOPES = ['company', 'golden_key', 'liverpool', 'safe_drive', 'other'];
+
     private const EXTRA_PAYMENT_TYPES = [
         'fine',
         'parking',
@@ -755,6 +762,121 @@ class OperationsReportService
         ];
     }
 
+    public function upcomingDeliveries(array $filters = []): array
+    {
+        $filters = $this->normalizeUpcomingDeliveryFilters($filters);
+
+        $scopeStatuses = $this->upcomingDeliveryStatusesForScope($filters['status_scope']);
+        $windowStart = Carbon::now()->startOfDay();
+        $windowEnd = Carbon::now()->addDays($filters['days_ahead'])->endOfDay();
+
+        $contracts = Contract::query()
+            ->with(['customer', 'car.carModel', 'user', 'agent', 'pickupDocument'])
+            ->whereNotNull('pickup_date')
+            ->whereBetween('pickup_date', [$windowStart, $windowEnd])
+            ->whereNotIn('current_status', ['cancelled', 'rejected', 'complete', 'draft'])
+            ->when(
+                $scopeStatuses !== null,
+                fn (Builder $query) => $query->whereIn('current_status', $scopeStatuses)
+            )
+            ->when(
+                $filters['ownership'] !== 'all',
+                fn (Builder $query) => $query->whereHas('car', fn (Builder $carQuery) => $carQuery->where('ownership_type', $filters['ownership']))
+            )
+            ->tap(fn (Builder $query) => $this->applyContractSearch($query, $filters['search']))
+            ->orderBy('pickup_date')
+            ->get();
+
+        $rows = $contracts
+            ->map(fn (Contract $contract) => $this->mapUpcomingDeliveryRow($contract, $windowStart, $windowEnd))
+            ->values();
+
+        $statusBreakdown = $rows->countBy('status_label')->sortDesc();
+        $fleetBreakdown = $rows->countBy('ownership')->sortDesc();
+
+        $summary = [
+            'matching_contracts' => $rows->count(),
+            'unique_customers' => $rows->pluck('customer_id')->filter()->unique()->count(),
+            'unique_cars' => $rows->pluck('car_id')->filter()->unique()->count(),
+            'deliveries_within_72h' => $rows->where('days_until_delivery', '<=', 3)->count(),
+            'average_lead_time_days' => round((float) $rows->avg('lead_time_days'), 1),
+            'returns_in_window' => $rows->where('return_in_window', true)->count(),
+        ];
+
+        return [
+            'filters' => $filters,
+            'filter_summary' => [
+                'Search' => $filters['search'] !== '' ? $filters['search'] : 'All contracts',
+                'Delivery Window' => sprintf('%s to %s', $windowStart->toDateString(), $windowEnd->toDateString()),
+                'Days Ahead' => (string) $filters['days_ahead'],
+                'Status Scope' => match ($filters['status_scope']) {
+                    'booked' => 'Booked deliveries',
+                    'active' => 'All active lifecycle',
+                    default => 'All non-cancelled',
+                },
+                'Fleet Scope' => $filters['ownership'] === 'all'
+                    ? 'All fleets'
+                    : Str::headline(str_replace('_', ' ', $filters['ownership'])),
+            ],
+            'summary' => $summary,
+            'summary_sections' => [
+                'Delivery Snapshot' => [
+                    'Matching Contracts' => $summary['matching_contracts'],
+                    'Unique Customers' => $summary['unique_customers'],
+                    'Unique Vehicles' => $summary['unique_cars'],
+                    'Deliveries Within 72 Hours' => $summary['deliveries_within_72h'],
+                    'Average Lead Time (Days)' => $summary['average_lead_time_days'],
+                    'Returns Inside Window' => $summary['returns_in_window'],
+                ],
+                'Status Mix' => $statusBreakdown->all(),
+                'Fleet Mix' => $fleetBreakdown->all(),
+            ],
+            'rows' => $rows,
+            'export_headings' => [
+                'Contract ID',
+                'Status',
+                'Request Date',
+                'Pickup Date',
+                'Return Date',
+                'Days Until Delivery',
+                'Lead Time Days',
+                'Customer',
+                'Phone',
+                'Vehicle',
+                'Plate',
+                'Fleet',
+                'Pickup Location',
+                'Return Location',
+                'Assigned Expert',
+                'Sales Agent',
+                'Agreement Number',
+                'Payment On Delivery',
+            ],
+            'export_rows' => $rows->map(function (array $row): array {
+                return [
+                    $row['contract_id'],
+                    $row['status_label'],
+                    $row['request_date'],
+                    $row['pickup_date'],
+                    $row['return_date'],
+                    $row['days_until_delivery'],
+                    $row['lead_time_days'],
+                    $row['customer_name'],
+                    $row['customer_phone'],
+                    $row['car_name'],
+                    $row['plate_number'],
+                    $row['ownership'],
+                    $row['pickup_location'],
+                    $row['return_location'],
+                    $row['assigned_expert'],
+                    $row['sales_agent'],
+                    $row['agreement_number'],
+                    $row['payment_on_delivery'],
+                ];
+            })->all(),
+        ];
+    }
+
     private function mapCustomerRequestRow(Contract $contract): array
     {
         $payments = $contract->payments ?? collect();
@@ -1105,6 +1227,43 @@ class OperationsReportService
         ];
     }
 
+    private function mapUpcomingDeliveryRow(Contract $contract, Carbon $windowStart, Carbon $windowEnd): array
+    {
+        $pickupAt = $contract->pickup_date instanceof Carbon ? $contract->pickup_date : Carbon::parse($contract->pickup_date);
+        $createdAt = $contract->created_at instanceof Carbon ? $contract->created_at : Carbon::parse($contract->created_at);
+        $returnAt = $contract->return_date instanceof Carbon ? $contract->return_date : ($contract->return_date ? Carbon::parse($contract->return_date) : null);
+
+        $daysUntilDelivery = max(0, (int) $windowStart->copy()->startOfDay()->diffInDays($pickupAt->copy()->startOfDay(), false));
+        $leadTimeDays = max(0, (int) $createdAt->copy()->startOfDay()->diffInDays($pickupAt->copy()->startOfDay(), false));
+        $returnInWindow = $returnAt instanceof Carbon
+            && $returnAt->betweenIncluded($windowStart, $windowEnd);
+
+        return [
+            'contract_id' => $contract->id,
+            'customer_id' => $contract->customer?->id,
+            'car_id' => $contract->car?->id,
+            'status' => $contract->current_status,
+            'status_label' => ContractStatus::label($contract->current_status),
+            'request_date' => $this->formatDateTime($contract->created_at),
+            'pickup_date' => $this->formatDateTime($contract->pickup_date),
+            'return_date' => $this->formatDateTime($contract->return_date),
+            'days_until_delivery' => $daysUntilDelivery,
+            'lead_time_days' => $leadTimeDays,
+            'customer_name' => $contract->customer?->fullName() ?? '—',
+            'customer_phone' => $contract->customer?->phone ?? '—',
+            'car_name' => $contract->car?->modelName() ?? '—',
+            'plate_number' => $contract->car?->plate_number ?? '—',
+            'ownership' => $contract->car?->ownershipLabel() ?? '—',
+            'pickup_location' => $contract->pickup_location ?: '—',
+            'return_location' => $contract->return_location ?: '—',
+            'assigned_expert' => $contract->user?->fullName() ?? 'Unassigned',
+            'sales_agent' => $contract->agent?->name ?? '—',
+            'agreement_number' => $contract->pickupDocument?->agreement_number ?: '—',
+            'payment_on_delivery' => $contract->payment_on_delivery ? 'Yes' : 'No',
+            'return_in_window' => $returnInWindow,
+        ];
+    }
+
     private function normalizeCustomerRequestFilters(array $filters): array
     {
         $dateField = (string) ($filters['date_field'] ?? 'created_at');
@@ -1164,6 +1323,27 @@ class OperationsReportService
             'approval_status' => trim((string) ($filters['approval_status'] ?? 'all')) ?: 'all',
             'payment_state' => trim((string) ($filters['payment_state'] ?? 'all')) ?: 'all',
             'payment_method' => trim((string) ($filters['payment_method'] ?? 'all')) ?: 'all',
+        ];
+    }
+
+    private function normalizeUpcomingDeliveryFilters(array $filters): array
+    {
+        $statusScope = trim((string) ($filters['status_scope'] ?? 'booked')) ?: 'booked';
+        $ownership = trim((string) ($filters['ownership'] ?? 'all')) ?: 'all';
+
+        if ($ownership !== 'all' && ! in_array($ownership, self::UPCOMING_DELIVERY_OWNERSHIP_SCOPES, true)) {
+            $ownership = 'all';
+        }
+
+        if (! in_array($statusScope, ['booked', 'active', 'all'], true)) {
+            $statusScope = 'booked';
+        }
+
+        return [
+            'search' => trim((string) ($filters['search'] ?? '')),
+            'days_ahead' => $this->normalizePositiveInt($filters['days_ahead'] ?? 28) ?? 28,
+            'status_scope' => $statusScope,
+            'ownership' => $ownership,
         ];
     }
 
@@ -1240,6 +1420,11 @@ class OperationsReportService
         $digitsOnly = preg_replace('/\D+/', '', $search);
 
         return strlen((string) $digitsOnly) >= 6;
+    }
+
+    private function upcomingDeliveryStatusesForScope(string $scope): ?array
+    {
+        return self::UPCOMING_DELIVERY_SCOPE_STATUSES[$scope] ?? null;
     }
 
     private function sumPayments(Collection $payments, array $types): float
