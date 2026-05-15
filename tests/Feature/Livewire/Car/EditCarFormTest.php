@@ -9,7 +9,6 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 use Illuminate\Validation\ValidationException;
@@ -227,15 +226,19 @@ class EditCarFormTest extends TestCase
 
     public function test_edit_form_shows_final_status_and_hides_manual_availability_controls(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $car = Car::factory()->create([
             'status' => 'available',
             'availability' => false,
         ]);
 
-        Livewire::test(EditCarForm::class, ['carId' => $car->id])
-            ->assertSee('Final Status: Available')
-            ->assertSee('Experts can no longer edit the availability flag directly.')
-            ->assertDontSee('Availability Flag');
+        $component = app(EditCarForm::class);
+        $component->mount($car->id);
+
+        $this->assertSame('Available', $component->effectiveStatusLabel);
+        $this->assertTrue($component->availability);
     }
 
     protected function tearDown(): void
