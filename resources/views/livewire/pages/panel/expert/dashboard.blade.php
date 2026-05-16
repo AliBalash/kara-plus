@@ -596,15 +596,10 @@
         </div>
 
         @php
-            $upcomingRows = $upcomingDeliveryReport['rows'] ?? collect();
-            $upcomingSummary = $upcomingDeliveryReport['summary'] ?? [];
-            $upcomingFilterSummary = $upcomingDeliveryReport['filter_summary'] ?? [];
-            $upcomingStatusScopeOptions = [
-                'booked' => 'Booked deliveries only',
-                'active' => 'All active lifecycle',
-                'all' => 'All non-cancelled',
-            ];
-            $upcomingOwnershipOptions = [
+            $monthlyRows = $monthlyContractsReport['rows'] ?? collect();
+            $monthlySummary = $monthlyContractsReport['summary'] ?? [];
+            $monthlyFilterSummary = $monthlyContractsReport['filter_summary'] ?? [];
+            $monthlyOwnershipOptions = [
                 'all' => 'All fleets',
                 'company' => 'Our fleet',
                 'golden_key' => 'Golden Key',
@@ -612,74 +607,112 @@
                 'safe_drive' => 'Safe Drive',
                 'other' => 'Other fleet',
             ];
+            $monthlyDateFieldOptions = [
+                'created_at' => 'Request Date',
+                'pickup_date' => 'Pickup Date',
+                'return_date' => 'Return Date',
+            ];
+            $currentMonthLabel = now()->format('F');
         @endphp
-        <div class="card shadow-lg border-0 rounded-4 mb-4 upcoming-delivery-card">
-            <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex flex-wrap gap-3 justify-content-between align-items-start">
-                <div>
-                    <h5 class="fw-bold mb-1"><i class="bi bi-calendar2-check text-primary me-2"></i>Upcoming Delivery Report</h5>
-                    <span class="text-muted small">Closed contracts scheduled for handover in the next X days.</span>
+        <div class="card shadow-lg border-0 rounded-4 mb-4 monthly-contracts-card">
+            <div class="card-body p-4">
+                <div class="monthly-contracts-hero mb-3">
+                    <div>
+                        <span class="monthly-contracts-hero__eyebrow">Monthly Contracts</span>
+                        <h5 class="fw-bold mb-1">Monthly Contracts Overview</h5>
+                        <p class="text-muted mb-0">Contracts with a rental duration of 30 days or more.</p>
+                    </div>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="badge bg-light text-dark">Contracts {{ number_format((int) ($upcomingSummary['matching_contracts'] ?? 0)) }}</span>
-                    <span class="badge bg-light text-dark">Customers {{ number_format((int) ($upcomingSummary['unique_customers'] ?? 0)) }}</span>
-                    <span class="badge bg-light text-dark">Within 72h {{ number_format((int) ($upcomingSummary['deliveries_within_72h'] ?? 0)) }}</span>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-4">
+                        <div class="monthly-kpi-card monthly-kpi-card--primary">
+                            <span class="monthly-kpi-card__icon"><i class="bi bi-journal-text"></i></span>
+                            <div>
+                                <div class="monthly-kpi-card__value">{{ number_format((int) ($monthlySummary['total_monthly_contracts'] ?? 0)) }}</div>
+                                <div class="monthly-kpi-card__label">Total Monthly Contracts</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="monthly-kpi-card monthly-kpi-card--success">
+                            <span class="monthly-kpi-card__icon"><i class="bi bi-calendar3"></i></span>
+                            <div>
+                                <div class="monthly-kpi-card__value">{{ number_format((int) ($monthlySummary['current_month_monthly_contracts'] ?? 0)) }}</div>
+                                <div class="monthly-kpi-card__label">Current Month ({{ $currentMonthLabel }})</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="monthly-kpi-card monthly-kpi-card--warning">
+                            <span class="monthly-kpi-card__icon"><i class="bi bi-hourglass-split"></i></span>
+                            <div>
+                                <div class="monthly-kpi-card__value">{{ number_format((int) ($monthlySummary['ending_in_three_days_or_less'] ?? 0)) }}</div>
+                                <div class="monthly-kpi-card__label">Ending In 3 Days Or Less</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="card-body pt-0 px-4 pb-4">
+
                 <div class="row g-3 mb-3">
-                    <div class="col-12 col-lg-4">
+                    <div class="col-12 col-lg-3">
                         <div class="upcoming-filter-field">
                             <label class="small text-uppercase text-muted fw-semibold mb-1">Search</label>
                             <input type="search" class="form-control" placeholder="Customer, contract, plate, passport"
-                                wire:model.defer="upcomingDeliverySearch">
+                                wire:model.defer="monthlyContractsSearch">
                         </div>
                     </div>
-                    <div class="col-6 col-lg-2">
+                    <div class="col-12 col-lg-2">
                         <div class="upcoming-filter-field">
-                            <label class="small text-uppercase text-muted fw-semibold mb-1">Days Ahead</label>
-                            <input type="number" min="1" max="365" class="form-control"
-                                wire:model.defer="upcomingDeliveryDaysAhead">
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="upcoming-filter-field">
-                            <label class="small text-uppercase text-muted fw-semibold mb-1">Status Scope</label>
-                            <select class="form-select" wire:model.defer="upcomingDeliveryStatusScope">
-                                @foreach ($upcomingStatusScopeOptions as $value => $label)
+                            <label class="small text-uppercase text-muted fw-semibold mb-1">Date Basis</label>
+                            <select class="form-select" wire:model.defer="monthlyContractsDateField">
+                                @foreach ($monthlyDateFieldOptions as $value => $label)
                                     <option value="{{ $value }}">{{ $label }}</option>
                                 @endforeach
                             </select>
                         </div>
                     </div>
-                    <div class="col-8 col-lg-2">
+                    <div class="col-6 col-lg-2">
+                        <div class="upcoming-filter-field">
+                            <label class="small text-uppercase text-muted fw-semibold mb-1">Date From</label>
+                            <input type="date" class="form-control" wire:model.defer="monthlyContractsDateFrom">
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <div class="upcoming-filter-field">
+                            <label class="small text-uppercase text-muted fw-semibold mb-1">Date To</label>
+                            <input type="date" class="form-control" wire:model.defer="monthlyContractsDateTo">
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-2">
                         <div class="upcoming-filter-field">
                             <label class="small text-uppercase text-muted fw-semibold mb-1">Fleet Scope</label>
-                            <select class="form-select" wire:model.defer="upcomingDeliveryOwnership">
-                                @foreach ($upcomingOwnershipOptions as $value => $label)
+                            <select class="form-select" wire:model.defer="monthlyContractsOwnership">
+                                @foreach ($monthlyOwnershipOptions as $value => $label)
                                     <option value="{{ $value }}">{{ $label }}</option>
                                 @endforeach
                             </select>
                         </div>
                     </div>
                     <div class="col-12 col-lg-1 d-grid d-lg-flex flex-lg-column gap-2 justify-content-lg-end">
-                        <button type="button" class="btn btn-dark btn-sm" wire:click="applyUpcomingDeliveryFilters">
-                            Apply Filters
+                        <button type="button" class="btn btn-dark btn-sm" wire:click="applyMonthlyContractsFilters">
+                            Apply
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" wire:click="resetUpcomingDeliveryFilters">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" wire:click="resetMonthlyContractsFilters">
                             Reset
                         </button>
                     </div>
                 </div>
 
-                @if (!empty($upcomingFilterSummary))
+                @if (!empty($monthlyFilterSummary))
                     <div class="d-flex flex-wrap gap-2 mb-3">
-                        @foreach ($upcomingFilterSummary as $label => $value)
+                        @foreach ($monthlyFilterSummary as $label => $value)
                             <span class="badge upcoming-filter-badge">{{ $label }}: {{ $value }}</span>
                         @endforeach
                     </div>
                 @endif
 
-                @if ($upcomingRows->count())
+                @if ($monthlyRows->count())
                     <div class="table-responsive" style="max-height: 460px; overflow-y: auto;">
                         <table class="table table-hover align-middle mb-0 upcoming-delivery-table">
                             <thead class="bg-light">
@@ -687,13 +720,14 @@
                                     <th>Contract</th>
                                     <th>Customer</th>
                                     <th>Vehicle</th>
-                                    <th>Timeline</th>
-                                    <th>Ops Owner</th>
+                                    <th>Rental Window</th>
+                                    <th>Duration</th>
+                                    <th>Ends In</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($upcomingRows as $row)
+                                @foreach ($monthlyRows as $row)
                                     <tr>
                                         <td>
                                             <div class="fw-semibold">#{{ $row['contract_id'] }}</div>
@@ -703,7 +737,7 @@
                                         <td>
                                             <div class="fw-semibold">{{ $row['customer_name'] }}</div>
                                             <div class="text-muted small">{{ $row['customer_phone'] }}</div>
-                                            <div class="text-muted small">Payment on delivery: {{ $row['payment_on_delivery'] }}</div>
+                                            <div class="text-muted small">Sales: {{ $row['sales_agent'] }}</div>
                                         </td>
                                         <td>
                                             <div class="fw-semibold">{{ $row['car_name'] }}</div>
@@ -713,12 +747,15 @@
                                         <td>
                                             <div class="fw-semibold">Pickup {{ $row['pickup_date'] }}</div>
                                             <div class="text-muted small">Return {{ $row['return_date'] }}</div>
-                                            <div class="text-muted small">In {{ number_format($row['days_until_delivery']) }} day(s)</div>
                                             <div class="text-muted small">Lead time {{ number_format($row['lead_time_days']) }} day(s)</div>
                                         </td>
                                         <td>
-                                            <div class="fw-semibold">{{ $row['assigned_expert'] }}</div>
-                                            <div class="text-muted small">Sales: {{ $row['sales_agent'] }}</div>
+                                            <span class="badge bg-label-primary">{{ number_format($row['duration_days']) }} days</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ $row['is_ending_soon'] ? 'bg-label-warning' : 'bg-label-secondary' }}">
+                                                {{ is_numeric($row['days_until_end']) ? $row['days_until_end'] . ' day(s)' : $row['days_until_end'] }}
+                                            </span>
                                         </td>
                                         <td>
                                             <x-status-badge :status="$row['status']" />
@@ -735,7 +772,7 @@
                         </table>
                     </div>
                 @else
-                    <div class="text-center text-muted py-5">No upcoming delivery contracts found in this time window.</div>
+                    <div class="text-center text-muted py-5">No monthly contracts found for the current filters.</div>
                 @endif
             </div>
         </div>
