@@ -21,10 +21,7 @@ class OperationsReportService
 
     private const PAYMENT_DATE_FIELDS = ['payment_date', 'created_at'];
 
-    private const UPCOMING_DELIVERY_SCOPE_STATUSES = [
-        'booked' => ['assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection'],
-        'active' => ['assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection', 'awaiting_return', 'payment', 'returned'],
-    ];
+    private const MONTHLY_CONTRACT_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
 
     private const UPCOMING_DELIVERY_OWNERSHIP_SCOPES = ['company', 'golden_key', 'liverpool', 'safe_drive', 'other'];
 
@@ -762,23 +759,15 @@ class OperationsReportService
         ];
     }
 
-    public function upcomingDeliveries(array $filters = []): array
+    public function monthlyContracts(array $filters = []): array
     {
-        $filters = $this->normalizeUpcomingDeliveryFilters($filters);
-
-        $scopeStatuses = $this->upcomingDeliveryStatusesForScope($filters['status_scope']);
-        $windowStart = Carbon::now()->startOfDay();
-        $windowEnd = Carbon::now()->addDays($filters['days_ahead'])->endOfDay();
+        $filters = $this->normalizeMonthlyContractFilters($filters);
 
         $contracts = Contract::query()
             ->with(['customer', 'car.carModel', 'user', 'agent', 'pickupDocument'])
             ->whereNotNull('pickup_date')
-            ->whereBetween('pickup_date', [$windowStart, $windowEnd])
-            ->whereNotIn('current_status', ['cancelled', 'rejected', 'complete', 'draft'])
-            ->when(
-                $scopeStatuses !== null,
-                fn (Builder $query) => $query->whereIn('current_status', $scopeStatuses)
-            )
+            ->whereNotNull('return_date')
+            ->whereNotIn('current_status', ['cancelled', 'rejected', 'draft'])
             ->when(
                 $filters['ownership'] !== 'all',
                 fn (Builder $query) => $query->whereHas('car', fn (Builder $carQuery) => $carQuery->where('ownership_type', $filters['ownership']))
@@ -787,46 +776,73 @@ class OperationsReportService
             ->orderBy('pickup_date')
             ->get();
 
-        $rows = $contracts
-            ->map(fn (Contract $contract) => $this->mapUpcomingDeliveryRow($contract, $windowStart, $windowEnd))
+        $monthlyContracts = $contracts
+            ->filter(fn (Contract $contract) => $this->durationDays($contract->pickup_date, $contract->return_date) >= 30)
+            ->values();
+
+        $monthStart = Carbon::now()->startOfMonth();
+        $monthEnd = Carbon::now()->endOfMonth();
+        $endingSoonStart = Carbon::now()->startOfDay();
+        $endingSoonEnd = Carbon::now()->copy()->addDays(3)->endOfDay();
+
+        $rows = $monthlyContracts
+            ->filter(function (Contract $contract) use ($filters) {
+                $fieldValue = $contract->{$filters['date_field']} ?? null;
+                $date = $fieldValue ? Carbon::parse($fieldValue) : null;
+
+                if (! $date) {
+                    return false;
+                }
+
+                if ($filters['date_from'] !== null && $date->lt(Carbon::parse($filters['date_from'])->startOfDay())) {
+                    return false;
+                }
+
+                if ($filters['date_to'] !== null && $date->gt(Carbon::parse($filters['date_to'])->endOfDay())) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->map(fn (Contract $contract) => $this->mapMonthlyContractRow($contract, $endingSoonStart, $endingSoonEnd))
+            ->sortBy(fn (array $row) => [$row['days_until_end_sort'], $row['return_timestamp_sort']])
             ->values();
 
         $statusBreakdown = $rows->countBy('status_label')->sortDesc();
         $fleetBreakdown = $rows->countBy('ownership')->sortDesc();
 
         $summary = [
-            'matching_contracts' => $rows->count(),
+            'total_monthly_contracts' => $monthlyContracts->count(),
+            'current_month_monthly_contracts' => $monthlyContracts->filter(function (Contract $contract) use ($monthStart, $monthEnd) {
+                return Carbon::parse($contract->pickup_date)->lte($monthEnd)
+                    && Carbon::parse($contract->return_date)->gte($monthStart);
+            })->count(),
+            'ending_in_three_days_or_less' => $monthlyContracts->filter(function (Contract $contract) use ($endingSoonStart, $endingSoonEnd) {
+                return Carbon::parse($contract->return_date)->betweenIncluded($endingSoonStart, $endingSoonEnd);
+            })->count(),
+            'table_results' => $rows->count(),
             'unique_customers' => $rows->pluck('customer_id')->filter()->unique()->count(),
-            'unique_cars' => $rows->pluck('car_id')->filter()->unique()->count(),
-            'deliveries_within_72h' => $rows->where('days_until_delivery', '<=', 3)->count(),
-            'average_lead_time_days' => round((float) $rows->avg('lead_time_days'), 1),
-            'returns_in_window' => $rows->where('return_in_window', true)->count(),
         ];
 
         return [
             'filters' => $filters,
             'filter_summary' => [
                 'Search' => $filters['search'] !== '' ? $filters['search'] : 'All contracts',
-                'Delivery Window' => sprintf('%s to %s', $windowStart->toDateString(), $windowEnd->toDateString()),
-                'Days Ahead' => (string) $filters['days_ahead'],
-                'Status Scope' => match ($filters['status_scope']) {
-                    'booked' => 'Booked deliveries',
-                    'active' => 'All active lifecycle',
-                    default => 'All non-cancelled',
-                },
+                'Date Basis' => Str::headline(str_replace('_', ' ', $filters['date_field'])),
+                'Date From' => $filters['date_from'] ?? 'Open',
+                'Date To' => $filters['date_to'] ?? 'Open',
                 'Fleet Scope' => $filters['ownership'] === 'all'
                     ? 'All fleets'
                     : Str::headline(str_replace('_', ' ', $filters['ownership'])),
             ],
             'summary' => $summary,
             'summary_sections' => [
-                'Delivery Snapshot' => [
-                    'Matching Contracts' => $summary['matching_contracts'],
-                    'Unique Customers' => $summary['unique_customers'],
-                    'Unique Vehicles' => $summary['unique_cars'],
-                    'Deliveries Within 72 Hours' => $summary['deliveries_within_72h'],
-                    'Average Lead Time (Days)' => $summary['average_lead_time_days'],
-                    'Returns Inside Window' => $summary['returns_in_window'],
+                'Monthly Contracts Snapshot' => [
+                    'Total Monthly Contracts' => $summary['total_monthly_contracts'],
+                    'Current Month Contracts' => $summary['current_month_monthly_contracts'],
+                    'Ending In 3 Days Or Less' => $summary['ending_in_three_days_or_less'],
+                    'Table Results' => $summary['table_results'],
+                    'Unique Customers In Results' => $summary['unique_customers'],
                 ],
                 'Status Mix' => $statusBreakdown->all(),
                 'Fleet Mix' => $fleetBreakdown->all(),
@@ -838,8 +854,8 @@ class OperationsReportService
                 'Request Date',
                 'Pickup Date',
                 'Return Date',
-                'Days Until Delivery',
-                'Lead Time Days',
+                'Rental Duration Days',
+                'Days Until End',
                 'Customer',
                 'Phone',
                 'Vehicle',
@@ -859,8 +875,8 @@ class OperationsReportService
                     $row['request_date'],
                     $row['pickup_date'],
                     $row['return_date'],
-                    $row['days_until_delivery'],
-                    $row['lead_time_days'],
+                    $row['duration_days'],
+                    $row['days_until_end'],
                     $row['customer_name'],
                     $row['customer_phone'],
                     $row['car_name'],
@@ -1227,16 +1243,17 @@ class OperationsReportService
         ];
     }
 
-    private function mapUpcomingDeliveryRow(Contract $contract, Carbon $windowStart, Carbon $windowEnd): array
+    private function mapMonthlyContractRow(Contract $contract, Carbon $endingSoonStart, Carbon $endingSoonEnd): array
     {
         $pickupAt = $contract->pickup_date instanceof Carbon ? $contract->pickup_date : Carbon::parse($contract->pickup_date);
         $createdAt = $contract->created_at instanceof Carbon ? $contract->created_at : Carbon::parse($contract->created_at);
-        $returnAt = $contract->return_date instanceof Carbon ? $contract->return_date : ($contract->return_date ? Carbon::parse($contract->return_date) : null);
+        $returnAt = $contract->return_date instanceof Carbon ? $contract->return_date : Carbon::parse($contract->return_date);
 
-        $daysUntilDelivery = max(0, (int) $windowStart->copy()->startOfDay()->diffInDays($pickupAt->copy()->startOfDay(), false));
+        $durationDays = max(1, (int) ceil($pickupAt->diffInMinutes($returnAt, false) / 1440));
         $leadTimeDays = max(0, (int) $createdAt->copy()->startOfDay()->diffInDays($pickupAt->copy()->startOfDay(), false));
-        $returnInWindow = $returnAt instanceof Carbon
-            && $returnAt->betweenIncluded($windowStart, $windowEnd);
+        $daysUntilEndSigned = (int) Carbon::now()->startOfDay()->diffInDays($returnAt->copy()->startOfDay(), false);
+        $isEndingSoon = $returnAt->betweenIncluded($endingSoonStart, $endingSoonEnd);
+        $daysUntilEndLabel = $daysUntilEndSigned < 0 ? 'Ended' : (string) $daysUntilEndSigned;
 
         return [
             'contract_id' => $contract->id,
@@ -1247,7 +1264,10 @@ class OperationsReportService
             'request_date' => $this->formatDateTime($contract->created_at),
             'pickup_date' => $this->formatDateTime($contract->pickup_date),
             'return_date' => $this->formatDateTime($contract->return_date),
-            'days_until_delivery' => $daysUntilDelivery,
+            'duration_days' => $durationDays,
+            'days_until_end' => $daysUntilEndLabel,
+            'days_until_end_sort' => $daysUntilEndSigned < 0 ? 100000 : $daysUntilEndSigned,
+            'return_timestamp_sort' => $returnAt->timestamp,
             'lead_time_days' => $leadTimeDays,
             'customer_name' => $contract->customer?->fullName() ?? '—',
             'customer_phone' => $contract->customer?->phone ?? '—',
@@ -1260,7 +1280,7 @@ class OperationsReportService
             'sales_agent' => $contract->agent?->name ?? '—',
             'agreement_number' => $contract->pickupDocument?->agreement_number ?: '—',
             'payment_on_delivery' => $contract->payment_on_delivery ? 'Yes' : 'No',
-            'return_in_window' => $returnInWindow,
+            'is_ending_soon' => $isEndingSoon,
         ];
     }
 
@@ -1326,23 +1346,26 @@ class OperationsReportService
         ];
     }
 
-    private function normalizeUpcomingDeliveryFilters(array $filters): array
+    private function normalizeMonthlyContractFilters(array $filters): array
     {
-        $statusScope = trim((string) ($filters['status_scope'] ?? 'booked')) ?: 'booked';
+        $dateField = (string) ($filters['date_field'] ?? 'return_date');
         $ownership = trim((string) ($filters['ownership'] ?? 'all')) ?: 'all';
+        $dateFrom = $this->normalizeDateString($filters['date_from'] ?? null);
+        $dateTo = $this->normalizeDateString($filters['date_to'] ?? null);
 
         if ($ownership !== 'all' && ! in_array($ownership, self::UPCOMING_DELIVERY_OWNERSHIP_SCOPES, true)) {
             $ownership = 'all';
         }
 
-        if (! in_array($statusScope, ['booked', 'active', 'all'], true)) {
-            $statusScope = 'booked';
+        if ($dateFrom !== null && $dateTo !== null && Carbon::parse($dateFrom)->greaterThan(Carbon::parse($dateTo))) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
         }
 
         return [
             'search' => trim((string) ($filters['search'] ?? '')),
-            'days_ahead' => $this->normalizePositiveInt($filters['days_ahead'] ?? 28) ?? 28,
-            'status_scope' => $statusScope,
+            'date_field' => in_array($dateField, self::MONTHLY_CONTRACT_DATE_FIELDS, true) ? $dateField : 'return_date',
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
             'ownership' => $ownership,
         ];
     }
@@ -1420,11 +1443,6 @@ class OperationsReportService
         $digitsOnly = preg_replace('/\D+/', '', $search);
 
         return strlen((string) $digitsOnly) >= 6;
-    }
-
-    private function upcomingDeliveryStatusesForScope(string $scope): ?array
-    {
-        return self::UPCOMING_DELIVERY_SCOPE_STATUSES[$scope] ?? null;
     }
 
     private function sumPayments(Collection $payments, array $types): float
