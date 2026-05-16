@@ -689,6 +689,83 @@
                 border: 1px solid rgba(188, 211, 236, 0.58);
             }
 
+            .monthly-contracts-card {
+                background:
+                    radial-gradient(circle at 8% 6%, rgba(56, 189, 248, 0.12), transparent 34%),
+                    radial-gradient(circle at 92% 16%, rgba(99, 102, 241, 0.1), transparent 38%),
+                    linear-gradient(156deg, #ffffff 0%, #f8fbff 62%, #f5f8ff 100%);
+                border: 1px solid rgba(185, 205, 232, 0.58);
+            }
+
+            .monthly-contracts-hero {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+            }
+
+            .monthly-contracts-hero__eyebrow {
+                display: inline-flex;
+                align-items: center;
+                font-size: 0.72rem;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                font-weight: 700;
+                color: #2a4f8f;
+            }
+
+            .monthly-kpi-card {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                min-height: 94px;
+                border-radius: 1rem;
+                border: 1px solid rgba(201, 215, 236, 0.76);
+                background: rgba(255, 255, 255, 0.88);
+                padding: 0.9rem 1rem;
+                box-shadow: 0 10px 20px rgba(30, 62, 102, 0.07);
+            }
+
+            .monthly-kpi-card__icon {
+                width: 2.55rem;
+                height: 2.55rem;
+                border-radius: 0.85rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.05rem;
+                flex-shrink: 0;
+            }
+
+            .monthly-kpi-card__value {
+                font-size: 1.35rem;
+                line-height: 1;
+                font-weight: 800;
+                color: #1d3557;
+            }
+
+            .monthly-kpi-card__label {
+                margin-top: 0.2rem;
+                font-size: 0.79rem;
+                color: #56708f;
+                font-weight: 600;
+            }
+
+            .monthly-kpi-card--primary .monthly-kpi-card__icon {
+                background: rgba(59, 130, 246, 0.16);
+                color: #1d4ed8;
+            }
+
+            .monthly-kpi-card--success .monthly-kpi-card__icon {
+                background: rgba(16, 185, 129, 0.18);
+                color: #047857;
+            }
+
+            .monthly-kpi-card--warning .monthly-kpi-card__icon {
+                background: rgba(245, 158, 11, 0.2);
+                color: #b45309;
+            }
+
             .upcoming-filter-field {
                 display: flex;
                 flex-direction: column;
