@@ -65,16 +65,18 @@ class Dashboard extends Component
     public string $availableReadiness = 'available';
     public string $availableSort = 'returned_latest';
     public string $availableSearch = '';
-    public string $upcomingDeliverySearch = '';
-    public string $upcomingDeliveryDaysAhead = '28';
-    public string $upcomingDeliveryStatusScope = 'booked';
-    public string $upcomingDeliveryOwnership = 'all';
-    public array $upcomingDeliveryReport = [
+    public string $monthlyContractsSearch = '';
+    public string $monthlyContractsDateField = 'return_date';
+    public string $monthlyContractsDateFrom = '';
+    public string $monthlyContractsDateTo = '';
+    public string $monthlyContractsOwnership = 'all';
+    public array $monthlyContractsReport = [
         'summary' => [
-            'matching_contracts' => 0,
+            'total_monthly_contracts' => 0,
+            'current_month_monthly_contracts' => 0,
+            'ending_in_three_days_or_less' => 0,
+            'table_results' => 0,
             'unique_customers' => 0,
-            'deliveries_within_72h' => 0,
-            'average_lead_time_days' => 0,
         ],
         'filter_summary' => [],
         'rows' => [],
@@ -90,8 +92,8 @@ class Dashboard extends Component
         'year_newest',
         'year_oldest',
     ];
-    private const UPCOMING_DELIVERY_SCOPES = ['booked', 'active', 'all'];
-    private const UPCOMING_DELIVERY_OWNERSHIP_SCOPES = ['all', 'company', 'golden_key', 'liverpool', 'safe_drive', 'other'];
+    private const MONTHLY_CONTRACT_OWNERSHIP_SCOPES = ['all', 'company', 'golden_key', 'liverpool', 'safe_drive', 'other'];
+    private const MONTHLY_CONTRACT_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
 
 
     public function mount()
@@ -170,7 +172,7 @@ class Dashboard extends Component
             $this->normalizeAvailableFleetFilters();
             $this->buildFleetStatusSummary();
             $this->prepareAvailableBrands();
-            $this->loadUpcomingDeliveryReport();
+            $this->loadMonthlyContractsReport();
             $data['availableCars'] = $this->availableCars;
             $data['availableBrands'] = $this->availableBrands;
             $data['availableCarsTotal'] = $this->availableCarsTotal;
@@ -501,17 +503,18 @@ class Dashboard extends Component
         $this->prepareAvailableBrands();
     }
 
-    public function resetUpcomingDeliveryFilters(): void
+    public function resetMonthlyContractsFilters(): void
     {
-        $this->upcomingDeliverySearch = '';
-        $this->upcomingDeliveryDaysAhead = '28';
-        $this->upcomingDeliveryStatusScope = 'booked';
-        $this->upcomingDeliveryOwnership = 'all';
+        $this->monthlyContractsSearch = '';
+        $this->monthlyContractsDateField = 'return_date';
+        $this->monthlyContractsDateFrom = '';
+        $this->monthlyContractsDateTo = '';
+        $this->monthlyContractsOwnership = 'all';
     }
 
-    public function applyUpcomingDeliveryFilters(): void
+    public function applyMonthlyContractsFilters(): void
     {
-        $this->normalizeUpcomingDeliveryFilters();
+        $this->normalizeMonthlyContractsFilters();
     }
 
     protected function normalizeAvailableFleetFilters(): void
@@ -531,41 +534,31 @@ class Dashboard extends Component
         }
     }
 
-    protected function loadUpcomingDeliveryReport(): void
+    protected function loadMonthlyContractsReport(): void
     {
-        $this->normalizeUpcomingDeliveryFilters();
+        $this->normalizeMonthlyContractsFilters();
 
-        $this->upcomingDeliveryReport = app(OperationsReportService::class)->upcomingDeliveries([
-            'search' => $this->upcomingDeliverySearch,
-            'days_ahead' => $this->upcomingDeliveryDaysAhead,
-            'status_scope' => $this->upcomingDeliveryStatusScope,
-            'ownership' => $this->upcomingDeliveryOwnership,
+        $this->monthlyContractsReport = app(OperationsReportService::class)->monthlyContracts([
+            'search' => $this->monthlyContractsSearch,
+            'date_field' => $this->monthlyContractsDateField,
+            'date_from' => $this->monthlyContractsDateFrom,
+            'date_to' => $this->monthlyContractsDateTo,
+            'ownership' => $this->monthlyContractsOwnership,
         ]);
     }
 
-    protected function normalizeUpcomingDeliveryFilters(): void
+    protected function normalizeMonthlyContractsFilters(): void
     {
-        $this->upcomingDeliverySearch = trim($this->upcomingDeliverySearch);
-        $rawDaysAhead = trim((string) $this->upcomingDeliveryDaysAhead);
+        $this->monthlyContractsSearch = trim($this->monthlyContractsSearch);
+        $this->monthlyContractsDateFrom = trim($this->monthlyContractsDateFrom);
+        $this->monthlyContractsDateTo = trim($this->monthlyContractsDateTo);
 
-        // 28 is only the default value. Any valid positive number can be used after that.
-        if ($rawDaysAhead === '') {
-            $rawDaysAhead = '28';
+        if (! in_array($this->monthlyContractsDateField, self::MONTHLY_CONTRACT_DATE_FIELDS, true)) {
+            $this->monthlyContractsDateField = 'return_date';
         }
 
-        if (! ctype_digit($rawDaysAhead)) {
-            $rawDaysAhead = '28';
-        }
-
-        $daysAhead = max(1, min((int) $rawDaysAhead, 365));
-        $this->upcomingDeliveryDaysAhead = (string) $daysAhead;
-
-        if (! in_array($this->upcomingDeliveryStatusScope, self::UPCOMING_DELIVERY_SCOPES, true)) {
-            $this->upcomingDeliveryStatusScope = 'booked';
-        }
-
-        if (! in_array($this->upcomingDeliveryOwnership, self::UPCOMING_DELIVERY_OWNERSHIP_SCOPES, true)) {
-            $this->upcomingDeliveryOwnership = 'all';
+        if (! in_array($this->monthlyContractsOwnership, self::MONTHLY_CONTRACT_OWNERSHIP_SCOPES, true)) {
+            $this->monthlyContractsOwnership = 'all';
         }
     }
 
