@@ -22,6 +22,7 @@ class OperationsReportService
     private const PAYMENT_DATE_FIELDS = ['payment_date', 'created_at'];
 
     private const MONTHLY_CONTRACT_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
+    private const MONTHLY_CONTRACT_ACTIVE_STATUSES = ['reserved', 'awaiting_return'];
 
     private const UPCOMING_DELIVERY_OWNERSHIP_SCOPES = ['company', 'golden_key', 'liverpool', 'safe_drive', 'other'];
 
@@ -785,7 +786,11 @@ class OperationsReportService
         $endingSoonStart = Carbon::now()->startOfDay();
         $endingSoonEnd = Carbon::now()->copy()->addDays(3)->endOfDay();
 
-        $rows = $monthlyContracts
+        $activeMonthlyContracts = $monthlyContracts
+            ->filter(fn (Contract $contract) => in_array($contract->current_status, self::MONTHLY_CONTRACT_ACTIVE_STATUSES, true))
+            ->values();
+
+        $rows = $activeMonthlyContracts
             ->filter(function (Contract $contract) use ($filters) {
                 $fieldValue = $contract->{$filters['date_field']} ?? null;
                 $date = $fieldValue ? Carbon::parse($fieldValue) : null;
@@ -812,14 +817,14 @@ class OperationsReportService
         $fleetBreakdown = $rows->countBy('ownership')->sortDesc();
 
         $summary = [
-            'total_monthly_contracts' => $monthlyContracts->count(),
-            'current_month_monthly_contracts' => $monthlyContracts->filter(function (Contract $contract) use ($monthStart, $monthEnd) {
+            'total_monthly_contracts' => $activeMonthlyContracts->pluck('car_id')->filter()->unique()->count(),
+            'current_month_monthly_contracts' => $activeMonthlyContracts->filter(function (Contract $contract) use ($monthStart, $monthEnd) {
                 return Carbon::parse($contract->pickup_date)->lte($monthEnd)
                     && Carbon::parse($contract->return_date)->gte($monthStart);
-            })->count(),
-            'ending_in_three_days_or_less' => $monthlyContracts->filter(function (Contract $contract) use ($endingSoonStart, $endingSoonEnd) {
+            })->pluck('car_id')->filter()->unique()->count(),
+            'ending_in_three_days_or_less' => $activeMonthlyContracts->filter(function (Contract $contract) use ($endingSoonStart, $endingSoonEnd) {
                 return Carbon::parse($contract->return_date)->betweenIncluded($endingSoonStart, $endingSoonEnd);
-            })->count(),
+            })->pluck('car_id')->filter()->unique()->count(),
             'table_results' => $rows->count(),
             'unique_customers' => $rows->pluck('customer_id')->filter()->unique()->count(),
         ];
