@@ -484,8 +484,8 @@
                                 @endforeach
                             </select>
                             <select class="form-select form-select-sm" wire:model.defer="availableSort">
-                                <option value="returned_latest">Sort: Latest Return</option>
                                 <option value="returned_oldest">Sort: Oldest Return</option>
+                                <option value="returned_latest">Sort: Latest Return</option>
                                 <option value="service_due_soon">Sort: Service Due Soon</option>
                                 <option value="service_due_late">Sort: Service Due Late</option>
                                 <option value="year_newest">Sort: Newest Year</option>

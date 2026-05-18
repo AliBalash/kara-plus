@@ -63,7 +63,7 @@ class Dashboard extends Component
     public array $availableBrands = [];
     public string $availableFleetScope = 'our';
     public string $availableReadiness = 'available';
-    public string $availableSort = 'returned_latest';
+    public string $availableSort = 'returned_oldest';
     public string $availableSearch = '';
     public string $monthlyContractsSearch = '';
     public string $monthlyContractsDateField = 'return_date';
@@ -491,7 +491,7 @@ class Dashboard extends Component
         $this->availableBrand = 'all';
         $this->availableFleetScope = 'our';
         $this->availableReadiness = 'available';
-        $this->availableSort = 'returned_latest';
+        $this->availableSort = 'returned_oldest';
         $this->availableSearch = '';
         $this->normalizeAvailableFleetFilters();
         $this->prepareAvailableBrands();
@@ -530,7 +530,7 @@ class Dashboard extends Component
         }
 
         if (! in_array($this->availableSort, self::AVAILABLE_SORT_OPTIONS, true)) {
-            $this->availableSort = 'returned_latest';
+            $this->availableSort = 'returned_oldest';
         }
     }
 
