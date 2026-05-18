@@ -29,7 +29,7 @@ class DashboardAvailableFleetTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_available_fleet_defaults_to_our_available_cars_sorted_by_latest_return_with_never_returned_cars_last(): void
+    public function test_available_fleet_defaults_to_our_available_cars_sorted_by_oldest_return_with_never_returned_cars_last(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -91,7 +91,7 @@ class DashboardAvailableFleetTest extends TestCase
 
         $cars = $component->getAvailableCarsProperty();
 
-        $this->assertSame([$ourLatest->id, $ourOlder->id, $ourNoReturn->id], $cars->pluck('id')->all());
+        $this->assertSame([$ourOlder->id, $ourLatest->id, $ourNoReturn->id], $cars->pluck('id')->all());
         $this->assertSame(3, $component->getAvailableCarsTotalProperty());
     }
 
@@ -178,7 +178,7 @@ class DashboardAvailableFleetTest extends TestCase
         $component->availableReadiness = 'available_pre_reserved';
         $carsWithPreReserved = $component->getAvailableCarsProperty();
 
-        $this->assertSame([$availableCar->id, $preReservedCar->id], $carsWithPreReserved->pluck('id')->all());
+        $this->assertSame([$preReservedCar->id, $availableCar->id], $carsWithPreReserved->pluck('id')->all());
     }
 
     public function test_fleet_status_summary_stays_locked_to_our_fleet_when_inventory_scope_changes(): void
@@ -271,7 +271,7 @@ class DashboardAvailableFleetTest extends TestCase
         $this->assertSame($ourFleetSummary, $component->fleetStatusSummary);
 
         $this->assertSame(
-            [$ourReturned->id, $partnerReturned->id, $ourNeverReturned->id],
+            [$partnerReturned->id, $ourReturned->id, $ourNeverReturned->id],
             $component->getAvailableCarsProperty()->pluck('id')->all()
         );
         $this->assertSame(3, $component->getAvailableCarsTotalProperty());
