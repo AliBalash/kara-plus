@@ -4,6 +4,7 @@ namespace App\Livewire\Components\Panel;
 
 use App\Models\Car;
 use App\Models\Contract;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -87,6 +88,14 @@ class Header extends Component
 
     public function logout()
     {
+        $user = Auth::user();
+        app(AuditLogger::class)->log('auth_logout', [
+            'actor_user_id' => $user?->id,
+            'meta' => [
+                'phone' => $user?->phone,
+            ],
+        ]);
+
         // خروج کاربر
         Auth::logout();
 

@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->append(\App\Http\Middleware\AuditRequestMiddleware::class);
 
         $middleware->alias([
             'auth.check' => \App\Http\Middleware\EnsureAuthenticated::class,

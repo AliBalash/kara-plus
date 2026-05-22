@@ -4,12 +4,14 @@ namespace App\Livewire\Pages\Panel\Expert\Customer;
 
 use Livewire\Component;
 use App\Models\Customer;
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Support\PhoneNumber;
 
 class CustomerDetail extends Component
 {
     use InteractsWithToasts;
+    use LogsBusinessRead;
     public $customer; // Holds the customer data
 
     public function mount($customerId)
@@ -17,6 +19,9 @@ class CustomerDetail extends Component
         // Fetch the customer by ID and convert to array
         $customer = Customer::findOrFail($customerId);
         $this->customer = $customer->toArray();
+        $this->auditBusinessRead([
+            'customer_id' => $customer->id,
+        ]);
     }
 
     protected $rules = [

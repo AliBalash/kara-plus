@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Payments;
 use App\Models\Payment;
 use App\Models\Contract;
 use App\Services\Media\DeferredImageUploadService;
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Concerns\RefreshesFileInputs;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,7 @@ class PaymentEdit extends Component
     use WithFileUploads;
     use InteractsWithToasts;
     use RefreshesFileInputs;
+    use LogsBusinessRead;
 
     public Payment $payment;
     public $paymentId;
@@ -109,6 +111,11 @@ class PaymentEdit extends Component
         $this->note = $this->payment->note;
         $this->salik_trip_count = $this->resolveInitialSalikTrips();
         $this->refreshSalikDerivedFields();
+        $this->auditBusinessRead([
+            'payment_id' => $this->payment->id,
+            'contract_id' => $this->payment->contract_id,
+            'customer_id' => $this->payment->customer_id,
+        ]);
     }
 
     private function authorizeUser(): void

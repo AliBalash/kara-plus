@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Car;
 
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Livewire\Concerns\InteractsWithToasts;
@@ -19,6 +20,7 @@ class EditCarForm extends Component
     use WithFileUploads;
     use InteractsWithToasts;
     use RefreshesFileInputs;
+    use LogsBusinessRead;
 
     public $car;
     public $carModels;
@@ -234,6 +236,11 @@ class EditCarForm extends Component
         }
 
         $this->syncStatusPreview();
+        $this->auditBusinessRead([
+            'car_id' => $this->car->id,
+            'plate_number' => $this->car->plate_number,
+            'car_model_id' => $this->car->car_model_id,
+        ]);
     }
 
     public function boot(DeferredImageUploadService $deferredUploader): void

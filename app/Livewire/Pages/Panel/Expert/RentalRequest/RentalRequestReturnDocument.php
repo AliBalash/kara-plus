@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 use App\Models\Contract;
 use App\Models\ReturnDocument;
 use App\Services\Media\DeferredImageUploadService;
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Concerns\RefreshesFileInputs;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class RentalRequestReturnDocument extends Component
     use WithFileUploads;
     use InteractsWithToasts;
     use RefreshesFileInputs;
+    use LogsBusinessRead;
 
     public $contractId;
     public $factorContract;
@@ -119,6 +121,11 @@ class RentalRequestReturnDocument extends Component
 
         $this->remainingBalance = $this->contract->calculateRemainingBalance();
         $this->agreementNumber = optional($this->contract->pickupDocument)->agreement_number;
+        $this->auditBusinessRead([
+            'contract_id' => $this->contractId,
+            'customer_id' => $this->contract->customer_id,
+            'car_id' => $this->contract->car_id,
+        ]);
     }
 
     public function uploadDocuments()

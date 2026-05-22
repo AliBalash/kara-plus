@@ -2,9 +2,8 @@
 
 namespace App\Livewire\Pages\Panel\Auth;
 
-use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Support\PhoneNumber;
@@ -40,9 +39,23 @@ class Login extends Component
             // دریافت کاربر و آپدیت زمان آخرین ورود
             $user = Auth::user();
             $user->update(['last_login' => now()]);
+            app(AuditLogger::class)->log('auth_login_success', [
+                'actor_user_id' => $user->id,
+                'meta' => [
+                    'phone' => $normalizedPhone,
+                    'remember' => (bool) $this->remember,
+                ],
+            ]);
 
             return redirect()->to(route('expert.dashboard'));
         }
+
+        app(AuditLogger::class)->log('auth_login_failed', [
+            'meta' => [
+                'phone' => $normalizedPhone,
+                'remember' => (bool) $this->remember,
+            ],
+        ]);
 
         $this->toast('error', 'The number or password is incorrect.', false);
     }

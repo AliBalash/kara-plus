@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Customer;
 
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\Customer;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -9,6 +10,8 @@ use Livewire\Component;
 
 class CustomerDebt extends Component
 {
+    use LogsBusinessRead;
+
     public Customer $customer;
 
     /**
@@ -26,6 +29,10 @@ class CustomerDebt extends Component
     {
         $this->customer = Customer::with(['contracts.car.carModel', 'contracts.payments'])->findOrFail($customerId);
         $this->prepareDebtSnapshot();
+        $this->auditBusinessRead([
+            'customer_id' => $this->customer->id,
+            'contracts_count' => $this->customer->contracts->count(),
+        ]);
     }
 
     public function updatedStatusFilter(): void

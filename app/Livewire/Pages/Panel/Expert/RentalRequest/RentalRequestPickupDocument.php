@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\Contract;
 use App\Models\PickupDocument;
 use App\Livewire\Concerns\RefreshesFileInputs;
@@ -21,6 +22,7 @@ class RentalRequestPickupDocument extends Component
     use WithFileUploads;
     use InteractsWithToasts;
     use RefreshesFileInputs;
+    use LogsBusinessRead;
 
     public $contractId;
     public $tarsContract;
@@ -163,6 +165,11 @@ class RentalRequestPickupDocument extends Component
 
         $this->prepareCustomerDocuments();
         $this->prepareCostBreakdown();
+        $this->auditBusinessRead([
+            'contract_id' => $this->contractId,
+            'customer_id' => $this->contract->customer_id,
+            'car_id' => $this->contract->car_id,
+        ]);
     }
 
     public function uploadDocuments()

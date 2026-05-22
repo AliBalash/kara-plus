@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\Contract;
 use App\Models\PickupDocument;
 use Illuminate\Support\Facades\Auth;
@@ -10,6 +11,8 @@ use Livewire\Component;
 
 class RentalRequestDetail extends Component
 {
+    use LogsBusinessRead;
+
     public Contract $contract;
     public bool $customerDocumentsCompleted = false;
     public bool $pickupDocumentsCompleted = false;
@@ -40,6 +43,11 @@ class RentalRequestDetail extends Component
 
         $this->updateCompletionFlags();
         $this->updateStatusAdvanceState();
+        $this->auditBusinessRead([
+            'contract_id' => $this->contract->id,
+            'customer_id' => $this->contract->customer_id,
+            'car_id' => $this->contract->car_id,
+        ]);
     }
 
     public function advanceStatus(): void

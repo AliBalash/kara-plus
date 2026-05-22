@@ -8,6 +8,7 @@ use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\LocationCost;
 use App\Livewire\Concerns\SearchesCustomerPhone;
 use Carbon\Carbon;
@@ -25,6 +26,7 @@ class RentalRequestEdit extends Component
     use InteractsWithToasts;
     use HandlesServicePricing;
     use SearchesCustomerPhone;
+    use LogsBusinessRead;
     public $cars;
     public $carModels;
     public $selectedBrand;
@@ -142,6 +144,11 @@ class RentalRequestEdit extends Component
         $this->calculateCosts();
         $this->originalSelections = $this->captureSelectionSnapshot();
         $this->originalCosts = $this->captureCurrentCostSnapshot();
+        $this->auditBusinessRead([
+            'contract_id' => $this->contract->id,
+            'customer_id' => $this->contract->customer_id,
+            'car_id' => $this->contract->car_id,
+        ]);
     }
 
     private function loadLocationCosts(): void

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use Livewire\Component;
@@ -10,6 +11,7 @@ use App\Livewire\Concerns\HandlesContractCancellation;
 class RentalRequestHistory extends Component
 {
     use HandlesContractCancellation;
+    use LogsBusinessRead;
     public $contractId;
     public $contract;
     public $statuses;
@@ -27,6 +29,11 @@ class RentalRequestHistory extends Component
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get();
+
+        $this->auditBusinessRead([
+            'contract_id' => $this->contractId,
+            'customer_id' => $this->contract->customer_id,
+        ]);
     }
 
     public function render()

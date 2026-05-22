@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\Contract;
 use App\Models\ContractBalanceTransfer;
 use App\Models\CustomerDocument;
@@ -25,6 +26,7 @@ class RentalRequestPayment extends Component
     use WithFileUploads;
     use InteractsWithToasts;
     use RefreshesFileInputs;
+    use LogsBusinessRead;
     public $contractId;
     public $customerId;
     public $amount;
@@ -186,6 +188,10 @@ class RentalRequestPayment extends Component
             ->exists();
 
         $this->loadData();
+        $this->auditBusinessRead([
+            'contract_id' => $this->contractId,
+            'customer_id' => $this->customerId,
+        ]);
     }
 
     public function loadData()
