@@ -55,6 +55,8 @@ use App\Livewire\Pages\Panel\Expert\LocationCost\LocationCostList;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\ReportExportController;
 use App\Http\Controllers\UserRequestStatsController;
+use App\Http\Controllers\Reports\AuditExportController;
+use App\Livewire\Pages\Panel\Expert\Reports\AuditCenterReport;
 
 Route::redirect('/', '/auth/login');
 
@@ -165,6 +167,9 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/reports/payment-collections', PaymentCollectionReport::class)->name('reports.payment-collections');
     Route::get('/expert/reports/payment-collections/export', [ReportExportController::class, 'paymentCollections'])
         ->name('reports.payment-collections.export');
+    Route::get('/expert/reports/audit-center', AuditCenterReport::class)->name('reports.audit-center');
+    Route::get('/expert/reports/audit-center/export', [AuditExportController::class, 'exportCsv'])
+        ->name('reports.audit-center.export');
 
     Route::get('/expert/reports/user-requests/{userId}', [UserRequestStatsController::class, 'show'])
         ->name('reports.user-requests');

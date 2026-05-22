@@ -215,6 +215,70 @@
                 color: #94a3b8;
             }
 
+            .report-progress {
+                height: 0.5rem;
+                background: #e2e8f0;
+                border-radius: 999px;
+            }
+
+            .risk-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.6rem 0;
+                border-bottom: 1px dashed rgba(148, 163, 184, 0.42);
+            }
+
+            .risk-item span {
+                color: #475569;
+                font-size: 0.92rem;
+            }
+
+            .risk-item strong {
+                color: #0f172a;
+                font-size: 1.05rem;
+            }
+
+            .timeline-grid {
+                display: grid;
+                gap: 0.52rem;
+                max-height: 380px;
+                overflow: auto;
+            }
+
+            .timeline-row {
+                display: grid;
+                grid-template-columns: 48px 1fr 42px;
+                align-items: center;
+                gap: 0.65rem;
+            }
+
+            .timeline-label {
+                color: #64748b;
+                font-size: 0.82rem;
+                font-weight: 600;
+            }
+
+            .timeline-bar-wrap {
+                height: 0.6rem;
+                border-radius: 999px;
+                background: #e2e8f0;
+                overflow: hidden;
+            }
+
+            .timeline-bar {
+                height: 100%;
+                border-radius: 999px;
+                background: linear-gradient(90deg, #0ea5e9 0%, #2563eb 100%);
+            }
+
+            .timeline-value {
+                text-align: right;
+                color: #0f172a;
+                font-size: 0.82rem;
+                font-weight: 700;
+            }
+
             @media (max-width: 767.98px) {
                 .report-results-meta {
                     flex-direction: column;

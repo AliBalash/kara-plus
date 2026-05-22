@@ -44,6 +44,9 @@
                 ['route' => 'reports.fleet-performance', 'label' => 'Fleet Performance'],
                 ['route' => 'reports.payment-collections', 'label' => 'Payment Collections'],
             ];
+            if (auth()->user()?->hasRole('super-admin')) {
+                $reportRoutes[] = ['route' => 'reports.audit-center', 'label' => 'Audit Center'];
+            }
             $rentalPaymentRoutes = [
                 'rental-requests.payment.list',
                 'rental-requests.payment',
@@ -51,7 +54,7 @@
                 'rental-requests.processed-payments',
             ];
             $rentalMenuOpen = request()->routeIs('rental-requests.*') && !request()->routeIs($rentalPaymentRoutes);
-            $reportsMenuOpen = request()->routeIs('reports.customer-requests', 'reports.customer-balances', 'reports.fleet-performance', 'reports.payment-collections');
+            $reportsMenuOpen = request()->routeIs('reports.customer-requests', 'reports.customer-balances', 'reports.fleet-performance', 'reports.payment-collections', 'reports.audit-center');
         @endphp
 
         @if ($isDriver)

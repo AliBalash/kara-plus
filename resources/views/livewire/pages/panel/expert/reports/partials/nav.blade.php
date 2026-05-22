@@ -5,6 +5,9 @@
         ['route' => 'reports.fleet-performance', 'label' => 'Fleet Performance', 'icon' => 'bx bx-car'],
         ['route' => 'reports.payment-collections', 'label' => 'Payment Collections', 'icon' => 'bx bx-receipt'],
     ];
+    if (auth()->user()?->hasRole('super-admin')) {
+        $items[] = ['route' => 'reports.audit-center', 'label' => 'Audit Center', 'icon' => 'bx bx-shield-quarter'];
+    }
 @endphp
 
 <div class="card report-nav-card mb-4">
