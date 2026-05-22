@@ -778,7 +778,7 @@ class OperationsReportService
             ->get();
 
         $monthlyContracts = $contracts
-            ->filter(fn (Contract $contract) => $this->durationDays($contract->pickup_date, $contract->return_date) >= 30)
+            ->filter(fn (Contract $contract) => $this->durationDays($contract->pickup_date, $contract->return_date) >= 28)
             ->values();
 
         $monthStart = Carbon::now()->startOfMonth();
@@ -819,8 +819,7 @@ class OperationsReportService
         $summary = [
             'total_monthly_contracts' => $activeMonthlyContracts->pluck('car_id')->filter()->unique()->count(),
             'current_month_monthly_contracts' => $activeMonthlyContracts->filter(function (Contract $contract) use ($monthStart, $monthEnd) {
-                return Carbon::parse($contract->pickup_date)->lte($monthEnd)
-                    && Carbon::parse($contract->return_date)->gte($monthStart);
+                return Carbon::parse($contract->return_date)->betweenIncluded($monthStart, $monthEnd);
             })->pluck('car_id')->filter()->unique()->count(),
             'ending_in_three_days_or_less' => $activeMonthlyContracts->filter(function (Contract $contract) use ($endingSoonStart, $endingSoonEnd) {
                 return Carbon::parse($contract->return_date)->betweenIncluded($endingSoonStart, $endingSoonEnd);

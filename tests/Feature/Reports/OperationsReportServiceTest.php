@@ -235,6 +235,59 @@ class OperationsReportServiceTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_monthly_contracts_use_28_day_threshold_and_count_only_returns_ending_this_month_for_current_month_summary(): void
+    {
+        Carbon::setTestNow('2025-05-15 09:00:00');
+
+        $endingThisMonthCar = Car::factory()->create();
+        Contract::factory()->for($endingThisMonthCar)->status('reserved')->create([
+            'pickup_date' => Carbon::parse('2025-04-10 10:00:00'),
+            'return_date' => Carbon::parse('2025-05-20 10:00:00'),
+        ]);
+        Contract::factory()->for($endingThisMonthCar)->status('awaiting_return')->create([
+            'pickup_date' => Carbon::parse('2025-04-12 10:00:00'),
+            'return_date' => Carbon::parse('2025-05-25 10:00:00'),
+        ]);
+
+        $overlapOnlyCar = Car::factory()->create();
+        Contract::factory()->for($overlapOnlyCar)->status('reserved')->create([
+            'pickup_date' => Carbon::parse('2025-05-10 10:00:00'),
+            'return_date' => Carbon::parse('2025-06-10 10:00:00'),
+        ]);
+
+        $thresholdCar = Car::factory()->create();
+        Contract::factory()->for($thresholdCar)->status('reserved')->create([
+            'pickup_date' => Carbon::parse('2025-05-01 10:00:00'),
+            'return_date' => Carbon::parse('2025-05-29 10:00:00'),
+        ]);
+
+        $endingSoonCar = Car::factory()->create();
+        Contract::factory()->for($endingSoonCar)->status('awaiting_return')->create([
+            'pickup_date' => Carbon::parse('2025-04-18 10:00:00'),
+            'return_date' => Carbon::parse('2025-05-18 10:00:00'),
+        ]);
+
+        $belowThresholdCar = Car::factory()->create();
+        Contract::factory()->for($belowThresholdCar)->status('reserved')->create([
+            'pickup_date' => Carbon::parse('2025-05-01 10:00:00'),
+            'return_date' => Carbon::parse('2025-05-28 10:00:00'),
+        ]);
+
+        $inactiveStatusCar = Car::factory()->create();
+        Contract::factory()->for($inactiveStatusCar)->status('complete')->create([
+            'pickup_date' => Carbon::parse('2025-04-01 10:00:00'),
+            'return_date' => Carbon::parse('2025-05-30 10:00:00'),
+        ]);
+
+        $report = $this->service->monthlyContracts();
+
+        $this->assertSame(4, $report['summary']['total_monthly_contracts']);
+        $this->assertSame(3, $report['summary']['current_month_monthly_contracts']);
+        $this->assertSame(1, $report['summary']['ending_in_three_days_or_less']);
+
+        Carbon::setTestNow();
+    }
+
     public function test_fleet_performance_report_calculates_utilization_and_revenue_in_window(): void
     {
         $car = Car::factory()->create([
