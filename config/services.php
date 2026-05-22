@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'elasticsearch' => [
+        'base_url' => env('ELASTICSEARCH_BASE_URL', 'http://elasticsearch:9200'),
+        'username' => env('ELASTICSEARCH_USERNAME'),
+        'password' => env('ELASTICSEARCH_PASSWORD'),
+        'api_key' => env('ELASTICSEARCH_API_KEY'),
+        'verify_tls' => env('ELASTICSEARCH_VERIFY_TLS', false),
+    ],
+
 ];

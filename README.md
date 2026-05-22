@@ -41,6 +41,8 @@ docker compose exec app php artisan migrate --force
 - HTTP: `18000`
 - HTTPS: `18001`
 - phpMyAdmin: `18002`
+- Elasticsearch: `19200`
+- Kibana: `15601`
 
 **Notes**
 - App config is in `.env`; Docker config in `.env.docker`.
@@ -70,6 +72,44 @@ php artisan test
 # or
 vendor/bin/phpunit
 ```
+
+---
+
+## Audit Center + ELK
+
+This project includes a dual-layer audit pipeline:
+- Canonical audit events in MySQL (`audit_events` table)
+- Asynchronous export to Elasticsearch for Kibana-style querying
+
+Required Docker env values for ELK:
+
+```bash
+ELASTICSEARCH_PASSWORD=your_password
+KIBANA_SYSTEM_PASSWORD=your_password
+KIBANA_LOGIN_USERNAME=kibana_admin
+KIBANA_LOGIN_PASSWORD=your_password
+KIBANA_BOOTSTRAP_URL=http://kibana:5601
+KIBANA_DASHBOARD_URL=http://localhost:15601
+AUDIT_RETENTION_DAYS=30
+```
+
+After bringing Docker up, bootstrap Elasticsearch index lifecycle/template:
+
+```bash
+docker compose exec app php artisan audit:es-bootstrap
+docker compose exec app php artisan audit:kibana-bootstrap
+```
+
+Useful audit commands:
+
+```bash
+docker compose exec app php artisan audit:retry-export
+docker compose exec app php artisan audit:health
+docker compose exec app php artisan audit:prune
+```
+
+Panel route (super-admin only):
+- `/expert/reports/audit-center`
 
 ---
 

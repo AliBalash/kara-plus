@@ -23,6 +23,17 @@ services:
       CACHE_DRIVER: redis
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: redis
+      AUDIT_EXPORT_ENABLED: ${AUDIT_EXPORT_ENABLED:-true}
+      AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-30}
+      ELASTICSEARCH_ENABLED: ${ELASTICSEARCH_ENABLED:-true}
+      ELASTICSEARCH_BASE_URL: ${ELASTICSEARCH_BASE_URL:-http://elasticsearch:9200}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      ELASTICSEARCH_VERIFY_TLS: ${ELASTICSEARCH_VERIFY_TLS:-false}
+      ELASTICSEARCH_AUDIT_INDEX_PREFIX: ${ELASTICSEARCH_AUDIT_INDEX_PREFIX:-kara-audit}
+      ELASTICSEARCH_AUDIT_ILM_POLICY: ${ELASTICSEARCH_AUDIT_ILM_POLICY:-kara-audit-1m}
+      KIBANA_BOOTSTRAP_URL: ${KIBANA_BOOTSTRAP_URL:-http://kibana:5601}
+      KIBANA_DASHBOARD_URL: ${KIBANA_DASHBOARD_URL:-http://localhost:15601}
     depends_on:
       mysql:
         condition: service_healthy
@@ -75,6 +86,30 @@ services:
     working_dir: /var/www
     volumes:
       - ./:/var/www
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      CACHE_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      AUDIT_EXPORT_ENABLED: ${AUDIT_EXPORT_ENABLED:-true}
+      AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-30}
+      ELASTICSEARCH_ENABLED: ${ELASTICSEARCH_ENABLED:-true}
+      ELASTICSEARCH_BASE_URL: ${ELASTICSEARCH_BASE_URL:-http://elasticsearch:9200}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      ELASTICSEARCH_VERIFY_TLS: ${ELASTICSEARCH_VERIFY_TLS:-false}
+      ELASTICSEARCH_AUDIT_INDEX_PREFIX: ${ELASTICSEARCH_AUDIT_INDEX_PREFIX:-kara-audit}
+      ELASTICSEARCH_AUDIT_ILM_POLICY: ${ELASTICSEARCH_AUDIT_ILM_POLICY:-kara-audit-1m}
+      KIBANA_BOOTSTRAP_URL: ${KIBANA_BOOTSTRAP_URL:-http://kibana:5601}
+      KIBANA_DASHBOARD_URL: ${KIBANA_DASHBOARD_URL:-http://localhost:15601}
     command: php artisan queue:work --tries=3 --timeout=90 --sleep=1
     depends_on:
       mysql:
@@ -91,12 +126,98 @@ services:
     working_dir: /var/www
     volumes:
       - ./:/var/www
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      CACHE_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      AUDIT_EXPORT_ENABLED: ${AUDIT_EXPORT_ENABLED:-true}
+      AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-30}
+      ELASTICSEARCH_ENABLED: ${ELASTICSEARCH_ENABLED:-true}
+      ELASTICSEARCH_BASE_URL: ${ELASTICSEARCH_BASE_URL:-http://elasticsearch:9200}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      ELASTICSEARCH_VERIFY_TLS: ${ELASTICSEARCH_VERIFY_TLS:-false}
+      ELASTICSEARCH_AUDIT_INDEX_PREFIX: ${ELASTICSEARCH_AUDIT_INDEX_PREFIX:-kara-audit}
+      ELASTICSEARCH_AUDIT_ILM_POLICY: ${ELASTICSEARCH_AUDIT_ILM_POLICY:-kara-audit-1m}
+      KIBANA_BOOTSTRAP_URL: ${KIBANA_BOOTSTRAP_URL:-http://kibana:5601}
+      KIBANA_DASHBOARD_URL: ${KIBANA_DASHBOARD_URL:-http://localhost:15601}
     command: sh -lc 'while true; do php artisan schedule:run --no-interaction; sleep 60; done'
     depends_on:
       mysql:
         condition: service_healthy
       app:
         condition: service_started
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
+    container_name: karaplus_elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      xpack.security.transport.ssl.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
+      ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "127.0.0.1:${ELASTICSEARCH_LOCAL_PORT:-19200}:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:$${ELASTIC_PASSWORD} http://127.0.0.1:9200/_cluster/health | grep -q '\"status\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 24
+    restart: unless-stopped
+
+  elasticsearch-setup:
+    image: curlimages/curl:8.8.0
+    container_name: karaplus_elasticsearch_setup
+    environment:
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-mardanMARDAN}
+      KIBANA_LOGIN_USERNAME: ${KIBANA_LOGIN_USERNAME:-kibana_admin}
+      KIBANA_LOGIN_PASSWORD: ${KIBANA_LOGIN_PASSWORD:-mardanMARDAN}
+    command: >
+      sh -lc "
+      set -e;
+      until curl -s -u elastic:$${ELASTICSEARCH_PASSWORD} http://elasticsearch:9200/_cluster/health >/dev/null; do sleep 2; done;
+      curl -s -u elastic:$${ELASTICSEARCH_PASSWORD} -X POST http://elasticsearch:9200/_security/user/kibana_system/_password -H 'Content-Type: application/json' -d '{\"password\":\"'$${KIBANA_SYSTEM_PASSWORD}'\"}' >/dev/null;
+      curl -s -u elastic:$${ELASTICSEARCH_PASSWORD} -X PUT http://elasticsearch:9200/_security/user/$${KIBANA_LOGIN_USERNAME} -H 'Content-Type: application/json' -d '{\"password\":\"'$${KIBANA_LOGIN_PASSWORD}'\",\"roles\":[\"superuser\"],\"full_name\":\"Kibana Audit Admin\"}' >/dev/null;
+      "
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.14.3
+    container_name: karaplus_kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-mardanMARDAN}
+      XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+    ports:
+      - "127.0.0.1:${KIBANA_LOCAL_PORT:-15601}:5601"
+    depends_on:
+      elasticsearch-setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://127.0.0.1:5601/api/status | grep -q '\"overall\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 24
     restart: unless-stopped
 
   phpmyadmin:
@@ -116,3 +237,4 @@ services:
 
 volumes:
   mysql_data:
+  elasticsearch_data:
