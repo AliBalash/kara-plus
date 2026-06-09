@@ -84,17 +84,29 @@ jobs:
           APP_KEY=${APP_KEY}
           APP_URL=http://127.0.0.1
           EOF
+          cat > .ci.env.docker <<EOF
+          APP_ENV=production
+          APP_DEBUG=false
+          APP_LOCAL_HTTP_PORT=18000
+          APP_LOCAL_PORT=18001
+          PMA_LOCAL_PORT=18002
+          ELASTICSEARCH_LOCAL_PORT=19200
+          KIBANA_LOCAL_PORT=15601
+          MYSQL_DATABASE=test_db
+          MYSQL_USER=test_user
+          MYSQL_PASSWORD=test_pass
+          MYSQL_ROOT_PASSWORD=root_pass
+          ELASTICSEARCH_PASSWORD=ci_elastic_password
+          KIBANA_SYSTEM_PASSWORD=ci_kibana_system_password
+          KIBANA_LOGIN_USERNAME=kibana_admin
+          KIBANA_LOGIN_PASSWORD=ci_kibana_login_password
+          KIBANA_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
+          EOF
 
       - name: Validate Docker compose config
         env:
           COMPOSE_PROJECT_NAME: karaplus-ci
-          APP_ENV: production
-          APP_DEBUG: false
-          MYSQL_DATABASE: test_db
-          MYSQL_USER: test_user
-          MYSQL_PASSWORD: test_pass
-          MYSQL_ROOT_PASSWORD: root_pass
-        run: docker compose -f docker-compose.yml config >/dev/null
+        run: docker compose --env-file .ci.env.docker -f docker-compose.yml config >/dev/null
 
       - name: Validate deploy scripts
         run: |
@@ -104,13 +116,7 @@ jobs:
       - name: Build Docker images used in deploy
         env:
           COMPOSE_PROJECT_NAME: karaplus-ci
-          APP_ENV: production
-          APP_DEBUG: false
-          MYSQL_DATABASE: test_db
-          MYSQL_USER: test_user
-          MYSQL_PASSWORD: test_pass
-          MYSQL_ROOT_PASSWORD: root_pass
-        run: docker compose -f docker-compose.yml build app web
+        run: docker compose --env-file .ci.env.docker -f docker-compose.yml build app web
 
       - name: Cache Composer
         uses: actions/cache@v4
