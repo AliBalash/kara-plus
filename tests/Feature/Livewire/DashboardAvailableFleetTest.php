@@ -6,6 +6,7 @@ use App\Livewire\Pages\Panel\Expert\Dashboard;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\ContractStatus;
+use App\Models\Insurance;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -379,6 +380,97 @@ class DashboardAvailableFleetTest extends TestCase
             'active_reservations' => 0,
             'upcoming_pickups' => 0,
         ], $component->fleetStatusSummary);
+    }
+
+    public function test_dashboard_builds_insurance_and_passing_compliance_report(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $insuranceDueThisMonthCar = Car::factory()->available()->create([
+            'plate_number' => 'INS-MONTH',
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+            'passing_date' => null,
+            'passing_valid_for_days' => null,
+        ]);
+
+        Insurance::factory()->create([
+            'car_id' => $insuranceDueThisMonthCar->id,
+            'expiry_date' => '2026-03-31',
+            'status' => 'done',
+        ]);
+
+        $insuranceUrgentCar = Car::factory()->available()->create([
+            'plate_number' => 'INS-URGENT',
+            'ownership_type' => 'golden_key',
+            'is_company_car' => false,
+            'passing_date' => null,
+            'passing_valid_for_days' => null,
+        ]);
+
+        Insurance::factory()->create([
+            'car_id' => $insuranceUrgentCar->id,
+            'expiry_date' => '2026-04-03',
+            'status' => 'pending',
+        ]);
+
+        $outsideWindowCar = Car::factory()->available()->create([
+            'plate_number' => 'INS-LATER',
+            'passing_date' => null,
+            'passing_valid_for_days' => null,
+        ]);
+
+        Insurance::factory()->create([
+            'car_id' => $outsideWindowCar->id,
+            'expiry_date' => '2026-04-15',
+        ]);
+
+        $passingDueThisMonth = Car::factory()->available()->create([
+            'plate_number' => 'PAS-MONTH',
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+            'passing_date' => '2026-03-01',
+            'passing_valid_for_days' => 30,
+            'passing_status' => 'done',
+        ]);
+
+        $passingUrgent = Car::factory()->available()->create([
+            'plate_number' => 'PAS-URGENT',
+            'ownership_type' => 'liverpool',
+            'is_company_car' => false,
+            'passing_date' => '2026-03-30',
+            'passing_valid_for_days' => 4,
+            'passing_status' => 'pending',
+        ]);
+
+        Car::factory()->available()->create([
+            'plate_number' => 'PAS-LATER',
+            'passing_date' => '2026-03-20',
+            'passing_valid_for_days' => 20,
+            'passing_status' => 'done',
+        ]);
+
+        $component = app(Dashboard::class);
+        $component->mount();
+        $component->render();
+
+        $this->assertSame(1, $component->complianceReport['insurance']['summary']['due_this_month']);
+        $this->assertSame(2, $component->complianceReport['insurance']['summary']['due_in_five_days']);
+        $this->assertSame(1, $component->complianceReport['passing']['summary']['due_this_month']);
+        $this->assertSame(2, $component->complianceReport['passing']['summary']['due_in_five_days']);
+
+        $insuranceRows = collect($component->complianceReport['insurance']['rows']);
+        $passingRows = collect($component->complianceReport['passing']['rows']);
+
+        $this->assertSame(
+            [$insuranceDueThisMonthCar->plate_number, $insuranceUrgentCar->plate_number],
+            $insuranceRows->pluck('plate_number')->all()
+        );
+        $this->assertSame(
+            [$passingDueThisMonth->plate_number, $passingUrgent->plate_number],
+            $passingRows->pluck('plate_number')->all()
+        );
     }
 
     private function createReturnedCar(string $returnedAt, array $carOverrides = []): Car
