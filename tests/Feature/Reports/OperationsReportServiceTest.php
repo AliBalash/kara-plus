@@ -46,6 +46,7 @@ class OperationsReportServiceTest extends TestCase
                 'return_date' => Carbon::parse('2025-02-18 10:00:00'),
                 'current_status' => 'payment',
                 'total_price' => 1000,
+                'used_daily_rate' => 250,
                 'kardo_required' => true,
                 'payment_on_delivery' => false,
                 'submitted_by_name' => 'Website',
@@ -115,7 +116,10 @@ class OperationsReportServiceTest extends TestCase
         $this->assertSame(160.0, $report['summary']['outstanding_balance']);
         $this->assertSame(3.0, $report['summary']['average_rental_days']);
         $this->assertSame('LDW Insurance', $report['rows'][0]['selected_insurance']);
+        $this->assertSame(250.0, $report['rows'][0]['rental_rate']);
         $this->assertSame(160.0, $report['rows'][0]['remaining_balance']);
+        $this->assertContains('Rental Rate AED/Day', $report['export_headings']);
+        $this->assertSame(250.0, $report['export_rows'][0][5]);
     }
 
     public function test_customer_balance_report_groups_contracts_and_marks_overdue_accounts(): void

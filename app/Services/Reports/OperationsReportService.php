@@ -138,6 +138,7 @@ class OperationsReportService
                 'Pickup Date',
                 'Return Date',
                 'Rental Days',
+                'Rental Rate AED/Day',
                 'Status',
                 'Customer',
                 'Phone',
@@ -197,6 +198,7 @@ class OperationsReportService
                     $row['pickup_date'],
                     $row['return_date'],
                     $row['duration_days'],
+                    $row['rental_rate'],
                     $row['status_label'],
                     $row['customer_name'],
                     $row['customer_phone'],
@@ -901,6 +903,7 @@ class OperationsReportService
     {
         $payments = $contract->payments ?? collect();
         $charges = $contract->charges ?? collect();
+        $rentalRate = $this->resolveRentalRate($contract);
 
         $rentalPaid = $this->sumPayments($payments, ['rental_fee']);
         $securityDepositPaid = $this->sumPayments($payments, ['security_deposit']);
@@ -943,6 +946,7 @@ class OperationsReportService
             'pickup_date' => $this->formatDateTime($contract->pickup_date),
             'return_date' => $this->formatDateTime($contract->return_date),
             'duration_days' => $this->durationDays($contract->pickup_date, $contract->return_date),
+            'rental_rate' => $rentalRate,
             'status' => $contract->current_status,
             'status_label' => ContractStatus::label($contract->current_status),
             'customer_name' => $contract->customer?->fullName() ?? '—',
@@ -1011,6 +1015,23 @@ class OperationsReportService
                 $returnDocument?->driver_note ? 'Return Driver Note: ' . $returnDocument->driver_note : null,
             ]),
         ];
+    }
+
+    private function resolveRentalRate(Contract $contract): ?float
+    {
+        $usedRate = is_numeric($contract->used_daily_rate) ? (float) $contract->used_daily_rate : null;
+
+        if ($usedRate !== null && $usedRate > 0) {
+            return round($usedRate, 2);
+        }
+
+        $carRate = is_numeric($contract->car?->price_per_day) ? (float) $contract->car?->price_per_day : null;
+
+        if ($carRate !== null && $carRate > 0) {
+            return round($carRate, 2);
+        }
+
+        return null;
     }
 
     private function buildCustomerRequestTimelineRows(Collection $contracts): array

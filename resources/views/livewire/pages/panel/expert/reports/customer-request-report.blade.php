@@ -173,6 +173,7 @@
                             <th>Contract</th>
                             <th>Customer</th>
                             <th>Vehicle & Route</th>
+                            <th>Rental Rate</th>
                             <th>Financial Snapshot</th>
                             <th>Ops Ownership</th>
                             <th>Status</th>
@@ -198,6 +199,12 @@
                                     <span class="cell-subtitle">Plate: {{ $row['plate_number'] }} | {{ $row['ownership'] }}</span>
                                     <span class="cell-subtitle">{{ $row['pickup_location'] }} → {{ $row['return_location'] }}</span>
                                     <span class="cell-subtitle">{{ $row['selected_insurance'] }}</span>
+                                </td>
+                                <td>
+                                    <span class="cell-metric">
+                                        {{ $row['rental_rate'] !== null ? number_format($row['rental_rate'], 2) . ' AED/day' : '—' }}
+                                    </span>
+                                    <span class="cell-subtitle">Applied vehicle rental rate</span>
                                 </td>
                                 <td>
                                     <span class="cell-metric">{{ number_format($row['total_price'], 2) }} AED total</span>
