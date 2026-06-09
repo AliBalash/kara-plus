@@ -1,6 +1,6 @@
 <div>
     <form wire:submit.prevent="save">
-        <div class="row">
+        <div class="row g-4">
             <!-- Car Information -->
             <div class="col-md-6">
                 <div class="card mb-4">
@@ -49,8 +49,13 @@
 
             <!-- Insurance Information -->
             <div class="col-md-6">
-                <div class="card mb-4">
-                    <h5 class="card-header">Insurance Information</h5>
+                <div class="card mb-4 border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pb-0">
+                        <div class="d-flex flex-column gap-1">
+                            <h5 class="mb-0">Insurance Information</h5>
+                            <p class="text-muted small mb-0">This date powers the dashboard monthly renewal and urgent expiry report.</p>
+                        </div>
+                    </div>
                     <div class="card-body demo-vertical-spacing demo-only-element">
                         <!-- Expiry Date -->
                         <div class="input-group">
@@ -66,7 +71,7 @@
                         <div class="input-group mt-2">
                             <span class="input-group-text">Valid Days</span>
                             <input type="number" class="form-control @error('validDays') is-invalid @enderror"
-                                wire:model="validDays">
+                                wire:model="validDays" min="0">
                             @error('validDays')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -77,21 +82,52 @@
                             <span class="input-group-text">Status</span>
                             <select class="form-control @error('status') is-invalid @enderror" wire:model="status">
                                 <option value="">Select Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="active">Active</option>
                                 <option value="done">Done</option>
+                                <option value="pending">Pending</option>
+                                <option value="failed">Failed</option>
                             </select>
                             @error('status')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Insurance Company -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pb-0">
+                        <div class="d-flex flex-column gap-1">
+                            <h5 class="mb-0">Passing Information</h5>
+                            <p class="text-muted small mb-0">Passing report is calculated from the recorded date plus its validity days.</p>
+                        </div>
+                    </div>
+                    <div class="card-body demo-vertical-spacing demo-only-element">
+                        <div class="input-group">
+                            <span class="input-group-text">Passing Date</span>
+                            <input type="date" class="form-control @error('passingDate') is-invalid @enderror"
+                                wire:model="passingDate">
+                            @error('passingDate')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         <div class="input-group mt-2">
-                            <span class="input-group-text">Insurance Company</span>
-                            <input type="text" class="form-control @error('insuranceCompany') is-invalid @enderror"
-                                wire:model="insuranceCompany">
-                            @error('insuranceCompany')
+                            <span class="input-group-text">Valid Days</span>
+                            <input type="number" class="form-control @error('passingValidDays') is-invalid @enderror"
+                                wire:model="passingValidDays" min="0">
+                            @error('passingValidDays')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="input-group mt-2">
+                            <span class="input-group-text">Status</span>
+                            <select class="form-control @error('passingStatus') is-invalid @enderror" wire:model="passingStatus">
+                                <option value="">Select Status</option>
+                                <option value="done">Done</option>
+                                <option value="pending">Pending</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                            @error('passingStatus')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
