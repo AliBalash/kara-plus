@@ -596,6 +596,171 @@
         </div>
 
         @php
+            $insuranceCompliance = $complianceReport['insurance'] ?? ['summary' => [], 'rows' => []];
+            $passingCompliance = $complianceReport['passing'] ?? ['summary' => [], 'rows' => []];
+            $insuranceComplianceRows = collect($insuranceCompliance['rows'] ?? []);
+            $passingComplianceRows = collect($passingCompliance['rows'] ?? []);
+            $complianceStatusClasses = [
+                'done' => 'bg-label-success',
+                'pending' => 'bg-label-warning',
+                'failed' => 'bg-label-danger',
+            ];
+        @endphp
+        <div class="card shadow-lg border-0 rounded-4 mb-4 compliance-monitor-card">
+            <div class="card-body p-4">
+                <div class="compliance-monitor__header mb-4">
+                    <div>
+                        <span class="compliance-monitor__eyebrow">Renewal Monitor</span>
+                        <h5 class="fw-bold mb-1">Insurance & Passing Report</h5>
+                        <p class="text-muted mb-0">Insurance counts use policy expiry dates. Passing counts use the passing date plus its validity days.</p>
+                    </div>
+                    <div class="compliance-monitor__legend">
+                        <span class="compliance-monitor__legend-item"><i class="bi bi-calendar2-week"></i> Due this month</span>
+                        <span class="compliance-monitor__legend-item"><i class="bi bi-alarm"></i> 5 days or less</span>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="compliance-kpi compliance-kpi--insurance-month">
+                            <span class="compliance-kpi__icon"><i class="bi bi-shield-check"></i></span>
+                            <div>
+                                <div class="compliance-kpi__value">{{ number_format((int) ($insuranceCompliance['summary']['due_this_month'] ?? 0)) }}</div>
+                                <div class="compliance-kpi__label">Insurance due in {{ now()->format('F') }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="compliance-kpi compliance-kpi--insurance-urgent">
+                            <span class="compliance-kpi__icon"><i class="bi bi-exclamation-triangle"></i></span>
+                            <div>
+                                <div class="compliance-kpi__value">{{ number_format((int) ($insuranceCompliance['summary']['due_in_five_days'] ?? 0)) }}</div>
+                                <div class="compliance-kpi__label">Insurance in 5 days or less</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="compliance-kpi compliance-kpi--passing-month">
+                            <span class="compliance-kpi__icon"><i class="bi bi-clipboard2-check"></i></span>
+                            <div>
+                                <div class="compliance-kpi__value">{{ number_format((int) ($passingCompliance['summary']['due_this_month'] ?? 0)) }}</div>
+                                <div class="compliance-kpi__label">Passing due in {{ now()->format('F') }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="compliance-kpi compliance-kpi--passing-urgent">
+                            <span class="compliance-kpi__icon"><i class="bi bi-stopwatch"></i></span>
+                            <div>
+                                <div class="compliance-kpi__value">{{ number_format((int) ($passingCompliance['summary']['due_in_five_days'] ?? 0)) }}</div>
+                                <div class="compliance-kpi__label">Passing in 5 days or less</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-12 col-xl-6">
+                        <div class="compliance-list-card h-100">
+                            <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                                <div>
+                                    <h6 class="fw-bold mb-1">Insurance queue</h6>
+                                    <p class="text-muted small mb-0">Vehicles that expire this month or within the next 5 days.</p>
+                                </div>
+                                <span class="badge compliance-list-card__badge">{{ $insuranceComplianceRows->count() }}</span>
+                            </div>
+
+                            @if ($insuranceComplianceRows->count())
+                                <div class="compliance-list-card__body">
+                                    @foreach ($insuranceComplianceRows as $row)
+                                        <div class="compliance-item">
+                                            <div class="d-flex align-items-start justify-content-between gap-3">
+                                                <div class="min-w-0">
+                                                    <div class="fw-semibold text-truncate">{{ $row['car_name'] }}</div>
+                                                    <div class="text-muted small">Plate {{ $row['plate_number'] }} · {{ $row['ownership_label'] }}</div>
+                                                </div>
+                                                <span class="compliance-item__countdown {{ $row['is_overdue'] ? 'is-overdue' : ($row['is_urgent'] ? 'is-urgent' : '') }}">
+                                                    {{ $row['days_remaining_label'] }}
+                                                </span>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                                <span class="badge compliance-chip"><i class="bi bi-calendar-event me-1"></i>{{ $row['expires_at'] }}</span>
+                                                @if ($row['is_due_this_month'])
+                                                    <span class="badge compliance-chip compliance-chip--month">This month</span>
+                                                @endif
+                                                @if ($row['is_urgent'])
+                                                    <span class="badge compliance-chip compliance-chip--urgent">Urgent</span>
+                                                @endif
+                                                @if ($row['is_overdue'])
+                                                    <span class="badge compliance-chip compliance-chip--overdue">Expired</span>
+                                                @endif
+                                                <span class="badge {{ $complianceStatusClasses[$row['status']] ?? 'bg-label-secondary' }}">
+                                                    {{ ucfirst($row['status']) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-center text-muted py-5">No insurance renewals are currently due.</div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-xl-6">
+                        <div class="compliance-list-card h-100">
+                            <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                                <div>
+                                    <h6 class="fw-bold mb-1">Passing queue</h6>
+                                    <p class="text-muted small mb-0">Vehicles whose passing validity ends this month or within the next 5 days.</p>
+                                </div>
+                                <span class="badge compliance-list-card__badge">{{ $passingComplianceRows->count() }}</span>
+                            </div>
+
+                            @if ($passingComplianceRows->count())
+                                <div class="compliance-list-card__body">
+                                    @foreach ($passingComplianceRows as $row)
+                                        <div class="compliance-item">
+                                            <div class="d-flex align-items-start justify-content-between gap-3">
+                                                <div class="min-w-0">
+                                                    <div class="fw-semibold text-truncate">{{ $row['car_name'] }}</div>
+                                                    <div class="text-muted small">Plate {{ $row['plate_number'] }} · {{ $row['ownership_label'] }}</div>
+                                                    @if (!empty($row['recorded_at']))
+                                                        <div class="text-muted small">Recorded {{ $row['recorded_at'] }}</div>
+                                                    @endif
+                                                </div>
+                                                <span class="compliance-item__countdown {{ $row['is_overdue'] ? 'is-overdue' : ($row['is_urgent'] ? 'is-urgent' : '') }}">
+                                                    {{ $row['days_remaining_label'] }}
+                                                </span>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                                <span class="badge compliance-chip"><i class="bi bi-calendar-event me-1"></i>{{ $row['expires_at'] }}</span>
+                                                @if ($row['is_due_this_month'])
+                                                    <span class="badge compliance-chip compliance-chip--month">This month</span>
+                                                @endif
+                                                @if ($row['is_urgent'])
+                                                    <span class="badge compliance-chip compliance-chip--urgent">Urgent</span>
+                                                @endif
+                                                @if ($row['is_overdue'])
+                                                    <span class="badge compliance-chip compliance-chip--overdue">Expired</span>
+                                                @endif
+                                                <span class="badge {{ $complianceStatusClasses[$row['status']] ?? 'bg-label-secondary' }}">
+                                                    {{ ucfirst($row['status']) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-center text-muted py-5">No passing renewals are currently due.</div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @php
             $monthlyRows = $monthlyContractsReport['rows'] ?? collect();
             $monthlySummary = $monthlyContractsReport['summary'] ?? [];
             $monthlyFilterSummary = $monthlyContractsReport['filter_summary'] ?? [];

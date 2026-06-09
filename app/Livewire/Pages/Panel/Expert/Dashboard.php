@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\ContractStatus;
+use App\Models\Insurance;
 use App\Services\Reports\OperationsReportService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -80,6 +81,22 @@ class Dashboard extends Component
         ],
         'filter_summary' => [],
         'rows' => [],
+    ];
+    public array $complianceReport = [
+        'insurance' => [
+            'summary' => [
+                'due_this_month' => 0,
+                'due_in_five_days' => 0,
+            ],
+            'rows' => [],
+        ],
+        'passing' => [
+            'summary' => [
+                'due_this_month' => 0,
+                'due_in_five_days' => 0,
+            ],
+            'rows' => [],
+        ],
     ];
 
     private const AVAILABLE_FLEET_SCOPES = ['our', 'all', 'partners'];
@@ -173,6 +190,7 @@ class Dashboard extends Component
             $this->buildFleetStatusSummary();
             $this->prepareAvailableBrands();
             $this->loadMonthlyContractsReport();
+            $this->buildComplianceReport();
             $data['availableCars'] = $this->availableCars;
             $data['availableBrands'] = $this->availableBrands;
             $data['availableCarsTotal'] = $this->availableCarsTotal;
@@ -517,6 +535,198 @@ class Dashboard extends Component
         $this->normalizeMonthlyContractsFilters();
     }
 
+    protected function buildComplianceReport(): void
+    {
+        $today = Carbon::now()->startOfDay();
+        $monthStart = $today->copy()->startOfMonth();
+        $monthEnd = $today->copy()->endOfMonth();
+        $urgentLimit = $today->copy()->addDays(5);
+
+        $this->complianceReport = [
+            'insurance' => $this->buildInsuranceComplianceReport($today, $monthStart, $monthEnd, $urgentLimit),
+            'passing' => $this->buildPassingComplianceReport($today, $monthStart, $monthEnd, $urgentLimit),
+        ];
+    }
+
+    protected function buildInsuranceComplianceReport(
+        Carbon $today,
+        Carbon $monthStart,
+        Carbon $monthEnd,
+        Carbon $urgentLimit
+    ): array {
+        $baseQuery = Insurance::query()
+            ->whereNotNull('expiry_date');
+
+        $dueThisMonth = (int) (clone $baseQuery)
+            ->whereDate('expiry_date', '>=', $monthStart->toDateString())
+            ->whereDate('expiry_date', '<=', $monthEnd->toDateString())
+            ->count('insurances.id');
+
+        $dueInFiveDays = (int) (clone $baseQuery)
+            ->whereDate('expiry_date', '>=', $today->toDateString())
+            ->whereDate('expiry_date', '<=', $urgentLimit->toDateString())
+            ->count('insurances.id');
+
+        $rows = Insurance::query()
+            ->with(['car.carModel'])
+            ->whereNotNull('expiry_date')
+            ->where(function (Builder $query) use ($today, $monthStart, $monthEnd, $urgentLimit) {
+                $query->where(function (Builder $dateQuery) use ($monthStart, $monthEnd) {
+                    $dateQuery->whereDate('expiry_date', '>=', $monthStart->toDateString())
+                        ->whereDate('expiry_date', '<=', $monthEnd->toDateString());
+                })->orWhere(function (Builder $dateQuery) use ($today, $urgentLimit) {
+                    $dateQuery->whereDate('expiry_date', '>=', $today->toDateString())
+                        ->whereDate('expiry_date', '<=', $urgentLimit->toDateString());
+                });
+            })
+            ->orderBy('expiry_date')
+            ->orderByDesc('updated_at')
+            ->get()
+            ->map(fn (Insurance $insurance) => $this->transformInsuranceComplianceRow(
+                $insurance,
+                $today,
+                $monthStart,
+                $monthEnd,
+                $urgentLimit
+            ))
+            ->values()
+            ->all();
+
+        return [
+            'summary' => [
+                'due_this_month' => $dueThisMonth,
+                'due_in_five_days' => $dueInFiveDays,
+            ],
+            'rows' => $rows,
+        ];
+    }
+
+    protected function buildPassingComplianceReport(
+        Carbon $today,
+        Carbon $monthStart,
+        Carbon $monthEnd,
+        Carbon $urgentLimit
+    ): array {
+        $dueDateExpression = $this->passingDueDateExpression();
+
+        $baseQuery = Car::query()
+            ->whereNotNull('cars.passing_date');
+
+        $dueThisMonth = (int) (clone $baseQuery)
+            ->whereRaw(
+                "{$dueDateExpression} BETWEEN ? AND ?",
+                [$monthStart->toDateString(), $monthEnd->toDateString()]
+            )
+            ->count('cars.id');
+
+        $dueInFiveDays = (int) (clone $baseQuery)
+            ->whereRaw(
+                "{$dueDateExpression} BETWEEN ? AND ?",
+                [$today->toDateString(), $urgentLimit->toDateString()]
+            )
+            ->count('cars.id');
+
+        $rows = Car::query()
+            ->select('cars.*')
+            ->selectRaw("{$dueDateExpression} as passing_due_date")
+            ->with('carModel')
+            ->whereNotNull('cars.passing_date')
+            ->where(function (Builder $query) use ($dueDateExpression, $today, $monthStart, $monthEnd, $urgentLimit) {
+                $query->whereRaw(
+                    "{$dueDateExpression} BETWEEN ? AND ?",
+                    [$monthStart->toDateString(), $monthEnd->toDateString()]
+                )->orWhereRaw(
+                    "{$dueDateExpression} BETWEEN ? AND ?",
+                    [$today->toDateString(), $urgentLimit->toDateString()]
+                );
+            })
+            ->orderByRaw("{$dueDateExpression} asc")
+            ->orderByDesc('cars.updated_at')
+            ->get()
+            ->map(fn (Car $car) => $this->transformPassingComplianceRow(
+                $car,
+                $today,
+                $monthStart,
+                $monthEnd,
+                $urgentLimit
+            ))
+            ->values()
+            ->all();
+
+        return [
+            'summary' => [
+                'due_this_month' => $dueThisMonth,
+                'due_in_five_days' => $dueInFiveDays,
+            ],
+            'rows' => $rows,
+        ];
+    }
+
+    protected function transformInsuranceComplianceRow(
+        Insurance $insurance,
+        Carbon $today,
+        Carbon $monthStart,
+        Carbon $monthEnd,
+        Carbon $urgentLimit
+    ): array {
+        $car = $insurance->car;
+        $expiryDate = Carbon::parse($insurance->expiry_date)->startOfDay();
+        $daysRemaining = $today->diffInDays($expiryDate, false);
+
+        return [
+            'record_id' => $insurance->id,
+            'car_name' => $car?->fullName() ?? 'Vehicle',
+            'plate_number' => $car?->plate_number ?? '—',
+            'ownership_label' => $car?->ownershipLabel() ?? '—',
+            'status' => $insurance->status ?: 'pending',
+            'expires_at' => $expiryDate->format('Y-m-d'),
+            'days_remaining' => $daysRemaining,
+            'days_remaining_label' => $this->formatComplianceRemainingDays($daysRemaining),
+            'is_due_this_month' => $expiryDate->betweenIncluded($monthStart, $monthEnd),
+            'is_urgent' => $expiryDate->betweenIncluded($today, $urgentLimit),
+            'is_overdue' => $daysRemaining < 0,
+        ];
+    }
+
+    protected function transformPassingComplianceRow(
+        Car $car,
+        Carbon $today,
+        Carbon $monthStart,
+        Carbon $monthEnd,
+        Carbon $urgentLimit
+    ): array {
+        $dueDate = Carbon::parse($car->passing_due_date)->startOfDay();
+        $daysRemaining = $today->diffInDays($dueDate, false);
+
+        return [
+            'record_id' => $car->id,
+            'car_name' => $car->fullName(),
+            'plate_number' => $car->plate_number ?? '—',
+            'ownership_label' => $car->ownershipLabel(),
+            'status' => $car->passing_status ?: 'pending',
+            'recorded_at' => $car->passing_date ? Carbon::parse($car->passing_date)->format('Y-m-d') : null,
+            'expires_at' => $dueDate->format('Y-m-d'),
+            'days_remaining' => $daysRemaining,
+            'days_remaining_label' => $this->formatComplianceRemainingDays($daysRemaining),
+            'is_due_this_month' => $dueDate->betweenIncluded($monthStart, $monthEnd),
+            'is_urgent' => $dueDate->betweenIncluded($today, $urgentLimit),
+            'is_overdue' => $daysRemaining < 0,
+        ];
+    }
+
+    protected function formatComplianceRemainingDays(int $daysRemaining): string
+    {
+        if ($daysRemaining < 0) {
+            return 'Expired ' . abs($daysRemaining) . ' day(s) ago';
+        }
+
+        if ($daysRemaining === 0) {
+            return 'Due today';
+        }
+
+        return $daysRemaining . ' day(s) left';
+    }
+
     protected function normalizeAvailableFleetFilters(): void
     {
         $this->availableSearch = trim($this->availableSearch);
@@ -706,6 +916,14 @@ class Dashboard extends Component
         return match (Contract::query()->getConnection()->getDriverName()) {
             'sqlite' => 'AVG(julianday(COALESCE(return_date, CURRENT_DATE)) - julianday(pickup_date)) as avg_days',
             default => 'AVG(DATEDIFF(COALESCE(return_date, CURRENT_DATE), pickup_date)) as avg_days',
+        };
+    }
+
+    protected function passingDueDateExpression(string $table = 'cars'): string
+    {
+        return match (Car::query()->getConnection()->getDriverName()) {
+            'sqlite' => "date({$table}.passing_date, '+' || COALESCE({$table}.passing_valid_for_days, 0) || ' days')",
+            default => "DATE_ADD({$table}.passing_date, INTERVAL COALESCE({$table}.passing_valid_for_days, 0) DAY)",
         };
     }
 }

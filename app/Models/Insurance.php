@@ -17,6 +17,11 @@ class Insurance extends Model
         'insurance_company',
     ];
 
+    protected $casts = [
+        'expiry_date' => 'date',
+        'valid_days' => 'integer',
+    ];
+
     // رابطه با مدل Car
     public function car()
     {

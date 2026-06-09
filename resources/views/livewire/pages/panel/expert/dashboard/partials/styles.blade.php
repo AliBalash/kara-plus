@@ -446,6 +446,218 @@
                 }
             }
 
+            .compliance-monitor-card {
+                position: relative;
+                overflow: hidden;
+                background:
+                    radial-gradient(circle at 0% 0%, rgba(20, 184, 166, 0.12), transparent 38%),
+                    radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.12), transparent 36%),
+                    linear-gradient(135deg, #fcfffe 0%, #f6fbff 54%, #f8fdfc 100%);
+                border: 1px solid rgba(198, 217, 231, 0.72);
+            }
+
+            .compliance-monitor__header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .compliance-monitor__eyebrow {
+                display: inline-flex;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 700;
+                color: #0f766e;
+            }
+
+            .compliance-monitor__legend {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 0.5rem;
+            }
+
+            .compliance-monitor__legend-item {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.42rem 0.72rem;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.88);
+                border: 1px solid rgba(205, 218, 231, 0.8);
+                color: #38506b;
+                font-size: 0.78rem;
+                box-shadow: 0 10px 22px rgba(30, 56, 84, 0.06);
+            }
+
+            .compliance-kpi {
+                display: flex;
+                align-items: center;
+                gap: 0.9rem;
+                min-height: 104px;
+                padding: 0.95rem 1rem;
+                border-radius: 1.1rem;
+                border: 1px solid rgba(203, 217, 232, 0.8);
+                background: rgba(255, 255, 255, 0.9);
+                box-shadow: 0 16px 30px rgba(25, 50, 78, 0.08);
+            }
+
+            .compliance-kpi__icon {
+                width: 3rem;
+                height: 3rem;
+                border-radius: 0.95rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.25rem;
+                flex-shrink: 0;
+            }
+
+            .compliance-kpi__value {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: #17324f;
+                line-height: 1.05;
+            }
+
+            .compliance-kpi__label {
+                margin-top: 0.18rem;
+                color: #50647b;
+                font-size: 0.82rem;
+                font-weight: 600;
+            }
+
+            .compliance-kpi--insurance-month .compliance-kpi__icon {
+                background: rgba(59, 130, 246, 0.14);
+                color: #1d4ed8;
+            }
+
+            .compliance-kpi--insurance-urgent .compliance-kpi__icon {
+                background: rgba(249, 115, 22, 0.14);
+                color: #c2410c;
+            }
+
+            .compliance-kpi--passing-month .compliance-kpi__icon {
+                background: rgba(16, 185, 129, 0.14);
+                color: #047857;
+            }
+
+            .compliance-kpi--passing-urgent .compliance-kpi__icon {
+                background: rgba(168, 85, 247, 0.14);
+                color: #7e22ce;
+            }
+
+            .compliance-list-card {
+                border-radius: 1.15rem;
+                border: 1px solid rgba(207, 219, 232, 0.85);
+                background: rgba(255, 255, 255, 0.92);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 12px 26px rgba(29, 53, 82, 0.06);
+                padding: 1rem;
+            }
+
+            .compliance-list-card__badge {
+                min-width: 2.1rem;
+                height: 2.1rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 999px;
+                background: rgba(30, 64, 175, 0.08);
+                color: #1e40af;
+                font-weight: 700;
+            }
+
+            .compliance-list-card__body {
+                max-height: 420px;
+                overflow-y: auto;
+                padding-right: 0.2rem;
+            }
+
+            .compliance-item {
+                padding: 0.95rem 0;
+                border-bottom: 1px dashed rgba(207, 219, 232, 0.92);
+            }
+
+            .compliance-item:first-child {
+                padding-top: 0.1rem;
+            }
+
+            .compliance-item:last-child {
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+
+            .compliance-item__countdown {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0.4rem 0.72rem;
+                border-radius: 999px;
+                background: rgba(148, 163, 184, 0.14);
+                color: #475569;
+                font-size: 0.76rem;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+
+            .compliance-item__countdown.is-urgent {
+                background: rgba(245, 158, 11, 0.16);
+                color: #b45309;
+            }
+
+            .compliance-item__countdown.is-overdue {
+                background: rgba(239, 68, 68, 0.16);
+                color: #b91c1c;
+            }
+
+            .compliance-chip {
+                display: inline-flex;
+                align-items: center;
+                border-radius: 999px;
+                padding: 0.42rem 0.7rem;
+                background: rgba(226, 232, 240, 0.6);
+                color: #334155;
+                font-weight: 600;
+            }
+
+            .compliance-chip--month {
+                background: rgba(59, 130, 246, 0.12);
+                color: #1d4ed8;
+            }
+
+            .compliance-chip--urgent {
+                background: rgba(245, 158, 11, 0.16);
+                color: #b45309;
+            }
+
+            .compliance-chip--overdue {
+                background: rgba(239, 68, 68, 0.14);
+                color: #b91c1c;
+            }
+
+            @media (max-width: 991.98px) {
+                .compliance-monitor__header {
+                    flex-direction: column;
+                }
+
+                .compliance-monitor__legend {
+                    justify-content: flex-start;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .compliance-kpi {
+                    min-height: 96px;
+                }
+
+                .compliance-item__countdown {
+                    white-space: normal;
+                    text-align: center;
+                }
+            }
+
             .booking-card {
                 border: 1px solid rgba(224, 230, 239, 0.7);
                 background: #fff;

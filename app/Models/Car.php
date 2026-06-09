@@ -78,8 +78,13 @@ class Car extends Model
         'price_per_day' => 'decimal:2',
         'insurance_expiry_date' => 'date',
         'service_due_date' => 'date',
+        'issue_date' => 'date',
+        'expiry_date' => 'date',
+        'passing_date' => 'date',
         'manufacturing_year' => 'integer',
         'is_company_car' => 'boolean',
+        'passing_valid_for_days' => 'integer',
+        'registration_valid_for_days' => 'integer',
     ];
 
     private const OWNERSHIP_OPTIONS = [
