@@ -8,6 +8,9 @@ services:
     image: ${COMPOSE_PROJECT_NAME:-karaplus-crm}-app
     container_name: karaplus_app
     working_dir: /var/www
+    env_file:
+      - .env
+      - .env.docker
     volumes:
       - ./:/var/www
     environment:
@@ -84,6 +87,9 @@ services:
     image: ${COMPOSE_PROJECT_NAME:-karaplus-crm}-app
     container_name: karaplus_queue
     working_dir: /var/www
+    env_file:
+      - .env
+      - .env.docker
     volumes:
       - ./:/var/www
     environment:
@@ -124,6 +130,9 @@ services:
     image: ${COMPOSE_PROJECT_NAME:-karaplus-crm}-app
     container_name: karaplus_scheduler
     working_dir: /var/www
+    env_file:
+      - .env
+      - .env.docker
     volumes:
       - ./:/var/www
     environment:

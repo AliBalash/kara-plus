@@ -34,6 +34,17 @@ else
 fi
 git reset --hard origin/master
 
+echo "[1.2/7] Validate Laravel environment"
+if [ ! -f .env ]; then
+  echo "Missing $ROOT/.env"
+  exit 1
+fi
+APP_KEY_VALUE="$(awk -F= '/^APP_KEY=/{sub(/^[[:space:]]+/, "", $2); print $2; exit}' .env)"
+if [ -z "${APP_KEY_VALUE}" ]; then
+  echo "APP_KEY is missing in $ROOT/.env"
+  exit 1
+fi
+
 echo "[1.5/7] Resolve Docker permissions"
 DOCKER_CMD="docker"
 if ! $DOCKER_CMD info >/dev/null 2>&1; then
