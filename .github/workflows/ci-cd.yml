@@ -102,6 +102,7 @@ jobs:
           KIBANA_LOGIN_PASSWORD=ci_kibana_login_password
           KIBANA_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
           EOF
+          cp .ci.env.docker .env.docker
 
       - name: Validate Docker compose config
         env:
