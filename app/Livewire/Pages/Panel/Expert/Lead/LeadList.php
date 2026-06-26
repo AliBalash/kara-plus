@@ -229,8 +229,8 @@ class LeadList extends Component
     protected function leadRules(): array
     {
         return [
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'min:7', 'max:50', 'regex:/^[0-9+()\-\s]+$/'],
             'messenger_phone' => ['nullable', 'string', 'min:7', 'max:50', 'regex:/^[0-9+()\-\s]+$/'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -317,9 +317,9 @@ class LeadList extends Component
     protected function validationMessages(): array
     {
         return [
-            'first_name.required' => 'First name is required to create a customer.',
+            'first_name.required' => 'First name is required.',
             'first_name.max' => 'First name cannot be longer than 255 characters.',
-            'last_name.required' => 'Last name is required to create a customer.',
+            'last_name.required' => 'Last name is required.',
             'last_name.max' => 'Last name cannot be longer than 255 characters.',
             'phone.required' => 'Phone number is required.',
             'phone.min' => 'Phone number is too short.',
