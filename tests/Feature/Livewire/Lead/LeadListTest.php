@@ -3,6 +3,7 @@
 namespace Tests\Feature\Livewire\Lead;
 
 use App\Livewire\Pages\Panel\Expert\Lead\LeadList;
+use App\Models\CarModel;
 use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\User;
@@ -18,6 +19,11 @@ class LeadListTest extends TestCase
     public function test_save_creates_lead_without_customer_record(): void
     {
         $user = User::factory()->create(['status' => 'active']);
+        $carModel = CarModel::factory()->create([
+            'brand' => 'BMW',
+            'model' => 'X5',
+        ]);
+
         $this->actingAs($user);
 
         $component = app(LeadList::class);
@@ -25,9 +31,11 @@ class LeadListTest extends TestCase
         $component->first_name = 'Sara';
         $component->last_name = 'Ahmadi';
         $component->phone = '+971501111111';
-        $component->source = 'WhatsApp';
+        $component->source = 'whatsapp';
         $component->discovery_source = 'Google Ads';
-        $component->requested_vehicle = 'BMW X5';
+        $component->selectedBrand = 'BMW';
+        $component->selectedModelId = $carModel->id;
+        $component->request_date = '2026-06-26';
         $component->priority = Lead::PRIORITY_HIGH;
         $component->status = Lead::STATUS_FOLLOW_UP;
         $component->save();
@@ -36,14 +44,18 @@ class LeadListTest extends TestCase
             'first_name' => 'Sara',
             'last_name' => 'Ahmadi',
             'phone' => '+971501111111',
-            'source' => 'WhatsApp',
+            'source' => 'whatsapp',
             'discovery_source' => 'Google Ads',
-            'requested_vehicle' => 'BMW X5',
+            'requested_brand' => 'BMW',
+            'requested_model_id' => $carModel->id,
             'priority' => Lead::PRIORITY_HIGH,
             'status' => Lead::STATUS_FOLLOW_UP,
             'created_by' => $user->id,
             'customer_id' => null,
         ]);
+
+        $lead = Lead::query()->firstOrFail();
+        $this->assertSame('2026-06-26', $lead->request_date?->format('Y-m-d'));
 
         $this->assertDatabaseCount('customers', 0);
     }
