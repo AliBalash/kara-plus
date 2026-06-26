@@ -1,7 +1,10 @@
 FROM php:8.2-fpm
 
+ARG PECL_REDIS_VERSION=6.3.0
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        ca-certificates \
         git \
         curl \
         unzip \
@@ -22,8 +25,12 @@ RUN apt-get update \
         pdo_mysql \
         zip \
         opcache \
-    && pecl install redis \
+    && curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors \
+        "https://pecl.php.net/get/redis-${PECL_REDIS_VERSION}.tgz" \
+        -o /tmp/redis.tgz \
+    && pecl install /tmp/redis.tgz \
     && docker-php-ext-enable redis \
+    && rm -f /tmp/redis.tgz \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
