@@ -127,6 +127,23 @@ class LeadListTest extends TestCase
         }
     }
 
+    public function test_save_returns_clear_validation_message_for_missing_first_name_and_last_name(): void
+    {
+        $this->actingAs(User::factory()->create(['status' => 'active']));
+
+        $component = app(LeadList::class);
+        $component->mount();
+        $component->phone = '+971501111111';
+
+        try {
+            $component->save();
+            $this->fail('Expected validation exception was not thrown.');
+        } catch (ValidationException $exception) {
+            $this->assertSame('First name is required.', $exception->validator->errors()->first('first_name'));
+            $this->assertSame('Last name is required.', $exception->validator->errors()->first('last_name'));
+        }
+    }
+
     public function test_convert_returns_clear_validation_message_for_duplicate_customer_email(): void
     {
         $user = User::factory()->create(['status' => 'active']);
