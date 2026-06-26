@@ -3,9 +3,10 @@
 namespace App\Livewire\Pages\Panel\Expert\Lead;
 
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Models\CarModel;
 use App\Models\Customer;
+use App\Models\Contract;
 use App\Models\Lead;
-use App\Models\User;
 use App\Support\PhoneNumber;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -34,12 +35,11 @@ class LeadList extends Component
     public ?string $email = '';
     public ?string $source = '';
     public ?string $discovery_source = '';
-    public ?string $requested_vehicle = '';
-    public ?string $pickup_date = '';
-    public ?string $return_date = '';
+    public ?string $selectedBrand = '';
+    public $selectedModelId = '';
+    public ?string $request_date = '';
     public string $priority = Lead::PRIORITY_NORMAL;
     public string $status = Lead::STATUS_NEW;
-    public $assigned_to = null;
     public ?string $next_follow_up_at = '';
     public ?string $last_contacted_at = '';
     public ?string $notes = '';
@@ -88,10 +88,9 @@ class LeadList extends Component
             'email',
             'source',
             'discovery_source',
-            'requested_vehicle',
-            'pickup_date',
-            'return_date',
-            'assigned_to',
+            'selectedBrand',
+            'selectedModelId',
+            'request_date',
             'next_follow_up_at',
             'last_contacted_at',
             'notes',
@@ -115,16 +114,21 @@ class LeadList extends Component
         $this->email = $lead->email;
         $this->source = $lead->source;
         $this->discovery_source = $lead->discovery_source;
-        $this->requested_vehicle = $lead->requested_vehicle;
-        $this->pickup_date = $lead->pickup_date?->format('Y-m-d') ?? '';
-        $this->return_date = $lead->return_date?->format('Y-m-d') ?? '';
+        $this->selectedBrand = $lead->requested_brand ?: $lead->requestedModel?->brand ?: '';
+        $this->selectedModelId = $lead->requested_model_id ?: '';
+        $this->request_date = $lead->request_date?->format('Y-m-d') ?? '';
         $this->priority = $lead->priority;
         $this->status = $lead->status;
-        $this->assigned_to = $lead->assigned_to;
         $this->next_follow_up_at = $lead->next_follow_up_at?->format('Y-m-d\TH:i') ?? '';
         $this->last_contacted_at = $lead->last_contacted_at?->format('Y-m-d\TH:i') ?? '';
         $this->notes = $lead->notes;
         $this->resetValidation();
+    }
+
+    public function updatedSelectedBrand(): void
+    {
+        $this->selectedModelId = '';
+        $this->resetValidation('selectedModelId');
     }
 
     public function prepareConversion(int $id): void
@@ -230,14 +234,13 @@ class LeadList extends Component
             'phone' => ['required', 'string', 'min:7', 'max:50', 'regex:/^[0-9+()\-\s]+$/'],
             'messenger_phone' => ['nullable', 'string', 'min:7', 'max:50', 'regex:/^[0-9+()\-\s]+$/'],
             'email' => ['nullable', 'email', 'max:255'],
-            'source' => ['nullable', 'string', 'max:100'],
+            'source' => ['nullable', 'string', Rule::in(Contract::COMMUNICATION_CHANNELS)],
             'discovery_source' => ['nullable', 'string', 'max:255'],
-            'requested_vehicle' => ['nullable', 'string', 'max:255'],
-            'pickup_date' => ['nullable', 'date'],
-            'return_date' => ['nullable', 'date', 'after_or_equal:pickup_date'],
+            'selectedBrand' => ['nullable', 'string', 'max:255'],
+            'selectedModelId' => ['nullable', 'integer', Rule::exists('car_models', 'id')],
+            'request_date' => ['nullable', 'date'],
             'priority' => ['required', Rule::in(array_keys(Lead::priorities()))],
             'status' => ['required', Rule::in(array_keys(Lead::statuses()))],
-            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'next_follow_up_at' => ['nullable', 'date'],
             'last_contacted_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -330,18 +333,15 @@ class LeadList extends Component
             'email.email' => 'Enter a valid email address.',
             'email.max' => 'Email cannot be longer than 255 characters.',
             'email.unique' => 'A customer with this email already exists.',
-            'source.max' => 'Contact channel cannot be longer than 100 characters.',
+            'source.in' => 'Selected contact channel is not valid.',
             'discovery_source.max' => 'How found us cannot be longer than 255 characters.',
-            'requested_vehicle.max' => 'Requested vehicle cannot be longer than 255 characters.',
-            'pickup_date.date' => 'Pickup date is not valid.',
-            'return_date.date' => 'Return date is not valid.',
-            'return_date.after_or_equal' => 'Return date cannot be before pickup date.',
+            'selectedBrand.max' => 'Car brand cannot be longer than 255 characters.',
+            'selectedModelId.exists' => 'Selected car model is not valid.',
+            'request_date.date' => 'Request date is not valid.',
             'priority.required' => 'Priority is required.',
             'priority.in' => 'Selected priority is not valid.',
             'status.required' => 'Status is required.',
             'status.in' => 'Selected status is not valid.',
-            'assigned_to.integer' => 'Selected owner is not valid.',
-            'assigned_to.exists' => 'Selected owner does not exist.',
             'next_follow_up_at.date' => 'Next follow-up date is not valid.',
             'last_contacted_at.date' => 'Last contact date is not valid.',
             'notes.max' => 'Notes cannot be longer than 5000 characters.',
@@ -358,12 +358,11 @@ class LeadList extends Component
             'email' => 'email',
             'source' => 'contact channel',
             'discovery_source' => 'how found us',
-            'requested_vehicle' => 'requested vehicle',
-            'pickup_date' => 'pickup date',
-            'return_date' => 'return date',
+            'selectedBrand' => 'car brand',
+            'selectedModelId' => 'car model',
+            'request_date' => 'request date',
             'priority' => 'priority',
             'status' => 'status',
-            'assigned_to' => 'owner',
             'next_follow_up_at' => 'next follow-up',
             'last_contacted_at' => 'last contact',
             'notes' => 'notes',
@@ -378,15 +377,32 @@ class LeadList extends Component
             }
         }
 
-        foreach (['first_name', 'last_name', 'messenger_phone', 'email', 'source', 'discovery_source', 'requested_vehicle', 'pickup_date', 'return_date', 'next_follow_up_at', 'last_contacted_at', 'notes'] as $key) {
+        foreach (['first_name', 'last_name', 'messenger_phone', 'email', 'source', 'discovery_source', 'selectedBrand', 'request_date', 'next_follow_up_at', 'last_contacted_at', 'notes'] as $key) {
             if (($data[$key] ?? null) === '') {
                 $data[$key] = null;
             }
         }
 
-        if (($data['assigned_to'] ?? null) === '') {
-            $data['assigned_to'] = null;
+        if (($data['selectedModelId'] ?? null) === '') {
+            $data['selectedModelId'] = null;
         }
+
+        if (($data['selectedBrand'] ?? null) && ($data['selectedModelId'] ?? null)) {
+            $model = CarModel::query()->find($data['selectedModelId']);
+
+            if ($model && $model->brand !== $data['selectedBrand']) {
+                $this->addError('selectedModelId', 'Selected car model does not match the selected brand.');
+                $this->dispatch('kara-scroll-to-error', field: 'selectedModelId');
+                throw \Illuminate\Validation\ValidationException::withMessages($this->getErrorBag()->toArray());
+            }
+        }
+
+        $data['requested_brand'] = $data['selectedBrand'] ?? null;
+        $data['requested_model_id'] = $data['selectedModelId'] ?? null;
+        $data['request_date'] = $data['request_date'] ?? null;
+        $data['requested_vehicle'] = null;
+
+        unset($data['selectedBrand'], $data['selectedModelId']);
 
         return $data;
     }
@@ -401,9 +417,9 @@ class LeadList extends Component
             'email',
             'source',
             'discovery_source',
-            'requested_vehicle',
-            'pickup_date',
-            'return_date',
+            'selectedBrand',
+            'selectedModelId',
+            'request_date',
             'next_follow_up_at',
             'last_contacted_at',
             'notes',
@@ -432,7 +448,10 @@ class LeadList extends Component
                 ],
                 'statuses' => Lead::statuses(),
                 'priorities' => Lead::priorities(),
-                'users' => User::query()->where('status', 'active')->orderBy('first_name')->orderBy('last_name')->get(),
+                'brands' => collect(),
+                'models' => collect(),
+                'communicationChannelOptions' => Contract::COMMUNICATION_CHANNELS,
+                'communicationChannelLabels' => Contract::COMMUNICATION_CHANNEL_LABELS,
                 'databaseReady' => false,
             ]);
         }
@@ -441,7 +460,7 @@ class LeadList extends Component
         $likeSearch = '%' . $search . '%';
 
         $leads = Lead::query()
-            ->with(['customer', 'assignedUser'])
+            ->with(['customer', 'assignedUser', 'requestedModel'])
             ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->where(function ($scoped) use ($likeSearch) {
                     $scoped->where('first_name', 'like', $likeSearch)
@@ -451,8 +470,13 @@ class LeadList extends Component
                         ->orWhere('email', 'like', $likeSearch)
                         ->orWhere('source', 'like', $likeSearch)
                         ->orWhere('discovery_source', 'like', $likeSearch)
+                        ->orWhere('requested_brand', 'like', $likeSearch)
                         ->orWhere('requested_vehicle', 'like', $likeSearch)
-                        ->orWhere('notes', 'like', $likeSearch);
+                        ->orWhere('notes', 'like', $likeSearch)
+                        ->orWhereHas('requestedModel', function ($modelQuery) use ($likeSearch) {
+                            $modelQuery->where('model', 'like', $likeSearch)
+                                ->orWhere('brand', 'like', $likeSearch);
+                        });
                 });
             })
             ->when($this->statusFilter !== '', fn ($query) => $query->where('status', $this->statusFilter))
@@ -475,7 +499,12 @@ class LeadList extends Component
             'summary' => $summary,
             'statuses' => Lead::statuses(),
             'priorities' => Lead::priorities(),
-            'users' => User::query()->where('status', 'active')->orderBy('first_name')->orderBy('last_name')->get(),
+            'brands' => CarModel::query()->distinct()->pluck('brand')->filter()->sort()->values(),
+            'models' => $this->selectedBrand
+                ? CarModel::query()->where('brand', $this->selectedBrand)->orderBy('model')->get()
+                : collect(),
+            'communicationChannelOptions' => Contract::COMMUNICATION_CHANNELS,
+            'communicationChannelLabels' => Contract::COMMUNICATION_CHANNEL_LABELS,
             'databaseReady' => true,
         ]);
     }
