@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Lead extends Model
 {
@@ -31,6 +32,9 @@ class Lead extends Model
         'source',
         'discovery_source',
         'requested_vehicle',
+        'requested_brand',
+        'requested_model_id',
+        'request_date',
         'pickup_date',
         'return_date',
         'priority',
@@ -46,6 +50,7 @@ class Lead extends Model
     ];
 
     protected $casts = [
+        'request_date' => 'date',
         'pickup_date' => 'date',
         'return_date' => 'date',
         'next_follow_up_at' => 'datetime',
@@ -109,8 +114,36 @@ class Lead extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function requestedModel(): BelongsTo
+    {
+        return $this->belongsTo(CarModel::class, 'requested_model_id');
+    }
+
     public function convertedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'converted_by');
+    }
+
+    public function requestedVehicleLabel(): string
+    {
+        if ($this->requestedModel) {
+            return trim($this->requestedModel->brand . ' ' . $this->requestedModel->model);
+        }
+
+        if ($this->requested_vehicle) {
+            return $this->requested_vehicle;
+        }
+
+        return 'No vehicle';
+    }
+
+    public function sourceLabel(): string
+    {
+        if ($this->source === null || $this->source === '') {
+            return 'No channel';
+        }
+
+        return Contract::communicationChannelLabel($this->source)
+            ?: Str::headline(str_replace('_', ' ', $this->source));
     }
 }
