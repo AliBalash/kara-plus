@@ -105,9 +105,15 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label" for="lead_source">Contact channel</label>
-                            <input type="text" id="lead_source" class="form-control" wire:model.defer="source"
-                                placeholder="Call, WhatsApp, Instagram">
+                            <label class="form-label" for="lead_source">Communication channel</label>
+                            <select id="lead_source" class="form-select" wire:model.defer="source">
+                                <option value="">Communication Channel</option>
+                                @foreach ($communicationChannelOptions as $channel)
+                                    <option value="{{ $channel }}">
+                                        {{ $communicationChannelLabels[$channel] ?? str_replace('_', ' ', ucfirst($channel)) }}
+                                    </option>
+                                @endforeach
+                            </select>
                             <x-panel.form-error-highlighter field="source" />
                         </div>
                         <div class="col-md-6">
@@ -117,26 +123,36 @@
                             <x-panel.form-error-highlighter field="discovery_source" />
                         </div>
 
-                        <div class="col-12">
-                            <label class="form-label" for="lead_requested_vehicle">Requested vehicle</label>
-                            <input type="text" id="lead_requested_vehicle" class="form-control"
-                                wire:model.defer="requested_vehicle">
-                            <x-panel.form-error-highlighter field="requested_vehicle" />
+                        <div class="col-md-6">
+                            <label class="form-label" for="lead_requested_brand">Car brand</label>
+                            <select id="lead_requested_brand" class="form-select" wire:model.live="selectedBrand">
+                                <option value="">Select brand</option>
+                                @foreach ($brands as $brand)
+                                    <option value="{{ $brand }}">{{ $brand }}</option>
+                                @endforeach
+                            </select>
+                            <x-panel.form-error-highlighter field="selectedBrand" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="lead_requested_model">Car model</label>
+                            <select id="lead_requested_model" class="form-select" wire:model.defer="selectedModelId"
+                                @disabled(blank($selectedBrand))>
+                                <option value="">Select model</option>
+                                @foreach ($models as $model)
+                                    <option value="{{ $model->id }}">{{ $model->model }}</option>
+                                @endforeach
+                            </select>
+                            <x-panel.form-error-highlighter field="selectedModelId" />
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label" for="lead_pickup_date">Pickup date</label>
-                            <input type="date" id="lead_pickup_date" class="form-control" wire:model.defer="pickup_date">
-                            <x-panel.form-error-highlighter field="pickup_date" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="lead_return_date">Return date</label>
-                            <input type="date" id="lead_return_date" class="form-control" wire:model.defer="return_date">
-                            <x-panel.form-error-highlighter field="return_date" />
+                            <label class="form-label" for="lead_request_date">Request date</label>
+                            <input type="date" id="lead_request_date" class="form-control" wire:model.defer="request_date">
+                            <x-panel.form-error-highlighter field="request_date" />
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label" for="lead_priority">Priority <span class="text-danger">*</span></label>
+                            <label class="form-label" for="lead_priority">Priority</label>
                             <select id="lead_priority" class="form-select" wire:model.defer="priority">
                                 @foreach ($priorities as $value => $label)
                                     <option value="{{ $value }}">{{ $label }}</option>
@@ -145,7 +161,7 @@
                             <x-panel.form-error-highlighter field="priority" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" for="lead_status">Status <span class="text-danger">*</span></label>
+                            <label class="form-label" for="lead_status">Status</label>
                             <select id="lead_status" class="form-select" wire:model.defer="status">
                                 @foreach ($statuses as $value => $label)
                                     @if ($value === 'converted' && $status !== 'converted')
@@ -155,17 +171,6 @@
                                 @endforeach
                             </select>
                             <x-panel.form-error-highlighter field="status" />
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label" for="lead_assigned_to">Owner</label>
-                            <select id="lead_assigned_to" class="form-select" wire:model.defer="assigned_to">
-                                <option value="">Unassigned</option>
-                                @foreach ($users as $user)
-                                    <option value="{{ $user->id }}">{{ $user->fullName() }}</option>
-                                @endforeach
-                            </select>
-                            <x-panel.form-error-highlighter field="assigned_to" />
                         </div>
 
                         <div class="col-md-6">
@@ -243,17 +248,17 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <div>{{ $lead->requested_vehicle ?: 'No vehicle' }}</div>
+                                        <div>{{ $lead->requestedVehicleLabel() }}</div>
                                         <div class="text-muted small">
-                                            @if ($lead->pickup_date)
-                                                {{ $lead->pickup_date->format('Y-m-d') }}
+                                            @if ($lead->request_date)
+                                                {{ $lead->request_date->format('Y-m-d') }}
                                             @else
                                                 No date
                                             @endif
                                         </div>
                                     </td>
                                     <td>
-                                        <div>{{ $lead->source ?: 'No channel' }}</div>
+                                        <div>{{ $lead->sourceLabel() }}</div>
                                         <div class="text-muted small">{{ $lead->discovery_source ?: 'No discovery source' }}</div>
                                     </td>
                                     <td>
