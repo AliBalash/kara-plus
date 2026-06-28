@@ -72,13 +72,13 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label" for="lead_first_name">First name <span class="text-danger">*</span></label>
+                            <label class="form-label" for="lead_first_name">First name</label>
                             <input type="text" id="lead_first_name" class="form-control" wire:model.defer="first_name"
                                 autocomplete="given-name">
                             <x-panel.form-error-highlighter field="first_name" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" for="lead_last_name">Last name <span class="text-danger">*</span></label>
+                            <label class="form-label" for="lead_last_name">Last name</label>
                             <input type="text" id="lead_last_name" class="form-control" wire:model.defer="last_name"
                                 autocomplete="family-name">
                             <x-panel.form-error-highlighter field="last_name" />
