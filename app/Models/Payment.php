@@ -9,6 +9,42 @@ class Payment extends Model
 {
     use HasFactory;
 
+    public const SALIK_AUTO_OTHER_REVENUE_PREFIX = 'Auto other revenue for Salik payment #';
+
+    public const SALIK_TRIP_PAYMENT_TYPES = [
+        'salik_4_aed' => 4.0,
+        'salik_4_20_aed' => 4.2,
+        'salik_6_aed' => 6.0,
+        'salik_6_30_aed' => 6.3,
+    ];
+
+    public const SALIK_BREAKDOWN_TYPES = [
+        'salik_4_aed',
+        'salik_4_20_aed',
+        'salik_6_aed',
+        'salik_6_30_aed',
+        'salik_other_revenue',
+    ];
+
+    public const PAYMENT_TYPE_LABELS = [
+        'rental_fee' => 'Rental Fee',
+        'security_deposit' => 'Security Deposit',
+        'salik' => 'Salik (Legacy)',
+        'salik_4_aed' => 'Salik (4 AED)',
+        'salik_4_20_aed' => 'Salik (4.20 AED)',
+        'salik_6_aed' => 'Salik (6 AED)',
+        'salik_6_30_aed' => 'Salik (6.30 AED)',
+        'salik_other_revenue' => 'Salik Other Revenue (Auto)',
+        'fine' => 'Fine',
+        'parking' => 'Parking',
+        'damage' => 'Damage',
+        'discount' => 'Discount',
+        'payment_back' => 'Payment Back',
+        'carwash' => 'Carwash',
+        'fuel' => 'Fuel',
+        'no_deposit_fee' => 'No Deposit Fee',
+    ];
+
     protected $fillable = [
         'contract_id',
         'customer_id',
@@ -39,13 +75,35 @@ class Payment extends Model
         'approval_status' => 'string',
     ];
 
-    private const SALIK_BREAKDOWN_TYPES = [
-        'salik_4_aed',
-        'salik_6_aed',
-        'salik_other_revenue',
-    ];
+    public static function paymentTypes(): array
+    {
+        return array_keys(self::PAYMENT_TYPE_LABELS);
+    }
 
-    public const SALIK_AUTO_OTHER_REVENUE_PREFIX = 'Auto other revenue for Salik payment #';
+    public static function paymentTypeLabels(): array
+    {
+        return self::PAYMENT_TYPE_LABELS;
+    }
+
+    public static function salikTripPaymentTypes(): array
+    {
+        return self::SALIK_TRIP_PAYMENT_TYPES;
+    }
+
+    public static function salikTripPaymentTypeKeys(): array
+    {
+        return array_keys(self::SALIK_TRIP_PAYMENT_TYPES);
+    }
+
+    public static function salikChargeTypes(): array
+    {
+        return ['salik', ...self::SALIK_BREAKDOWN_TYPES];
+    }
+
+    public static function isTripBasedSalikType(?string $paymentType): bool
+    {
+        return is_string($paymentType) && array_key_exists($paymentType, self::SALIK_TRIP_PAYMENT_TYPES);
+    }
 
     public function isSalikBreakdownEntry(): bool
     {
@@ -54,12 +112,11 @@ class Payment extends Model
 
     public function salikUnitAmount(): float
     {
-        return match ($this->payment_type) {
-            'salik_4_aed' => 4.0,
-            'salik_6_aed' => 6.0,
-            'salik_other_revenue' => 1.0,
-            default => 0.0,
-        };
+        if ($this->payment_type === 'salik_other_revenue') {
+            return 1.0;
+        }
+
+        return self::SALIK_TRIP_PAYMENT_TYPES[$this->payment_type] ?? 0.0;
     }
 
     public function salikTripCount(): int
@@ -108,7 +165,7 @@ class Payment extends Model
             return;
         }
 
-        if (! in_array($this->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {
+        if (! self::isTripBasedSalikType($this->payment_type)) {
             return;
         }
 

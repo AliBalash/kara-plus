@@ -22,7 +22,9 @@ class PaymentFactory extends Factory
             'fine',
             'salik',
             'salik_4_aed',
+            'salik_4_20_aed',
             'salik_6_aed',
+            'salik_6_30_aed',
             'salik_other_revenue',
             'parking',
             'damage',
@@ -34,10 +36,12 @@ class PaymentFactory extends Factory
 
         $amountInAed = $this->faker->randomFloat(2, 100, 2000);
 
-        if (in_array($paymentType, ['salik_4_aed', 'salik_6_aed', 'salik_other_revenue'], true)) {
+        if (in_array($paymentType, ['salik_4_aed', 'salik_4_20_aed', 'salik_6_aed', 'salik_6_30_aed', 'salik_other_revenue'], true)) {
             $unit = match ($paymentType) {
                 'salik_4_aed' => 4,
+                'salik_4_20_aed' => 4.2,
                 'salik_6_aed' => 6,
+                'salik_6_30_aed' => 6.3,
                 'salik_other_revenue' => 1,
             };
 
@@ -45,7 +49,7 @@ class PaymentFactory extends Factory
             $amountInAed = $tripCount * $unit;
         }
 
-        $currency = in_array($paymentType, ['salik', 'salik_4_aed', 'salik_6_aed', 'salik_other_revenue'], true)
+        $currency = in_array($paymentType, ['salik', 'salik_4_aed', 'salik_4_20_aed', 'salik_6_aed', 'salik_6_30_aed', 'salik_other_revenue'], true)
             ? 'AED'
             : $this->faker->randomElement(['AED', 'USD', 'EUR']);
 
