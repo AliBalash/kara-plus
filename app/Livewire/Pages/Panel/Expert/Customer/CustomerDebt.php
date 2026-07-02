@@ -115,7 +115,9 @@ class CustomerDebt extends Component
         $extras = $sum([
             'salik',
             'salik_4_aed',
+            'salik_4_20_aed',
             'salik_6_aed',
+            'salik_6_30_aed',
             'salik_other_revenue',
             'carwash',
             'fuel',

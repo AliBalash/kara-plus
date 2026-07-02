@@ -98,7 +98,7 @@
         $depositCollected = (float) $payments->where('payment_type', 'security_deposit')->sum('amount_in_aed');
         $fineCharges = (float) $payments->where('payment_type', 'fine')->sum('amount_in_aed');
         $salikCharges = (float) $payments
-            ->whereIn('payment_type', ['salik', 'salik_4_aed', 'salik_6_aed', 'salik_other_revenue'])
+            ->whereIn('payment_type', ['salik', 'salik_4_aed', 'salik_4_20_aed', 'salik_6_aed', 'salik_6_30_aed', 'salik_other_revenue'])
             ->sum('amount_in_aed');
         $outstandingBalance = $contract->calculateRemainingBalance($payments);
 

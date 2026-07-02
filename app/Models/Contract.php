@@ -228,11 +228,10 @@ class Contract extends Model
         $securityDeposit = $payments->where('payment_type', 'security_deposit')->sum('amount_in_aed');
         $finePaid = $payments->where('payment_type', 'fine')->sum('amount_in_aed');
         $legacySalik = $payments->where('payment_type', 'salik')->sum('amount_in_aed');
-        $salikFour = $payments->where('payment_type', 'salik_4_aed');
-        $salikSix = $payments->where('payment_type', 'salik_6_aed');
+        $salikTripCharges = $payments
+            ->whereIn('payment_type', Payment::salikTripPaymentTypeKeys())
+            ->sum('amount_in_aed');
         $salikOther = $payments->where('payment_type', 'salik_other_revenue');
-
-        $salikTripCharges = $salikFour->sum('amount_in_aed') + $salikSix->sum('amount_in_aed');
         $salikOtherRevenue = $salikOther->sum('amount_in_aed');
         $salik = $salikTripCharges + $legacySalik;
         $parking = $payments->where('payment_type', 'parking')->sum('amount_in_aed');
