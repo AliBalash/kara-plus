@@ -34,7 +34,7 @@
                     <div class="col-md-4" data-validation-field="amount">
                         <label class="form-label">
                             Amount
-                            @if (in_array($payment_type, ['salik_4_aed', 'salik_6_aed']))
+                            @if (\App\Models\Payment::isTripBasedSalikType($payment_type))
                                 <span class="badge bg-info-subtle text-info ms-2">Auto</span>
                             @elseif (!blank($payment_type))
                                 <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
@@ -42,12 +42,12 @@
                         </label>
                         <input type="number" class="form-control" step="0.01" wire:model="amount"
                             placeholder="0.00"
-                            @disabled(blank($payment_type) || in_array($payment_type, ['salik_4_aed', 'salik_6_aed']))>
+                            @disabled(blank($payment_type) || \App\Models\Payment::isTripBasedSalikType($payment_type))>
                         @if (blank($payment_type))
                             <small class="text-muted">Select a payment type to enter the amount.</small>
-                        @elseif (in_array($payment_type, ['salik_4_aed', 'salik_6_aed']))
+                        @elseif (\App\Models\Payment::isTripBasedSalikType($payment_type))
                             @php
-                                $salikUnit = $payment_type === 'salik_4_aed' ? 4 : 6;
+                                $salikUnit = \App\Models\Payment::salikTripPaymentTypes()[$payment_type] ?? 0;
                             @endphp
                             <small class="text-muted">Calculated automatically: {{ (int) ($salik_trip_count ?: 0) }} trips ×
                                 {{ $salikUnit }} AED = {{ number_format($amount ?? 0, 2) }} AED</small>
@@ -58,7 +58,7 @@
                     <div class="col-md-4" data-validation-field="currency">
                         <label class="form-label">Currency <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
                         <select class="form-select" wire:model.live="currency"
-                            @disabled(blank($payment_type) || in_array($payment_type, ['salik', 'salik_4_aed', 'salik_6_aed']))>
+                            @disabled(blank($payment_type) || in_array($payment_type, array_merge(['salik'], \App\Models\Payment::salikTripPaymentTypeKeys()), true))>
                             <option value="IRR">Rial</option>
                             <option value="USD">Dollar</option>
                             <option value="AED">Dirham</option>
@@ -66,7 +66,7 @@
                             <option value="SAR">Saudi Riyal</option>
                             <option value="OMR">Omani Rial</option>
                         </select>
-                        @if (in_array($payment_type, ['salik', 'salik_4_aed', 'salik_6_aed']))
+                        @if (in_array($payment_type, array_merge(['salik'], \App\Models\Payment::salikTripPaymentTypeKeys()), true))
                             <small class="text-muted">Salik payments are always billed in AED.</small>
                         @endif
                         @error('currency') <span class="text-danger">{{ $message }}</span> @enderror
@@ -80,30 +80,16 @@
                         </div>
                     @endif
 
-                    @if (in_array($payment_type, ['salik_4_aed', 'salik_6_aed']))
+                    @if (\App\Models\Payment::isTripBasedSalikType($payment_type))
                         <div class="col-md-4" data-validation-field="salik_trip_count">
                             <label class="form-label">
-                                @switch($payment_type)
-                                    @case('salik_4_aed')
-                                        Salik (4 AED) Trips
-                                        @break
-                                    @case('salik_6_aed')
-                                        Salik (6 AED) Trips
-                                        @break
-                                @endswitch
+                                {{ ($this->paymentTypeOptions[$payment_type] ?? 'Salik') . ' Trips' }}
                                 <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
                             </label>
                             <input type="number" min="0" class="form-control" wire:model.lazy="salik_trip_count">
                             <small class="text-muted">
                                 Amount will be recalculated as trips ×
-                                @switch($payment_type)
-                                    @case('salik_4_aed')
-                                        4 AED
-                                        @break
-                                    @case('salik_6_aed')
-                                        6 AED
-                                        @break
-                                @endswitch
+                                {{ \App\Models\Payment::salikTripPaymentTypes()[$payment_type] ?? 0 }} AED
                             </small>
                             @error('salik_trip_count') <span class="text-danger">{{ $message }}</span> @enderror
                         </div>
