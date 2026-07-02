@@ -8,6 +8,7 @@ use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
+use App\Models\Payment;
 use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\LocationCost;
 use App\Livewire\Concerns\SearchesCustomerPhone;
@@ -1703,15 +1704,13 @@ TEXT);
         $sumAmount = fn(string $type): float => (float) $payments->where('payment_type', $type)->sum('amount_in_aed');
         $sumTrips = fn(string $type): int => $payments->where('payment_type', $type)->sum(fn($payment) => $payment->salikTripCount());
 
-        $salik4Trips = $sumTrips('salik_4_aed');
-        $salik6Trips = $sumTrips('salik_6_aed');
+        $salikTripTypes = Payment::salikTripPaymentTypes();
         $otherRevenueTrips = $payments
             ->where('payment_type', 'salik_other_revenue')
             ->sum(fn($payment) => $payment->salikTripCount() ?: (int) round((float) $payment->amount_in_aed));
 
         $additionalChargeTypes = [
-            'salik_4_aed',
-            'salik_6_aed',
+            ...array_keys($salikTripTypes),
             'salik_other_revenue',
             'fine',
             'no_deposit_fee',
@@ -1741,7 +1740,7 @@ TEXT);
 
         $securityHold = $sumAmount('security_deposit');
         $customerPayments = (float) $payments
-            ->whereNotIn('payment_type', ['parking', 'salik', 'salik_4_aed', 'salik_6_aed', 'salik_other_revenue', 'fine', 'fuel', 'carwash', 'damage'])
+            ->whereNotIn('payment_type', ['parking', 'salik', ...array_keys($salikTripTypes), 'salik_other_revenue', 'fine', 'fuel', 'carwash', 'damage'])
             ->sum('amount_in_aed');
         $balance = $this->contract->calculateRemainingBalance($payments);
         $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
@@ -1763,7 +1762,11 @@ TEXT);
         );
         $subTotalForNote = $chargesReferenceTotal;
 
-        $salikTotal = $sumAmount('salik_4_aed') + $sumAmount('salik_6_aed') + $sumAmount('salik_other_revenue');
+        $salikTotal = array_reduce(
+            [...array_keys($salikTripTypes), 'salik_other_revenue'],
+            fn(float $carry, string $type): float => $carry + $sumAmount($type),
+            0.0
+        );
         $parkingTotal = $sumAmount('parking');
         $fineTotal = $sumAmount('fine');
         $otherChargesTotal = $sumAmount('no_deposit_fee')
@@ -1821,8 +1824,11 @@ TEXT);
                 'Daily rate: ' . $this->formatDailyRate() . ' AED',
             ]),
             $formatList('Tolls & trips', array_filter([
-                $tripLine('Salik (4 AED)', $salik4Trips, $sumAmount('salik_4_aed')),
-                $tripLine('Salik (6 AED)', $salik6Trips, $sumAmount('salik_6_aed')),
+                ...collect($salikTripTypes)->map(fn(float $unit, string $type): ?string => $tripLine(
+                    Payment::paymentTypeLabels()[$type] ?? ucwords(str_replace('_', ' ', $type)),
+                    $sumTrips($type),
+                    $sumAmount($type)
+                ))->all(),
                 $tripLine('Other revenue', $otherRevenueTrips, $sumAmount('salik_other_revenue')),
                 $moneyLine('Salik total', $salikTotal),
             ])),
