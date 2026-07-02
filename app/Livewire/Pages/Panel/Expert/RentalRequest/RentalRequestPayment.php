@@ -139,25 +139,10 @@ class RentalRequestPayment extends Component
     }
 
     private const PAYMENT_METHODS = ['cash', 'transfer', 'ticket'];
-    private const PAYMENT_TYPES = [
-        'rental_fee',
-        'security_deposit',
-        'salik',
-        'salik_4_aed',
-        'salik_6_aed',
-        'salik_other_revenue',
-        'fine',
-        'parking',
-        'damage',
-        'discount',
-        'payment_back',
-        'carwash',
-        'fuel',
-        'no_deposit_fee',
-    ];
-
     protected function rules(): array
     {
+        $manualAmountSalikTypes = array_merge(['salik'], Payment::salikTripPaymentTypeKeys());
+
         return [
             'amount' => [
                 'nullable',
@@ -165,17 +150,17 @@ class RentalRequestPayment extends Component
                 'min:0',
                 Rule::requiredIf(fn () => $this->payment_type !== null
                     && $this->payment_type !== ''
-                    && ! in_array($this->payment_type, ['salik', 'salik_4_aed', 'salik_6_aed'], true)),
+                    && ! in_array($this->payment_type, $manualAmountSalikTypes, true)),
             ],
             'currency' => ['required', Rule::in(['IRR', 'USD', 'AED', 'EUR', 'SAR', 'OMR'])],
-            'payment_type' => ['required', Rule::in(self::PAYMENT_TYPES)],
+            'payment_type' => ['required', Rule::in(Payment::paymentTypes())],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['required', Rule::in(self::PAYMENT_METHODS)],
             'is_refundable' => ['required', 'boolean'],
             'rate' => ['nullable', 'numeric', 'min:0.0001'],
             'receipt' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8048'], // optional receipt image
             'note' => ['nullable', 'string', 'max:2000'],
-            'salik_trip_count' => ['required_if:payment_type,salik_4_aed,salik_6_aed', 'integer', 'min:0'],
+            'salik_trip_count' => ['required_if:payment_type,' . implode(',', Payment::salikTripPaymentTypeKeys()), 'integer', 'min:0'],
         ];
     }
 
@@ -223,19 +208,20 @@ class RentalRequestPayment extends Component
         $legacySalikPayments = $this->existingPayments
             ->where('payment_type', 'salik');
 
-        $salikFourPayments = $this->existingPayments
-            ->where('payment_type', 'salik_4_aed');
-
-        $salikSixPayments = $this->existingPayments
-            ->where('payment_type', 'salik_6_aed');
+        $salikTripPayments = $this->existingPayments
+            ->whereIn('payment_type', Payment::salikTripPaymentTypeKeys());
 
         $salikOtherPayments = $this->existingPayments
             ->where('payment_type', 'salik_other_revenue');
 
-        $this->salikFourTripsTotal = $salikFourPayments->sum(fn($payment) => $payment->salikTripCount());
-        $this->salikSixTripsTotal = $salikSixPayments->sum(fn($payment) => $payment->salikTripCount());
+        $this->salikFourTripsTotal = $this->existingPayments
+            ->where('payment_type', 'salik_4_aed')
+            ->sum(fn($payment) => $payment->salikTripCount());
+        $this->salikSixTripsTotal = $this->existingPayments
+            ->where('payment_type', 'salik_6_aed')
+            ->sum(fn($payment) => $payment->salikTripCount());
         $this->salikTripChargesTotal = $this->roundCurrency(
-            (float) $salikFourPayments->sum('amount_in_aed') + (float) $salikSixPayments->sum('amount_in_aed')
+            (float) $salikTripPayments->sum('amount_in_aed')
         );
         $this->salikOtherRevenueTotal = $this->roundCurrency((float) $salikOtherPayments->sum('amount_in_aed'));
         $this->salikOtherTripsTotal = $salikOtherPayments->sum(fn($payment) => $payment->salikTripCount());
@@ -330,22 +316,7 @@ class RentalRequestPayment extends Component
 
     public function getPaymentTypeOptionsProperty(): array
     {
-        return [
-            'rental_fee' => 'Rental Fee',
-            'security_deposit' => 'Security Deposit',
-            'salik' => 'Salik (Legacy)',
-            'salik_4_aed' => 'Salik (4 AED)',
-            'salik_6_aed' => 'Salik (6 AED)',
-            'salik_other_revenue' => 'Salik Other Revenue (Auto)',
-            'fine' => 'Fine',
-            'parking' => 'Parking',
-            'damage' => 'Damage',
-            'discount' => 'Discount',
-            'payment_back' => 'Payment Back',
-            'carwash' => 'Carwash',
-            'fuel' => 'Fuel',
-            'no_deposit_fee' => 'No Deposit Fee',
-        ];
+        return Payment::paymentTypeLabels();
     }
 
 
@@ -360,7 +331,7 @@ class RentalRequestPayment extends Component
             $this->payment_method = self::PAYMENT_METHODS[0];
         }
 
-        if (in_array($this->payment_type, ['salik', 'salik_4_aed', 'salik_6_aed'], true) && $this->amount === '') {
+        if (in_array($this->payment_type, array_merge(['salik'], Payment::salikTripPaymentTypeKeys()), true) && $this->amount === '') {
             $this->amount = 0;
         } elseif ($this->amount === '') {
             $this->amount = null;
@@ -381,7 +352,7 @@ class RentalRequestPayment extends Component
 
         $salikTrips = 0;
 
-        if (in_array($this->payment_type, ['salik', 'salik_4_aed', 'salik_6_aed'], true)) {
+        if (in_array($this->payment_type, array_merge(['salik'], Payment::salikTripPaymentTypeKeys()), true)) {
             $aedAmount = $this->resolveSalikAmount();
             $this->amount = $aedAmount;
             $this->currency = 'AED';
@@ -432,7 +403,7 @@ class RentalRequestPayment extends Component
                     'approval_status' => 'pending',
                 ]);
 
-                if (in_array($this->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {
+                if (Payment::isTripBasedSalikType($this->payment_type)) {
                     $payment->syncAutoGeneratedOtherRevenue($salikTrips);
                 }
             });
@@ -567,7 +538,7 @@ class RentalRequestPayment extends Component
             $this->currentSalikTripCount = 0;
         }
 
-        if (in_array($value, ['salik', 'salik_4_aed', 'salik_6_aed'], true)) {
+        if (in_array($value, array_merge(['salik'], Payment::salikTripPaymentTypeKeys()), true)) {
             $this->currency = 'AED';
             $this->rate = null;
 
@@ -604,11 +575,7 @@ class RentalRequestPayment extends Component
             ]);
         }
 
-        $unit = match ($this->payment_type) {
-            'salik_4_aed' => 4,
-            'salik_6_aed' => 6,
-            default => 0,
-        };
+        $unit = Payment::salikTripPaymentTypes()[$this->payment_type] ?? 0;
 
         return $this->roundCurrency($trips * $unit);
     }
@@ -623,7 +590,7 @@ class RentalRequestPayment extends Component
         $receiptPath = $payment->receipt;
 
         DB::transaction(function () use ($payment) {
-            if (in_array($payment->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {
+            if (Payment::isTripBasedSalikType($payment->payment_type)) {
                 $payment->syncAutoGeneratedOtherRevenue(0);
             }
 
@@ -678,7 +645,7 @@ class RentalRequestPayment extends Component
 
     private function refreshSalikDerivedFields(): void
     {
-        if (! in_array($this->payment_type, ['salik_4_aed', 'salik_6_aed'], true)) {
+        if (! Payment::isTripBasedSalikType($this->payment_type)) {
             $this->salik_other_revenue_preview = 0;
             $this->currentSalikTripCount = 0;
 
@@ -689,7 +656,7 @@ class RentalRequestPayment extends Component
         $this->currentSalikTripCount = $trips;
         $this->salik_other_revenue_preview = $trips;
 
-        $unit = $this->payment_type === 'salik_4_aed' ? 4 : 6;
+        $unit = Payment::salikTripPaymentTypes()[$this->payment_type] ?? 0;
         $this->amount = $this->roundCurrency($trips * $unit);
     }
 
