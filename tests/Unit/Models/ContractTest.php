@@ -41,7 +41,9 @@ class ContractTest extends TestCase
             ['payment_type' => 'security_deposit', 'amount_in_aed' => 200],
             ['payment_type' => 'fine', 'amount_in_aed' => 150],
             ['payment_type' => 'salik_4_aed', 'amount_in_aed' => 20], // 5 trips
+            ['payment_type' => 'salik_4_20_aed', 'amount_in_aed' => 12.6], // 3 trips
             ['payment_type' => 'salik_6_aed', 'amount_in_aed' => 18], // 3 trips
+            ['payment_type' => 'salik_6_30_aed', 'amount_in_aed' => 12.6], // 2 trips
             ['payment_type' => 'salik_other_revenue', 'amount_in_aed' => 8],
             ['payment_type' => 'salik', 'amount_in_aed' => 40],
             ['payment_type' => 'parking', 'amount_in_aed' => 30],
@@ -65,7 +67,7 @@ class ContractTest extends TestCase
         });
 
         $effectivePaid = 600 - 50;
-        $salikTripCharges = 20 + 18; // 38 AED from salik 4/6 entries
+        $salikTripCharges = 20 + 12.6 + 18 + 12.6; // 63.2 AED from all trip-based salik entries
         $salikOtherRevenue = 8;
         $legacySalik = 40;
 
