@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\Car;
 
 use App\Models\Car;
+use Carbon\Carbon;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -107,9 +108,9 @@ class CarList extends Component
 
             ->when($this->selectedBrand, fn($q) => $q->whereHas('carModel', fn($q2) => $q2->where('brand', $this->selectedBrand)))
             ->when($this->statusFilter, fn($q) => $q->byOperationalStatus($this->statusFilter))
-            ->when($this->onlyReserved, fn($q) => $q->whereIn('status', ['reserved', 'pre_reserved']))
-            ->when($this->pickupFrom, fn($q) => $q->whereHas('currentContract', fn($q2) => $q2->where('pickup_date', '>=', $this->pickupFrom)))
-            ->when($this->pickupTo, fn($q) => $q->whereHas('currentContract', fn($q2) => $q2->where('pickup_date', '<=', $this->pickupTo)));
+            ->when($this->onlyReserved, fn($q) => $q->whereIn('status', ['reserved', 'pre_reserved']));
+
+        $this->applyDateFilters($carsQuery);
 
         // مرتب‌سازی روی ستون relation بدون تکراری شدن رکورد
         if (in_array($this->sortField, ['pickup_date', 'return_date'])) {
@@ -131,5 +132,68 @@ class CarList extends Component
     {
         $this->search = trim($this->searchInput);
         $this->resetPage();
+    }
+
+    public function applyFilters(): void
+    {
+        $this->resetPage();
+    }
+
+    protected function applyDateFilters(Builder $query): void
+    {
+        if (! $this->pickupFrom && ! $this->pickupTo) {
+            return;
+        }
+
+        [$windowStart, $windowEnd] = $this->selectedWindowBounds();
+
+        if ($this->statusFilter === 'available') {
+            $query->whereDoesntHave('contracts', function (Builder $contractQuery) use ($windowStart, $windowEnd) {
+                $contractQuery
+                    ->whereIn('current_status', Car::reservingStatuses())
+                    ->whereNotNull('pickup_date')
+                    ->where('pickup_date', '<', $windowEnd)
+                    ->where(function (Builder $overlapQuery) use ($windowStart) {
+                        $overlapQuery->whereNull('return_date')
+                            ->orWhere('return_date', '>', $windowStart);
+                    });
+            });
+
+            return;
+        }
+
+        $query->whereHas('currentContract', function (Builder $contractQuery) use ($windowStart, $windowEnd) {
+            $contractQuery
+                ->where('pickup_date', '<', $windowEnd)
+                ->where(function (Builder $overlapQuery) use ($windowStart) {
+                    $overlapQuery->whereNull('return_date')
+                        ->orWhere('return_date', '>', $windowStart);
+                });
+        });
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    protected function selectedWindowBounds(): array
+    {
+        $from = $this->pickupFrom
+            ? Carbon::parse($this->pickupFrom)->startOfDay()
+            : null;
+        $to = $this->pickupTo
+            ? Carbon::parse($this->pickupTo)->endOfDay()
+            : null;
+
+        if ($from && $to) {
+            return [$from, $to];
+        }
+
+        if ($from) {
+            return [$from, $from->copy()->endOfDay()];
+        }
+
+        $to ??= Carbon::now()->endOfDay();
+
+        return [$to->copy()->startOfDay(), $to];
     }
 }

@@ -1,63 +1,96 @@
 <div class="card">
     <h5 class="card-header">Cars</h5>
 
-    <div class="row p-3">
-        <!-- Search -->
-        <div class="col-md-3 mb-2">
-            <form class="input-group" wire:submit.prevent="applySearch">
-                <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="search" class="form-control" placeholder="Search..."
-                    wire:model.defer="searchInput">
-                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
-                    wire:target="applySearch">
-                    <span wire:loading.remove wire:target="applySearch">Search</span>
-                    <span wire:loading wire:target="applySearch">...</span>
-                </button>
-            </form>
-        </div>
+    <div class="p-3 border-bottom">
+        <div class="row g-3 align-items-end">
+            <div class="col-lg-5">
+                <label class="form-label small text-muted mb-1">Quick search</label>
+                <form class="input-group" wire:submit.prevent="applySearch">
+                    <span class="input-group-text"><i class="bx bx-search"></i></span>
+                    <input type="search" class="form-control" placeholder="Plate, brand, or model..."
+                        wire:model.defer="searchInput">
+                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
+                        wire:target="applySearch">
+                        <span wire:loading.remove wire:target="applySearch">Search</span>
+                        <span wire:loading wire:target="applySearch">...</span>
+                    </button>
+                </form>
+            </div>
 
-        <!-- Brand Filter -->
-        <div class="col-md-3 mb-2">
-            <select class="form-select" wire:model.live="selectedBrand">
-                <option value="">All Brands</option>
-                @foreach ($brands as $brand)
-                    <option value="{{ $brand }}">{{ $brand }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <!-- Status Filter -->
-        <div class="col-md-3 mb-2">
-            <select class="form-select" wire:model.live="statusFilter">
-                <option value="">All Statuses</option>
-                <option value="available">Available</option>
-                <option value="pre_reserved">Upcoming Booking</option>
-                <option value="reserved">Active Booking</option>
-                <option value="unavailable">Unavailable</option>
-                <option value="under_maintenance">Under Maintenance</option>
-                <option value="sold">Sold</option>
-            </select>
-        </div>
-
-        <!-- Only Booking -->
-        <div class="col-md-3 mb-2 d-flex align-items-center">
-            <input type="checkbox" class="form-check-input me-1" id="onlyReserved" wire:model.live="onlyReserved">
-            <label class="form-check-label" for="onlyReserved">Show only bookings</label>
-        </div>
-
-        <!-- Date Filters -->
-        <div class="col-md-3 mb-2">
-            <input type="date" class="form-control" wire:model.live="pickupFrom" placeholder="Pickup From">
-        </div>
-        <div class="col-md-3 mb-2">
-            <input type="date" class="form-control" wire:model.live="pickupTo" placeholder="Pickup To">
-        </div>
-
-        <!-- Clear All Filters -->
-        <div class="col-md-3 mb-2">
-            <button class="btn btn-secondary w-100" wire:click="clearFilters">Clear All Filters</button>
+            <div class="col-lg-7">
+                <div class="d-flex flex-column flex-md-row justify-content-md-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary" wire:click="clearFilters">
+                        Clear All Filters
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <form class="p-3 bg-light border-bottom" wire:submit.prevent="applyFilters">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
+            <div>
+                <h6 class="mb-1">Filter cars</h6>
+                <p class="text-muted small mb-0">Choose your filters, then press Apply Filters.</p>
+            </div>
+            <div class="d-flex flex-column flex-sm-row gap-2">
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled"
+                    wire:target="applyFilters">
+                    <span wire:loading.remove wire:target="applyFilters">Apply Filters</span>
+                    <span wire:loading wire:target="applyFilters">Applying...</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" wire:click="clearFilters">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6 col-lg-3">
+                <label class="form-label small text-muted mb-1">Brand</label>
+                <select class="form-select" wire:model.defer="selectedBrand">
+                    <option value="">All Brands</option>
+                    @foreach ($brands as $brand)
+                        <option value="{{ $brand }}">{{ $brand }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <label class="form-label small text-muted mb-1">Status</label>
+                <select class="form-select" wire:model.defer="statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="available">Available</option>
+                    <option value="pre_reserved">Upcoming Booking</option>
+                    <option value="reserved">Active Booking</option>
+                    <option value="unavailable">Unavailable</option>
+                    <option value="under_maintenance">Under Maintenance</option>
+                    <option value="sold">Sold</option>
+                </select>
+            </div>
+
+            <div class="col-md-6 col-lg-2">
+                <label class="form-label small text-muted mb-1">Pickup From</label>
+                <input type="date" class="form-control" wire:model.defer="pickupFrom" placeholder="Pickup From">
+            </div>
+
+            <div class="col-md-6 col-lg-2">
+                <label class="form-label small text-muted mb-1">Pickup To</label>
+                <input type="date" class="form-control" wire:model.defer="pickupTo" placeholder="Pickup To">
+            </div>
+
+            <div class="col-md-12 col-lg-2">
+                <label class="form-label small text-muted mb-1">Booking Scope</label>
+                <div class="border rounded px-3 py-2 bg-white d-flex align-items-center">
+                    <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+                        <input type="checkbox" class="form-check-input mt-0 float-none me-0" id="onlyReserved"
+                            wire:model.defer="onlyReserved">
+                        <label class="form-check-label mb-0" for="onlyReserved">Show only bookings</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 
     <!-- Table -->
     <div class="table-responsive text-nowrap">

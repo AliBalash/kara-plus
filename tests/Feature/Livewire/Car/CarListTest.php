@@ -5,6 +5,8 @@ namespace Tests\Feature\Livewire\Car;
 use App\Livewire\Pages\Panel\Expert\Car\CarList;
 use App\Models\Car;
 use App\Models\CarOption;
+use App\Models\Contract;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -109,5 +111,37 @@ class CarListTest extends TestCase
             [$reserved->id, $preReserved->id],
             Car::query()->reservableForSelection()->orderBy('id')->pluck('id')->all()
         );
+    }
+
+    public function test_available_filter_with_date_range_keeps_cars_without_conflicting_bookings(): void
+    {
+        Car::factory()->available()->create([
+            'plate_number' => 'FREE-1001',
+        ]);
+
+        $conflictingCar = Car::factory()->available()->create([
+            'plate_number' => 'BUSY-1002',
+        ]);
+
+        Contract::factory()->for($conflictingCar)->status('reserved')->create([
+            'pickup_date' => Carbon::parse('2026-07-15 10:00:00'),
+            'return_date' => Carbon::parse('2026-07-18 10:00:00'),
+        ]);
+
+        $component = app(CarList::class);
+        $component->statusFilter = 'available';
+        $component->pickupFrom = '2026-07-13';
+        $component->pickupTo = '2026-07-19';
+
+        $query = Car::query()
+            ->when($component->statusFilter, fn ($builder) => $builder->byOperationalStatus($component->statusFilter));
+
+        $applyDateFilters = new \ReflectionMethod($component, 'applyDateFilters');
+        $applyDateFilters->setAccessible(true);
+        $applyDateFilters->invoke($component, $query);
+
+        $cars = $query->orderBy('plate_number')->pluck('plate_number')->all();
+
+        $this->assertSame(['FREE-1001'], $cars);
     }
 }
