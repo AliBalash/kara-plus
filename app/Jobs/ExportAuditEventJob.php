@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AuditEvent;
 use App\Services\Audit\ElasticsearchAuditExporter;
+use App\Support\Audit\AuditExportFailure;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -57,17 +58,23 @@ class ExportAuditEventJob implements ShouldQueue
                 'elastic_document_id' => $event->event_uuid,
             ])->save();
         } catch (\Throwable $exception) {
+            $summary = AuditExportFailure::summarize($exception);
+
             Log::error('Audit event export failed.', [
                 'audit_event_id' => $event->id,
                 'event_uuid' => $event->event_uuid,
                 'attempts' => (int) $event->export_attempts,
-                'message' => $exception->getMessage(),
+                'message' => $summary,
             ]);
 
             $event->forceFill([
                 'export_status' => 'failed',
-                'export_last_error' => $exception->getMessage(),
+                'export_last_error' => $summary,
             ])->save();
+
+            if (! AuditExportFailure::isRetryableThrowable($exception)) {
+                return;
+            }
 
             throw $exception;
         }

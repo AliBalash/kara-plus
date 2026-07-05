@@ -114,12 +114,83 @@ class ElasticsearchAuditExporter implements AuditExportContract
             'entity_type' => $event->entity_type,
             'entity_id' => $event->entity_id,
             'action' => $event->action,
-            'before' => $event->before,
-            'after' => $event->after,
-            'changed_fields' => $event->changed_fields,
-            'meta' => $event->meta,
+            'before' => $this->normalizeFlattenedField($event->before),
+            'after' => $this->normalizeFlattenedField($event->after),
+            'changed_fields' => $this->normalizeFlattenedField($event->changed_fields),
+            'meta' => $this->normalizeFlattenedField($event->meta),
             'contract_refs' => $contractRefs !== [] ? $contractRefs : null,
         ];
+    }
+
+    private function normalizeFlattenedField(mixed $value): ?array
+    {
+        if (! is_array($value) || $value === []) {
+            return null;
+        }
+
+        return $this->normalizeFlattenedObject($value);
+    }
+
+    private function normalizeFlattenedObject(array $value): array
+    {
+        if (array_is_list($value)) {
+            $normalized = [];
+
+            foreach ($value as $index => $item) {
+                if (is_scalar($item) || $item === null) {
+                    $normalized[$this->flattenedListKey($item, $index)] = true;
+                    continue;
+                }
+
+                $normalized['item_' . $index] = $this->normalizeFlattenedValue($item);
+            }
+
+            return $normalized;
+        }
+
+        $normalized = [];
+
+        foreach ($value as $key => $item) {
+            $normalized[(string) $key] = $this->normalizeFlattenedValue($item);
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeFlattenedValue(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            return $value === [] ? new \stdClass() : $this->normalizeFlattenedObject($value);
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format(DATE_ATOM);
+        }
+
+        if ($value instanceof \JsonSerializable) {
+            return $this->normalizeFlattenedValue($value->jsonSerialize());
+        }
+
+        if (is_object($value) && method_exists($value, 'toArray')) {
+            return $this->normalizeFlattenedValue($value->toArray());
+        }
+
+        if (is_object($value)) {
+            return $value::class;
+        }
+
+        return $value;
+    }
+
+    private function flattenedListKey(mixed $value, int $index): string
+    {
+        $candidate = trim((string) ($value ?? ''));
+
+        if ($candidate === '') {
+            return 'item_' . $index;
+        }
+
+        return mb_substr($candidate, 0, 120);
     }
 
     private function resolveContractRefs(AuditEvent $event): array
