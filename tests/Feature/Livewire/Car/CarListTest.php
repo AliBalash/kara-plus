@@ -144,4 +144,36 @@ class CarListTest extends TestCase
 
         $this->assertSame(['FREE-1001'], $cars);
     }
+
+    public function test_daily_price_filter_applies_price_range_and_normalizes_reversed_bounds(): void
+    {
+        Car::factory()->available()->create([
+            'plate_number' => 'LOW-1001',
+            'price_per_day_short' => 120,
+        ]);
+
+        Car::factory()->available()->create([
+            'plate_number' => 'MID-1002',
+            'price_per_day_short' => 240,
+        ]);
+
+        Car::factory()->available()->create([
+            'plate_number' => 'HIGH-1003',
+            'price_per_day_short' => 380,
+        ]);
+
+        $component = app(CarList::class);
+        $component->dailyPriceMin = '300';
+        $component->dailyPriceMax = '200';
+
+        $query = Car::query();
+
+        $applyDailyPriceFilters = new \ReflectionMethod($component, 'applyDailyPriceFilters');
+        $applyDailyPriceFilters->setAccessible(true);
+        $applyDailyPriceFilters->invoke($component, $query);
+
+        $cars = $query->orderBy('plate_number')->pluck('plate_number')->all();
+
+        $this->assertSame(['MID-1002'], $cars);
+    }
 }

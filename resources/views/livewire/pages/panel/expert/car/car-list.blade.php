@@ -79,6 +79,18 @@
                 <input type="date" class="form-control" wire:model.defer="pickupTo" placeholder="Pickup To">
             </div>
 
+            <div class="col-md-6 col-lg-2">
+                <label class="form-label small text-muted mb-1">Daily Price From</label>
+                <input type="number" min="0" step="0.01" class="form-control" wire:model.defer="dailyPriceMin"
+                    placeholder="Min price">
+            </div>
+
+            <div class="col-md-6 col-lg-2">
+                <label class="form-label small text-muted mb-1">Daily Price To</label>
+                <input type="number" min="0" step="0.01" class="form-control" wire:model.defer="dailyPriceMax"
+                    placeholder="Max price">
+            </div>
+
             <div class="col-md-12 col-lg-2">
                 <label class="form-label small text-muted mb-1">Booking Scope</label>
                 <div class="border rounded px-3 py-2 bg-white d-flex align-items-center">

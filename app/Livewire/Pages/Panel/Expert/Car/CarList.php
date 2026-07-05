@@ -22,12 +22,14 @@ class CarList extends Component
     public $statusFilter = '';
     public $pickupFrom;
     public $pickupTo;
+    public $dailyPriceMin;
+    public $dailyPriceMax;
     public $sortField = 'id';
     public $sortDirection = 'asc';
     public $onlyReserved = false;
 
     protected $listeners = ['deletecar'];
-    protected $queryString = ['search', 'selectedBrand', 'statusFilter', 'pickupFrom', 'pickupTo', 'sortField', 'sortDirection', 'onlyReserved'];
+    protected $queryString = ['search', 'selectedBrand', 'statusFilter', 'pickupFrom', 'pickupTo', 'dailyPriceMin', 'dailyPriceMax', 'sortField', 'sortDirection', 'onlyReserved'];
 
     public function mount(): void
     {
@@ -80,6 +82,8 @@ class CarList extends Component
         $this->statusFilter = '';
         $this->pickupFrom = null;
         $this->pickupTo = null;
+        $this->dailyPriceMin = null;
+        $this->dailyPriceMax = null;
         $this->onlyReserved = false;
         $this->resetPage();
     }
@@ -111,6 +115,7 @@ class CarList extends Component
             ->when($this->onlyReserved, fn($q) => $q->whereIn('status', ['reserved', 'pre_reserved']));
 
         $this->applyDateFilters($carsQuery);
+        $this->applyDailyPriceFilters($carsQuery);
 
         // مرتب‌سازی روی ستون relation بدون تکراری شدن رکورد
         if (in_array($this->sortField, ['pickup_date', 'return_date'])) {
@@ -172,6 +177,23 @@ class CarList extends Component
         });
     }
 
+    protected function applyDailyPriceFilters(Builder $query): void
+    {
+        if ($this->dailyPriceMin === null && $this->dailyPriceMin !== '0' && $this->dailyPriceMax === null && $this->dailyPriceMax !== '0') {
+            return;
+        }
+
+        [$minPrice, $maxPrice] = $this->selectedDailyPriceBounds();
+
+        if ($minPrice !== null) {
+            $query->where('price_per_day_short', '>=', $minPrice);
+        }
+
+        if ($maxPrice !== null) {
+            $query->where('price_per_day_short', '<=', $maxPrice);
+        }
+    }
+
     /**
      * @return array{0: Carbon, 1: Carbon}
      */
@@ -195,5 +217,29 @@ class CarList extends Component
         $to ??= Carbon::now()->endOfDay();
 
         return [$to->copy()->startOfDay(), $to];
+    }
+
+    /**
+     * @return array{0: float|null, 1: float|null}
+     */
+    protected function selectedDailyPriceBounds(): array
+    {
+        $minPrice = $this->normalizePriceFilterValue($this->dailyPriceMin);
+        $maxPrice = $this->normalizePriceFilterValue($this->dailyPriceMax);
+
+        if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
+            return [$maxPrice, $minPrice];
+        }
+
+        return [$minPrice, $maxPrice];
+    }
+
+    protected function normalizePriceFilterValue(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return max((float) $value, 0);
     }
 }
