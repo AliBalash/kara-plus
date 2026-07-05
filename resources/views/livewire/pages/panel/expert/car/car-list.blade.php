@@ -109,13 +109,44 @@
         <table class="table table-hover">
             <thead>
                 <tr>
-                    <th wire:click="sortBy('id')">#</th>
+                    <th role="button" wire:click="sortBy('id')">
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span>#</span>
+                            <i class="bx {{ $sortField === 'id' ? ($sortDirection === 'asc' ? 'bx-sort-up' : 'bx-sort-down') : 'bx-sort-alt-2' }}"></i>
+                        </span>
+                    </th>
                     <th>Car Model</th>
-                    <th wire:click="sortBy('color')">Color</th>
+                    <th role="button" wire:click="sortBy('color')">
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span>Color</span>
+                            <i class="bx {{ $sortField === 'color' ? ($sortDirection === 'asc' ? 'bx-sort-up' : 'bx-sort-down') : 'bx-sort-alt-2' }}"></i>
+                        </span>
+                    </th>
+                    <th role="button" wire:click="sortBy('price_per_day_short')">
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span>Daily Price</span>
+                            <i class="bx {{ $sortField === 'price_per_day_short' ? ($sortDirection === 'asc' ? 'bx-sort-up' : 'bx-sort-down') : 'bx-sort-alt-2' }}"></i>
+                        </span>
+                    </th>
                     <th>Actions</th>
-                    <th wire:click="sortBy('status')">Status</th>
-                    <th wire:click="sortBy('pickup_date')">Pickup Date</th>
-                    <th wire:click="sortBy('return_date')">Return Date</th>
+                    <th role="button" wire:click="sortBy('status')">
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span>Status</span>
+                            <i class="bx {{ $sortField === 'status' ? ($sortDirection === 'asc' ? 'bx-sort-up' : 'bx-sort-down') : 'bx-sort-alt-2' }}"></i>
+                        </span>
+                    </th>
+                    <th role="button" wire:click="sortBy('pickup_date')">
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span>Pickup Date</span>
+                            <i class="bx {{ $sortField === 'pickup_date' ? ($sortDirection === 'asc' ? 'bx-sort-up' : 'bx-sort-down') : 'bx-sort-alt-2' }}"></i>
+                        </span>
+                    </th>
+                    <th role="button" wire:click="sortBy('return_date')">
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span>Return Date</span>
+                            <i class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-sort-up' : 'bx-sort-down') : 'bx-sort-alt-2' }}"></i>
+                        </span>
+                    </th>
                 </tr>
             </thead>
             <tbody>
