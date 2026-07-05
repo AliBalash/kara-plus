@@ -16,6 +16,8 @@ return [
         'queue' => env('AUDIT_EXPORT_QUEUE', 'default'),
         'batch_size' => (int) env('AUDIT_EXPORT_BATCH_SIZE', 200),
         'request_timeout_seconds' => (int) env('AUDIT_EXPORT_TIMEOUT_SECONDS', 10),
+        'max_retry_attempts' => (int) env('AUDIT_EXPORT_MAX_RETRY_ATTEMPTS', 8),
+        'retry_cooldown_minutes' => (int) env('AUDIT_EXPORT_RETRY_COOLDOWN_MINUTES', 30),
     ],
 
     'elasticsearch' => [
