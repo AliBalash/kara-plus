@@ -129,6 +129,7 @@
                             </div>
                         </td>
                         <td>{{ $car->color ?? 'N/A' }}</td>
+                        <td>{{ number_format((float) $car->price_per_day_short, 2) }}</td>
                         <td>
                             <div class="dropdown">
                                 <button class="btn p-0 dropdown-toggle" data-bs-toggle="dropdown"><i
@@ -152,7 +153,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center">No cars found.</td>
+                        <td colspan="8" class="text-center">No cars found.</td>
                     </tr>
                 @endforelse
             </tbody>
