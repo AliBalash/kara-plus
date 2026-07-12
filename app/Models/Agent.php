@@ -11,6 +11,8 @@ class Agent extends Model
 
     protected $fillable = [
         'name',
+        'direct_line',
+        'mobile',
         'is_active',
     ];
 
