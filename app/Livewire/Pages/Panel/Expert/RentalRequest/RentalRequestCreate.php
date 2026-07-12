@@ -683,12 +683,21 @@ class RentalRequestCreate extends Component
                 'exists:cars,id',
                 function ($attribute, $value, $fail) {
                     $car = Car::query()
-                        ->select(['id', 'status', 'availability'])
+                        ->select([
+                            'id',
+                            'status',
+                            'availability',
+                            'manual_status',
+                            'manual_unavailability_reason',
+                            'unavailability_reason',
+                        ])
                         ->find($value);
 
                     if (! $car) {
                         return;
                     }
+
+                    $car->syncOperationalState();
 
                     $blockReason = $car->reservationSelectionBlockReason();
 

@@ -587,6 +587,11 @@
                                         <span class="badge {{ $selectedCar->operationalStatusBadgeClass() }}">
                                             {{ $selectedCar->operationalStatusLabel() }}
                                         </span>
+                                        @if ($selectedCar->operationalStatus() === \App\Models\Car::STATUS_UNAVAILABLE && $selectedCar->unavailabilityReasonLabel())
+                                            <div class="small text-muted mt-1">
+                                                {{ $selectedCar->unavailabilityReasonLabel() }}
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                                 @if ($selectedCar->currentContract)

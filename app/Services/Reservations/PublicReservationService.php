@@ -132,6 +132,10 @@ class PublicReservationService
                 'plate_number' => $car->plate_number,
                 'status' => $car->status,
                 'availability' => (bool) $car->availability,
+                'operational_status' => $car->operationalStatus(),
+                'operational_status_label' => $car->operationalStatusLabel(),
+                'unavailability_reason' => $car->unavailability_reason,
+                'unavailability_reason_label' => $car->unavailabilityReasonLabel(),
                 'is_available_for_selection' => $isAvailable,
                 'manufacturing_year' => $car->manufacturing_year,
                 'color' => $car->color,
@@ -178,6 +182,7 @@ class PublicReservationService
     {
         $normalized = $this->normalizeQuotePayload($payload);
         $car = Car::query()->with('carModel')->findOrFail($normalized['selected_car_id']);
+        $car->syncOperationalState();
         $quote = $this->buildQuote($normalized, $car);
 
         $this->ensureReservableOrFail($car, $normalized, $quote);
@@ -192,6 +197,7 @@ class PublicReservationService
         return DB::transaction(function () use ($normalized, $payload): array {
             /** @var Car $car */
             $car = Car::query()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
+            $car->syncOperationalState();
 
             $quote = $this->buildQuote($normalized, $car);
             $this->ensureReservableOrFail($car, $normalized, $quote);
