@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('audit:prune')->dailyAt('03:15');
 Schedule::command('audit:retry-export --limit=1000')->everyFiveMinutes();
 Schedule::command('audit:health')->hourly();
+Schedule::command('cars:sync-operational-status')->everyMinute();

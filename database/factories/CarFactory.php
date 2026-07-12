@@ -15,8 +15,11 @@ class CarFactory extends Factory
         return [
             'car_model_id' => CarModel::factory(),
             'plate_number' => strtoupper($this->faker->bothify('??-####')),
-            'status' => $this->faker->randomElement(['available', 'pre_reserved', 'reserved', 'under_maintenance']),
+            'status' => Car::STATUS_AVAILABLE,
+            'manual_status' => null,
+            'manual_unavailability_reason' => null,
             'availability' => true,
+            'unavailability_reason' => null,
             'mileage' => $this->faker->numberBetween(1_000, 100_000),
             'price_per_day_short' => $this->faker->randomFloat(2, 200, 1000),
             'price_per_day_mid' => $this->faker->randomFloat(2, 150, 800),
@@ -47,16 +50,33 @@ class CarFactory extends Factory
     public function available(): static
     {
         return $this->state(fn () => [
-            'status' => 'available',
+            'status' => Car::STATUS_AVAILABLE,
+            'manual_status' => Car::MANUAL_STATUS_AVAILABLE,
+            'manual_unavailability_reason' => null,
             'availability' => true,
+            'unavailability_reason' => null,
+        ]);
+    }
+
+    public function unavailable(string $reason = Car::UNAVAILABILITY_REASON_MANAGEMENT_DECISION): static
+    {
+        return $this->state(fn () => [
+            'status' => Car::STATUS_UNAVAILABLE,
+            'manual_status' => Car::MANUAL_STATUS_UNAVAILABLE,
+            'manual_unavailability_reason' => $reason,
+            'availability' => false,
+            'unavailability_reason' => $reason,
         ]);
     }
 
     public function sold(): static
     {
         return $this->state(fn () => [
-            'status' => 'sold',
+            'status' => Car::STATUS_SOLD,
+            'manual_status' => Car::MANUAL_STATUS_SOLD,
+            'manual_unavailability_reason' => null,
             'availability' => false,
+            'unavailability_reason' => null,
         ]);
     }
 }

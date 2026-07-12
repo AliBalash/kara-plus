@@ -205,42 +205,70 @@ class ContractCarAvailabilityTest extends TestCase
     public function test_sync_operational_state_restores_ready_car_availability_when_no_reservation_exists(): void
     {
         $car = Car::factory()->create([
-            'status' => 'available',
+            'status' => Car::STATUS_AVAILABLE,
+            'manual_status' => Car::MANUAL_STATUS_AVAILABLE,
             'availability' => false,
         ]);
 
         $car->syncOperationalState();
         $car->refresh();
 
-        $this->assertSame('available', $car->status);
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
         $this->assertTrue($car->availability);
     }
 
-    public function test_sync_operational_state_disables_under_maintenance_car_even_without_reservation(): void
+    public function test_sync_operational_state_keeps_manual_unavailable_reason_without_reservation(): void
     {
         $car = Car::factory()->create([
-            'status' => 'under_maintenance',
+            'status' => Car::STATUS_UNAVAILABLE,
+            'manual_status' => Car::MANUAL_STATUS_UNAVAILABLE,
+            'manual_unavailability_reason' => Car::UNAVAILABILITY_REASON_MAINTENANCE,
             'availability' => true,
+            'unavailability_reason' => null,
         ]);
 
         $car->syncOperationalState();
         $car->refresh();
 
-        $this->assertSame('under_maintenance', $car->status);
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
         $this->assertFalse($car->availability);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_MAINTENANCE, $car->unavailability_reason);
     }
 
     public function test_sync_operational_state_releases_stale_pre_reserved_status_without_upcoming_reservation(): void
     {
         $car = Car::factory()->create([
-            'status' => 'pre_reserved',
+            'status' => Car::STATUS_PRE_RESERVED,
+            'manual_status' => Car::MANUAL_STATUS_AVAILABLE,
             'availability' => true,
         ]);
 
         $car->syncOperationalState();
         $car->refresh();
 
-        $this->assertSame('available', $car->status);
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
         $this->assertTrue($car->availability);
+    }
+
+    public function test_sync_operational_state_marks_overdue_contracts_as_need_action(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        Contract::factory()
+            ->for(User::factory())
+            ->for(Customer::factory())
+            ->for($car)
+            ->status('awaiting_return')
+            ->state([
+                'pickup_date' => Carbon::now()->subDays(3),
+                'return_date' => Carbon::now()->subHour(),
+            ])
+            ->create();
+
+        $car->refresh();
+
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
+        $this->assertFalse($car->availability);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
     }
 }
