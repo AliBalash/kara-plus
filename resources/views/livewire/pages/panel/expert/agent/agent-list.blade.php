@@ -29,6 +29,18 @@
                             wire:model.defer="name">
                         <x-panel.form-error-highlighter field="name" />
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="agent_direct_line">Direct line</label>
+                        <input type="text" id="agent_direct_line" class="form-control" placeholder="Office / landline number"
+                            wire:model.defer="direct_line">
+                        <x-panel.form-error-highlighter field="direct_line" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="agent_mobile">Mobile</label>
+                        <input type="text" id="agent_mobile" class="form-control" placeholder="Mobile number"
+                            wire:model.defer="mobile">
+                        <x-panel.form-error-highlighter field="mobile" />
+                    </div>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="agent_active" wire:model.defer="is_active">
                         <label class="form-check-label" for="agent_active">Active</label>
@@ -57,6 +69,7 @@
                             <tr>
                                 <th>#</th>
                                 <th>Agent</th>
+                                <th>Contact</th>
                                 <th>Contracts</th>
                                 <th>Status</th>
                                 <th class="text-end">Actions</th>
@@ -67,6 +80,12 @@
                                 <tr>
                                     <td>{{ $agent->id }}</td>
                                     <td class="fw-semibold">{{ $agent->name }}</td>
+                                    <td>
+                                        <div class="small">
+                                            <div><span class="text-muted">Direct:</span> {{ $agent->direct_line ?: '—' }}</div>
+                                            <div><span class="text-muted">Mobile:</span> {{ $agent->mobile ?: '—' }}</div>
+                                        </div>
+                                    </td>
                                     <td>
                                         <span class="badge bg-label-secondary">{{ $agent->contracts_count }}</span>
                                     </td>
@@ -91,7 +110,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">No agents found.</td>
+                                    <td colspan="6" class="text-center text-muted py-4">No agents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

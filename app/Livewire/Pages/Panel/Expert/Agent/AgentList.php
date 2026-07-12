@@ -18,6 +18,8 @@ class AgentList extends Component
 
     public ?int $editingId = null;
     public string $name = '';
+    public string $direct_line = '';
+    public string $mobile = '';
     public bool $is_active = true;
 
     protected $queryString = ['search'];
@@ -44,6 +46,8 @@ class AgentList extends Component
 
         $this->editingId = $agent->id;
         $this->name = $agent->name;
+        $this->direct_line = (string) ($agent->direct_line ?? '');
+        $this->mobile = (string) ($agent->mobile ?? '');
         $this->is_active = (bool) $agent->is_active;
     }
 
@@ -112,6 +116,8 @@ class AgentList extends Component
                 'max:255',
                 Rule::unique('agents', 'name')->ignore($this->editingId),
             ],
+            'direct_line' => ['nullable', 'string', 'max:50'],
+            'mobile' => ['nullable', 'string', 'max:50'],
             'is_active' => ['boolean'],
         ];
     }
@@ -124,7 +130,11 @@ class AgentList extends Component
         $agents = Agent::query()
             ->withCount('contracts')
             ->when($search !== '', function ($query) use ($likeSearch) {
-                $query->where('name', 'like', $likeSearch);
+                $query->where(function ($subQuery) use ($likeSearch) {
+                    $subQuery->where('name', 'like', $likeSearch)
+                        ->orWhere('direct_line', 'like', $likeSearch)
+                        ->orWhere('mobile', 'like', $likeSearch);
+                });
             })
             ->orderBy('name')
             ->paginate(10);
