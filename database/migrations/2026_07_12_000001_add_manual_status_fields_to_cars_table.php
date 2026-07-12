@@ -9,11 +9,35 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('cars', function (Blueprint $table) {
-            $table->string('manual_status')->nullable()->after('status');
-            $table->string('manual_unavailability_reason')->nullable()->after('manual_status');
-            $table->string('unavailability_reason')->nullable()->after('availability');
-        });
+        $missingColumns = [];
+
+        if (! Schema::hasColumn('cars', 'manual_status')) {
+            $missingColumns[] = 'manual_status';
+        }
+
+        if (! Schema::hasColumn('cars', 'manual_unavailability_reason')) {
+            $missingColumns[] = 'manual_unavailability_reason';
+        }
+
+        if (! Schema::hasColumn('cars', 'unavailability_reason')) {
+            $missingColumns[] = 'unavailability_reason';
+        }
+
+        if ($missingColumns !== []) {
+            Schema::table('cars', function (Blueprint $table) use ($missingColumns) {
+                if (in_array('manual_status', $missingColumns, true)) {
+                    $table->string('manual_status')->nullable()->after('status');
+                }
+
+                if (in_array('manual_unavailability_reason', $missingColumns, true)) {
+                    $table->string('manual_unavailability_reason')->nullable()->after('manual_status');
+                }
+
+                if (in_array('unavailability_reason', $missingColumns, true)) {
+                    $table->string('unavailability_reason')->nullable()->after('availability');
+                }
+            });
+        }
 
         if (DB::getDriverName() === 'mysql') {
             DB::statement(
@@ -81,12 +105,16 @@ return new class extends Migration
             );
         }
 
-        Schema::table('cars', function (Blueprint $table) {
-            $table->dropColumn([
-                'manual_status',
-                'manual_unavailability_reason',
-                'unavailability_reason',
-            ]);
-        });
+        $existingColumns = array_values(array_filter([
+            Schema::hasColumn('cars', 'manual_status') ? 'manual_status' : null,
+            Schema::hasColumn('cars', 'manual_unavailability_reason') ? 'manual_unavailability_reason' : null,
+            Schema::hasColumn('cars', 'unavailability_reason') ? 'unavailability_reason' : null,
+        ]));
+
+        if ($existingColumns !== []) {
+            Schema::table('cars', function (Blueprint $table) use ($existingColumns) {
+                $table->dropColumn($existingColumns);
+            });
+        }
     }
 };
