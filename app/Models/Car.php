@@ -188,6 +188,21 @@ class Car extends Model
         return static::unavailabilityReasonLabelFor($this->unavailability_reason);
     }
 
+    public function operationalStatusContextNote(?Carbon $now = null): ?string
+    {
+        $now ??= Carbon::now();
+
+        if (
+            $this->operationalStatus() === self::STATUS_UNAVAILABLE
+            && $this->unavailability_reason === self::UNAVAILABILITY_REASON_NEED_ACTION
+            && $this->hasUpcomingReservationWindow($now)
+        ) {
+            return 'Upcoming booking also exists.';
+        }
+
+        return null;
+    }
+
     /**
      * @return array{manual_status: string, manual_unavailability_reason: string|null}
      */

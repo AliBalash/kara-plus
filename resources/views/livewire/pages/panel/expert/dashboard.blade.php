@@ -566,6 +566,9 @@
                                             @if ($car->operationalStatus() === \App\Models\Car::STATUS_UNAVAILABLE && $car->unavailabilityReasonLabel())
                                                 <div class="small text-muted mt-1">{{ $car->unavailabilityReasonLabel() }}</div>
                                             @endif
+                                            @if ($car->operationalStatusContextNote())
+                                                <div class="small text-warning mt-1">{{ $car->operationalStatusContextNote() }}</div>
+                                            @endif
                                         </td>
                                         <td>
                                             @if ($upcomingReservation)

@@ -673,6 +673,11 @@
                                                 {{ $selectedCar->unavailabilityReasonLabel() }}
                                             </div>
                                         @endif
+                                        @if ($selectedCar->operationalStatusContextNote())
+                                            <div class="small text-warning mt-1">
+                                                {{ $selectedCar->operationalStatusContextNote() }}
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                                 @if ($selectedCar->currentContract)

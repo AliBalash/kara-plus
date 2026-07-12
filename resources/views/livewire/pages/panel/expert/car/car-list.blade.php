@@ -182,6 +182,11 @@
                                     {{ $car->unavailabilityReasonLabel() }}
                                 </div>
                             @endif
+                            @if ($car->operationalStatusContextNote())
+                                <div class="small text-warning mt-1">
+                                    {{ $car->operationalStatusContextNote() }}
+                                </div>
+                            @endif
                         </td>
                         <td>{{ optional(optional($car->currentContract)->pickup_date)->format('Y-m-d') ?? '—' }}</td>
                         <td>{{ optional(optional($car->currentContract)->return_date)->format('Y-m-d') ?? '—' }}</td>

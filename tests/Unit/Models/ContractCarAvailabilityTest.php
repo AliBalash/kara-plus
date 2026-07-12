@@ -271,4 +271,37 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertFalse($car->availability);
         $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
     }
+
+    public function test_need_action_can_also_expose_upcoming_booking_note(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        Contract::factory()
+            ->for(User::factory())
+            ->for(Customer::factory())
+            ->for($car)
+            ->status('awaiting_return')
+            ->state([
+                'pickup_date' => Carbon::now()->subDays(3),
+                'return_date' => Carbon::now()->subHour(),
+            ])
+            ->create();
+
+        Contract::factory()
+            ->for(User::factory())
+            ->for(Customer::factory())
+            ->for($car)
+            ->status('pending')
+            ->state([
+                'pickup_date' => Carbon::now()->addDays(5),
+                'return_date' => Carbon::now()->addDays(8),
+            ])
+            ->create();
+
+        $car->refresh();
+
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
+        $this->assertSame('Upcoming booking also exists.', $car->operationalStatusContextNote());
+    }
 }

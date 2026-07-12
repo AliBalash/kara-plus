@@ -376,6 +376,12 @@
                         <div class="col">
                             <span class="text-muted text-uppercase small">Status</span>
                             <div class="fw-semibold text-body">{{ $contract->car?->operationalStatusLabel() ?? '—' }}</div>
+                            @if ($contract->car?->operationalStatus() === \App\Models\Car::STATUS_UNAVAILABLE && $contract->car?->unavailabilityReasonLabel())
+                                <div class="small text-muted">{{ $contract->car->unavailabilityReasonLabel() }}</div>
+                            @endif
+                            @if ($contract->car?->operationalStatusContextNote())
+                                <div class="small text-warning">{{ $contract->car->operationalStatusContextNote() }}</div>
+                            @endif
                         </div>
                     </div>
                 </div>
