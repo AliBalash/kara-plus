@@ -13,7 +13,6 @@ use App\Services\Media\DeferredImageUploadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -164,6 +163,45 @@ class RentalRequestPaymentTest extends TestCase
 
         $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
         Storage::disk('myimage')->assertMissing('payments/existing-receipt.webp');
+    }
+
+    public function test_existing_payments_table_groups_customer_payments_and_charges(): void
+    {
+        $user = User::factory()->create();
+        $customerPayment = Payment::factory()
+            ->for($user)
+            ->make([
+                'id' => 123,
+                'amount' => 20_000_000,
+                'currency' => 'IRR',
+                'rate' => 387597,
+                'amount_in_aed' => 51.60,
+                'payment_type' => 'rental_fee',
+            ]);
+
+        $chargePayment = Payment::factory()
+            ->for($user)
+            ->make([
+                'id' => 124,
+                'amount' => 520,
+                'currency' => 'AED',
+                'rate' => null,
+                'amount_in_aed' => 520,
+                'payment_type' => 'fine',
+            ]);
+
+        $html = view('livewire.pages.panel.expert.rental-request.partials.existing-payments-table', [
+            'existingPayments' => collect([$customerPayment, $chargePayment]),
+            'showActions' => false,
+        ])->render();
+        $normalizedHtml = preg_replace('/\s+/', ' ', $html);
+
+        $this->assertStringContainsString('Customer Payments', $normalizedHtml);
+        $this->assertStringContainsString('Charges &amp; Costs', $normalizedHtml);
+        $this->assertStringContainsString('20,000,000.00', $normalizedHtml);
+        $this->assertStringContainsString('Deducted from balance: 51.60 AED', $normalizedHtml);
+        $this->assertStringContainsString('520.00', $normalizedHtml);
+        $this->assertStringContainsString('Charge in balance: 520.00 AED', $normalizedHtml);
     }
 
     protected function tearDown(): void

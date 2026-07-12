@@ -26,6 +26,21 @@ class Payment extends Model
         'salik_other_revenue',
     ];
 
+    public const CHARGE_PAYMENT_TYPES = [
+        'salik',
+        'salik_4_aed',
+        'salik_4_20_aed',
+        'salik_6_aed',
+        'salik_6_30_aed',
+        'salik_other_revenue',
+        'fine',
+        'parking',
+        'damage',
+        'carwash',
+        'fuel',
+        'no_deposit_fee',
+    ];
+
     public const PAYMENT_TYPE_LABELS = [
         'rental_fee' => 'Rental Fee',
         'security_deposit' => 'Security Deposit',
@@ -98,6 +113,16 @@ class Payment extends Model
     public static function salikChargeTypes(): array
     {
         return ['salik', ...self::SALIK_BREAKDOWN_TYPES];
+    }
+
+    public static function chargePaymentTypes(): array
+    {
+        return self::CHARGE_PAYMENT_TYPES;
+    }
+
+    public static function isChargePaymentType(?string $paymentType): bool
+    {
+        return is_string($paymentType) && in_array($paymentType, self::CHARGE_PAYMENT_TYPES, true);
     }
 
     public static function isTripBasedSalikType(?string $paymentType): bool

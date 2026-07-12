@@ -647,87 +647,9 @@
 
 
 
-    <!-- Existing Payments -->
-    <div class="table-responsive my-3">
-        <h5>Existing Payments</h5>
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Amount</th>
-                    <th>Currency</th>
-                    <th>Payment Type</th>
-                    <th>Method</th>
-                    <th>Refundable</th>
-                    <th>Created By</th>
-                    <th>Payment Date</th>
-                    <th>Note</th>
-                    <th>Receipt</th>
-                    <th>Actions</th>
-
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($existingPayments as $payment)
-                    <tr>
-                        <td>{{ $payment->id }}</td>
-                        <td>{{ number_format($payment->amount, 2) }}</td>
-                        <td>{{ $payment->currency }}
-                            {{ $payment->currency !== 'AED' ? '( ' . $payment->rate . ' )' : null }}</td>
-                        <td>
-                            @if ($payment->payment_type === 'security_deposit')
-                                Security deposit
-                            @elseif ($payment->payment_type === 'toll')
-                                Salik
-                            @else
-                                {{ \App\Models\Payment::paymentTypeLabels()[$payment->payment_type] ?? ucwords(str_replace('_', ' ', $payment->payment_type)) }}
-                                @if ($payment->isSalikBreakdownEntry())
-                                    <div class="small text-muted mt-1">
-                                        Trips: {{ $payment->salikTripCount() }},
-                                        Amount: {{ number_format($payment->salikBreakdownAmount(), 2) }} AED
-                                    </div>
-                                @elseif ($payment->payment_type === 'salik')
-                                    <div class="small text-muted mt-1">Legacy salik entry without breakdown</div>
-                                @endif
-                            @endif
-                        </td>
-                        <td>{{ ucfirst($payment->payment_method) }}</td>
-                        <td>{{ $payment->is_refundable == true ? 'Yes' : 'No' }}</td>
-                        <td>{{ $payment->user?->shortName() ?? '—' }}</td>
-                        <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('Y-m-d') }}</td>
-                        <td>
-                            @if ($payment->note)
-                                {{ \Illuminate\Support\Str::limit($payment->note, 80) }}
-                            @else
-                                —
-                            @endif
-                        </td>
-                        <td>
-                            @if ($payment->receipt)
-                                <a href="{{ asset('storage/' . ltrim($payment->receipt, '/')) }}" target="_blank">View</a>
-                            @else
-                                N/A
-                            @endif
-                        </td>
-                        <td>
-                            <a class="btn btn-sm btn-outline-primary me-2"
-                                href="{{ route('payments.edit', $payment->id) }}">
-                                Edit
-                            </a>
-                            <button class="btn btn-sm btn-outline-danger"
-                                onclick="if(confirm('Delete this payment?')) { @this.deletePayment({{ $payment->id }}) }">
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="11" class="text-center">No payments found</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    @include('livewire.pages.panel.expert.rental-request.partials.existing-payments-table', [
+        'existingPayments' => $existingPayments,
+    ])
 </div>
 
 @include('components.panel.form-error-highlighter')
@@ -936,6 +858,360 @@
             margin-top: 0.4rem;
         }
 
+        .payments-workspace__hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 1.25rem;
+            padding: 1.35rem 1.4rem;
+            border-radius: 1.4rem;
+            background:
+                radial-gradient(circle at top left, rgba(31, 111, 235, 0.16), transparent 32%),
+                radial-gradient(circle at bottom right, rgba(18, 184, 134, 0.14), transparent 28%),
+                linear-gradient(135deg, #fcfdff, #f2f6fb);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 1.1rem 2.4rem rgba(15, 23, 42, 0.06);
+            margin-bottom: 1rem;
+        }
+
+        .payments-kicker {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: #1d4ed8;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+        }
+
+        .payments-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .payments-subtitle {
+            color: #64748b;
+            max-width: 620px;
+        }
+
+        .payments-overview {
+            display: flex;
+            gap: 0.85rem;
+            flex-wrap: wrap;
+        }
+
+        .payments-overview__card {
+            min-width: 145px;
+            padding: 0.9rem 1rem;
+            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .payments-overview__label {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 0.35rem;
+        }
+
+        .payments-overview__value {
+            font-size: 1.15rem;
+            color: #0f172a;
+        }
+
+        .ledger-panel {
+            height: 100%;
+            border-radius: 1.45rem;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: #ffffff;
+            box-shadow: 0 1.2rem 2.5rem rgba(15, 23, 42, 0.08);
+        }
+
+        .ledger-panel--customer {
+            background:
+                linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 1) 22%);
+        }
+
+        .ledger-panel--charge {
+            background:
+                linear-gradient(180deg, rgba(255, 247, 237, 0.95), rgba(255, 255, 255, 1) 22%);
+        }
+
+        .ledger-panel__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.2rem 1.25rem 1rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .ledger-panel__title-wrap {
+            display: flex;
+            gap: 0.9rem;
+            align-items: flex-start;
+        }
+
+        .ledger-panel__icon {
+            width: 2.8rem;
+            height: 2.8rem;
+            border-radius: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .ledger-panel--customer .ledger-panel__icon {
+            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            box-shadow: 0 0.8rem 1.5rem rgba(37, 99, 235, 0.22);
+        }
+
+        .ledger-panel--charge .ledger-panel__icon {
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            box-shadow: 0 0.8rem 1.5rem rgba(245, 158, 11, 0.22);
+        }
+
+        .ledger-panel__title {
+            font-size: 1.04rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .ledger-panel__subtitle {
+            font-size: 0.84rem;
+            color: #64748b;
+            max-width: 28rem;
+        }
+
+        .ledger-panel__summary {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .ledger-panel__count {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+        }
+
+        .ledger-panel__total {
+            font-size: 1.05rem;
+            color: #0f172a;
+        }
+
+        .ledger-list {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+        }
+
+        .ledger-entry {
+            border-radius: 1.1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 0.65rem 1.4rem rgba(15, 23, 42, 0.06);
+        }
+
+        .ledger-entry__top,
+        .ledger-entry__bottom {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .ledger-entry__bottom {
+            margin-top: 0.85rem;
+            padding-top: 0.85rem;
+            border-top: 1px dashed rgba(148, 163, 184, 0.28);
+            align-items: flex-end;
+        }
+
+        .ledger-entry__identity {
+            min-width: 0;
+        }
+
+        .ledger-entry__type-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        .ledger-entry__type {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 1rem;
+        }
+
+        .ledger-entry__id {
+            font-size: 0.75rem;
+            color: #64748b;
+            background: #f8fafc;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            padding: 0.2rem 0.48rem;
+            border-radius: 999px;
+        }
+
+        .ledger-entry__meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1rem;
+            margin-top: 0.45rem;
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+
+        .ledger-entry__meta span {
+            position: relative;
+        }
+
+        .ledger-entry__amounts {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .ledger-entry__base-amount {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .ledger-entry__currency {
+            margin-top: 0.2rem;
+            font-size: 0.82rem;
+            color: #475569;
+        }
+
+        .ledger-entry__rate {
+            color: #94a3b8;
+        }
+
+        .ledger-entry__aed {
+            margin-top: 0.4rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0.35rem 0.6rem;
+            border-radius: 999px;
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 0.78rem;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+        }
+
+        .ledger-entry__details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .ledger-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.38rem 0.68rem;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .ledger-chip--muted {
+            background: #f8fafc;
+            color: #64748b;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .ledger-chip--info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #1d4ed8;
+            border: 1px solid rgba(59, 130, 246, 0.16);
+        }
+
+        .ledger-chip--accent {
+            background: rgba(16, 185, 129, 0.1);
+            color: #047857;
+            border: 1px solid rgba(16, 185, 129, 0.16);
+        }
+
+        .ledger-chip--link {
+            background: rgba(99, 102, 241, 0.1);
+            color: #4338ca;
+            border: 1px solid rgba(99, 102, 241, 0.16);
+        }
+
+        .ledger-entry__actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.55rem;
+            max-width: 18rem;
+        }
+
+        .ledger-entry__note {
+            font-size: 0.8rem;
+            color: #475569;
+            text-align: right;
+        }
+
+        .ledger-entry__buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .ledger-empty {
+            min-height: 240px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 1.4rem;
+            border-radius: 1.1rem;
+            border: 1px dashed rgba(148, 163, 184, 0.35);
+            background: rgba(248, 250, 252, 0.8);
+        }
+
+        .ledger-empty__icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #64748b;
+            background: #fff;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            margin-bottom: 0.9rem;
+        }
+
+        .ledger-empty__title {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .ledger-empty__text {
+            font-size: 0.84rem;
+            color: #64748b;
+            margin-top: 0.35rem;
+            max-width: 16rem;
+        }
+
         @media (max-width: 576px) {
             .formula-term {
                 min-width: 140px;
@@ -943,6 +1219,47 @@
 
             .formula-panel {
                 padding: 1.1rem;
+            }
+
+            .payments-workspace__hero {
+                padding: 1rem;
+            }
+
+            .payments-overview {
+                width: 100%;
+            }
+
+            .payments-overview__card {
+                flex: 1 1 0;
+                min-width: 0;
+            }
+
+            .ledger-list {
+                padding: 0.85rem;
+            }
+
+            .ledger-entry {
+                padding: 0.9rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .payments-workspace__hero,
+            .ledger-panel__header,
+            .ledger-entry__top,
+            .ledger-entry__bottom {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .ledger-panel__summary,
+            .ledger-entry__amounts,
+            .ledger-entry__actions,
+            .ledger-entry__note,
+            .ledger-entry__buttons {
+                text-align: left;
+                align-items: flex-start;
+                justify-content: flex-start;
             }
         }
     </style>
