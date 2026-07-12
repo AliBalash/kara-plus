@@ -28,6 +28,7 @@ class EditCarForm extends Component
     public $plate_number;
     public $status;
     public $availability;
+    public $unavailability_reason;
     public $mileage;
     public $price_per_day_short;
     public $price_per_day_mid;
@@ -65,9 +66,9 @@ class EditCarForm extends Component
             'plate_number' => 'required|string|max:255',
             'status' => [
                 'required',
-                Rule::in(['available', 'pre_reserved', 'reserved', 'under_maintenance', 'sold']),
+                Rule::in(array_keys(Car::manualStatusLabels())),
                 function ($attribute, $value, $fail) {
-                    if ($value !== 'sold') {
+                    if ($value !== Car::MANUAL_STATUS_SOLD) {
                         return;
                     }
 
@@ -75,6 +76,11 @@ class EditCarForm extends Component
                         $fail('This car cannot be marked as sold while it has active or upcoming reservations.');
                     }
                 },
+            ],
+            'unavailability_reason' => [
+                Rule::requiredIf(fn () => $this->status === Car::MANUAL_STATUS_UNAVAILABLE),
+                'nullable',
+                Rule::in(array_keys(Car::manualUnavailabilityReasonLabels())),
             ],
             'mileage' => 'required|numeric|min:0',
             'price_per_day_short' => 'required|numeric|min:0',
@@ -117,7 +123,9 @@ class EditCarForm extends Component
         'plate_number.required' => 'The plate number is required.',
         'plate_number.max' => 'The plate number cannot exceed 255 characters.',
         'status.required' => 'The status is required.',
-        'status.in' => 'The status must be one of available, pre-reserved, reserved, under maintenance, or sold.',
+        'status.in' => 'The status must be one of available, unavailable, or sold.',
+        'unavailability_reason.required_if' => 'Please choose why this vehicle is unavailable.',
+        'unavailability_reason.in' => 'The unavailable reason is invalid.',
         'mileage.required' => 'The mileage is required.',
         'mileage.numeric' => 'The mileage must be a number.',
         'mileage.min' => 'The mileage cannot be negative.',
@@ -194,8 +202,9 @@ class EditCarForm extends Component
 
         // Populate form fields, set defaults to 0 if null
         $this->plate_number = $this->car->plate_number;
-        $this->status = $this->car->status;
+        $this->status = $this->car->resolvedManualStatus();
         $this->availability = $this->car->availability;
+        $this->unavailability_reason = $this->car->resolvedManualUnavailabilityReason();
         $this->mileage = $this->car->mileage;
         $this->price_per_day_short = $this->formatDecimalValue($this->car->price_per_day_short);
         $this->price_per_day_mid = $this->formatDecimalValue($this->car->price_per_day_mid);
@@ -249,6 +258,11 @@ class EditCarForm extends Component
     }
 
     public function updatedStatus($status): void
+    {
+        $this->syncStatusPreview();
+    }
+
+    public function updatedUnavailabilityReason($reason): void
     {
         $this->syncStatusPreview();
     }
@@ -334,8 +348,17 @@ class EditCarForm extends Component
     public function submit()
     {
         $validated = $this->validate();
-        $validated['availability'] = Car::availabilityForStatus($validated['status']);
         $validated['gps'] = $this->normalizeBooleanValue($validated['gps'] ?? false);
+        $manualState = Car::manualStateAttributes(
+            $validated['status'],
+            $validated['unavailability_reason'] ?? null
+        );
+        $operationalState = Car::synchronizedStateForReservationWindow(
+            $manualState['manual_status'],
+            $manualState['manual_unavailability_reason'],
+            false,
+            false
+        );
         $validated['car_options'] = is_array($validated['car_options'] ?? null)
             ? $validated['car_options']
             : (is_array($this->car_options) ? $this->car_options : []);
@@ -366,11 +389,14 @@ class EditCarForm extends Component
         $newImagePath = null;
 
         try {
-            DB::transaction(function () use ($validated, &$newImagePath) {
+            DB::transaction(function () use ($validated, $manualState, $operationalState, &$newImagePath) {
                 $this->car->update([
                     'plate_number' => $validated['plate_number'],
-                    'status' => $validated['status'],
-                    'availability' => $validated['availability'],
+                    'status' => $operationalState['status'],
+                    'manual_status' => $manualState['manual_status'],
+                    'manual_unavailability_reason' => $manualState['manual_unavailability_reason'],
+                    'availability' => $operationalState['availability'],
+                    'unavailability_reason' => $operationalState['unavailability_reason'],
                     'mileage' => $validated['mileage'],
                     'price_per_day_short' => $validated['price_per_day_short'],
                     'price_per_day_mid' => $validated['price_per_day_mid'],
@@ -456,8 +482,9 @@ class EditCarForm extends Component
         }
 
         $this->car->refresh();
-        $this->status = $this->car->status;
+        $this->status = $this->car->resolvedManualStatus();
         $this->availability = (bool) $this->car->availability;
+        $this->unavailability_reason = $this->car->resolvedManualUnavailabilityReason();
         $this->existingImageUrl = $this->car->load(['image', 'carModel.image'])->primaryImageUrl();
         $this->newImage = null;
         $this->refreshFileInputs();
@@ -501,32 +528,43 @@ class EditCarForm extends Component
         return Car::operationalStatusLabelFor($previewState['status'], $previewState['availability']);
     }
 
+    public function getEffectiveUnavailabilityReasonLabelProperty(): ?string
+    {
+        $previewState = $this->statusPreviewState();
+
+        if (($previewState['status'] ?? null) !== Car::STATUS_UNAVAILABLE) {
+            return null;
+        }
+
+        return Car::unavailabilityReasonLabelFor($previewState['unavailability_reason'] ?? null);
+    }
+
     public function getEffectiveStatusExplanationProperty(): ?string
     {
         $previewState = $this->statusPreviewState();
         $effectiveStatus = Car::resolveOperationalStatus($previewState['status'], $previewState['availability']);
 
-        if ($previewState['status'] === 'reserved' && $this->status !== 'reserved') {
+        if (
+            $previewState['status'] === Car::STATUS_UNAVAILABLE
+            && ($previewState['unavailability_reason'] ?? null) === Car::UNAVAILABILITY_REASON_NEED_ACTION
+        ) {
+            return 'Need Action is automatic. It is used when the contract return time has passed and the contract is still open.';
+        }
+
+        if ($previewState['status'] === Car::STATUS_RESERVED) {
             return 'This vehicle has an active reservation window, so the system will keep its status on Active booking until that contract is closed.';
         }
 
-        if ($previewState['status'] === 'pre_reserved' && $this->status !== 'pre_reserved') {
+        if ($previewState['status'] === Car::STATUS_PRE_RESERVED) {
             return 'This vehicle already has an upcoming reservation, so the system will keep its status on Upcoming booking.';
         }
 
-        if (
-            in_array($this->status, ['reserved', 'pre_reserved'], true)
-            && $previewState['status'] === 'available'
-        ) {
-            return 'Booked statuses are synchronized from contract dates. Without a matching contract, this vehicle will be saved as Ready.';
-        }
-
         return match ($effectiveStatus) {
-            'available' => 'Ready vehicles stay available for search, Fleet Inventory, and reservation assignment.',
-            'pre_reserved' => 'This vehicle is currently rentable, but it already has an upcoming booking.',
-            'reserved' => 'This vehicle is tied to an active booking window.',
-            'under_maintenance' => 'Under maintenance vehicles are always blocked from reservation assignment until they are returned to Ready.',
-            'sold' => 'Sold vehicles are always treated as unavailable for operations.',
+            Car::STATUS_AVAILABLE => 'Available vehicles stay ready for search, inventory, and reservation assignment.',
+            Car::STATUS_PRE_RESERVED => 'This vehicle stays rentable, but it already has an upcoming booking.',
+            Car::STATUS_RESERVED => 'This vehicle is tied to an active booking window.',
+            Car::STATUS_UNAVAILABLE => 'Unavailable vehicles are blocked from reservation assignment until they are reactivated.',
+            Car::STATUS_SOLD => 'Sold vehicles are always treated as unavailable for operations.',
             default => null,
         };
     }
@@ -537,22 +575,28 @@ class EditCarForm extends Component
     }
 
     /**
-     * @return array{status: string|null, availability: bool}
+     * @return array{status: string, availability: bool, unavailability_reason: string|null}
      */
     private function statusPreviewState(): array
     {
         $hasActiveReservation = false;
         $hasUpcomingReservation = false;
+        $needsAction = false;
 
         if ($this->car instanceof Car && $this->car->exists) {
-            $hasActiveReservation = $this->car->hasActiveReservationWindow();
-            $hasUpcomingReservation = ! $hasActiveReservation && $this->car->hasUpcomingReservationWindow();
+            $needsAction = $this->car->hasNeedActionReservationWindow();
+            $hasActiveReservation = ! $needsAction && $this->car->hasActiveReservationWindow();
+            $hasUpcomingReservation = ! $needsAction && ! $hasActiveReservation && $this->car->hasUpcomingReservationWindow();
         }
 
+        $manualState = Car::manualStateAttributes($this->status, $this->unavailability_reason);
+
         return Car::synchronizedStateForReservationWindow(
-            $this->status,
+            $manualState['manual_status'],
+            $manualState['manual_unavailability_reason'],
             $hasActiveReservation,
-            $hasUpcomingReservation
+            $hasUpcomingReservation,
+            $needsAction
         );
     }
 

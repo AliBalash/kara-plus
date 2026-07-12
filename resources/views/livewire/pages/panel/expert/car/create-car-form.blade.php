@@ -56,19 +56,14 @@
 
                                 <!-- Vehicle Status -->
                                 <div class="input-group">
-                                    <span class="input-group-text" id="status-addon">Vehicle Status</span>
+                                    <span class="input-group-text" id="status-addon">Base Status</span>
                                     <select
                                         class="form-control border border-warning @error('status') is-invalid @enderror"
                                         name="status" wire:model="status" required>
                                         <option value="available" {{ $status == 'available' ? 'selected' : '' }}>
-                                            Ready</option>
-                                        <option value="pre_reserved" {{ $status == 'pre_reserved' ? 'selected' : '' }}>
-                                            Booked Next</option>
-                                        <option value="reserved" {{ $status == 'reserved' ? 'selected' : '' }}>Booked Now
-                                        </option>
-                                        <option value="under_maintenance"
-                                            {{ $status == 'under_maintenance' ? 'selected' : '' }}>Under Maintenance
-                                        </option>
+                                            Available</option>
+                                        <option value="unavailable" {{ $status == 'unavailable' ? 'selected' : '' }}>
+                                            Unavailable</option>
                                         <option value="sold" {{ $status == 'sold' ? 'selected' : '' }}>Sold</option>
                                     </select>
                                     @error('status')
@@ -76,11 +71,32 @@
                                     @enderror
                                 </div>
 
+                                @if ($status === \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)
+                                    <div class="input-group">
+                                        <span class="input-group-text" id="unavailability-reason-addon">Why Unavailable</span>
+                                        <select
+                                            class="form-control @error('unavailability_reason') is-invalid @enderror"
+                                            name="unavailability_reason" wire:model="unavailability_reason">
+                                            <option value="">Select reason</option>
+                                            @foreach (\App\Models\Car::manualUnavailabilityReasonLabels() as $reasonValue => $reasonLabel)
+                                                <option value="{{ $reasonValue }}">{{ $reasonLabel }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('unavailability_reason')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                @endif
+                                
                                 <div class="alert alert-secondary py-2 px-3 mb-0" role="alert">
                                     <div class="fw-semibold">Final Status: {{ $this->effectiveStatusLabel }}</div>
+                                    @if ($this->effectiveUnavailabilityReasonLabel)
+                                        <div class="small text-dark mt-1">
+                                            Reason: {{ $this->effectiveUnavailabilityReasonLabel }}
+                                        </div>
+                                    @endif
                                     <div class="small text-muted">
-                                        Availability is synchronized automatically from this status. Experts can no
-                                        longer edit the availability flag directly.
+                                        Final status is synchronized automatically from the base status and the reservation timeline.
                                     </div>
                                     @if ($this->effectiveStatusExplanation)
                                         <div class="small mt-1">{{ $this->effectiveStatusExplanation }}</div>

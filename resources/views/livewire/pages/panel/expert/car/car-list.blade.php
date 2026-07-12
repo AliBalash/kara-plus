@@ -64,7 +64,6 @@
                     <option value="pre_reserved">Upcoming Booking</option>
                     <option value="reserved">Active Booking</option>
                     <option value="unavailable">Unavailable</option>
-                    <option value="under_maintenance">Under Maintenance</option>
                     <option value="sold">Sold</option>
                 </select>
             </div>
@@ -178,6 +177,11 @@
                             <span class="badge {{ $car->operationalStatusBadgeClass() }}">
                                 {{ $car->operationalStatusLabel() }}
                             </span>
+                            @if ($car->operationalStatus() === \App\Models\Car::STATUS_UNAVAILABLE && $car->unavailabilityReasonLabel())
+                                <div class="small text-muted mt-1">
+                                    {{ $car->unavailabilityReasonLabel() }}
+                                </div>
+                            @endif
                         </td>
                         <td>{{ optional(optional($car->currentContract)->pickup_date)->format('Y-m-d') ?? '—' }}</td>
                         <td>{{ optional(optional($car->currentContract)->return_date)->format('Y-m-d') ?? '—' }}</td>

@@ -9,7 +9,6 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery;
 use Tests\TestCase;
 use Illuminate\Validation\ValidationException;
 
@@ -46,8 +45,7 @@ class EditCarFormTest extends TestCase
             'option_value' => 'automatic',
         ]);
 
-        $component = Mockery::mock(EditCarForm::class)->makePartial();
-        $component->shouldAllowMockingProtectedMethods();
+        $component = app(EditCarForm::class);
         $component->mount($car->id);
 
         $component->is_featured = true;
@@ -92,7 +90,9 @@ class EditCarFormTest extends TestCase
             ],
         ];
 
-        $component->shouldReceive('validate')->once()->andReturn($validated);
+        foreach ($validated as $field => $value) {
+            $component->{$field} = $value;
+        }
 
         $component->submit();
 
@@ -175,53 +175,27 @@ class EditCarFormTest extends TestCase
             'availability' => true,
         ]);
 
-        $component = Mockery::mock(EditCarForm::class)->makePartial();
-        $component->shouldAllowMockingProtectedMethods();
+        $component = app(EditCarForm::class);
         $component->mount($car->id);
-        $component->shouldReceive('validate')->once()->andReturn([
-            'plate_number' => $car->plate_number,
-            'status' => 'under_maintenance',
-            'mileage' => $car->mileage,
-            'price_per_day_short' => $car->price_per_day_short,
-            'price_per_day_mid' => $car->price_per_day_mid,
-            'price_per_day_long' => $car->price_per_day_long,
-            'ldw_price_short' => $car->ldw_price_short,
-            'ldw_price_mid' => $car->ldw_price_mid,
-            'ldw_price_long' => $car->ldw_price_long,
-            'scdw_price_short' => $car->scdw_price_short,
-            'scdw_price_mid' => $car->scdw_price_mid,
-            'scdw_price_long' => $car->scdw_price_long,
-            'service_due_date' => $car->service_due_date,
-            'damage_report' => $car->damage_report,
-            'manufacturing_year' => $car->manufacturing_year,
-            'color' => $car->color,
-            'chassis_number' => $car->chassis_number,
-            'gps' => $car->gps,
-            'ownership_type' => $car->ownershipType(),
-            'issue_date' => $car->issue_date,
-            'expiry_date' => $car->expiry_date,
-            'passing_date' => $car->passing_date,
-            'passing_valid_for_days' => $car->passing_valid_for_days,
-            'registration_valid_for_days' => $car->registration_valid_for_days,
-            'notes' => $car->notes,
-            'passing_status' => $car->passing_status,
-            'registration_status' => $car->registration_status,
-            'car_options' => [
-                'gear' => '',
-                'seats' => '',
-                'doors' => '',
-                'luggage' => '',
-                'min_days' => '',
-                'fuel_type' => '',
-                'unlimited_km' => 'false',
-                'base_insurance' => 'false',
-            ],
-        ]);
+        $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
+        $component->unavailability_reason = Car::UNAVAILABILITY_REASON_MAINTENANCE;
+        $component->car_options = [
+            'gear' => '',
+            'seats' => '',
+            'doors' => '',
+            'luggage' => '',
+            'min_days' => '',
+            'fuel_type' => '',
+            'unlimited_km' => false,
+            'base_insurance' => false,
+        ];
 
         $component->submit();
 
         $this->assertFalse($car->fresh()->availability);
-        $this->assertSame('under_maintenance', $car->fresh()->status);
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->fresh()->status);
+        $this->assertSame(Car::MANUAL_STATUS_UNAVAILABLE, $car->fresh()->manual_status);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_MAINTENANCE, $car->fresh()->unavailability_reason);
     }
 
     public function test_edit_form_shows_final_status_and_hides_manual_availability_controls(): void
@@ -230,7 +204,8 @@ class EditCarFormTest extends TestCase
         $this->actingAs($user);
 
         $car = Car::factory()->create([
-            'status' => 'available',
+            'status' => Car::STATUS_AVAILABLE,
+            'manual_status' => Car::MANUAL_STATUS_AVAILABLE,
             'availability' => false,
         ]);
 
@@ -239,11 +214,5 @@ class EditCarFormTest extends TestCase
 
         $this->assertSame('Available', $component->effectiveStatusLabel);
         $this->assertTrue($component->availability);
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
     }
 }

@@ -321,14 +321,14 @@
                 [
                     'label' => 'Unavailable Cars',
                     'value' => $fleetUnavailable,
-                    'hint' => 'Maintenance or blocked',
+                    'hint' => 'Blocked with an unavailable reason',
                     'icon' => 'bi bi-slash-circle',
                     'tone' => 'unavailable',
                 ],
                 [
-                    'label' => 'Under maintenance',
+                    'label' => 'Maintenance Reason',
                     'value' => $fleetUnderMaintenance,
-                    'hint' => 'Currently in service bay',
+                    'hint' => 'Unavailable because of maintenance',
                     'icon' => 'bi bi-tools',
                     'tone' => 'booked',
                 ],
@@ -473,7 +473,7 @@
 
                             <select class="form-select form-select-sm" wire:model.defer="availableReadiness">
                                 <option value="available">Available Only</option>
-                                <option value="available_pre_reserved">Available + Pre-Reserved</option>
+                                <option value="available_pre_reserved">Available + Upcoming Booking</option>
                                 <option value="unavailable">Unavailable</option>
                             </select>
 
@@ -563,6 +563,9 @@
                                             <span class="badge {{ $car->operationalStatusSubtleBadgeClass() }}">
                                                 {{ $car->operationalStatusLabel() }}
                                             </span>
+                                            @if ($car->operationalStatus() === \App\Models\Car::STATUS_UNAVAILABLE && $car->unavailabilityReasonLabel())
+                                                <div class="small text-muted mt-1">{{ $car->unavailabilityReasonLabel() }}</div>
+                                            @endif
                                         </td>
                                         <td>
                                             @if ($upcomingReservation)

@@ -8,7 +8,6 @@ use App\Models\CarModel;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Mockery;
 use Tests\TestCase;
 
 class CreateCarFormTest extends TestCase
@@ -27,8 +26,7 @@ class CreateCarFormTest extends TestCase
             'model' => 'Model S',
         ]);
 
-        $component = Mockery::mock(CreateCarForm::class)->makePartial();
-        $component->shouldAllowMockingProtectedMethods();
+        $component = app(CreateCarForm::class);
         $component->mount();
 
         $component->is_featured = true;
@@ -77,7 +75,9 @@ class CreateCarFormTest extends TestCase
             'car_options' => $component->car_options,
         ];
 
-        $component->shouldReceive('validate')->once()->andReturn($validatedData);
+        foreach ($validatedData as $field => $value) {
+            $component->{$field} = $value;
+        }
 
         $component->submit();
 
@@ -94,7 +94,7 @@ class CreateCarFormTest extends TestCase
         $this->assertEquals('Car added successfully!', session('message'));
     }
 
-    public function test_create_form_previews_booked_statuses_as_system_managed(): void
+    public function test_create_form_previews_unavailable_reason(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -108,19 +108,11 @@ class CreateCarFormTest extends TestCase
         $component->mount();
         $component->updatedSelectedBrand($carModel->brand);
         $component->selectedModelId = (string) $carModel->id;
-        $component->status = 'reserved';
-        $component->updatedStatus('reserved');
+        $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
+        $component->unavailability_reason = Car::UNAVAILABILITY_REASON_MAINTENANCE;
+        $component->updatedStatus(Car::MANUAL_STATUS_UNAVAILABLE);
 
-        $this->assertSame('Available', $component->effectiveStatusLabel);
-        $this->assertStringContainsString(
-            'Booked statuses are synchronized from contract dates.',
-            (string) $component->effectiveStatusExplanation
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
+        $this->assertSame('Unavailable', $component->effectiveStatusLabel);
+        $this->assertSame('Maintenance', $component->effectiveUnavailabilityReasonLabel);
     }
 }

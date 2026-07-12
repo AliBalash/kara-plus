@@ -274,10 +274,9 @@ class Dashboard extends Component
             ];
         })->values()->all();
 
-        $maintenanceStatuses = ['under_maintenance', 'sold', 'maintenance', 'repair', 'service'];
-
         $this->totalCars = Car::count();
-        $this->offlineVehicles = Car::whereIn('status', $maintenanceStatuses)->count();
+        $this->offlineVehicles = Car::query()->byOperationalStatus(Car::STATUS_UNAVAILABLE)->count()
+            + Car::query()->byOperationalStatus(Car::STATUS_SOLD)->count();
 
         $activeVehicleIds = Contract::whereIn('current_status', Car::reservingStatuses())
             ->whereNotNull('pickup_date')
@@ -419,10 +418,10 @@ class Dashboard extends Component
             $this->baseAvailableFleetQuery($summaryScope),
             'available'
         )->count('cars.id');
-        $underMaintenance = (int) (clone $carsInScope)->where('cars.status', 'under_maintenance')->count('cars.id');
+        $underMaintenance = (int) (clone $carsInScope)->byOperationalStatus(Car::LEGACY_STATUS_UNDER_MAINTENANCE)->count('cars.id');
         $booked = (int) (clone $carsInScope)->byOperationalStatus('reserved')->count('cars.id')
             + (int) (clone $carsInScope)->byOperationalStatus('pre_reserved')->count('cars.id');
-        $unavailable = max($total - ($available + $booked), 0);
+        $unavailable = (int) (clone $carsInScope)->byOperationalStatus(Car::STATUS_UNAVAILABLE)->count('cars.id');
 
         $reservationStatuses = array_values(array_diff(Car::reservingStatuses(), ['pending']));
 
@@ -818,20 +817,20 @@ class Dashboard extends Component
         $readiness ??= $this->availableReadiness;
 
         if ($readiness === 'available') {
-            return $query->where('cars.availability', true)
-                ->where('cars.status', 'available');
+            return $query->byOperationalStatus(Car::STATUS_AVAILABLE);
         }
 
         if ($readiness === 'available_pre_reserved') {
-            return $query->where('cars.availability', true)
-                ->whereIn('cars.status', ['available', 'pre_reserved']);
+            return $query->where(function (Builder $builder) {
+                $builder->where(function (Builder $availableBuilder) {
+                    $availableBuilder->byOperationalStatus(Car::STATUS_AVAILABLE);
+                })->orWhere(function (Builder $preReservedBuilder) {
+                    $preReservedBuilder->byOperationalStatus(Car::STATUS_PRE_RESERVED);
+                });
+            });
         }
 
-        return $query->where(function (Builder $builder) {
-            $builder->where('cars.availability', false)
-                ->orWhereNotIn('cars.status', ['available', 'pre_reserved'])
-                ->orWhereNull('cars.status');
-        });
+        return $query->byOperationalStatus(Car::STATUS_UNAVAILABLE);
     }
 
     protected function applyAvailableFleetScope(Builder $query, ?string $scope = null): Builder
