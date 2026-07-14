@@ -20,6 +20,7 @@ class CarList extends Component
     public $searchInput = '';
     public $selectedBrand = '';
     public $statusFilter = '';
+    public $unavailabilityReasonFilter = '';
     public $pickupFrom;
     public $pickupTo;
     public $dailyPriceMin;
@@ -29,7 +30,7 @@ class CarList extends Component
     public $onlyReserved = false;
 
     protected $listeners = ['deletecar'];
-    protected $queryString = ['search', 'selectedBrand', 'statusFilter', 'pickupFrom', 'pickupTo', 'dailyPriceMin', 'dailyPriceMax', 'sortField', 'sortDirection', 'onlyReserved'];
+    protected $queryString = ['search', 'selectedBrand', 'statusFilter', 'unavailabilityReasonFilter', 'pickupFrom', 'pickupTo', 'dailyPriceMin', 'dailyPriceMax', 'sortField', 'sortDirection', 'onlyReserved'];
 
     public function mount(): void
     {
@@ -80,6 +81,7 @@ class CarList extends Component
         $this->searchInput = '';
         $this->selectedBrand = '';
         $this->statusFilter = '';
+        $this->unavailabilityReasonFilter = '';
         $this->pickupFrom = null;
         $this->pickupTo = null;
         $this->dailyPriceMin = null;
@@ -112,6 +114,7 @@ class CarList extends Component
 
             ->when($this->selectedBrand, fn($q) => $q->whereHas('carModel', fn($q2) => $q2->where('brand', $this->selectedBrand)))
             ->when($this->statusFilter, fn($q) => $q->byOperationalStatus($this->statusFilter))
+            ->when($this->unavailabilityReasonFilter, fn($q) => $q->byUnavailabilityReason($this->unavailabilityReasonFilter))
             ->when($this->onlyReserved, fn($q) => $q->whereIn('status', ['reserved', 'pre_reserved']));
 
         $this->applyDateFilters($carsQuery);
@@ -141,6 +144,10 @@ class CarList extends Component
 
     public function applyFilters(): void
     {
+        if ($this->unavailabilityReasonFilter !== '' && $this->statusFilter === '') {
+            $this->statusFilter = Car::STATUS_UNAVAILABLE;
+        }
+
         $this->resetPage();
     }
 

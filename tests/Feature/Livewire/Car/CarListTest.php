@@ -80,6 +80,25 @@ class CarListTest extends TestCase
         );
     }
 
+    public function test_unavailable_reason_filter_can_target_specific_hold_reason(): void
+    {
+        $maintenanceCar = Car::factory()->unavailable(Car::UNAVAILABILITY_REASON_MAINTENANCE)->create();
+        Car::factory()->unavailable(Car::UNAVAILABILITY_REASON_INSURANCE)->create();
+
+        $component = app(CarList::class);
+        $component->unavailabilityReasonFilter = Car::UNAVAILABILITY_REASON_MAINTENANCE;
+        $component->applyFilters();
+
+        $cars = Car::query()
+            ->when($component->statusFilter, fn ($builder) => $builder->byOperationalStatus($component->statusFilter))
+            ->when($component->unavailabilityReasonFilter, fn ($builder) => $builder->byUnavailabilityReason($component->unavailabilityReasonFilter))
+            ->pluck('id')
+            ->all();
+
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $component->statusFilter);
+        $this->assertSame([$maintenanceCar->id], $cars);
+    }
+
     public function test_reservation_selection_scope_blocks_unavailable_and_maintenance_cars(): void
     {
         $unavailable = Car::factory()->create([

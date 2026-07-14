@@ -127,6 +127,26 @@
                 </div>
                 <div class="col-lg-2">
                     <div class="filter-field">
+                        <label class="filter-label" for="fleetStatus">Operational Status</label>
+                        <select id="fleetStatus" class="form-select" wire:model.live="status">
+                            @foreach ($statusOptions as $option)
+                                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <div class="filter-field">
+                        <label class="filter-label" for="fleetReason">Unavailable Reason</label>
+                        <select id="fleetReason" class="form-select" wire:model.live="unavailabilityReason">
+                            @foreach ($unavailabilityReasonOptions as $option)
+                                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <div class="filter-field">
                         <div class="d-flex justify-content-between align-items-center">
                             <label class="filter-label" for="fleetReservationDaysAhead">Reserved In +X Days</label>
                             <span class="filter-hint">Future window</span>
@@ -165,7 +185,7 @@
                     <thead>
                         <tr>
                             <th>Vehicle</th>
-                            <th>Fleet & Availability</th>
+                            <th>Fleet & Status</th>
                             <th>Performance</th>
                             <th>Revenue Density</th>
                             <th>Latest Activity</th>
@@ -182,6 +202,12 @@
                                 <td>
                                     <span class="cell-title">{{ $row['ownership'] }}</span>
                                     <span class="cell-subtitle">{{ $row['availability'] }}</span>
+                                    @if ($row['unavailability_reason_label'] !== '—')
+                                        <span class="cell-subtitle">{{ $row['unavailability_reason_label'] }}</span>
+                                    @endif
+                                    @if ($row['status_note'] !== '—')
+                                        <span class="cell-subtitle text-warning">{{ $row['status_note'] }}</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <span class="cell-metric">{{ number_format($row['contracts_count']) }} contracts</span>

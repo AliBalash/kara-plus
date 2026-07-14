@@ -167,6 +167,17 @@ class Car extends Model
         ];
     }
 
+    public static function operationalStatusLabels(): array
+    {
+        return [
+            self::STATUS_AVAILABLE => 'Available',
+            self::STATUS_PRE_RESERVED => 'Upcoming booking',
+            self::STATUS_RESERVED => 'Active booking',
+            self::STATUS_UNAVAILABLE => 'Unavailable',
+            self::STATUS_SOLD => 'Sold',
+        ];
+    }
+
     public static function manualUnavailabilityReasonLabels(): array
     {
         $labels = [];
@@ -176,6 +187,11 @@ class Car extends Model
         }
 
         return $labels;
+    }
+
+    public static function operationalUnavailabilityReasonLabels(): array
+    {
+        return self::UNAVAILABILITY_REASON_LABELS;
     }
 
     public static function unavailabilityReasonLabelFor(?string $reason): ?string
@@ -568,6 +584,24 @@ class Car extends Model
             }),
             default => $query->where('status', $status),
         };
+    }
+
+    public function scopeByUnavailabilityReason($query, ?string $reason)
+    {
+        if (! $reason || ! array_key_exists($reason, self::UNAVAILABILITY_REASON_LABELS)) {
+            return $query;
+        }
+
+        return $query->where(function ($builder) use ($reason) {
+            $builder->where(function ($reasonBuilder) use ($reason) {
+                $reasonBuilder->where('status', self::STATUS_UNAVAILABLE)
+                    ->where('unavailability_reason', $reason);
+            });
+
+            if ($reason === self::UNAVAILABILITY_REASON_MAINTENANCE) {
+                $builder->orWhere('status', self::LEGACY_STATUS_UNDER_MAINTENANCE);
+            }
+        });
     }
 
     public function scopeReservableForSelection($query)

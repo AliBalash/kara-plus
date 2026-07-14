@@ -456,6 +456,47 @@ class OperationsReportServiceTest extends TestCase
         $this->assertSame($matchingCar->id, $report['rows'][0]['car_id']);
     }
 
+    public function test_fleet_performance_report_filters_by_operational_status_and_unavailable_reason(): void
+    {
+        $maintenanceCar = Car::factory()->unavailable(Car::UNAVAILABILITY_REASON_MAINTENANCE)->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+
+        Contract::factory()->for($maintenanceCar)->create([
+            'pickup_date' => Carbon::parse('2025-03-05 10:00:00'),
+            'return_date' => Carbon::parse('2025-03-08 10:00:00'),
+            'current_status' => 'complete',
+            'total_price' => 500,
+        ]);
+
+        $insuranceCar = Car::factory()->unavailable(Car::UNAVAILABILITY_REASON_INSURANCE)->create([
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+
+        Contract::factory()->for($insuranceCar)->create([
+            'pickup_date' => Carbon::parse('2025-03-06 10:00:00'),
+            'return_date' => Carbon::parse('2025-03-07 10:00:00'),
+            'current_status' => 'complete',
+            'total_price' => 450,
+        ]);
+
+        $report = $this->service->fleetPerformance([
+            'date_from' => '2025-03-01',
+            'date_to' => '2025-03-10',
+            'ownership' => 'company',
+            'status' => Car::STATUS_UNAVAILABLE,
+            'unavailability_reason' => Car::UNAVAILABILITY_REASON_MAINTENANCE,
+        ]);
+
+        $this->assertCount(1, $report['rows']);
+        $this->assertSame($maintenanceCar->id, $report['rows'][0]['car_id']);
+        $this->assertSame('Maintenance', $report['rows'][0]['unavailability_reason_label']);
+        $this->assertSame('Unavailable', $report['filter_summary']['Operational Status']);
+        $this->assertSame('Maintenance', $report['filter_summary']['Unavailable Reason']);
+    }
+
     public function test_payment_collections_report_filters_unpaid_records_and_summarizes_amounts(): void
     {
         $customer = Customer::factory()->create([

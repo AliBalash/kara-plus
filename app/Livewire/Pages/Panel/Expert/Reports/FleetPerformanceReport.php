@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\Reports;
 
 use App\Livewire\Concerns\PaginatesReportRows;
+use App\Models\Car;
 use App\Services\Reports\OperationsReportService;
 use Carbon\Carbon;
 use Livewire\Component;
@@ -17,6 +18,8 @@ class FleetPerformanceReport extends Component
     public string $dateFrom = '';
     public string $dateTo = '';
     public string $ownership = 'all';
+    public string $status = 'all';
+    public string $unavailabilityReason = 'all';
     public string $reservationDaysAhead = '';
     public int $perPage = 12;
 
@@ -25,6 +28,8 @@ class FleetPerformanceReport extends Component
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
         'ownership' => ['except' => 'all'],
+        'status' => ['except' => 'all'],
+        'unavailabilityReason' => ['except' => 'all'],
         'reservationDaysAhead' => ['except' => ''],
     ];
 
@@ -50,6 +55,8 @@ class FleetPerformanceReport extends Component
     {
         $this->search = '';
         $this->ownership = 'all';
+        $this->status = 'all';
+        $this->unavailabilityReason = 'all';
         $this->dateFrom = Carbon::now()->subDays(89)->toDateString();
         $this->dateTo = Carbon::now()->toDateString();
         $this->reservationDaysAhead = '';
@@ -71,6 +78,8 @@ class FleetPerformanceReport extends Component
             'report' => $report,
             'rows' => $rows,
             'ownershipOptions' => $this->ownershipOptions(),
+            'statusOptions' => $this->statusOptions(),
+            'unavailabilityReasonOptions' => $this->unavailabilityReasonOptions(),
             'exportUrl' => $this->exportUrl(),
         ]);
     }
@@ -82,6 +91,8 @@ class FleetPerformanceReport extends Component
             'date_from' => $this->dateFrom,
             'date_to' => $this->dateTo,
             'ownership' => $this->ownership,
+            'status' => $this->status,
+            'unavailability_reason' => $this->unavailabilityReason,
             'reservation_days_ahead' => $this->reservationDaysAhead,
         ];
     }
@@ -107,5 +118,29 @@ class FleetPerformanceReport extends Component
             ['value' => 'safe_drive', 'label' => 'Safe Drive'],
             ['value' => 'other', 'label' => 'Other fleet'],
         ];
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    protected function statusOptions(): array
+    {
+        return collect(Car::operationalStatusLabels())
+            ->prepend('All operational statuses', 'all')
+            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    protected function unavailabilityReasonOptions(): array
+    {
+        return collect(Car::operationalUnavailabilityReasonLabels())
+            ->prepend('All unavailable reasons', 'all')
+            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+            ->values()
+            ->all();
     }
 }

@@ -68,6 +68,16 @@
                 </select>
             </div>
 
+            <div class="col-md-6 col-lg-3">
+                <label class="form-label small text-muted mb-1">Unavailable Reason</label>
+                <select class="form-select" wire:model.defer="unavailabilityReasonFilter">
+                    <option value="">All Reasons</option>
+                    @foreach (\App\Models\Car::operationalUnavailabilityReasonLabels() as $reasonValue => $reasonLabel)
+                        <option value="{{ $reasonValue }}">{{ $reasonLabel }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             <div class="col-md-6 col-lg-2">
                 <label class="form-label small text-muted mb-1">Pickup From</label>
                 <input type="date" class="form-control" wire:model.defer="pickupFrom" placeholder="Pickup From">

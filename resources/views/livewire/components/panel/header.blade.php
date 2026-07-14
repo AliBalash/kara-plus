@@ -181,6 +181,13 @@
                                     </span>
                                 </div>
 
+                                @if ($car->operationalStatus() === \App\Models\Car::STATUS_UNAVAILABLE && $car->unavailabilityReasonLabel())
+                                    <div class="text-muted small mt-2">{{ $car->unavailabilityReasonLabel() }}</div>
+                                @endif
+                                @if ($car->operationalStatusContextNote())
+                                    <div class="text-warning small mt-1">{{ $car->operationalStatusContextNote() }}</div>
+                                @endif
+
                                 <div class="result-card-highlights">
                                     <div class="highlight-card">
                                         <span class="highlight-label">Plate</span>

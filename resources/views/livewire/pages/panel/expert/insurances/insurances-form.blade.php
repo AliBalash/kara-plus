@@ -42,6 +42,12 @@
                                 <span class="input-group-text">Car Status</span>
                                 <input type="text" class="form-control" value="{{ $car->operationalStatusLabel() }}" disabled>
                             </div>
+                            @if ($car->operationalStatus() === \App\Models\Car::STATUS_UNAVAILABLE && $car->unavailabilityReasonLabel())
+                                <div class="form-text mt-1">{{ $car->unavailabilityReasonLabel() }}</div>
+                            @endif
+                            @if ($car->operationalStatusContextNote())
+                                <div class="form-text text-warning">{{ $car->operationalStatusContextNote() }}</div>
+                            @endif
                         @endif
                     </div>
                 </div>

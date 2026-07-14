@@ -501,6 +501,14 @@ class OperationsReportService
                 $filters['ownership'] !== 'all',
                 fn (Builder $query) => $query->where('ownership_type', $filters['ownership'])
             )
+            ->when(
+                $filters['status'] !== 'all',
+                fn (Builder $query) => $query->byOperationalStatus($filters['status'])
+            )
+            ->when(
+                $filters['unavailability_reason'] !== 'all',
+                fn (Builder $query) => $query->byUnavailabilityReason($filters['unavailability_reason'])
+            )
             ->when($filters['reservation_days_ahead'] !== null, function (Builder $query) use ($filters) {
                 $query->whereHas('contracts', function (Builder $contractQuery) use ($filters) {
                     $contractQuery->whereNotIn('current_status', ['cancelled', 'rejected']);
@@ -540,6 +548,12 @@ class OperationsReportService
             ->values();
 
         $ownershipBreakdown = $rows->countBy('ownership')->sortDesc();
+        $statusBreakdown = $rows->countBy('availability')->sortDesc();
+        $reasonBreakdown = $rows
+            ->pluck('unavailability_reason_label')
+            ->filter()
+            ->countBy()
+            ->sortDesc();
 
         $summary = [
             'cars_in_report' => $rows->count(),
@@ -557,6 +571,12 @@ class OperationsReportService
                 'Pickup Date From' => $filters['date_from'] ?? 'Open',
                 'Return Date To' => $filters['date_to'] ?? 'Open',
                 'Fleet Scope' => $filters['ownership'] === 'all' ? 'All fleets' : Str::headline(str_replace('_', ' ', $filters['ownership'])),
+                'Operational Status' => $filters['status'] === 'all'
+                    ? 'All statuses'
+                    : (Car::operationalStatusLabels()[$filters['status']] ?? Str::headline(str_replace('_', ' ', $filters['status']))),
+                'Unavailable Reason' => $filters['unavailability_reason'] === 'all'
+                    ? 'All reasons'
+                    : (Car::operationalUnavailabilityReasonLabels()[$filters['unavailability_reason']] ?? Str::headline(str_replace('_', ' ', $filters['unavailability_reason']))),
                 'Reserved In Next Days' => $filters['reservation_days_ahead'] !== null ? (string) $filters['reservation_days_ahead'] : 'All',
             ],
             'summary' => $summary,
@@ -569,6 +589,8 @@ class OperationsReportService
                     'Booked Days' => $summary['booked_days'],
                     'Average Utilization (%)' => $summary['average_utilization'],
                 ],
+                'Operational Status Mix' => $statusBreakdown->all(),
+                'Unavailable Reason Mix' => $reasonBreakdown->all(),
                 'Ownership Mix' => $ownershipBreakdown->all(),
             ],
             'rows' => $rows,
@@ -577,7 +599,9 @@ class OperationsReportService
                 'Vehicle',
                 'Plate',
                 'Fleet',
-                'Availability',
+                'Operational Status',
+                'Unavailable Reason',
+                'Status Note',
                 'Contracts',
                 'Unique Customers',
                 'Revenue AED',
@@ -597,6 +621,8 @@ class OperationsReportService
                     $row['plate_number'],
                     $row['ownership'],
                     $row['availability'],
+                    $row['unavailability_reason_label'],
+                    $row['status_note'],
                     $row['contracts_count'],
                     $row['unique_customers'],
                     $row['revenue'],
@@ -1225,6 +1251,8 @@ class OperationsReportService
             'plate_number' => $car->plate_number ?? '—',
             'ownership' => $car->ownershipLabel(),
             'availability' => $car->operationalStatusLabel(),
+            'unavailability_reason_label' => $car->unavailabilityReasonLabel() ?? '—',
+            'status_note' => $car->operationalStatusContextNote() ?? '—',
             'contracts_count' => $contracts->count(),
             'unique_customers' => $contracts->pluck('customer_id')->filter()->unique()->count(),
             'revenue' => $revenue,
@@ -1353,8 +1381,26 @@ class OperationsReportService
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
             'ownership' => trim((string) ($filters['ownership'] ?? 'all')) ?: 'all',
+            'status' => $this->normalizeFleetStatusFilter($filters['status'] ?? 'all'),
+            'unavailability_reason' => $this->normalizeFleetUnavailabilityReasonFilter($filters['unavailability_reason'] ?? 'all'),
             'reservation_days_ahead' => $this->normalizePositiveInt($filters['reservation_days_ahead'] ?? null),
         ];
+    }
+
+    private function normalizeFleetStatusFilter(mixed $value): string
+    {
+        $normalized = trim((string) $value) ?: 'all';
+        $valid = array_merge(['all'], array_keys(Car::operationalStatusLabels()));
+
+        return in_array($normalized, $valid, true) ? $normalized : 'all';
+    }
+
+    private function normalizeFleetUnavailabilityReasonFilter(mixed $value): string
+    {
+        $normalized = trim((string) $value) ?: 'all';
+        $valid = array_merge(['all'], array_keys(Car::operationalUnavailabilityReasonLabels()));
+
+        return in_array($normalized, $valid, true) ? $normalized : 'all';
     }
 
     private function normalizePaymentFilters(array $filters): array
