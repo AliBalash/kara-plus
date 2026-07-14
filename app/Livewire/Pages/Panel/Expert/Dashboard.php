@@ -433,17 +433,22 @@ class Dashboard extends Component
         $booked = $reserved + $preReserved;
         $unavailable = (int) (clone $carsInScope)->byOperationalStatus(Car::STATUS_UNAVAILABLE)->count('cars.id');
         $sold = (int) (clone $carsInScope)->byOperationalStatus(Car::STATUS_SOLD)->count('cars.id');
-        $needAction = (int) (clone $carsInScope)->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION)->count('cars.id');
+        $supportsReasonColumn = Car::hasStatusSupportColumn('unavailability_reason');
+        $needAction = $supportsReasonColumn
+            ? (int) (clone $carsInScope)->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION)->count('cars.id')
+            : 0;
         $manualUnavailable = max($unavailable - $needAction, 0);
-        $reasonBreakdown = collect(Car::operationalUnavailabilityReasonLabels())
-            ->mapWithKeys(function (string $label, string $reason) use ($carsInScope) {
-                return [$reason => [
-                    'label' => $label,
-                    'count' => (int) (clone $carsInScope)->byUnavailabilityReason($reason)->count('cars.id'),
-                ]];
-            })
-            ->filter(fn (array $item) => $item['count'] > 0)
-            ->all();
+        $reasonBreakdown = $supportsReasonColumn
+            ? collect(Car::operationalUnavailabilityReasonLabels())
+                ->mapWithKeys(function (string $label, string $reason) use ($carsInScope) {
+                    return [$reason => [
+                        'label' => $label,
+                        'count' => (int) (clone $carsInScope)->byUnavailabilityReason($reason)->count('cars.id'),
+                    ]];
+                })
+                ->filter(fn (array $item) => $item['count'] > 0)
+                ->all()
+            : [];
 
         $reservationStatuses = array_values(array_diff(Car::reservingStatuses(), ['pending']));
 
@@ -486,6 +491,8 @@ class Dashboard extends Component
 
     protected function buildFleetAttentionCars(): void
     {
+        $supportsReasonColumn = Car::hasStatusSupportColumn('unavailability_reason');
+
         $query = Car::query()
             ->with(['carModel', 'currentContract.customer', 'upcomingReservation.customer'])
             ->select('cars.*', 'latest_returns.latest_returned_at')
@@ -496,34 +503,45 @@ class Dashboard extends Component
         $this->applyAvailableFleetScope($query, 'our');
 
         $cars = $query
-            ->where(function (Builder $builder) {
-                $builder->where(function (Builder $needActionBuilder) {
-                    $needActionBuilder->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION);
-                })->orWhere(function (Builder $unavailableBuilder) {
+            ->where(function (Builder $builder) use ($supportsReasonColumn) {
+                if ($supportsReasonColumn) {
+                    $builder->where(function (Builder $needActionBuilder) {
+                        $needActionBuilder->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION);
+                    })->orWhere(function (Builder $unavailableBuilder) {
+                        $unavailableBuilder->byOperationalStatus(Car::STATUS_UNAVAILABLE);
+                    })->orWhere(function (Builder $soldBuilder) {
+                        $soldBuilder->byOperationalStatus(Car::STATUS_SOLD);
+                    });
+
+                    return;
+                }
+
+                $builder->where(function (Builder $unavailableBuilder) {
                     $unavailableBuilder->byOperationalStatus(Car::STATUS_UNAVAILABLE);
                 })->orWhere(function (Builder $soldBuilder) {
                     $soldBuilder->byOperationalStatus(Car::STATUS_SOLD);
                 });
             })
-            ->orderByRaw(
-                "CASE
-                    WHEN cars.status = ? AND cars.unavailability_reason = ? THEN 0
-                    WHEN cars.status = ? THEN 1
-                    WHEN cars.status = ? THEN 2
-                    ELSE 3
-                END",
-                [
-                    Car::STATUS_UNAVAILABLE,
-                    Car::UNAVAILABILITY_REASON_NEED_ACTION,
-                    Car::STATUS_UNAVAILABLE,
-                    Car::STATUS_SOLD,
-                ]
-            )
             ->orderByDesc('cars.updated_at')
             ->limit(6)
             ->get();
 
-        $this->fleetAttentionCars = $cars
+        if ($supportsReasonColumn) {
+            $cars = $cars->sortBy(function (Car $car) {
+                $priority = match (true) {
+                    $car->status === Car::STATUS_UNAVAILABLE && $car->unavailability_reason === Car::UNAVAILABILITY_REASON_NEED_ACTION => '0',
+                    $car->status === Car::STATUS_UNAVAILABLE => '1',
+                    $car->status === Car::STATUS_SOLD => '2',
+                    default => '3',
+                };
+
+                $updatedAt = $car->updated_at?->getTimestamp() ?? 0;
+
+                return $priority . '-' . str_pad((string) (9999999999 - $updatedAt), 10, '0', STR_PAD_LEFT);
+            })->values();
+        }
+
+        $this->fleetAttentionCars = collect($cars)
             ->map(fn (Car $car) => $this->transformFleetAttentionCar($car))
             ->values()
             ->all();

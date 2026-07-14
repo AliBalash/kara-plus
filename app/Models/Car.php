@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Car extends Model
 {
@@ -64,6 +65,7 @@ class Car extends Model
      * @var array<string, array<int, string>>
      */
     private static array $imageDirectoryCache = [];
+    private static array $columnExistenceCache = [];
 
     /**
      * ویژگی‌های قابل پر کردن (mass assignable).
@@ -201,6 +203,14 @@ class Car extends Model
 
     public function unavailabilityReasonLabel(): ?string
     {
+        if (! static::hasStatusSupportColumn('unavailability_reason')) {
+            if ($this->status === self::LEGACY_STATUS_UNDER_MAINTENANCE) {
+                return static::unavailabilityReasonLabelFor(self::UNAVAILABILITY_REASON_MAINTENANCE);
+            }
+
+            return null;
+        }
+
         return static::unavailabilityReasonLabelFor($this->unavailability_reason);
     }
 
@@ -210,6 +220,7 @@ class Car extends Model
 
         if (
             $this->operationalStatus() === self::STATUS_UNAVAILABLE
+            && static::hasStatusSupportColumn('unavailability_reason')
             && $this->unavailability_reason === self::UNAVAILABILITY_REASON_NEED_ACTION
             && $this->hasUpcomingReservationWindow($now)
         ) {
@@ -592,6 +603,14 @@ class Car extends Model
             return $query;
         }
 
+        if (! static::hasStatusSupportColumn('unavailability_reason')) {
+            if ($reason === self::UNAVAILABILITY_REASON_MAINTENANCE) {
+                return $query->where('status', self::LEGACY_STATUS_UNDER_MAINTENANCE);
+            }
+
+            return $query->whereRaw('1 = 0');
+        }
+
         return $query->where(function ($builder) use ($reason) {
             $builder->where(function ($reasonBuilder) use ($reason) {
                 $reasonBuilder->where('status', self::STATUS_UNAVAILABLE)
@@ -913,6 +932,19 @@ class Car extends Model
         }
 
         return $this->publicAssetUrl($relativePath);
+    }
+
+    public static function hasStatusSupportColumn(string $column): bool
+    {
+        if (array_key_exists($column, static::$columnExistenceCache)) {
+            return static::$columnExistenceCache[$column];
+        }
+
+        try {
+            return static::$columnExistenceCache[$column] = Schema::hasColumn('cars', $column);
+        } catch (\Throwable) {
+            return static::$columnExistenceCache[$column] = false;
+        }
     }
 
     private function resolveClosestImagePath(string $basePath, string $requestedFileName): ?string
