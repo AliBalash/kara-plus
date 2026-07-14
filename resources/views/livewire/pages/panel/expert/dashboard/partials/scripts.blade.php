@@ -240,7 +240,7 @@
             noData,
             series: fleetSeries,
             labels: fleetLabels,
-            colors: [palette.success, palette.info, palette.warning],
+            colors: [palette.success, palette.info, palette.warning, palette.danger],
             stroke: {
                 colors: ['transparent']
             },

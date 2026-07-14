@@ -64,6 +64,7 @@ class Dashboard extends Component
     public array $availableBrands = [];
     public string $availableFleetScope = 'our';
     public string $availableReadiness = 'available';
+    public string $availableReason = 'all';
     public string $availableSort = 'returned_oldest';
     public string $availableSearch = '';
     public string $monthlyContractsSearch = '';
@@ -98,9 +99,19 @@ class Dashboard extends Component
             'rows' => [],
         ],
     ];
+    public array $fleetAttentionCars = [];
 
     private const AVAILABLE_FLEET_SCOPES = ['our', 'all', 'partners'];
-    private const AVAILABLE_READINESS_FILTERS = ['available', 'available_pre_reserved', 'unavailable'];
+    private const AVAILABLE_READINESS_FILTERS = [
+        'all',
+        'available',
+        'available_pre_reserved',
+        'pre_reserved',
+        'reserved',
+        'unavailable',
+        'need_action',
+        'sold',
+    ];
     private const AVAILABLE_SORT_OPTIONS = [
         'returned_latest',
         'returned_oldest',
@@ -174,8 +185,9 @@ class Dashboard extends Component
             ->latest()
             ->get();
 
-        $this->buildAnalytics();
         $this->buildFleetStatusSummary();
+        $this->buildAnalytics();
+        $this->buildFleetAttentionCars();
         $this->normalizeAvailableFleetFilters();
         $this->prepareAvailableBrands();
     }
@@ -188,6 +200,7 @@ class Dashboard extends Component
         if (! $this->isDriver) {
             $this->normalizeAvailableFleetFilters();
             $this->buildFleetStatusSummary();
+            $this->buildFleetAttentionCars();
             $this->prepareAvailableBrands();
             $this->loadMonthlyContractsReport();
             $this->buildComplianceReport();
@@ -295,17 +308,13 @@ class Dashboard extends Component
             ? round(($this->activeVehicles / $this->totalCars) * 100)
             : 0;
 
-        $availableVehicles = $this->totalCars - ($this->activeVehicles + $this->offlineVehicles);
-        if ($availableVehicles < 0) {
-            $availableVehicles = 0;
-        }
-
         $this->fleetBreakdown = [
-            'labels' => ['Active', 'Available', 'Maintenance'],
+            'labels' => ['Available now', 'Upcoming booking', 'Active booking', 'Unavailable / Sold'],
             'series' => [
-                $this->activeVehicles,
-                $availableVehicles,
-                $this->offlineVehicles,
+                (int) ($this->fleetStatusSummary['available'] ?? 0),
+                (int) ($this->fleetStatusSummary['pre_reserved'] ?? 0),
+                (int) ($this->fleetStatusSummary['reserved'] ?? 0),
+                (int) (($this->fleetStatusSummary['unavailable'] ?? 0) + ($this->fleetStatusSummary['sold'] ?? 0)),
             ],
         ];
 
@@ -418,10 +427,23 @@ class Dashboard extends Component
             $this->baseAvailableFleetQuery($summaryScope),
             'available'
         )->count('cars.id');
+        $preReserved = (int) (clone $carsInScope)->byOperationalStatus(Car::STATUS_PRE_RESERVED)->count('cars.id');
+        $reserved = (int) (clone $carsInScope)->byOperationalStatus(Car::STATUS_RESERVED)->count('cars.id');
         $underMaintenance = (int) (clone $carsInScope)->byOperationalStatus(Car::LEGACY_STATUS_UNDER_MAINTENANCE)->count('cars.id');
-        $booked = (int) (clone $carsInScope)->byOperationalStatus('reserved')->count('cars.id')
-            + (int) (clone $carsInScope)->byOperationalStatus('pre_reserved')->count('cars.id');
+        $booked = $reserved + $preReserved;
         $unavailable = (int) (clone $carsInScope)->byOperationalStatus(Car::STATUS_UNAVAILABLE)->count('cars.id');
+        $sold = (int) (clone $carsInScope)->byOperationalStatus(Car::STATUS_SOLD)->count('cars.id');
+        $needAction = (int) (clone $carsInScope)->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION)->count('cars.id');
+        $manualUnavailable = max($unavailable - $needAction, 0);
+        $reasonBreakdown = collect(Car::operationalUnavailabilityReasonLabels())
+            ->mapWithKeys(function (string $label, string $reason) use ($carsInScope) {
+                return [$reason => [
+                    'label' => $label,
+                    'count' => (int) (clone $carsInScope)->byUnavailabilityReason($reason)->count('cars.id'),
+                ]];
+            })
+            ->filter(fn (array $item) => $item['count'] > 0)
+            ->all();
 
         $reservationStatuses = array_values(array_diff(Car::reservingStatuses(), ['pending']));
 
@@ -446,13 +468,65 @@ class Dashboard extends Component
         $this->fleetStatusSummary = [
             'total' => $total,
             'available' => $available,
+            'pre_reserved' => $preReserved,
+            'reserved' => $reserved,
             'booked' => $booked,
             'unavailable' => $unavailable,
+            'manual_unavailable' => $manualUnavailable,
+            'need_action' => $needAction,
+            'sold' => $sold,
             'under_maintenance' => $underMaintenance,
             'availability_rate' => $total > 0 ? (int) round(($available / $total) * 100) : 0,
+            'dispatchable_rate' => $total > 0 ? (int) round((($available + $preReserved) / $total) * 100) : 0,
             'active_reservations' => $activeReservations,
             'upcoming_pickups' => $upcomingPickups,
+            'reason_breakdown' => $reasonBreakdown,
         ];
+    }
+
+    protected function buildFleetAttentionCars(): void
+    {
+        $query = Car::query()
+            ->with(['carModel', 'currentContract.customer', 'upcomingReservation.customer'])
+            ->select('cars.*', 'latest_returns.latest_returned_at')
+            ->leftJoinSub($this->latestReturnedAtSubquery(), 'latest_returns', function ($join) {
+                $join->on('latest_returns.car_id', '=', 'cars.id');
+            });
+
+        $this->applyAvailableFleetScope($query, 'our');
+
+        $cars = $query
+            ->where(function (Builder $builder) {
+                $builder->where(function (Builder $needActionBuilder) {
+                    $needActionBuilder->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION);
+                })->orWhere(function (Builder $unavailableBuilder) {
+                    $unavailableBuilder->byOperationalStatus(Car::STATUS_UNAVAILABLE);
+                })->orWhere(function (Builder $soldBuilder) {
+                    $soldBuilder->byOperationalStatus(Car::STATUS_SOLD);
+                });
+            })
+            ->orderByRaw(
+                "CASE
+                    WHEN cars.status = ? AND cars.unavailability_reason = ? THEN 0
+                    WHEN cars.status = ? THEN 1
+                    WHEN cars.status = ? THEN 2
+                    ELSE 3
+                END",
+                [
+                    Car::STATUS_UNAVAILABLE,
+                    Car::UNAVAILABILITY_REASON_NEED_ACTION,
+                    Car::STATUS_UNAVAILABLE,
+                    Car::STATUS_SOLD,
+                ]
+            )
+            ->orderByDesc('cars.updated_at')
+            ->limit(6)
+            ->get();
+
+        $this->fleetAttentionCars = $cars
+            ->map(fn (Car $car) => $this->transformFleetAttentionCar($car))
+            ->values()
+            ->all();
     }
 
     protected function prepareAvailableBrands(): void
@@ -481,14 +555,16 @@ class Dashboard extends Component
     public function getAvailableCarsProperty()
     {
         $query = $this->availableFleetQuery()
-            ->with(['carModel'])
+            ->with(['carModel', 'currentContract.customer'])
             ->with(['upcomingReservation' => function ($builder) {
                 $builder->select([
                     'id',
                     'car_id',
+                    'customer_id',
                     'pickup_date',
+                    'return_date',
                     'pickup_location',
-                ]);
+                ])->with('customer');
             }]);
 
         $this->applyAvailableFleetSort($query);
@@ -508,6 +584,7 @@ class Dashboard extends Component
         $this->availableBrand = 'all';
         $this->availableFleetScope = 'our';
         $this->availableReadiness = 'available';
+        $this->availableReason = 'all';
         $this->availableSort = 'returned_oldest';
         $this->availableSearch = '';
         $this->normalizeAvailableFleetFilters();
@@ -738,6 +815,21 @@ class Dashboard extends Component
             $this->availableReadiness = 'available';
         }
 
+        $validReasons = array_keys(Car::operationalUnavailabilityReasonLabels());
+
+        if ($this->availableReason !== 'all' && ! in_array($this->availableReason, $validReasons, true)) {
+            $this->availableReason = 'all';
+        }
+
+        if ($this->availableReadiness === 'need_action') {
+            $this->availableReason = Car::UNAVAILABILITY_REASON_NEED_ACTION;
+        } elseif (
+            $this->availableReason !== 'all'
+            && ! in_array($this->availableReadiness, ['all', 'unavailable'], true)
+        ) {
+            $this->availableReadiness = 'unavailable';
+        }
+
         if (! in_array($this->availableSort, self::AVAILABLE_SORT_OPTIONS, true)) {
             $this->availableSort = 'returned_oldest';
         }
@@ -774,6 +866,7 @@ class Dashboard extends Component
     protected function availableFleetQuery(bool $applyBrandFilter = true, bool $applySearchFilter = true): Builder
     {
         $query = $this->applyAvailableFleetReadiness($this->baseAvailableFleetQuery());
+        $query = $this->applyAvailableFleetReasonFilter($query);
 
         if ($applyBrandFilter && $this->availableBrand !== 'all') {
             $query->whereHas('carModel', function (Builder $builder) {
@@ -804,8 +897,7 @@ class Dashboard extends Component
             // Keep cars with no historical return visible in the available fleet list.
             ->leftJoinSub($this->latestReturnedAtSubquery(), 'latest_returns', function ($join) {
                 $join->on('latest_returns.car_id', '=', 'cars.id');
-            })
-            ->withoutActiveReservations();
+            });
 
         $this->applyAvailableFleetScope($query, $scope);
 
@@ -816,21 +908,31 @@ class Dashboard extends Component
     {
         $readiness ??= $this->availableReadiness;
 
-        if ($readiness === 'available') {
-            return $query->byOperationalStatus(Car::STATUS_AVAILABLE);
-        }
-
-        if ($readiness === 'available_pre_reserved') {
-            return $query->where(function (Builder $builder) {
+        return match ($readiness) {
+            'all' => $query,
+            'available' => $query->byOperationalStatus(Car::STATUS_AVAILABLE),
+            'available_pre_reserved' => $query->where(function (Builder $builder) {
                 $builder->where(function (Builder $availableBuilder) {
                     $availableBuilder->byOperationalStatus(Car::STATUS_AVAILABLE);
                 })->orWhere(function (Builder $preReservedBuilder) {
                     $preReservedBuilder->byOperationalStatus(Car::STATUS_PRE_RESERVED);
                 });
-            });
+            }),
+            'pre_reserved' => $query->byOperationalStatus(Car::STATUS_PRE_RESERVED),
+            'reserved' => $query->byOperationalStatus(Car::STATUS_RESERVED),
+            'need_action' => $query->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION),
+            'sold' => $query->byOperationalStatus(Car::STATUS_SOLD),
+            default => $query->byOperationalStatus(Car::STATUS_UNAVAILABLE),
+        };
+    }
+
+    protected function applyAvailableFleetReasonFilter(Builder $query): Builder
+    {
+        if ($this->availableReason === 'all') {
+            return $query;
         }
 
-        return $query->byOperationalStatus(Car::STATUS_UNAVAILABLE);
+        return $query->byUnavailabilityReason($this->availableReason);
     }
 
     protected function applyAvailableFleetScope(Builder $query, ?string $scope = null): Builder
@@ -900,6 +1002,41 @@ class Dashboard extends Component
         $query
             ->orderByDesc('cars.updated_at')
             ->orderByDesc('cars.id');
+    }
+
+    protected function transformFleetAttentionCar(Car $car): array
+    {
+        $currentContract = $car->currentContract;
+        $upcomingReservation = $car->upcomingReservation;
+        $returnedAt = $car->latest_returned_at ? Carbon::parse($car->latest_returned_at) : null;
+
+        return [
+            'id' => $car->id,
+            'car_name' => $car->fullName(),
+            'ownership_label' => $car->ownershipLabel(),
+            'status_label' => $car->operationalStatusLabel(),
+            'status_badge_class' => $car->operationalStatusSubtleBadgeClass(),
+            'reason_label' => $car->unavailabilityReasonLabel(),
+            'context_note' => $car->operationalStatusContextNote(),
+            'action_label' => $this->fleetAttentionActionLabel($car),
+            'current_contract_id' => $currentContract?->id,
+            'current_customer' => $currentContract?->customer?->fullName() ?? '—',
+            'current_return_at' => $currentContract?->return_date ? Carbon::parse($currentContract->return_date)->format('Y-m-d H:i') : '—',
+            'next_pickup_at' => $upcomingReservation?->pickup_date ? Carbon::parse($upcomingReservation->pickup_date)->format('Y-m-d H:i') : null,
+            'last_returned_at' => $returnedAt?->format('Y-m-d H:i'),
+        ];
+    }
+
+    protected function fleetAttentionActionLabel(Car $car): string
+    {
+        return match (true) {
+            $car->unavailability_reason === Car::UNAVAILABILITY_REASON_NEED_ACTION => 'Close overdue contract and confirm next step',
+            $car->operationalStatus() === Car::STATUS_SOLD => 'Keep hidden from dispatch and reservations',
+            $car->unavailability_reason === Car::UNAVAILABILITY_REASON_FOR_SALE => 'Hold for sale workflow only',
+            $car->unavailability_reason === Car::UNAVAILABILITY_REASON_REGISTRATION => 'Renew registration before reuse',
+            $car->unavailability_reason === Car::UNAVAILABILITY_REASON_INSURANCE => 'Renew insurance before dispatch',
+            default => 'Resolve hold reason before dispatch',
+        };
     }
 
     protected function monthBucketSelect(string $column): string

@@ -238,12 +238,19 @@
             ];
 
             $fleetAvailable = (int) ($fleetStatusSummary['available'] ?? 0);
+            $fleetPreReserved = (int) ($fleetStatusSummary['pre_reserved'] ?? 0);
+            $fleetReserved = (int) ($fleetStatusSummary['reserved'] ?? 0);
             $fleetUnavailable = (int) ($fleetStatusSummary['unavailable'] ?? 0);
+            $fleetManualUnavailable = (int) ($fleetStatusSummary['manual_unavailable'] ?? 0);
+            $fleetNeedAction = (int) ($fleetStatusSummary['need_action'] ?? 0);
+            $fleetSold = (int) ($fleetStatusSummary['sold'] ?? 0);
             $fleetUnderMaintenance = (int) ($fleetStatusSummary['under_maintenance'] ?? 0);
             $fleetReservations = (int) ($fleetStatusSummary['active_reservations'] ?? 0);
             $fleetUpcomingPickups = (int) ($fleetStatusSummary['upcoming_pickups'] ?? 0);
             $fleetTotal = (int) ($fleetStatusSummary['total'] ?? 0);
             $fleetAvailabilityRate = (int) ($fleetStatusSummary['availability_rate'] ?? 0);
+            $fleetDispatchableRate = (int) ($fleetStatusSummary['dispatchable_rate'] ?? 0);
+            $fleetReasonBreakdown = collect($fleetStatusSummary['reason_breakdown'] ?? [])->values();
             $fleetScopeLabel = 'Our Fleet';
             $fleetUtilizationValue = (int) ($fleetUtilization ?? 0);
             $activeVehiclesValue = (int) ($activeVehicles ?? 0);
@@ -274,9 +281,9 @@
                     'tone' => 'info',
                 ],
                 [
-                    'label' => 'Maintenance Pressure',
-                    'value' => number_format($offlineVehiclesValue),
-                    'sub' => 'Vehicles currently offline',
+                    'label' => 'Need Action',
+                    'value' => number_format($fleetNeedAction),
+                    'sub' => 'Overdue returns requiring a decision',
                     'icon' => 'bi bi-wrench-adjustable-circle',
                     'tone' => 'warning',
                 ],
@@ -312,32 +319,46 @@
 
             $fleetSummaryCards = [
                 [
-                    'label' => 'Available Cars',
+                    'label' => 'Available Now',
                     'value' => $fleetAvailable,
                     'hint' => 'Ready for pickup now',
                     'icon' => 'bi bi-check2-circle',
                     'tone' => 'available',
                 ],
                 [
-                    'label' => 'Unavailable Cars',
-                    'value' => $fleetUnavailable,
-                    'hint' => 'Blocked with an unavailable reason',
+                    'label' => 'Upcoming Booking',
+                    'value' => $fleetPreReserved,
+                    'hint' => 'Future reservation already exists',
+                    'icon' => 'bi bi-calendar2-check',
+                    'tone' => 'reservations',
+                ],
+                [
+                    'label' => 'Active Booking',
+                    'value' => $fleetReserved,
+                    'hint' => 'Currently in an active rental window',
+                    'icon' => 'bi bi-journal-check',
+                    'tone' => 'booked',
+                ],
+                [
+                    'label' => 'Need Action',
+                    'value' => $fleetNeedAction,
+                    'hint' => 'Contract is overdue and needs a decision',
+                    'icon' => 'bi bi-exclamation-diamond',
+                    'tone' => 'unavailable',
+                ],
+                [
+                    'label' => 'Manual Unavailable',
+                    'value' => $fleetManualUnavailable,
+                    'hint' => 'Blocked by a selected unavailable reason',
                     'icon' => 'bi bi-slash-circle',
                     'tone' => 'unavailable',
                 ],
                 [
-                    'label' => 'Maintenance Reason',
-                    'value' => $fleetUnderMaintenance,
-                    'hint' => 'Unavailable because of maintenance',
-                    'icon' => 'bi bi-tools',
-                    'tone' => 'booked',
-                ],
-                [
-                    'label' => 'Reservations',
-                    'value' => $fleetReservations,
-                    'hint' => 'Cars currently with customers',
-                    'icon' => 'bi bi-journal-check',
-                    'tone' => 'reservations',
+                    'label' => 'Sold',
+                    'value' => $fleetSold,
+                    'hint' => 'Removed from operating fleet',
+                    'icon' => 'bi bi-ban',
+                    'tone' => 'sold',
                 ],
             ];
 
@@ -347,7 +368,7 @@
             $activeShare = $totalContracts > 0
                 ? round(($activeContracts / $totalContracts) * 100, 1)
                 : 0;
-            $readyCars = max($fleetTotal - $fleetUnavailable, 0);
+            $readyCars = $fleetAvailable + $fleetPreReserved;
             $readinessGap = max($fleetTotal - $readyCars, 0);
 
             $operationsWatchlist = [
@@ -417,18 +438,22 @@
                         </span>
                         <span class="fleet-status-hero__pill">
                             <i class="bi bi-graph-up-arrow me-1"></i>
-                            Availability <strong>{{ $fleetAvailabilityRate }}%</strong>
+                            Available Now <strong>{{ $fleetAvailabilityRate }}%</strong>
                         </span>
                         <span class="fleet-status-hero__pill">
-                            <i class="bi bi-calendar-week me-1"></i>
-                            Upcoming Pickups <strong>{{ number_format($fleetUpcomingPickups) }}</strong>
+                            <i class="bi bi-send-check me-1"></i>
+                            Dispatchable <strong>{{ $fleetDispatchableRate }}%</strong>
+                        </span>
+                        <span class="fleet-status-hero__pill">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Need Action <strong>{{ number_format($fleetNeedAction) }}</strong>
                         </span>
                     </div>
                 </div>
 
                 <div class="row g-3">
                     @foreach ($fleetSummaryCards as $summaryCard)
-                        <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="col-12 col-sm-6 col-xl-4">
                             <div class="fleet-status-card fleet-status-card--{{ $summaryCard['tone'] }}">
                                 <span class="fleet-status-card__icon">
                                     <i class="{{ $summaryCard['icon'] }}"></i>
@@ -442,13 +467,27 @@
                         </div>
                     @endforeach
                 </div>
+
+                @if ($fleetReasonBreakdown->isNotEmpty())
+                    <div class="fleet-reason-strip mt-3">
+                        <div class="fleet-reason-strip__label">Unavailable reasons in scope</div>
+                        <div class="fleet-reason-strip__items">
+                            @foreach ($fleetReasonBreakdown as $reason)
+                                <span class="fleet-reason-chip">
+                                    <strong>{{ $reason['count'] }}</strong>
+                                    {{ $reason['label'] }}
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 
         <div class="card shadow-lg border-0 rounded-4 mb-4">
             <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex flex-wrap gap-3 justify-content-between align-items-center">
                 <div>
-                    <h5 class="fw-bold mb-1"><i class="bi bi-ev-front text-primary me-2"></i>Fleet Inventory</h5>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-ev-front text-primary me-2"></i>Fleet Board</h5>
                     <span class="text-muted small">{{ $availableCarsTotal }} vehicle{{ $availableCarsTotal === 1 ? '' : 's' }} currently matching the selected filters</span>
                 </div>
                 <a href="{{ route('car.list') }}" class="btn btn-outline-secondary btn-sm">
@@ -472,9 +511,21 @@
                             </select>
 
                             <select class="form-select form-select-sm" wire:model.defer="availableReadiness">
-                                <option value="available">Available Only</option>
-                                <option value="available_pre_reserved">Available + Upcoming Booking</option>
+                                <option value="available">Available Now</option>
+                                <option value="available_pre_reserved">Dispatchable (Available + Upcoming)</option>
+                                <option value="pre_reserved">Upcoming Booking</option>
+                                <option value="reserved">Active Booking</option>
                                 <option value="unavailable">Unavailable</option>
+                                <option value="need_action">Need Action</option>
+                                <option value="sold">Sold</option>
+                                <option value="all">All Operational Statuses</option>
+                            </select>
+
+                            <select class="form-select form-select-sm" wire:model.defer="availableReason">
+                                <option value="all">All Unavailable Reasons</option>
+                                @foreach (\App\Models\Car::operationalUnavailabilityReasonLabels() as $reasonValue => $reasonLabel)
+                                    <option value="{{ $reasonValue }}">{{ $reasonLabel }}</option>
+                                @endforeach
                             </select>
 
                             <select class="form-select form-select-sm" wire:model.defer="availableBrand">
@@ -513,7 +564,7 @@
                     <div class="text-center text-muted py-5">No vehicles found for the selected filters.</div>
                 @else
                     <div class="table-responsive position-relative"
-                        wire:key="available-fleet-table-{{ $availableFleetScope }}-{{ $availableReadiness }}-{{ $availableBrand }}-{{ $availableSort }}-{{ md5((string) $availableSearch) }}"
+                        wire:key="available-fleet-table-{{ $availableFleetScope }}-{{ $availableReadiness }}-{{ $availableReason }}-{{ $availableBrand }}-{{ $availableSort }}-{{ md5((string) $availableSearch) }}"
                         style="max-height: 380px; overflow-y: auto;">
                         <div class="available-fleet-loading" wire:loading.flex
                             wire:target="applyAvailableFleetFilters,resetAvailableFleetFilters">
@@ -525,11 +576,10 @@
                                 <tr>
                                     <th scope="col">Vehicle</th>
                                     <th scope="col">Fleet</th>
-                                    <th scope="col">Plate</th>
-                                    <th scope="col">Returned At</th>
                                     <th scope="col">Status</th>
-                                    <th scope="col">Next Reservation</th>
-                                    <th scope="col">Last Service</th>
+                                    <th scope="col">Contract Window</th>
+                                    <th scope="col">Operational Notes</th>
+                                    <th scope="col">Service / Return</th>
                                     <th scope="col" class="text-end">Action</th>
                                 </tr>
                             </thead>
@@ -539,25 +589,22 @@
                                         $brand = optional($car->carModel)->brand;
                                         $model = optional($car->carModel)->model;
                                         $serviceDue = $car->service_due_date ? \Carbon\Carbon::parse($car->service_due_date)->format('Y-m-d') : '—';
+                                        $currentContract = $car->currentContract;
                                         $upcomingReservation = $car->upcomingReservation;
                                         $returnedAt = $car->latest_returned_at ? \Carbon\Carbon::parse($car->latest_returned_at) : null;
                                     @endphp
                                     <tr>
                                         <td>
                                             <div class="fw-semibold">{{ trim(($brand ? $brand . ' ' : '') . ($model ?? 'Vehicle')) }}</div>
-                                            <div class="text-muted small">{{ ucfirst($car->color ?? '—') }} · {{ $car->manufacturing_year ?? '—' }}</div>
+                                            <div class="text-muted small">{{ $car->plate_number ?? '—' }} · {{ ucfirst($car->color ?? '—') }} · {{ $car->manufacturing_year ?? '—' }}</div>
                                         </td>
                                         <td>
-                                            <x-car-ownership-badge :car="$car" />
-                                        </td>
-                                        <td>{{ $car->plate_number ?? '—' }}</td>
-                                        <td>
-                                            @if ($returnedAt)
-                                                <div class="fw-semibold">{{ $returnedAt->format('Y-m-d H:i') }}</div>
-                                                <div class="text-muted small">{{ $returnedAt->diffForHumans() }}</div>
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
+                                            <div class="d-flex flex-column gap-1">
+                                                <x-car-ownership-badge :car="$car" />
+                                                @if ($car->ownershipLabel())
+                                                    <span class="text-muted small">{{ $car->ownershipLabel() }}</span>
+                                                @endif
+                                            </div>
                                         </td>
                                         <td>
                                             <span class="badge {{ $car->operationalStatusSubtleBadgeClass() }}">
@@ -571,31 +618,121 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @if ($upcomingReservation)
+                                            @if ($currentContract)
                                                 <div class="d-flex flex-column gap-1">
-                                                    <div class="fw-semibold">
-                                                        {{ optional($upcomingReservation->pickup_date)->format('Y-m-d H:i') }}
+                                                    <div class="fw-semibold">Pickup {{ $currentContract->pickup_date ? \Carbon\Carbon::parse($currentContract->pickup_date)->format('Y-m-d H:i') : '—' }}</div>
+                                                    <div class="text-muted small">Return {{ $currentContract->return_date ? \Carbon\Carbon::parse($currentContract->return_date)->format('Y-m-d H:i') : '—' }}</div>
+                                                    <div class="text-muted small">
+                                                        <i class="bi bi-person me-1"></i>{{ optional($currentContract->customer)->fullName() ?? 'Customer TBD' }}
+                                                    </div>
+                                                </div>
+                                            @elseif ($upcomingReservation)
+                                                <div class="d-flex flex-column gap-1">
+                                                    <div class="fw-semibold">Next pickup {{ $upcomingReservation->pickup_date ? \Carbon\Carbon::parse($upcomingReservation->pickup_date)->format('Y-m-d H:i') : '—' }}</div>
+                                                    <div class="text-muted small">
+                                                        <i class="bi bi-person me-1"></i>{{ optional($upcomingReservation->customer)->fullName() ?? 'Customer TBD' }}
                                                     </div>
                                                     <div class="text-muted small">
                                                         <i class="bi bi-geo-alt me-1"></i>{{ $upcomingReservation->pickup_location ?? 'Location TBD' }}
                                                     </div>
                                                 </div>
                                             @else
-                                                <span class="badge bg-success-subtle text-success">No upcoming booking</span>
+                                                <span class="badge bg-success-subtle text-success">No active or upcoming booking</span>
                                             @endif
                                         </td>
                                         <td>
-                                            <span class="badge bg-primary-subtle text-primary">{{ $serviceDue }}</span>
+                                            <div class="d-flex flex-column gap-1">
+                                                <span class="text-muted small">Reason / note</span>
+                                                <span class="fw-semibold">
+                                                    {{ $car->unavailabilityReasonLabel() ?? ($car->operationalStatus() === \App\Models\Car::STATUS_PRE_RESERVED ? 'Upcoming booking is already planned' : ($car->operationalStatus() === \App\Models\Car::STATUS_RESERVED ? 'Currently inside rental window' : 'Ready for dispatch')) }}
+                                                </span>
+                                                @if ($upcomingReservation && $car->operationalStatus() !== \App\Models\Car::STATUS_PRE_RESERVED)
+                                                    <span class="text-muted small">Next pickup {{ $upcomingReservation->pickup_date ? \Carbon\Carbon::parse($upcomingReservation->pickup_date)->format('Y-m-d H:i') : '—' }}</span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column gap-1">
+                                                <span class="badge bg-primary-subtle text-primary">Service {{ $serviceDue }}</span>
+                                                @if ($returnedAt)
+                                                    <div class="text-muted small">Last return {{ $returnedAt->format('Y-m-d H:i') }}</div>
+                                                    <div class="text-muted small">{{ $returnedAt->diffForHumans() }}</div>
+                                                @else
+                                                    <div class="text-muted small">No recorded return yet</div>
+                                                @endif
+                                            </div>
                                         </td>
                                         <td class="text-end">
-                                            <a href="{{ route('car.edit', $car->id) }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="bx bx-edit"></i>
-                                            </a>
+                                            <div class="d-flex justify-content-end gap-2">
+                                                @if ($currentContract)
+                                                    <a href="{{ route('rental-requests.details', $currentContract->id) }}" class="btn btn-sm btn-outline-dark">
+                                                        <i class="bx bx-detail"></i>
+                                                    </a>
+                                                @endif
+                                                <a href="{{ route('car.edit', $car->id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bx bx-edit"></i>
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div class="card shadow-lg border-0 rounded-4 mb-4">
+            <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-exclamation-circle text-danger me-2"></i>Attention Queue</h5>
+                    <span class="text-muted small">Vehicles that are unavailable, sold, or require immediate follow-up.</span>
+                </div>
+                <span class="badge bg-danger-subtle text-danger">{{ count($fleetAttentionCars) }} items</span>
+            </div>
+            <div class="card-body pt-0 px-4 pb-4">
+                @if (empty($fleetAttentionCars))
+                    <div class="text-center text-muted py-5">No attention items in our fleet right now.</div>
+                @else
+                    <div class="row g-3">
+                        @foreach ($fleetAttentionCars as $attentionCar)
+                            <div class="col-12 col-xl-6">
+                                <div class="attention-queue-card">
+                                    <div class="d-flex justify-content-between align-items-start gap-3">
+                                        <div>
+                                            <div class="fw-semibold">{{ $attentionCar['car_name'] }}</div>
+                                            <div class="text-muted small">{{ $attentionCar['ownership_label'] }}</div>
+                                        </div>
+                                        <span class="badge {{ $attentionCar['status_badge_class'] }}">{{ $attentionCar['status_label'] }}</span>
+                                    </div>
+
+                                    @if ($attentionCar['reason_label'])
+                                        <div class="attention-queue-card__reason">{{ $attentionCar['reason_label'] }}</div>
+                                    @endif
+
+                                    @if ($attentionCar['context_note'])
+                                        <div class="attention-queue-card__note">{{ $attentionCar['context_note'] }}</div>
+                                    @endif
+
+                                    <div class="attention-queue-card__action">{{ $attentionCar['action_label'] }}</div>
+
+                                    <div class="attention-queue-card__meta">
+                                        @if ($attentionCar['current_contract_id'])
+                                            <span>Contract #{{ $attentionCar['current_contract_id'] }} until {{ $attentionCar['current_return_at'] }}</span>
+                                        @elseif ($attentionCar['last_returned_at'])
+                                            <span>Last return {{ $attentionCar['last_returned_at'] }}</span>
+                                        @else
+                                            <span>No prior return log</span>
+                                        @endif
+
+                                        @if ($attentionCar['next_pickup_at'])
+                                            <span>Next pickup {{ $attentionCar['next_pickup_at'] }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 @endif
             </div>

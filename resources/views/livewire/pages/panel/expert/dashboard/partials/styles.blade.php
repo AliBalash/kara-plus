@@ -249,6 +249,84 @@
                 color: #2d55c7;
             }
 
+            .fleet-status-card--sold .fleet-status-card__icon {
+                background: rgba(54, 63, 79, 0.16);
+                color: #2b3344;
+            }
+
+            .fleet-reason-strip {
+                display: flex;
+                flex-direction: column;
+                gap: 0.7rem;
+                padding-top: 0.95rem;
+                border-top: 1px dashed rgba(164, 182, 208, 0.7);
+            }
+
+            .fleet-reason-strip__label {
+                font-size: 0.78rem;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: #4a6688;
+            }
+
+            .fleet-reason-strip__items {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.55rem;
+            }
+
+            .fleet-reason-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.4rem;
+                padding: 0.48rem 0.8rem;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.9);
+                border: 1px solid rgba(194, 208, 227, 0.8);
+                color: #38506d;
+                box-shadow: 0 8px 18px rgba(22, 45, 75, 0.05);
+            }
+
+            .fleet-reason-chip strong {
+                color: #132c4a;
+            }
+
+            .attention-queue-card {
+                height: 100%;
+                border-radius: 1rem;
+                border: 1px solid rgba(221, 102, 94, 0.18);
+                background: linear-gradient(145deg, rgba(255, 252, 251, 0.96), rgba(255, 247, 245, 0.98));
+                box-shadow: 0 12px 30px rgba(50, 61, 80, 0.08);
+                padding: 1rem 1.05rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.65rem;
+            }
+
+            .attention-queue-card__reason {
+                font-weight: 700;
+                color: #7b2f26;
+            }
+
+            .attention-queue-card__note {
+                font-size: 0.82rem;
+                color: #a05b28;
+            }
+
+            .attention-queue-card__action {
+                color: #2f4662;
+                font-size: 0.87rem;
+            }
+
+            .attention-queue-card__meta {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+                font-size: 0.8rem;
+                color: #697d95;
+            }
+
             @media (max-width: 991.98px) {
                 .fleet-status-hero__header {
                     flex-direction: column;

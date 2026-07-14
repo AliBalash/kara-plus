@@ -253,12 +253,19 @@ class DashboardAvailableFleetTest extends TestCase
         $ourFleetSummary = [
             'total' => 3,
             'available' => 2,
+            'pre_reserved' => 1,
+            'reserved' => 0,
             'booked' => 1,
             'unavailable' => 0,
+            'manual_unavailable' => 0,
+            'need_action' => 0,
+            'sold' => 0,
             'under_maintenance' => 0,
             'availability_rate' => 67,
+            'dispatchable_rate' => 100,
             'active_reservations' => 0,
             'upcoming_pickups' => 1,
+            'reason_breakdown' => [],
         ];
 
         $this->assertSame($ourFleetSummary, $component->fleetStatusSummary);
@@ -346,12 +353,24 @@ class DashboardAvailableFleetTest extends TestCase
         $this->assertSame([
             'total' => 5,
             'available' => 1,
+            'pre_reserved' => 1,
+            'reserved' => 1,
             'booked' => 2,
             'unavailable' => 2,
+            'manual_unavailable' => 2,
+            'need_action' => 0,
+            'sold' => 0,
             'under_maintenance' => 1,
             'availability_rate' => 20,
+            'dispatchable_rate' => 40,
             'active_reservations' => 1,
             'upcoming_pickups' => 1,
+            'reason_breakdown' => [
+                'maintenance' => [
+                    'label' => 'Maintenance',
+                    'count' => 1,
+                ],
+            ],
         ], $component->fleetStatusSummary);
     }
 
@@ -373,12 +392,19 @@ class DashboardAvailableFleetTest extends TestCase
         $this->assertSame([
             'total' => 1,
             'available' => 0,
+            'pre_reserved' => 0,
+            'reserved' => 0,
             'booked' => 0,
             'unavailable' => 1,
+            'manual_unavailable' => 1,
+            'need_action' => 0,
+            'sold' => 0,
             'under_maintenance' => 0,
             'availability_rate' => 0,
+            'dispatchable_rate' => 0,
             'active_reservations' => 0,
             'upcoming_pickups' => 0,
+            'reason_breakdown' => [],
         ], $component->fleetStatusSummary);
     }
 
@@ -471,6 +497,34 @@ class DashboardAvailableFleetTest extends TestCase
             [$passingDueThisMonth->plate_number, $passingUrgent->plate_number],
             $passingRows->pluck('plate_number')->all()
         );
+    }
+
+    public function test_dashboard_can_filter_fleet_board_by_unavailable_reason(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $maintenanceCar = Car::factory()->unavailable(Car::UNAVAILABILITY_REASON_MAINTENANCE)->create([
+            'plate_number' => 'MNT-1001',
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+
+        Car::factory()->unavailable(Car::UNAVAILABILITY_REASON_INSURANCE)->create([
+            'plate_number' => 'INS-1002',
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+        ]);
+
+        $component = app(Dashboard::class);
+        $component->mount();
+        $component->availableReadiness = 'unavailable';
+        $component->availableReason = Car::UNAVAILABILITY_REASON_MAINTENANCE;
+
+        $cars = $component->getAvailableCarsProperty();
+
+        $this->assertSame([$maintenanceCar->id], $cars->pluck('id')->all());
+        $this->assertSame(1, $component->getAvailableCarsTotalProperty());
     }
 
     private function createReturnedCar(string $returnedAt, array $carOverrides = []): Car
