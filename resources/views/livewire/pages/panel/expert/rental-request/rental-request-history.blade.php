@@ -14,7 +14,8 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>#</th> <!-- افزودن ستون ID قرارداد -->
+                            <th>Row</th>
+                            <th>Contract ID</th>
                             <th>Customer</th>
                             <th>Car</th>
                             <th>Pickup Date</th>
@@ -30,7 +31,8 @@
                     <tbody class="table-border-bottom-0">
                         @foreach ($statuses as $status)
                             <tr>
-                                <td>{{ $status->id }}</td> <!-- نمایش ID تاریخچه وضعیت -->
+                                <td>{{ $loop->iteration }}</td>
+                                <td>{{ $status->contract->id }}</td>
                                 <td>{{ $status->contract->customer->fullName() }}</td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
@@ -101,6 +103,7 @@
                             $initialStatusUser = optional($statuses->last())->user;
                         @endphp
                         <tr>
+                            <td>{{ $statuses->count() + 1 }}</td>
                             <td>{{ $contract->id }}</td>
                             <td>{{ $contract->customer->fullName() }}</td>
                             <td>

@@ -192,7 +192,9 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>#</th>
+                                        <th>Row</th>
+                                        <th>Contract ID</th>
+                                        <th>Payment ID</th>
                                         <th>Customer</th>
                                         <th>Car</th>
                                         <th>Amount</th>
@@ -208,6 +210,8 @@
                                 <tbody>
                                     @foreach ($paymentGroup as $payment)
                                         <tr>
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>{{ $payment->contract_id }}</td>
                                             <td>{{ $payment->id }}</td>
                                             <td>
                                                 <div>{{ $payment->customer?->fullName() ?? '-' }}</div>
