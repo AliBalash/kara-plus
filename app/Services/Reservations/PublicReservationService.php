@@ -117,7 +117,7 @@ class PublicReservationService
 
         $conflictsByCarId = [];
         if ($pickup && $return) {
-            $conflictsByCarId = $this->overlappingReservationsForCars($cars->pluck('id')->all(), $pickup, $return);
+            $conflictsByCarId = $this->availabilityConflictsForCars($cars->pluck('id')->all(), $pickup, $return);
         }
 
         return $cars->map(function (Car $car) use ($conflictsByCarId): array {
@@ -384,7 +384,7 @@ class PublicReservationService
         $taxAmount = $this->roundCurrency($subtotal * self::TAX_RATE);
         $finalTotal = $this->roundCurrency($subtotal + $taxAmount);
 
-        $conflicts = $this->overlappingReservationsForCar($car->id, $pickup, $return);
+        $conflicts = $this->availabilityConflictsForCar($car->id, $pickup, $return);
         $hasConflict = count($conflicts) > 0;
 
         $lineItems = $this->lineItemsFromQuote(
@@ -432,11 +432,7 @@ class PublicReservationService
             'availability' => [
                 'has_conflict' => $hasConflict,
                 'message' => $hasConflict
-                    ? sprintf(
-                        'این خودرو از %s تا %s قبلا رزرو شده است.',
-                        $conflicts[0]['pickup_date'],
-                        $conflicts[0]['return_date']
-                    )
+                    ? ($conflicts[0]['message'] ?? 'خودروی انتخاب‌شده در بازه زمانی انتخابی در دسترس نیست.')
                     : null,
                 'conflicts' => $conflicts,
             ],
@@ -1053,14 +1049,94 @@ class PublicReservationService
             ->map(function ($contracts): array {
                 return $contracts->map(function (Contract $contract): array {
                     return [
+                        'type' => 'reservation',
                         'id' => $contract->id,
                         'pickup_date' => optional($contract->pickup_date)->format('Y-m-d H:i'),
                         'return_date' => optional($contract->return_date)->format('Y-m-d H:i'),
                         'status' => $contract->current_status,
+                        'reason' => null,
+                        'reason_label' => null,
+                        'note' => null,
+                        'message' => sprintf(
+                            'این خودرو از %s تا %s قبلا رزرو شده است.',
+                            optional($contract->pickup_date)->format('Y-m-d H:i'),
+                            optional($contract->return_date)->format('Y-m-d H:i')
+                        ),
                     ];
                 })->all();
             })
             ->toArray();
+    }
+
+    /**
+     * @param  array<int, int>  $carIds
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    private function overlappingUnavailabilityPeriodsForCars(array $carIds, Carbon $pickup, Carbon $return): array
+    {
+        if ($carIds === [] || ! Car::supportsScheduledUnavailabilityPeriods()) {
+            return [];
+        }
+
+        return \App\Models\CarUnavailabilityPeriod::query()
+            ->whereIn('car_id', $carIds)
+            ->overlappingWindow($pickup, $return)
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->get(['id', 'car_id', 'reason', 'note', 'start_date', 'end_date'])
+            ->groupBy('car_id')
+            ->map(function ($periods): array {
+                return $periods->map(function (\App\Models\CarUnavailabilityPeriod $period): array {
+                    $reasonLabel = $period->reasonLabel() ?? 'Unavailable';
+
+                    return [
+                        'type' => 'unavailability',
+                        'id' => $period->id,
+                        'pickup_date' => optional($period->start_date)->format('Y-m-d'),
+                        'return_date' => optional($period->end_date)->format('Y-m-d'),
+                        'status' => Car::STATUS_UNAVAILABLE,
+                        'reason' => $period->reason,
+                        'reason_label' => $reasonLabel,
+                        'note' => $period->note,
+                        'message' => sprintf(
+                            'این خودرو از %s تا %s به دلیل %s در دسترس نیست.',
+                            optional($period->start_date)->format('Y-m-d'),
+                            optional($period->end_date)->format('Y-m-d'),
+                            $reasonLabel
+                        ),
+                    ];
+                })->all();
+            })
+            ->toArray();
+    }
+
+    /**
+     * @param  array<int, int>  $carIds
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    private function availabilityConflictsForCars(array $carIds, Carbon $pickup, Carbon $return): array
+    {
+        $reservationConflicts = $this->overlappingReservationsForCars($carIds, $pickup, $return);
+        $unavailabilityConflicts = $this->overlappingUnavailabilityPeriodsForCars($carIds, $pickup, $return);
+
+        $grouped = [];
+
+        foreach ($carIds as $carId) {
+            $merged = array_merge(
+                $reservationConflicts[$carId] ?? [],
+                $unavailabilityConflicts[$carId] ?? []
+            );
+
+            usort($merged, function (array $left, array $right): int {
+                return strcmp((string) ($left['pickup_date'] ?? ''), (string) ($right['pickup_date'] ?? ''));
+            });
+
+            if ($merged !== []) {
+                $grouped[$carId] = $merged;
+            }
+        }
+
+        return $grouped;
     }
 
     /**
@@ -1069,5 +1145,13 @@ class PublicReservationService
     private function overlappingReservationsForCar(int $carId, Carbon $pickup, Carbon $return): array
     {
         return $this->overlappingReservationsForCars([$carId], $pickup, $return)[$carId] ?? [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function availabilityConflictsForCar(int $carId, Carbon $pickup, Carbon $return): array
+    {
+        return $this->availabilityConflictsForCars([$carId], $pickup, $return)[$carId] ?? [];
     }
 }

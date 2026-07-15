@@ -6,6 +6,7 @@ use App\Models\Agent;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\CarOption;
+use App\Models\CarUnavailabilityPeriod;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
@@ -125,6 +126,42 @@ class PublicReservationApiTest extends TestCase
             'pickup_date' => '2030-05-10 10:00:00',
             'return_date' => '2030-05-12 10:00:00',
             'current_status' => 'reserved',
+        ]);
+
+        $response = $this->postJson('http://localhost/api/public/reservations/quote', [
+            'selected_car_id' => $car->id,
+            'pickup_location' => 'Dubai Marina',
+            'return_location' => 'Dubai Marina',
+            'pickup_date' => '2030-05-11 10:00:00',
+            'return_date' => '2030-05-13 10:00:00',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['selected_car_id']);
+    }
+
+    public function test_quote_endpoint_returns_validation_error_for_scheduled_unavailability(): void
+    {
+        LocationCost::query()->create([
+            'location' => 'Dubai Marina',
+            'under_3_fee' => 10,
+            'over_3_fee' => 5,
+            'is_active' => true,
+        ]);
+
+        $carModel = CarModel::factory()->create();
+        $car = Car::factory()->create([
+            'car_model_id' => $carModel->id,
+            'status' => 'available',
+            'availability' => true,
+        ]);
+
+        CarUnavailabilityPeriod::query()->create([
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_SERVICE_OIL,
+            'note' => 'Service visit',
+            'start_date' => '2030-05-10',
+            'end_date' => '2030-05-12',
         ]);
 
         $response = $this->postJson('http://localhost/api/public/reservations/quote', [

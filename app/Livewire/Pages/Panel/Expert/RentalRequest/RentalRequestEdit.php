@@ -1461,6 +1461,28 @@ class RentalRequestEdit extends Component
         return $reservations;
     }
 
+    private function getCarUnavailablePeriods($carId)
+    {
+        if (! $carId || ! Car::supportsScheduledUnavailabilityPeriods()) {
+            return [];
+        }
+
+        return \App\Models\CarUnavailabilityPeriod::query()
+            ->where('car_id', $carId)
+            ->orderBy('start_date')
+            ->get(['id', 'reason', 'note', 'start_date', 'end_date'])
+            ->map(function (\App\Models\CarUnavailabilityPeriod $period) {
+                return [
+                    'id' => $period->id,
+                    'type' => 'unavailability',
+                    'start_date' => Carbon::parse($period->start_date)->startOfDay(),
+                    'end_date' => Carbon::parse($period->end_date)->endOfDay(),
+                    'reason_label' => $period->reasonLabel() ?? 'Unavailable',
+                ];
+            })
+            ->toArray();
+    }
+
     private function getAvailabilityConflictMessage(Carbon $pickup, Carbon $return): ?string
     {
         $reservations = $this->getCarReservations($this->selectedCarId);
@@ -1471,6 +1493,12 @@ class RentalRequestEdit extends Component
 
             if ($pickup->lessThan($existingReturn) && $return->greaterThan($existingPickup)) {
                 return "The selected car is already reserved from {$reservation['pickup_date']} to {$reservation['return_date']}.";
+            }
+        }
+
+        foreach ($this->getCarUnavailablePeriods($this->selectedCarId) as $period) {
+            if ($pickup->lessThan($period['end_date']) && $return->greaterThan($period['start_date'])) {
+                return "The selected car is unavailable from {$period['start_date']->format('Y-m-d')} to {$period['end_date']->format('Y-m-d')} due to {$period['reason_label']}.";
             }
         }
 
