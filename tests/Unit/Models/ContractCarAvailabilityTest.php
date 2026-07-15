@@ -3,6 +3,7 @@
 namespace Tests\Unit\Models;
 
 use App\Models\Car;
+use App\Models\CarUnavailabilityPeriod;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
@@ -303,5 +304,79 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
         $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
         $this->assertSame('Upcoming booking also exists.', $car->operationalStatusContextNote());
+    }
+
+    public function test_need_action_can_also_expose_active_hold_note(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        Contract::factory()
+            ->for($car)
+            ->status('awaiting_return')
+            ->create([
+                'pickup_date' => Carbon::now()->subDays(10),
+                'return_date' => Carbon::now()->subDay(),
+            ]);
+
+        CarUnavailabilityPeriod::query()->create([
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_MAINTENANCE,
+            'start_date' => Carbon::today()->toDateString(),
+            'end_date' => Carbon::today()->addDay()->toDateString(),
+        ]);
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
+        $this->assertStringContainsString('Active hold also exists: Maintenance', $car->operationalStatusContextNote());
+    }
+
+    public function test_active_scheduled_unavailability_marks_car_unavailable(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        CarUnavailabilityPeriod::query()->create([
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_SERVICE_OIL,
+            'note' => 'Oil and filter service',
+            'start_date' => Carbon::today()->subDay()->toDateString(),
+            'end_date' => Carbon::today()->addDay()->toDateString(),
+        ]);
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
+        $this->assertFalse($car->availability);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_SERVICE_OIL, $car->unavailability_reason);
+        $this->assertSame(
+            Carbon::today()->subDay()->format('Y-m-d') . ' → ' . Carbon::today()->addDay()->format('Y-m-d'),
+            $car->activeScheduledUnavailabilityWindowLabel()
+        );
+    }
+
+    public function test_cancelled_scheduled_unavailability_does_not_block_car(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        $period = CarUnavailabilityPeriod::query()->create([
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_SERVICE_OIL,
+            'note' => 'Oil and filter service',
+            'start_date' => Carbon::today()->subDay()->toDateString(),
+            'end_date' => Carbon::today()->addDay()->toDateString(),
+        ]);
+        $period->cancel(null, 'Released early');
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
+        $this->assertTrue((bool) $car->availability);
+        $this->assertNull($car->unavailability_reason);
+        $this->assertNull($car->activeScheduledUnavailabilityPeriod());
+        $this->assertSame('cancelled', $period->fresh()->state());
     }
 }

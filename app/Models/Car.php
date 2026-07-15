@@ -66,6 +66,7 @@ class Car extends Model
      */
     private static array $imageDirectoryCache = [];
     private static array $columnExistenceCache = [];
+    private static array $tableExistenceCache = [];
 
     /**
      * ویژگی‌های قابل پر کردن (mass assignable).
@@ -169,6 +170,14 @@ class Car extends Model
         ];
     }
 
+    public static function editableBaseStatusLabels(): array
+    {
+        return [
+            self::MANUAL_STATUS_AVAILABLE => 'Available',
+            self::MANUAL_STATUS_SOLD => 'Sold',
+        ];
+    }
+
     public static function operationalStatusLabels(): array
     {
         return [
@@ -189,6 +198,11 @@ class Car extends Model
         }
 
         return $labels;
+    }
+
+    public static function scheduledUnavailabilityReasonLabels(): array
+    {
+        return static::manualUnavailabilityReasonLabels();
     }
 
     public static function operationalUnavailabilityReasonLabels(): array
@@ -218,16 +232,47 @@ class Car extends Model
     {
         $now ??= Carbon::now();
 
-        if (
-            $this->operationalStatus() === self::STATUS_UNAVAILABLE
-            && static::hasStatusSupportColumn('unavailability_reason')
-            && $this->unavailability_reason === self::UNAVAILABILITY_REASON_NEED_ACTION
-            && $this->hasUpcomingReservationWindow($now)
-        ) {
-            return 'Upcoming booking also exists.';
+        if ($this->operationalStatus() !== self::STATUS_UNAVAILABLE) {
+            return null;
         }
 
-        return null;
+        $notes = [];
+        $activeHold = $this->activeScheduledUnavailabilityPeriod($now);
+        $upcomingHold = $this->upcomingScheduledUnavailabilityPeriod($now);
+        $hasUpcomingReservation = $this->hasUpcomingReservationWindow($now);
+
+        if (
+            static::hasStatusSupportColumn('unavailability_reason')
+            && $this->unavailability_reason === self::UNAVAILABILITY_REASON_NEED_ACTION
+        ) {
+            if ($activeHold) {
+                $notes[] = 'Active hold also exists: ' . ($activeHold->reasonLabel() ?? 'Unavailable') . ' ' . $activeHold->dateWindowLabel() . '.';
+            }
+
+            if ($upcomingHold) {
+                $notes[] = 'Upcoming hold also exists: ' . ($upcomingHold->reasonLabel() ?? 'Unavailable') . ' ' . $upcomingHold->dateWindowLabel() . '.';
+            }
+
+            if ($hasUpcomingReservation) {
+                $notes[] = 'Upcoming booking also exists.';
+            }
+
+            return $notes !== [] ? implode(' ', $notes) : null;
+        }
+
+        if ($activeHold && $hasUpcomingReservation) {
+            $notes[] = 'Upcoming booking exists after the current hold window.';
+        }
+
+        if (! $activeHold && $upcomingHold) {
+            $notes[] = 'Upcoming hold exists: ' . ($upcomingHold->reasonLabel() ?? 'Unavailable') . ' ' . $upcomingHold->dateWindowLabel() . '.';
+        }
+
+        if ($hasUpcomingReservation && ! $activeHold) {
+            $notes[] = 'Upcoming booking also exists.';
+        }
+
+        return $notes !== [] ? implode(' ', $notes) : null;
     }
 
     /**
@@ -324,7 +369,8 @@ class Car extends Model
         ?string $manualUnavailabilityReason,
         bool $hasActiveReservation,
         bool $hasUpcomingReservation,
-        bool $needsAction = false
+        bool $needsAction = false,
+        ?string $scheduledUnavailabilityReason = null
     ): array {
         $manualState = static::manualStateAttributes($manualStatus, $manualUnavailabilityReason);
 
@@ -349,6 +395,14 @@ class Car extends Model
                 'status' => self::STATUS_RESERVED,
                 'availability' => false,
                 'unavailability_reason' => null,
+            ];
+        }
+
+        if ($scheduledUnavailabilityReason !== null) {
+            return [
+                'status' => self::STATUS_UNAVAILABLE,
+                'availability' => false,
+                'unavailability_reason' => $scheduledUnavailabilityReason,
             ];
         }
 
@@ -389,6 +443,7 @@ class Car extends Model
             (bool) $this->availability,
             $this->unavailability_reason
         );
+        $activeScheduledUnavailability = $this->activeScheduledUnavailabilityPeriod($now);
         $needsAction = $this->hasNeedActionReservationWindow($now);
         $hasActiveReservation = ! $needsAction && $this->hasActiveReservationWindow($now);
         $hasUpcomingReservation = ! $needsAction && ! $hasActiveReservation && $this->hasUpcomingReservationWindow($now);
@@ -397,7 +452,8 @@ class Car extends Model
             $manualState['manual_unavailability_reason'],
             $hasActiveReservation,
             $hasUpcomingReservation,
-            $needsAction
+            $needsAction,
+            $activeScheduledUnavailability?->reason
         );
 
         return array_merge($operationalState, $manualState);
@@ -578,13 +634,15 @@ class Car extends Model
             self::STATUS_PRE_RESERVED => $query->where('status', self::STATUS_PRE_RESERVED)->where('availability', true),
             self::STATUS_RESERVED => $query->where('status', self::STATUS_RESERVED),
             self::STATUS_SOLD => $query->where('status', self::STATUS_SOLD),
-            self::LEGACY_STATUS_UNDER_MAINTENANCE => $query->where(function ($builder) {
-                $builder->where('status', self::LEGACY_STATUS_UNDER_MAINTENANCE)
-                    ->orWhere(function ($maintenanceBuilder) {
-                        $maintenanceBuilder->where('status', self::STATUS_UNAVAILABLE)
-                            ->where('unavailability_reason', self::UNAVAILABILITY_REASON_MAINTENANCE);
-                    });
-            }),
+            self::LEGACY_STATUS_UNDER_MAINTENANCE => static::hasStatusSupportColumn('unavailability_reason')
+                ? $query->where(function ($builder) {
+                    $builder->where('status', self::LEGACY_STATUS_UNDER_MAINTENANCE)
+                        ->orWhere(function ($maintenanceBuilder) {
+                            $maintenanceBuilder->where('status', self::STATUS_UNAVAILABLE)
+                                ->where('unavailability_reason', self::UNAVAILABILITY_REASON_MAINTENANCE);
+                        });
+                })
+                : $query->where('status', self::LEGACY_STATUS_UNDER_MAINTENANCE),
             self::STATUS_UNAVAILABLE => $query->where(function ($builder) {
                 $builder->where('status', self::STATUS_UNAVAILABLE)
                     ->orWhere('status', self::LEGACY_STATUS_UNDER_MAINTENANCE)
@@ -625,10 +683,12 @@ class Car extends Model
 
     public function scopeReservableForSelection($query)
     {
-        return $query
-            ->where(function ($builder) {
-                $builder->whereNull('manual_status')
-                    ->orWhere('manual_status', self::MANUAL_STATUS_AVAILABLE);
+        $query = $query
+            ->when(static::hasStatusSupportColumn('manual_status'), function ($builder) {
+                $builder->where(function ($manualBuilder) {
+                    $manualBuilder->whereNull('manual_status')
+                        ->orWhere('manual_status', self::MANUAL_STATUS_AVAILABLE);
+                });
             })
             ->where(function ($builder) {
                 $builder->where('status', self::STATUS_RESERVED)
@@ -637,6 +697,14 @@ class Car extends Model
                             ->where('availability', true);
                     });
             });
+
+        if (! static::supportsScheduledUnavailabilityPeriods()) {
+            return $query;
+        }
+
+        return $query->whereDoesntHave('unavailabilityPeriods', function ($builder) {
+            $builder->activeOn(Carbon::today());
+        });
     }
 
     public function isSelectableForReservation(): bool
@@ -763,6 +831,77 @@ class Car extends Model
     public function contracts()
     {
         return $this->hasMany(Contract::class);
+    }
+
+    public function unavailabilityPeriods()
+    {
+        return $this->hasMany(CarUnavailabilityPeriod::class)->orderByDesc('start_date')->orderByDesc('id');
+    }
+
+    public function activeScheduledUnavailabilityPeriod(?Carbon $date = null): ?CarUnavailabilityPeriod
+    {
+        if (! static::supportsScheduledUnavailabilityPeriods()) {
+            return null;
+        }
+
+        $date ??= Carbon::today();
+
+        if ($this->relationLoaded('unavailabilityPeriods')) {
+            return $this->unavailabilityPeriods
+                ->first(fn (CarUnavailabilityPeriod $period) => ! $period->isCancelled() && $date->betweenIncluded($period->start_date, $period->end_date));
+        }
+
+        return $this->unavailabilityPeriods()
+            ->activeOn($date)
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->first();
+    }
+
+    public function upcomingScheduledUnavailabilityPeriod(?Carbon $date = null): ?CarUnavailabilityPeriod
+    {
+        if (! static::supportsScheduledUnavailabilityPeriods()) {
+            return null;
+        }
+
+        $date ??= Carbon::today();
+
+        if ($this->relationLoaded('unavailabilityPeriods')) {
+            return $this->unavailabilityPeriods
+                ->filter(fn (CarUnavailabilityPeriod $period) => ! $period->isCancelled() && $period->start_date?->greaterThan($date) === true)
+                ->sortBy(fn (CarUnavailabilityPeriod $period) => $period->start_date?->getTimestamp() ?? PHP_INT_MAX)
+                ->first();
+        }
+
+        return $this->unavailabilityPeriods()
+            ->upcomingFrom($date)
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->first();
+    }
+
+    public function overlappingUnavailabilityPeriods(Carbon $start, Carbon $end)
+    {
+        if (! static::supportsScheduledUnavailabilityPeriods()) {
+            return collect();
+        }
+
+        return $this->unavailabilityPeriods()
+            ->overlappingWindow($start, $end)
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function activeScheduledUnavailabilityWindowLabel(?Carbon $date = null): ?string
+    {
+        $period = $this->activeScheduledUnavailabilityPeriod($date);
+
+        if (! $period) {
+            return null;
+        }
+
+        return $period->dateWindowLabel();
     }
 
     public function hasNeedActionReservationWindow(?Carbon $now = null): bool
@@ -944,6 +1083,19 @@ class Car extends Model
             return static::$columnExistenceCache[$column] = Schema::hasColumn('cars', $column);
         } catch (\Throwable) {
             return static::$columnExistenceCache[$column] = false;
+        }
+    }
+
+    public static function supportsScheduledUnavailabilityPeriods(): bool
+    {
+        if (array_key_exists('car_unavailability_periods', static::$tableExistenceCache)) {
+            return static::$tableExistenceCache['car_unavailability_periods'];
+        }
+
+        try {
+            return static::$tableExistenceCache['car_unavailability_periods'] = Schema::hasTable('car_unavailability_periods');
+        } catch (\Throwable) {
+            return static::$tableExistenceCache['car_unavailability_periods'] = false;
         }
     }
 

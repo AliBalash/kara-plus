@@ -13,6 +13,12 @@ class SyncCarOperationalStatusCommand extends Command
 
     public function handle(): int
     {
+        if (! Car::hasStatusSupportColumn('manual_status')) {
+            $this->warn('Skipping sync because manual car status columns are not available yet.');
+
+            return self::SUCCESS;
+        }
+
         $chunkSize = max((int) $this->option('chunk'), 1);
         $processed = 0;
         $updated = 0;
