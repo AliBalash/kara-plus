@@ -37,7 +37,9 @@ class PaymentEdit extends Component
     public $payment_date;
     public $is_refundable = false;
     public $receipt;
+    public array $damageReceipts = [];
     public $existingReceipt;
+    public array $existingDamageImages = [];
     public $note;
     public $salik_trip_count = '';
     public $salik_other_revenue_preview = 0;
@@ -71,6 +73,8 @@ class PaymentEdit extends Component
             'is_refundable' => 'required|boolean',
             'rate' => 'nullable|numeric|min:0.0001',
             'receipt' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:8048',
+            'damageReceipts' => 'nullable|array|max:5',
+            'damageReceipts.*' => 'image|mimes:jpg,jpeg,png,webp|max:8048',
             'note' => 'nullable|string|max:2000',
             'salik_trip_count' => ['required_if:payment_type,' . implode(',', Payment::salikTripPaymentTypeKeys()), 'integer', 'min:0'],
         ];
@@ -92,6 +96,7 @@ class PaymentEdit extends Component
         $this->payment_date = $this->payment->payment_date?->format('Y-m-d') ?? now()->format('Y-m-d');
         $this->is_refundable = (bool) $this->payment->is_refundable;
         $this->existingReceipt = $this->payment->receipt;
+        $this->existingDamageImages = $this->payment->damageImagePaths();
         $this->note = $this->payment->note;
         $this->salik_trip_count = $this->resolveInitialSalikTrips();
         $this->refreshSalikDerivedFields();
@@ -146,8 +151,8 @@ class PaymentEdit extends Component
             return;
         }
 
-        if (in_array($this->payment_type, ['fine', 'parking', 'damage']) && !$this->existingReceipt && !$this->receipt) {
-            $this->addError('receipt', 'Receipt is required for fines, parking, or damage charges.');
+        if (in_array($this->payment_type, ['fine', 'parking'], true) && !$this->existingReceipt && !$this->receipt) {
+            $this->addError('receipt', 'Receipt is required for fines and parking charges.');
             return;
         }
 
@@ -169,22 +174,48 @@ class PaymentEdit extends Component
 
         $receiptPath = $this->existingReceipt;
         $oldReceiptPath = $this->existingReceipt;
-        $newReceiptPath = null;
+        $existingDamagePaths = $this->existingDamageImages;
+        $damageImagePaths = $existingDamagePaths;
+        $uploadedPaths = [];
+        $pathsToDeleteAfterSave = [];
 
         $originalType = $this->payment->payment_type;
 
         try {
-            if ($this->receipt) {
-                $newReceiptPath = $this->deferredUploader->store(
-                    $this->receipt,
-                    'payment_receipts/payment-' . $this->payment->contract_id . '-' . Str::uuid() . '.webp',
-                    'myimage',
-                    ['quality' => 30, 'max_width' => 1600, 'max_height' => 1600]
-                );
-                $receiptPath = $newReceiptPath;
+            if ($this->payment_type === 'damage') {
+                if ($this->normalizedDamageReceipts() !== []) {
+                    $damageImagePaths = [];
+
+                    foreach ($this->normalizedDamageReceipts() as $index => $damageReceipt) {
+                        $storedPath = $this->storePaymentImage($damageReceipt, 'damage-' . ($index + 1));
+                        $damageImagePaths[] = $storedPath;
+                        $uploadedPaths[] = $storedPath;
+                    }
+
+                    $pathsToDeleteAfterSave = array_values(array_unique(array_filter([
+                        ...$existingDamagePaths,
+                        $oldReceiptPath,
+                    ])));
+                }
+
+                $receiptPath = $damageImagePaths[0] ?? null;
+            } elseif ($this->receipt) {
+                $receiptPath = $this->storePaymentImage($this->receipt, 'receipt');
+                $uploadedPaths[] = $receiptPath;
+                $pathsToDeleteAfterSave = array_values(array_unique(array_filter([
+                    ...$existingDamagePaths,
+                    $oldReceiptPath,
+                ])));
+            } elseif ($originalType === 'damage') {
+                $pathsToDeleteAfterSave = array_values(array_unique(array_filter(array_slice($existingDamagePaths, 1))));
+                $receiptPath = $oldReceiptPath;
             }
 
-            DB::transaction(function () use ($aedAmount, $receiptPath, $salikTrips, $originalType) {
+            if ($this->payment_type !== 'damage') {
+                $damageImagePaths = [];
+            }
+
+            DB::transaction(function () use ($aedAmount, $receiptPath, $damageImagePaths, $salikTrips, $originalType) {
                 $this->payment->update([
                     'amount' => $this->amount,
                     'currency' => $this->currency,
@@ -195,6 +226,7 @@ class PaymentEdit extends Component
                     'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                     'is_refundable' => $this->is_refundable,
                     'receipt' => $receiptPath,
+                    'damage_images' => $damageImagePaths !== [] ? $damageImagePaths : null,
                     'note' => $this->note,
                 ]);
 
@@ -207,21 +239,21 @@ class PaymentEdit extends Component
                 }
             });
         } catch (\Throwable $exception) {
-            if ($newReceiptPath && Storage::disk('myimage')->exists($newReceiptPath)) {
-                Storage::disk('myimage')->delete($newReceiptPath);
-            }
+            $this->deleteStoredPaths($uploadedPaths);
 
             $this->toast('error', 'Payment update failed: ' . $exception->getMessage(), false);
 
             return;
         }
 
-        if ($newReceiptPath && $oldReceiptPath && $oldReceiptPath !== $newReceiptPath && Storage::disk('myimage')->exists($oldReceiptPath)) {
-            Storage::disk('myimage')->delete($oldReceiptPath);
-        }
+        $this->deleteStoredPaths(array_diff($pathsToDeleteAfterSave, array_filter([$receiptPath])));
 
         $this->existingReceipt = $receiptPath;
+        $this->existingDamageImages = $this->payment_type === 'damage'
+            ? ($damageImagePaths !== [] ? $damageImagePaths : array_filter([$receiptPath]))
+            : [];
         $this->receipt = null;
+        $this->damageReceipts = [];
         $this->refreshFileInputs();
 
         $this->toast('success', 'Payment updated successfully.');
@@ -249,6 +281,22 @@ class PaymentEdit extends Component
             $this->salik_trip_count = '';
             $this->salik_other_revenue_preview = 0;
             $this->currentSalikTripCount = 0;
+        }
+
+        $shouldRefreshFileInputs = false;
+
+        if ($value !== 'damage' && $this->damageReceipts !== []) {
+            $this->damageReceipts = [];
+            $shouldRefreshFileInputs = true;
+        }
+
+        if ($value === 'damage' && $this->receipt) {
+            $this->receipt = null;
+            $shouldRefreshFileInputs = true;
+        }
+
+        if ($shouldRefreshFileInputs) {
+            $this->refreshFileInputs();
         }
 
         $this->refreshSalikDerivedFields();
@@ -331,5 +379,32 @@ class PaymentEdit extends Component
         }
 
         return $trips;
+    }
+
+    private function normalizedDamageReceipts(): array
+    {
+        return array_values(array_filter(
+            $this->damageReceipts,
+            fn ($receipt) => $receipt !== null
+        ));
+    }
+
+    private function storePaymentImage($file, string $suffix): string
+    {
+        return $this->deferredUploader->store(
+            $file,
+            'payment_receipts/payment-' . $this->payment->contract_id . '-' . $suffix . '-' . Str::uuid() . '.webp',
+            'myimage',
+            ['quality' => 30, 'max_width' => 1600, 'max_height' => 1600]
+        );
+    }
+
+    private function deleteStoredPaths(array $paths): void
+    {
+        foreach (array_unique(array_filter($paths)) as $path) {
+            if (Storage::disk('myimage')->exists($path)) {
+                Storage::disk('myimage')->delete($path);
+            }
+        }
     }
 }

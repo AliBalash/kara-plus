@@ -95,6 +95,9 @@
 
                     <div class="ledger-list">
                         @forelse ($groupPayments as $payment)
+                            @php
+                                $damageImages = $payment->damageImagePaths();
+                            @endphp
                             <article class="ledger-entry">
                                 <div class="ledger-entry__top">
                                     <div class="ledger-entry__identity">
@@ -105,6 +108,10 @@
                                         <div class="ledger-entry__meta">
                                             <span>{{ ucfirst($payment->payment_method) }}</span>
                                             <span>{{ \Carbon\Carbon::parse($payment->payment_date)->format('Y-m-d') }}</span>
+                                            <span>
+                                                Registered:
+                                                {{ optional($payment->created_at)->format('Y-m-d H:i') ?? '—' }}
+                                            </span>
                                             <span>{{ $payment->user?->shortName() ?? '—' }}</span>
                                         </div>
                                     </div>
@@ -131,7 +138,16 @@
                                             {{ $payment->is_refundable ? 'Refundable' : 'Non-refundable' }}
                                         </span>
 
-                                        @if ($payment->receipt)
+                                        @if ($payment->payment_type === 'damage' && $damageImages !== [])
+                                            <span class="ledger-chip ledger-chip--accent">
+                                                {{ count($damageImages) }} damage photo{{ count($damageImages) === 1 ? '' : 's' }}
+                                            </span>
+                                            @foreach ($damageImages as $index => $damageImage)
+                                                <a class="ledger-chip ledger-chip--link" href="{{ asset('storage/' . ltrim($damageImage, '/')) }}" target="_blank">
+                                                    Photo {{ $index + 1 }}
+                                                </a>
+                                            @endforeach
+                                        @elseif ($payment->receipt)
                                             <a class="ledger-chip ledger-chip--link" href="{{ asset('storage/' . ltrim($payment->receipt, '/')) }}" target="_blank">
                                                 Receipt
                                             </a>

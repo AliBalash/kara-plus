@@ -44,6 +44,7 @@ class RentalRequestPayment extends Component
     public $hasPayments;
 
     public $receipt;
+    public array $damageReceipts = [];
     public $note;
     public $finePaid;
     public $parkingPaid;
@@ -98,7 +99,12 @@ class RentalRequestPayment extends Component
         'rate.min' => 'Exchange rate must be greater than zero.',
         'receipt.image' => 'Receipt must be an image file.',
         'receipt.mimes' => 'Receipt must be a JPG, JPEG, PNG, or WEBP file.',
-        'receipt.max' => 'Receipt may not be greater than 2MB.',
+        'receipt.max' => 'Receipt may not be greater than 8MB.',
+        'damageReceipts.array' => 'Damage photos must be uploaded as a list of images.',
+        'damageReceipts.max' => 'You can upload up to 5 damage photos.',
+        'damageReceipts.*.image' => 'Each damage photo must be a valid image file.',
+        'damageReceipts.*.mimes' => 'Damage photos must be JPG, JPEG, PNG, or WEBP files.',
+        'damageReceipts.*.max' => 'Each damage photo may not be greater than 8MB.',
         'security_deposit_image.image' => 'Security deposit attachment must be an image file.',
         'security_deposit_image.mimes' => 'Security deposit attachment must be a JPG, JPEG, PNG, or WEBP file.',
         'security_deposit_image.max' => 'Security deposit attachment may not be greater than 4MB.',
@@ -116,6 +122,8 @@ class RentalRequestPayment extends Component
         'is_refundable' => 'refundable selection',
         'rate' => 'exchange rate',
         'receipt' => 'receipt upload',
+        'damageReceipts' => 'damage photos',
+        'damageReceipts.*' => 'damage photo',
         'note' => 'payment note',
         'salik_trip_count' => 'Salik trips',
         'security_deposit_image' => 'security deposit attachment',
@@ -159,6 +167,8 @@ class RentalRequestPayment extends Component
             'is_refundable' => ['required', 'boolean'],
             'rate' => ['nullable', 'numeric', 'min:0.0001'],
             'receipt' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8048'], // optional receipt image
+            'damageReceipts' => ['nullable', 'array', 'max:5'],
+            'damageReceipts.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:8048'],
             'note' => ['nullable', 'string', 'max:2000'],
             'salik_trip_count' => ['required_if:payment_type,' . implode(',', Payment::salikTripPaymentTypeKeys()), 'integer', 'min:0'],
         ];
@@ -344,8 +354,8 @@ class RentalRequestPayment extends Component
             return;
         }
 
-        if (in_array($this->payment_type, ['fine', 'parking', 'damage']) && !$this->receipt) {
-            $this->addError('receipt', 'Receipt is required for fines, parking, or damage charges.');
+        if (in_array($this->payment_type, ['fine', 'parking'], true) && !$this->receipt) {
+            $this->addError('receipt', 'Receipt is required for fines and parking charges.');
             $this->dispatch('kara-scroll-to-error', field: 'receipt');
             return;
         }
@@ -373,18 +383,24 @@ class RentalRequestPayment extends Component
 
 
         $receiptPath = null;
+        $damageImagePaths = [];
+        $uploadedPaths = [];
 
         try {
-            if ($this->receipt) {
-                $receiptPath = $this->deferredUploader()->store(
-                    $this->receipt,
-                    'payment_receipts/payment-' . $this->contractId . '-' . Str::uuid() . '.webp',
-                    'myimage',
-                    ['quality' => 30, 'max_width' => 1600, 'max_height' => 1600]
-                );
+            if ($this->payment_type === 'damage') {
+                foreach ($this->normalizedDamageReceipts() as $index => $damageReceipt) {
+                    $storedPath = $this->storePaymentImage($damageReceipt, 'damage-' . ($index + 1));
+                    $damageImagePaths[] = $storedPath;
+                    $uploadedPaths[] = $storedPath;
+                }
+
+                $receiptPath = $damageImagePaths[0] ?? null;
+            } elseif ($this->receipt) {
+                $receiptPath = $this->storePaymentImage($this->receipt, 'receipt');
+                $uploadedPaths[] = $receiptPath;
             }
 
-            DB::transaction(function () use ($aedAmount, $receiptPath, $salikTrips) {
+            DB::transaction(function () use ($aedAmount, $receiptPath, $damageImagePaths, $salikTrips) {
                 $payment = Payment::create([
                     'contract_id' => $this->contractId,
                     'customer_id' => $this->customerId,
@@ -400,6 +416,7 @@ class RentalRequestPayment extends Component
                     'is_paid' => false,
                     'is_refundable' => $this->is_refundable,
                     'receipt' => $receiptPath,
+                    'damage_images' => $damageImagePaths !== [] ? $damageImagePaths : null,
                     'approval_status' => 'pending',
                 ]);
 
@@ -414,9 +431,7 @@ class RentalRequestPayment extends Component
             $this->refreshFileInputs();
             $this->dispatch('payment-updated');
         } catch (\Throwable $exception) {
-            if ($receiptPath && Storage::disk('myimage')->exists($receiptPath)) {
-                Storage::disk('myimage')->delete($receiptPath);
-            }
+            $this->deleteStoredPaths($uploadedPaths);
 
             $this->toast('error', 'Error adding payment: ' . $exception->getMessage(), false);
         }
@@ -522,6 +537,7 @@ class RentalRequestPayment extends Component
         $this->payment_method = 'cash';
         $this->rate = '';
         $this->receipt = null;
+        $this->damageReceipts = [];
         $this->note = '';
         $this->is_refundable = false;
         $this->salik_trip_count = '';
@@ -549,6 +565,22 @@ class RentalRequestPayment extends Component
             $this->salik_trip_count = '';
             $this->salik_other_revenue_preview = 0;
             $this->currentSalikTripCount = 0;
+        }
+
+        $shouldRefreshFileInputs = false;
+
+        if ($value !== 'damage' && $this->damageReceipts !== []) {
+            $this->damageReceipts = [];
+            $shouldRefreshFileInputs = true;
+        }
+
+        if ($value === 'damage' && $this->receipt) {
+            $this->receipt = null;
+            $shouldRefreshFileInputs = true;
+        }
+
+        if ($shouldRefreshFileInputs) {
+            $this->refreshFileInputs();
         }
 
         $this->refreshSalikDerivedFields();
@@ -587,7 +619,10 @@ class RentalRequestPayment extends Component
             ->where('customer_id', $this->customerId)
             ->firstOrFail();
 
-        $receiptPath = $payment->receipt;
+        $pathsToDelete = array_values(array_unique(array_filter([
+            $payment->receipt,
+            ...$payment->damageImagePaths(),
+        ])));
 
         DB::transaction(function () use ($payment) {
             if (Payment::isTripBasedSalikType($payment->payment_type)) {
@@ -597,9 +632,7 @@ class RentalRequestPayment extends Component
             $payment->delete();
         });
 
-        if ($receiptPath && Storage::disk('myimage')->exists($receiptPath)) {
-            Storage::disk('myimage')->delete($receiptPath);
-        }
+        $this->deleteStoredPaths($pathsToDelete);
 
         $this->toast('success', 'Payment deleted successfully.');
         $this->loadData();
@@ -669,6 +702,33 @@ class RentalRequestPayment extends Component
         }
 
         return $trips;
+    }
+
+    private function normalizedDamageReceipts(): array
+    {
+        return array_values(array_filter(
+            $this->damageReceipts,
+            fn ($receipt) => $receipt !== null
+        ));
+    }
+
+    private function storePaymentImage($file, string $suffix): string
+    {
+        return $this->deferredUploader()->store(
+            $file,
+            'payment_receipts/payment-' . $this->contractId . '-' . $suffix . '-' . Str::uuid() . '.webp',
+            'myimage',
+            ['quality' => 30, 'max_width' => 1600, 'max_height' => 1600]
+        );
+    }
+
+    private function deleteStoredPaths(array $paths): void
+    {
+        foreach (array_unique(array_filter($paths)) as $path) {
+            if (Storage::disk('myimage')->exists($path)) {
+                Storage::disk('myimage')->delete($path);
+            }
+        }
     }
 
     private function roundCurrency($value): float

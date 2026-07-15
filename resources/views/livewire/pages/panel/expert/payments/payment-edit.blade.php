@@ -138,29 +138,75 @@
                         @error('note') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Replace Receipt (optional)</label>
-                        <input type="file" class="form-control" wire:key="payment-edit-receipt-{{ $fileInputVersion }}"
-                            wire:model="receipt" accept="image/*">
-                        @error('receipt') <span class="text-danger">{{ $message }}</span> @enderror
-                        <div wire:loading wire:target="receipt" class="text-primary mt-2">
-                            <i class="spinner-border spinner-border-sm"></i> Uploading...
+                    @if ($payment_type === 'damage')
+                        <div class="col-md-6" data-validation-field="damageReceipts">
+                            <label class="form-label">Replace Damage Photos <span class="text-muted">(Optional)</span></label>
+                            <input type="file" class="form-control" wire:key="payment-edit-damage-{{ $fileInputVersion }}"
+                                wire:model="damageReceipts" accept="image/*" multiple>
+                            <small class="text-muted d-block mt-2">Upload up to 5 photos. Selecting new files replaces the current damage gallery.</small>
+                            @error('damageReceipts') <span class="text-danger d-block">{{ $message }}</span> @enderror
+                            @error('damageReceipts.*') <span class="text-danger d-block">{{ $message }}</span> @enderror
+                            <div wire:loading wire:target="damageReceipts" class="text-primary mt-2">
+                                <i class="spinner-border spinner-border-sm"></i> Uploading...
+                            </div>
+                            @if ($damageReceipts)
+                                <div class="mt-3">
+                                    <strong class="d-block mb-2">New previews</strong>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach ($damageReceipts as $photo)
+                                            <img src="{{ $photo->temporaryUrl() }}" alt="Damage preview" class="img-thumbnail"
+                                                width="140" loading="lazy" decoding="async" fetchpriority="low">
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
                         </div>
-                        @if ($receipt)
-                            <div class="mt-2">
-                                <img src="{{ $receipt->temporaryUrl() }}" alt="New receipt preview" class="img-thumbnail"
-                                    width="200" loading="lazy" decoding="async" fetchpriority="low">
+
+                        @if ($existingDamageImages)
+                            <div class="col-md-6">
+                                <label class="form-label">Current Damage Photos</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach ($existingDamageImages as $index => $imagePath)
+                                        <a href="{{ asset('storage/' . ltrim($imagePath, '/')) }}" target="_blank" rel="noopener"
+                                            class="btn btn-sm btn-outline-secondary">
+                                            Photo {{ $index + 1 }}
+                                        </a>
+                                    @endforeach
+                                </div>
                             </div>
                         @endif
-                    </div>
-
-                    @if ($existingReceipt)
+                    @else
                         <div class="col-md-6">
-                            <label class="form-label">Current Receipt</label>
-                            <div>
-                                <a href="{{ asset('storage/' . ltrim($existingReceipt, '/')) }}" target="_blank">View current receipt</a>
+                            <label class="form-label">
+                                Replace Receipt
+                                @if (in_array($payment_type, ['fine', 'parking'], true) && !$existingReceipt)
+                                    <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                                @else
+                                    <span class="text-muted">(Optional)</span>
+                                @endif
+                            </label>
+                            <input type="file" class="form-control" wire:key="payment-edit-receipt-{{ $fileInputVersion }}"
+                                wire:model="receipt" accept="image/*">
+                            @error('receipt') <span class="text-danger">{{ $message }}</span> @enderror
+                            <div wire:loading wire:target="receipt" class="text-primary mt-2">
+                                <i class="spinner-border spinner-border-sm"></i> Uploading...
                             </div>
+                            @if ($receipt)
+                                <div class="mt-2">
+                                    <img src="{{ $receipt->temporaryUrl() }}" alt="New receipt preview" class="img-thumbnail"
+                                        width="200" loading="lazy" decoding="async" fetchpriority="low">
+                                </div>
+                            @endif
                         </div>
+
+                        @if ($existingReceipt)
+                            <div class="col-md-6">
+                                <label class="form-label">Current Receipt</label>
+                                <div>
+                                    <a href="{{ asset('storage/' . ltrim($existingReceipt, '/')) }}" target="_blank">View current receipt</a>
+                                </div>
+                            </div>
+                        @endif
                     @endif
                 </div>
 

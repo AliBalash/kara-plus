@@ -69,6 +69,7 @@ class PaymentFactory extends Factory
             'is_paid' => $this->faker->boolean,
             'rate' => $this->faker->randomFloat(2, 1, 5),
             'receipt' => null,
+            'damage_images' => null,
             'approval_status' => $this->faker->randomElement(['pending', 'approved', 'rejected']),
         ];
     }

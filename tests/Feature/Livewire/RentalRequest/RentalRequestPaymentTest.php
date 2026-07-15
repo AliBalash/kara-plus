@@ -132,6 +132,97 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertNull($component->security_deposit_image);
     }
 
+    public function test_submit_damage_payment_stores_up_to_five_damage_images(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for(Car::factory())
+            ->status('payment')
+            ->create(['meta' => []]);
+
+        CustomerDocument::factory()->for($customer)->for($contract)->create();
+
+        $storedPaths = collect(range(1, 5))
+            ->map(fn (int $index) => "payment_receipts/damage-{$index}.jpg")
+            ->all();
+
+        $mockUploader = Mockery::mock(DeferredImageUploadService::class);
+        $mockUploader->shouldReceive('store')
+            ->times(5)
+            ->andReturn(...$storedPaths);
+
+        $this->app->instance(DeferredImageUploadService::class, $mockUploader);
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $component->amount = 450;
+        $component->currency = 'AED';
+        $component->payment_type = 'damage';
+        $component->payment_date = now()->toDateString();
+        $component->payment_method = 'cash';
+        $component->is_refundable = false;
+        $component->damageReceipts = [
+            UploadedFile::fake()->image('damage-1.jpg'),
+            UploadedFile::fake()->image('damage-2.jpg'),
+            UploadedFile::fake()->image('damage-3.jpg'),
+            UploadedFile::fake()->image('damage-4.jpg'),
+            UploadedFile::fake()->image('damage-5.jpg'),
+        ];
+
+        $component->submitPayment();
+
+        $payment = Payment::where('contract_id', $contract->id)
+            ->where('payment_type', 'damage')
+            ->first();
+
+        $this->assertNotNull($payment);
+        $this->assertSame($storedPaths[0], $payment->receipt);
+        $this->assertSame($storedPaths, $payment->damage_images);
+        $this->assertEquals('Payment was successfully added!', session('message'));
+    }
+
+    public function test_submit_damage_payment_allows_missing_damage_images(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for(Car::factory())
+            ->status('payment')
+            ->create(['meta' => []]);
+
+        CustomerDocument::factory()->for($customer)->for($contract)->create();
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $component->amount = 200;
+        $component->currency = 'AED';
+        $component->payment_type = 'damage';
+        $component->payment_date = now()->toDateString();
+        $component->payment_method = 'cash';
+        $component->is_refundable = false;
+        $component->damageReceipts = [];
+
+        $component->submitPayment();
+
+        $payment = Payment::where('contract_id', $contract->id)
+            ->where('payment_type', 'damage')
+            ->first();
+
+        $this->assertNotNull($payment);
+        $this->assertNull($payment->receipt);
+        $this->assertNull($payment->damage_images);
+        $this->assertEquals('Payment was successfully added!', session('message'));
+    }
+
     public function test_delete_payment_removes_receipt_file_after_record_is_deleted(): void
     {
         $user = User::factory()->create();
@@ -165,6 +256,48 @@ class RentalRequestPaymentTest extends TestCase
         Storage::disk('myimage')->assertMissing('payments/existing-receipt.webp');
     }
 
+    public function test_delete_damage_payment_removes_all_damage_images(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for(Car::factory())
+            ->status('payment')
+            ->create(['meta' => []]);
+
+        $payment = Payment::factory()
+            ->for($contract)
+            ->for($customer)
+            ->for($user)
+            ->for($contract->car)
+            ->create([
+                'receipt' => 'payments/damage-1.webp',
+                'damage_images' => [
+                    'payments/damage-1.webp',
+                    'payments/damage-2.webp',
+                    'payments/damage-3.webp',
+                ],
+                'payment_type' => 'damage',
+            ]);
+
+        Storage::disk('myimage')->put('payments/damage-1.webp', 'one');
+        Storage::disk('myimage')->put('payments/damage-2.webp', 'two');
+        Storage::disk('myimage')->put('payments/damage-3.webp', 'three');
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $component->deletePayment($payment->id);
+
+        $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
+        Storage::disk('myimage')->assertMissing('payments/damage-1.webp');
+        Storage::disk('myimage')->assertMissing('payments/damage-2.webp');
+        Storage::disk('myimage')->assertMissing('payments/damage-3.webp');
+    }
+
     public function test_existing_payments_table_groups_customer_payments_and_charges(): void
     {
         $user = User::factory()->create();
@@ -177,6 +310,7 @@ class RentalRequestPaymentTest extends TestCase
                 'rate' => 387597,
                 'amount_in_aed' => 51.60,
                 'payment_type' => 'rental_fee',
+                'created_at' => now()->setTime(10, 15, 0),
             ]);
 
         $chargePayment = Payment::factory()
@@ -188,6 +322,7 @@ class RentalRequestPaymentTest extends TestCase
                 'rate' => null,
                 'amount_in_aed' => 520,
                 'payment_type' => 'fine',
+                'created_at' => now()->setTime(12, 45, 0),
             ]);
 
         $html = view('livewire.pages.panel.expert.rental-request.partials.existing-payments-table', [
@@ -202,6 +337,8 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertStringContainsString('Deducted from balance: 51.60 AED', $normalizedHtml);
         $this->assertStringContainsString('520.00', $normalizedHtml);
         $this->assertStringContainsString('Charge in balance: 520.00 AED', $normalizedHtml);
+        $this->assertStringContainsString('Registered: ' . now()->setTime(10, 15, 0)->format('Y-m-d H:i'), $normalizedHtml);
+        $this->assertStringContainsString('Registered: ' . now()->setTime(12, 45, 0)->format('Y-m-d H:i'), $normalizedHtml);
     }
 
     protected function tearDown(): void

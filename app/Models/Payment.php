@@ -77,6 +77,7 @@ class Payment extends Model
         'is_paid',
         'rate',
         'receipt',
+        'damage_images',
         'security_deposit_image',
         'approval_status',
     ];
@@ -87,8 +88,26 @@ class Payment extends Model
         'payment_date' => 'date',
         'is_refundable' => 'boolean',
         'is_paid' => 'boolean',
+        'damage_images' => 'array',
         'approval_status' => 'string',
     ];
+
+    public function damageImagePaths(): array
+    {
+        $paths = is_array($this->damage_images) ? $this->damage_images : [];
+
+        $paths = array_values(array_filter($paths, fn ($path) => is_string($path) && $path !== ''));
+
+        if ($paths !== []) {
+            return array_values(array_unique($paths));
+        }
+
+        if ($this->payment_type === 'damage' && is_string($this->receipt) && $this->receipt !== '') {
+            return [$this->receipt];
+        }
+
+        return [];
+    }
 
     public static function paymentTypes(): array
     {

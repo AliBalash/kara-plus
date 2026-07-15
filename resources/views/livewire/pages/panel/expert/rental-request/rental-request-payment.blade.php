@@ -207,33 +207,72 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Receipt Upload (Optional)</label>
-                        <input type="file" class="form-control" wire:key="rental-payment-receipt-{{ $fileInputVersion }}"
-                            wire:model="receipt" accept="image/*">
+                    @if ($payment_type === 'damage')
+                        <div class="col-md-6 mb-3" data-validation-field="damageReceipts">
+                            <label class="form-label fw-semibold">Damage Photos <span class="text-muted">(Optional)</span></label>
+                            <input type="file" class="form-control"
+                                wire:key="rental-payment-damage-{{ $fileInputVersion }}" wire:model="damageReceipts"
+                                accept="image/*" multiple>
+                            <small class="text-muted d-block mt-2">Upload up to 5 photos for the damage charge.</small>
 
-                        @error('receipt')
-                            <span class="text-danger">{{ $message }}</span>
-                        @enderror
+                            @error('damageReceipts')
+                                <span class="text-danger d-block">{{ $message }}</span>
+                            @enderror
+                            @error('damageReceipts.*')
+                                <span class="text-danger d-block">{{ $message }}</span>
+                            @enderror
 
-                        {{-- لودینگ برای آپلود فایل --}}
-                        <div wire:loading wire:target="receipt" class="text-primary mt-2">
-                            <i class="spinner-border spinner-border-sm"></i> Uploading...
-                        </div>
-
-                        @if ($receipt)
-                            <div class="mt-2">
-                                <strong>Preview:</strong><br>
-                                <img src="{{ $receipt->temporaryUrl() }}" alt="Receipt Preview" class="img-thumbnail" loading="lazy" decoding="async" fetchpriority="low"
-                                    width="200">
+                            <div wire:loading wire:target="damageReceipts" class="text-primary mt-2">
+                                <i class="spinner-border spinner-border-sm"></i> Uploading...
                             </div>
-                        @endif
-                    </div>
+
+                            @if ($damageReceipts)
+                                <div class="mt-3">
+                                    <strong class="d-block mb-2">Preview:</strong>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach ($damageReceipts as $photo)
+                                            <img src="{{ $photo->temporaryUrl() }}" alt="Damage preview"
+                                                class="img-thumbnail" loading="lazy" decoding="async"
+                                                fetchpriority="low" width="140">
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="col-md-6 mb-3" data-validation-field="receipt">
+                            <label class="form-label">
+                                Receipt Upload
+                                @if (in_array($payment_type, ['fine', 'parking'], true))
+                                    <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                                @else
+                                    <span class="text-muted">(Optional)</span>
+                                @endif
+                            </label>
+                            <input type="file" class="form-control" wire:key="rental-payment-receipt-{{ $fileInputVersion }}"
+                                wire:model="receipt" accept="image/*">
+
+                            @error('receipt')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+
+                            <div wire:loading wire:target="receipt" class="text-primary mt-2">
+                                <i class="spinner-border spinner-border-sm"></i> Uploading...
+                            </div>
+
+                            @if ($receipt)
+                                <div class="mt-2">
+                                    <strong>Preview:</strong><br>
+                                    <img src="{{ $receipt->temporaryUrl() }}" alt="Receipt Preview" class="img-thumbnail" loading="lazy" decoding="async" fetchpriority="low"
+                                        width="200">
+                                </div>
+                            @endif
+                        </div>
+                    @endif
                 </div>
 
-                {{-- دکمه سابمیت --}}
                 <button type="submit" class="btn btn-primary mt-3" wire:loading.attr="disabled"
-                    wire:target="receipt,submitPayment">
+                    wire:target="receipt,damageReceipts,submitPayment">
                     Submit Payment
                 </button>
 
