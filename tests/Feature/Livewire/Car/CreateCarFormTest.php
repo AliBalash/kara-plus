@@ -4,8 +4,10 @@ namespace Tests\Feature\Livewire\Car;
 
 use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
 use App\Models\Car;
+use App\Models\CarUnavailabilityPeriod;
 use App\Models\CarModel;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -94,7 +96,7 @@ class CreateCarFormTest extends TestCase
         $this->assertEquals('Car added successfully!', session('message'));
     }
 
-    public function test_create_form_previews_unavailable_reason(): void
+    public function test_create_form_uses_base_status_preview(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -108,11 +110,50 @@ class CreateCarFormTest extends TestCase
         $component->mount();
         $component->updatedSelectedBrand($carModel->brand);
         $component->selectedModelId = (string) $carModel->id;
-        $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
-        $component->unavailability_reason = Car::UNAVAILABILITY_REASON_MAINTENANCE;
-        $component->updatedStatus(Car::MANUAL_STATUS_UNAVAILABLE);
+        $component->status = Car::MANUAL_STATUS_SOLD;
+        $component->updatedStatus(Car::MANUAL_STATUS_SOLD);
 
-        $this->assertSame('Unavailable', $component->effectiveStatusLabel);
-        $this->assertSame('Maintenance', $component->effectiveUnavailabilityReasonLabel);
+        $this->assertSame('Sold', $component->effectiveStatusLabel);
+    }
+
+    public function test_submit_can_create_unavailable_car_with_history_window(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $carModel = CarModel::factory()->create([
+            'brand' => 'Nissan',
+            'model' => 'Sunny',
+        ]);
+
+        $component = app(CreateCarForm::class);
+        $component->mount();
+        $component->selectedBrand = $carModel->brand;
+        $component->selectedModelId = (string) $carModel->id;
+        $component->plate_number = 'UN-1234';
+        $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
+        $component->hold_reason = Car::UNAVAILABILITY_REASON_REGISTRATION;
+        $component->hold_start_date = Carbon::today()->toDateString();
+        $component->hold_end_date = Carbon::today()->addDays(2)->toDateString();
+        $component->hold_note = 'New car registration hold';
+        $component->mileage = 10;
+        $component->manufacturing_year = now()->year;
+        $component->color = 'White';
+        $component->chassis_number = 'CREATEUNAVAILABLE123';
+
+        $component->submit();
+
+        $car = Car::query()->where('plate_number', 'UN-1234')->first();
+        $this->assertNotNull($car);
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
+        $this->assertFalse((bool) $car->availability);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_REGISTRATION, $car->unavailability_reason);
+
+        $this->assertDatabaseHas('car_unavailability_periods', [
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_REGISTRATION,
+            'note' => 'New car registration hold',
+        ]);
+        $this->assertSame(1, CarUnavailabilityPeriod::query()->where('car_id', $car->id)->count());
     }
 }

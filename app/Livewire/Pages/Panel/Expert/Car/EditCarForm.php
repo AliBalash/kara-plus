@@ -5,9 +5,11 @@ namespace App\Livewire\Pages\Panel\Expert\Car;
 use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\Car;
 use App\Models\CarModel;
+use App\Models\CarUnavailabilityPeriod;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Services\Media\DeferredImageUploadService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -28,7 +30,6 @@ class EditCarForm extends Component
     public $plate_number;
     public $status;
     public $availability;
-    public $unavailability_reason;
     public $mileage;
     public $price_per_day_short;
     public $price_per_day_mid;
@@ -58,6 +59,12 @@ class EditCarForm extends Component
     public $existingImageUrl;
     public $is_featured = false;
     public $newImage;
+    public bool $unavailableDeskReady = false;
+    public ?int $unavailability_period_id = null;
+    public string $hold_reason = '';
+    public string $hold_note = '';
+    public ?string $hold_start_date = null;
+    public ?string $hold_end_date = null;
     protected DeferredImageUploadService $deferredUploader;
 
     protected function rules()
@@ -77,10 +84,22 @@ class EditCarForm extends Component
                     }
                 },
             ],
-            'unavailability_reason' => [
+            'hold_reason' => [
                 Rule::requiredIf(fn () => $this->status === Car::MANUAL_STATUS_UNAVAILABLE),
                 'nullable',
-                Rule::in(array_keys(Car::manualUnavailabilityReasonLabels())),
+                Rule::in(array_keys(Car::scheduledUnavailabilityReasonLabels())),
+            ],
+            'hold_note' => 'nullable|string|max:1000',
+            'hold_start_date' => [
+                Rule::requiredIf(fn () => $this->status === Car::MANUAL_STATUS_UNAVAILABLE),
+                'nullable',
+                'date',
+            ],
+            'hold_end_date' => [
+                Rule::requiredIf(fn () => $this->status === Car::MANUAL_STATUS_UNAVAILABLE),
+                'nullable',
+                'date',
+                'after_or_equal:hold_start_date',
             ],
             'mileage' => 'required|numeric|min:0',
             'price_per_day_short' => 'required|numeric|min:0',
@@ -124,8 +143,14 @@ class EditCarForm extends Component
         'plate_number.max' => 'The plate number cannot exceed 255 characters.',
         'status.required' => 'The status is required.',
         'status.in' => 'The status must be one of available, unavailable, or sold.',
-        'unavailability_reason.required_if' => 'Please choose why this vehicle is unavailable.',
-        'unavailability_reason.in' => 'The unavailable reason is invalid.',
+        'hold_reason.required_if' => 'Please choose why this vehicle is unavailable.',
+        'hold_reason.in' => 'The unavailable reason is invalid.',
+        'hold_start_date.required_if' => 'Please set the unavailable start date.',
+        'hold_start_date.date' => 'The unavailable start date must be a valid date.',
+        'hold_end_date.required_if' => 'Please set the unavailable end date.',
+        'hold_end_date.date' => 'The unavailable end date must be a valid date.',
+        'hold_end_date.after_or_equal' => 'The unavailable end date must be on or after the start date.',
+        'hold_note.max' => 'The unavailable note cannot exceed 1000 characters.',
         'mileage.required' => 'The mileage is required.',
         'mileage.numeric' => 'The mileage must be a number.',
         'mileage.min' => 'The mileage cannot be negative.',
@@ -202,9 +227,8 @@ class EditCarForm extends Component
 
         // Populate form fields, set defaults to 0 if null
         $this->plate_number = $this->car->plate_number;
-        $this->status = $this->car->resolvedManualStatus();
+        $this->status = $this->controlStatusForCar();
         $this->availability = $this->car->availability;
-        $this->unavailability_reason = $this->car->resolvedManualUnavailabilityReason();
         $this->mileage = $this->car->mileage;
         $this->price_per_day_short = $this->formatDecimalValue($this->car->price_per_day_short);
         $this->price_per_day_mid = $this->formatDecimalValue($this->car->price_per_day_mid);
@@ -233,6 +257,7 @@ class EditCarForm extends Component
         $this->is_featured = $this->car->carModel->is_featured;
 
         $this->existingImageUrl = $this->car->primaryImageUrl();
+        $this->unavailableDeskReady = CarUnavailabilityPeriod::tableExists();
 
         // Populate car options
         $this->car_options = $this->car->options->pluck('option_value', 'option_key')->toArray();
@@ -244,6 +269,7 @@ class EditCarForm extends Component
             }
         }
 
+        $this->loadEditableUnavailableWindow();
         $this->syncStatusPreview();
         $this->auditBusinessRead([
             'car_id' => $this->car->id,
@@ -259,12 +285,80 @@ class EditCarForm extends Component
 
     public function updatedStatus($status): void
     {
+        if ($status === Car::MANUAL_STATUS_UNAVAILABLE) {
+            $this->hold_start_date ??= Carbon::today()->toDateString();
+            $this->hold_end_date ??= Carbon::today()->toDateString();
+        }
+
         $this->syncStatusPreview();
     }
 
-    public function updatedUnavailabilityReason($reason): void
+    public function saveUnavailableWindow(): void
     {
-        $this->syncStatusPreview();
+        if (! $this->unavailableDeskReady) {
+            $this->toast('error', 'The unavailable desk table is not available yet. Run the SQL first.', false);
+
+            return;
+        }
+
+        if ($this->status === Car::MANUAL_STATUS_SOLD || $this->car->resolvedManualStatus() === Car::MANUAL_STATUS_SOLD) {
+            $this->addError('hold_reason', 'Sold cars cannot receive an unavailable hold window.');
+
+            return;
+        }
+
+        $validated = $this->validate([
+            'hold_reason' => ['required', Rule::in(array_keys(Car::scheduledUnavailabilityReasonLabels()))],
+            'hold_note' => ['nullable', 'string', 'max:1000'],
+            'hold_start_date' => ['required', 'date'],
+            'hold_end_date' => ['required', 'date', 'after_or_equal:hold_start_date'],
+        ]);
+
+        $start = Carbon::parse($validated['hold_start_date'])->startOfDay();
+        $end = Carbon::parse($validated['hold_end_date'])->endOfDay();
+
+        $overlapExists = CarUnavailabilityPeriod::query()
+            ->where('car_id', $this->car->id)
+            ->when($this->unavailability_period_id, fn ($query) => $query->where('id', '!=', $this->unavailability_period_id))
+            ->overlappingWindow($start, $end)
+            ->exists();
+
+        if ($overlapExists) {
+            $this->addError('hold_start_date', 'This car already has another unavailable period overlapping this date range.');
+
+            return;
+        }
+
+        $attributes = [
+            'car_id' => $this->car->id,
+            'reason' => $validated['hold_reason'],
+            'note' => $validated['hold_note'] !== '' ? $validated['hold_note'] : null,
+            'start_date' => $validated['hold_start_date'],
+            'end_date' => $validated['hold_end_date'],
+            'updated_by' => auth()->id(),
+        ];
+
+        if ($this->unavailability_period_id) {
+            $period = CarUnavailabilityPeriod::query()
+                ->where('car_id', $this->car->id)
+                ->findOrFail($this->unavailability_period_id);
+            $period->update($attributes);
+        } else {
+            $period = CarUnavailabilityPeriod::query()->create($attributes + [
+                'created_by' => auth()->id(),
+            ]);
+        }
+
+        if ($this->car->resolvedManualStatus() === Car::MANUAL_STATUS_UNAVAILABLE) {
+            $this->car->forceFill([
+                'manual_status' => Car::MANUAL_STATUS_AVAILABLE,
+                'manual_unavailability_reason' => null,
+            ])->saveQuietly();
+        }
+
+        $this->syncCarAfterOperationalChange();
+        $this->loadEditableUnavailableWindow($period->id);
+        $this->toast('success', 'Unavailable window saved.');
     }
 
     protected function prepareForValidation($attributes)
@@ -348,10 +442,32 @@ class EditCarForm extends Component
     public function submit()
     {
         $validated = $this->validate();
+
+        if ($validated['status'] === Car::MANUAL_STATUS_UNAVAILABLE) {
+            if (! $this->unavailableDeskReady) {
+                $this->addError('status', 'The unavailable desk table is not available yet. Run the SQL first.');
+
+                return;
+            }
+
+            if ($this->submittedUnavailableWindowOverlaps($validated)) {
+                $this->addError('hold_start_date', 'This car already has another unavailable period overlapping this date range.');
+
+                return;
+            }
+        } elseif ($this->unavailability_period_id && ! CarUnavailabilityPeriod::supportsCancellationColumns()) {
+            $this->addError('status', 'Run the cancellation fields SQL before changing an unavailable car back to available or sold.');
+
+            return;
+        }
+
         $validated['gps'] = $this->normalizeBooleanValue($validated['gps'] ?? false);
+        $storageManualStatus = $validated['status'] === Car::MANUAL_STATUS_SOLD
+            ? Car::MANUAL_STATUS_SOLD
+            : Car::MANUAL_STATUS_AVAILABLE;
         $manualState = Car::manualStateAttributes(
-            $validated['status'],
-            $validated['unavailability_reason'] ?? null
+            $storageManualStatus,
+            null
         );
         $operationalState = Car::synchronizedStateForReservationWindow(
             $manualState['manual_status'],
@@ -425,6 +541,7 @@ class EditCarForm extends Component
                     'notes' => $validated['notes'],
                 ]);
 
+                $this->syncUnavailableWindowForSubmittedStatus($validated);
                 $this->car->syncOperationalState();
 
                 $this->car->options()->delete();
@@ -482,11 +599,12 @@ class EditCarForm extends Component
         }
 
         $this->car->refresh();
-        $this->status = $this->car->resolvedManualStatus();
+        $this->status = $this->controlStatusForCar();
         $this->availability = (bool) $this->car->availability;
-        $this->unavailability_reason = $this->car->resolvedManualUnavailabilityReason();
         $this->existingImageUrl = $this->car->load(['image', 'carModel.image'])->primaryImageUrl();
         $this->newImage = null;
+        $this->loadEditableUnavailableWindow();
+        $this->syncStatusPreview();
         $this->refreshFileInputs();
 
         $this->toast('success', 'Car updated successfully!');
@@ -569,9 +687,179 @@ class EditCarForm extends Component
         };
     }
 
+    public function getUnavailableHistoryProperty()
+    {
+        if (! $this->unavailableDeskReady || ! $this->car instanceof Car || ! $this->car->exists) {
+            return collect();
+        }
+
+        return CarUnavailabilityPeriod::query()
+            ->with(['creator', 'updater', 'canceller'])
+            ->where('car_id', $this->car->id)
+            ->orderByDesc('start_date')
+            ->orderByDesc('id')
+            ->limit(12)
+            ->get();
+    }
+
     private function syncStatusPreview(): void
     {
         $this->availability = $this->statusPreviewState()['availability'];
+    }
+
+    private function loadEditableUnavailableWindow(?int $preferredPeriodId = null): void
+    {
+        if (! $this->unavailableDeskReady) {
+            $this->resetUnavailableWindowForm();
+
+            return;
+        }
+
+        $period = null;
+
+        if ($preferredPeriodId) {
+            $period = CarUnavailabilityPeriod::query()
+                ->where('car_id', $this->car->id)
+                ->find($preferredPeriodId);
+        }
+
+        $period ??= $this->car->activeScheduledUnavailabilityPeriod()
+            ?? $this->car->upcomingScheduledUnavailabilityPeriod();
+
+        if ($period) {
+            $this->unavailability_period_id = $period->id;
+            $this->hold_reason = $period->reason;
+            $this->hold_note = (string) ($period->note ?? '');
+            $this->hold_start_date = $period->start_date?->format('Y-m-d');
+            $this->hold_end_date = $period->end_date?->format('Y-m-d');
+            $this->status = Car::MANUAL_STATUS_UNAVAILABLE;
+
+            return;
+        }
+
+        if ($this->car->resolvedManualStatus() === Car::MANUAL_STATUS_UNAVAILABLE) {
+            $this->unavailability_period_id = null;
+            $this->hold_reason = $this->car->resolvedManualUnavailabilityReason() ?? Car::UNAVAILABILITY_REASON_MANAGEMENT_DECISION;
+            $this->hold_note = (string) ($this->car->notes ?? '');
+            $this->hold_start_date = Carbon::today()->toDateString();
+            $this->hold_end_date = Carbon::today()->toDateString();
+            $this->status = Car::MANUAL_STATUS_UNAVAILABLE;
+
+            return;
+        }
+
+        $this->resetUnavailableWindowForm();
+    }
+
+    private function resetUnavailableWindowForm(): void
+    {
+        $this->unavailability_period_id = null;
+        $this->hold_reason = '';
+        $this->hold_note = '';
+        $this->hold_start_date = null;
+        $this->hold_end_date = null;
+    }
+
+    private function syncCarAfterOperationalChange(): void
+    {
+        $this->car->refresh();
+        $this->car->syncOperationalState();
+        $this->car->refresh();
+        $this->status = $this->controlStatusForCar();
+        $this->availability = (bool) $this->car->availability;
+        $this->syncStatusPreview();
+    }
+
+    private function controlStatusForCar(): string
+    {
+        if (! $this->car instanceof Car) {
+            return Car::MANUAL_STATUS_AVAILABLE;
+        }
+
+        if ($this->car->resolvedManualStatus() === Car::MANUAL_STATUS_SOLD) {
+            return Car::MANUAL_STATUS_SOLD;
+        }
+
+        if ($this->car->resolvedManualStatus() === Car::MANUAL_STATUS_UNAVAILABLE) {
+            return Car::MANUAL_STATUS_UNAVAILABLE;
+        }
+
+        if ($this->car->activeScheduledUnavailabilityPeriod() || $this->car->upcomingScheduledUnavailabilityPeriod()) {
+            return Car::MANUAL_STATUS_UNAVAILABLE;
+        }
+
+        if (
+            $this->car->status === Car::STATUS_UNAVAILABLE
+            && $this->car->unavailability_reason
+            && $this->car->unavailability_reason !== Car::UNAVAILABILITY_REASON_NEED_ACTION
+        ) {
+            return Car::MANUAL_STATUS_UNAVAILABLE;
+        }
+
+        return Car::MANUAL_STATUS_AVAILABLE;
+    }
+
+    private function submittedUnavailableWindowOverlaps(array $validated): bool
+    {
+        $start = Carbon::parse($validated['hold_start_date'])->startOfDay();
+        $end = Carbon::parse($validated['hold_end_date'])->endOfDay();
+
+        return CarUnavailabilityPeriod::query()
+            ->where('car_id', $this->car->id)
+            ->when($this->unavailability_period_id, fn ($query) => $query->where('id', '!=', $this->unavailability_period_id))
+            ->overlappingWindow($start, $end)
+            ->exists();
+    }
+
+    private function syncUnavailableWindowForSubmittedStatus(array $validated): ?CarUnavailabilityPeriod
+    {
+        if ($validated['status'] !== Car::MANUAL_STATUS_UNAVAILABLE) {
+            $this->cancelEditableUnavailableWindow($validated['status'] === Car::MANUAL_STATUS_SOLD
+                ? 'Cancelled because car was marked sold.'
+                : 'Cancelled because base status was changed to available.');
+
+            return null;
+        }
+
+        $attributes = [
+            'car_id' => $this->car->id,
+            'reason' => $validated['hold_reason'],
+            'note' => ($validated['hold_note'] ?? '') !== '' ? $validated['hold_note'] : null,
+            'start_date' => $validated['hold_start_date'],
+            'end_date' => $validated['hold_end_date'],
+            'updated_by' => auth()->id(),
+        ];
+
+        if ($this->unavailability_period_id) {
+            $period = CarUnavailabilityPeriod::query()
+                ->where('car_id', $this->car->id)
+                ->findOrFail($this->unavailability_period_id);
+            $period->update($attributes);
+
+            return $period;
+        }
+
+        return CarUnavailabilityPeriod::query()->create($attributes + [
+            'created_by' => auth()->id(),
+        ]);
+    }
+
+    private function cancelEditableUnavailableWindow(string $note): void
+    {
+        if (! $this->unavailability_period_id || ! $this->unavailableDeskReady) {
+            return;
+        }
+
+        if (! CarUnavailabilityPeriod::supportsCancellationColumns()) {
+            return;
+        }
+
+        $period = CarUnavailabilityPeriod::query()
+            ->where('car_id', $this->car->id)
+            ->whereKey($this->unavailability_period_id)
+            ->first();
+
+        $period?->cancel(auth()->id(), $note);
     }
 
     /**
@@ -589,15 +877,41 @@ class EditCarForm extends Component
             $hasUpcomingReservation = ! $needsAction && ! $hasActiveReservation && $this->car->hasUpcomingReservationWindow();
         }
 
-        $manualState = Car::manualStateAttributes($this->status, $this->unavailability_reason);
+        $manualState = Car::manualStateAttributes(
+            $this->status === Car::MANUAL_STATUS_SOLD ? Car::MANUAL_STATUS_SOLD : Car::MANUAL_STATUS_AVAILABLE,
+            null
+        );
+        $scheduledReason = $this->previewScheduledUnavailabilityReason();
 
         return Car::synchronizedStateForReservationWindow(
             $manualState['manual_status'],
             $manualState['manual_unavailability_reason'],
             $hasActiveReservation,
             $hasUpcomingReservation,
-            $needsAction
+            $needsAction,
+            $scheduledReason
         );
+    }
+
+    private function previewScheduledUnavailabilityReason(): ?string
+    {
+        if ($this->hold_reason !== '' && $this->hold_start_date && $this->hold_end_date) {
+            try {
+                $today = Carbon::today();
+                $start = Carbon::parse($this->hold_start_date)->startOfDay();
+                $end = Carbon::parse($this->hold_end_date)->endOfDay();
+
+                if ($today->betweenIncluded($start, $end)) {
+                    return $this->hold_reason;
+                }
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return $this->car instanceof Car && $this->car->exists
+            ? $this->car->activeScheduledUnavailabilityPeriod()?->reason
+            : null;
     }
 
     private function formatDecimalValue($value): string

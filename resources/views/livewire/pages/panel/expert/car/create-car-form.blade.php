@@ -59,7 +59,7 @@
                                     <span class="input-group-text" id="status-addon">Base Status</span>
                                     <select
                                         class="form-control border border-warning @error('status') is-invalid @enderror"
-                                        name="status" wire:model="status" required>
+                                        name="status" wire:model.live="status" required>
                                         <option value="available" {{ $status == 'available' ? 'selected' : '' }}>
                                             Available</option>
                                         <option value="unavailable" {{ $status == 'unavailable' ? 'selected' : '' }}>
@@ -71,22 +71,58 @@
                                     @enderror
                                 </div>
 
-                                @if ($status === \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)
-                                    <div class="input-group">
-                                        <span class="input-group-text" id="unavailability-reason-addon">Why Unavailable</span>
-                                        <select
-                                            class="form-control @error('unavailability_reason') is-invalid @enderror"
-                                            name="unavailability_reason" wire:model="unavailability_reason">
-                                            <option value="">Select reason</option>
-                                            @foreach (\App\Models\Car::manualUnavailabilityReasonLabels() as $reasonValue => $reasonLabel)
-                                                <option value="{{ $reasonValue }}">{{ $reasonLabel }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('unavailability_reason')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                                <div class="card border-0 shadow-sm bg-light-subtle mb-0">
+                                    <div class="card-body">
+                                        <div class="fw-semibold mb-1">Unavailable Window</div>
+                                        <div class="small text-muted mb-3">
+                                            If base status is Unavailable, reason and date range are saved as the first history record for this car.
+                                        </div>
+
+                                        <div class="row g-3">
+                                            <div class="col-md-12">
+                                                <label class="form-label small text-muted mb-1">Reason</label>
+                                                <select class="form-select @error('hold_reason') is-invalid @enderror"
+                                                    wire:model.live="hold_reason" @disabled($status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
+                                                    <option value="">Select reason</option>
+                                                    @foreach (\App\Models\Car::scheduledUnavailabilityReasonLabels() as $reasonValue => $reasonLabel)
+                                                        <option value="{{ $reasonValue }}">{{ $reasonLabel }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @error('hold_reason')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label small text-muted mb-1">Start date</label>
+                                                <input type="date" class="form-control @error('hold_start_date') is-invalid @enderror"
+                                                    wire:model.live="hold_start_date" @disabled($status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
+                                                @error('hold_start_date')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label small text-muted mb-1">End date</label>
+                                                <input type="date" class="form-control @error('hold_end_date') is-invalid @enderror"
+                                                    wire:model.live="hold_end_date" @disabled($status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
+                                                @error('hold_end_date')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+
+                                            <div class="col-12">
+                                                <label class="form-label small text-muted mb-1">Detail note</label>
+                                                <textarea class="form-control @error('hold_note') is-invalid @enderror" rows="3"
+                                                    placeholder="Example: Registration renewal before release."
+                                                    wire:model.defer="hold_note" @disabled($status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)></textarea>
+                                                @error('hold_note')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
                                     </div>
-                                @endif
+                                </div>
                                 
                                 <div class="alert alert-secondary py-2 px-3 mb-0" role="alert">
                                     <div class="fw-semibold">Final Status: {{ $this->effectiveStatusLabel }}</div>
