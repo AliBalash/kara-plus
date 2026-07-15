@@ -40,6 +40,8 @@
             ];
             $reportRoutes = [
                 ['route' => 'reports.customer-requests', 'label' => 'Customer Requests'],
+                ['route' => 'reports.first-time-customers', 'label' => 'First-Time Customers'],
+                ['route' => 'reports.lead-sources', 'label' => 'Lead Sources'],
                 ['route' => 'reports.customer-balances', 'label' => 'Customer Balances'],
                 ['route' => 'reports.fleet-performance', 'label' => 'Fleet Performance'],
                 ['route' => 'reports.payment-collections', 'label' => 'Payment Collections'],
@@ -54,7 +56,7 @@
                 'rental-requests.processed-payments',
             ];
             $rentalMenuOpen = request()->routeIs('rental-requests.*') && !request()->routeIs($rentalPaymentRoutes);
-            $reportsMenuOpen = request()->routeIs('reports.customer-requests', 'reports.customer-balances', 'reports.fleet-performance', 'reports.payment-collections', 'reports.audit-center');
+            $reportsMenuOpen = request()->routeIs('reports.*');
         @endphp
 
         @if ($isDriver)
