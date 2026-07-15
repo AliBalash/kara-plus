@@ -192,6 +192,11 @@
                                     {{ $car->unavailabilityReasonLabel() }}
                                 </div>
                             @endif
+                            @if ($car->activeScheduledUnavailabilityWindowLabel())
+                                <div class="small text-danger mt-1">
+                                    Hold {{ $car->activeScheduledUnavailabilityWindowLabel() }}
+                                </div>
+                            @endif
                             @if ($car->operationalStatusContextNote())
                                 <div class="small text-warning mt-1">
                                     {{ $car->operationalStatusContextNote() }}

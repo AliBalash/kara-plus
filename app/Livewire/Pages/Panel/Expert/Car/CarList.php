@@ -117,6 +117,10 @@ class CarList extends Component
             ->when($this->unavailabilityReasonFilter, fn($q) => $q->byUnavailabilityReason($this->unavailabilityReasonFilter))
             ->when($this->onlyReserved, fn($q) => $q->whereIn('status', ['reserved', 'pre_reserved']));
 
+        if (Car::supportsScheduledUnavailabilityPeriods()) {
+            $carsQuery->with('unavailabilityPeriods');
+        }
+
         $this->applyDateFilters($carsQuery);
         $this->applyDailyPriceFilters($carsQuery);
 
@@ -170,6 +174,12 @@ class CarList extends Component
                             ->orWhere('return_date', '>', $windowStart);
                     });
             });
+
+            if (Car::supportsScheduledUnavailabilityPeriods()) {
+                $query->whereDoesntHave('unavailabilityPeriods', function (Builder $periodQuery) use ($windowStart, $windowEnd) {
+                    $periodQuery->overlappingWindow($windowStart, $windowEnd);
+                });
+            }
 
             return;
         }

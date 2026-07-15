@@ -11,6 +11,7 @@ use App\Livewire\Pages\Panel\Expert\Car\CarDetail;
 use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\CarList;
+use App\Livewire\Pages\Panel\Expert\Car\CarUnavailableDesk;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDebt;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDebtorList;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDetail;
@@ -127,6 +128,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     Route::get('/expert/car/create', CreateCarForm::class)->name('car.create');
     Route::get('/expert/car/edit/{carId}', EditCarForm::class)->name('car.edit');
+    Route::get('/expert/car/unavailable-desk', CarUnavailableDesk::class)->name('car.unavailable-desk');
 
     Route::get('/expert/brand/list', BrandList::class)->name('brand.list');
     Route::get('/expert/brand/detail/{brandId}', BrandDetail::class)->name('brand.detail');

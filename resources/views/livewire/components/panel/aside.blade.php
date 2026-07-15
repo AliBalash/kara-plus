@@ -173,6 +173,12 @@
                             <div data-i18n="Without menu">List</div>
                         </a>
                     </li>
+
+                    <li class="menu-item {{ Request::routeIs('car.unavailable-desk') ? 'active' : '' }}">
+                        <a href="{{ route('car.unavailable-desk') }}" class="menu-link">
+                            <div data-i18n="Without menu">Unavailable Desk</div>
+                        </a>
+                    </li>
                 </ul>
             </li>
 

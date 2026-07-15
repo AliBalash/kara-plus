@@ -500,6 +500,10 @@ class Dashboard extends Component
                 $join->on('latest_returns.car_id', '=', 'cars.id');
             });
 
+        if (Car::supportsScheduledUnavailabilityPeriods()) {
+            $query->with('unavailabilityPeriods');
+        }
+
         $this->applyAvailableFleetScope($query, 'our');
 
         $cars = $query
@@ -584,6 +588,10 @@ class Dashboard extends Component
                     'pickup_location',
                 ])->with('customer');
             }]);
+
+        if (Car::supportsScheduledUnavailabilityPeriods()) {
+            $query->with('unavailabilityPeriods');
+        }
 
         $this->applyAvailableFleetSort($query);
 
@@ -1035,6 +1043,8 @@ class Dashboard extends Component
             'status_label' => $car->operationalStatusLabel(),
             'status_badge_class' => $car->operationalStatusSubtleBadgeClass(),
             'reason_label' => $car->unavailabilityReasonLabel(),
+            'active_window_label' => $car->activeScheduledUnavailabilityWindowLabel(),
+            'active_window_note' => $car->activeScheduledUnavailabilityPeriod()?->note,
             'context_note' => $car->operationalStatusContextNote(),
             'action_label' => $this->fleetAttentionActionLabel($car),
             'current_contract_id' => $currentContract?->id,

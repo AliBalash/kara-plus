@@ -613,6 +613,9 @@
                                             @if ($car->operationalStatus() === \App\Models\Car::STATUS_UNAVAILABLE && $car->unavailabilityReasonLabel())
                                                 <div class="small text-muted mt-1">{{ $car->unavailabilityReasonLabel() }}</div>
                                             @endif
+                                            @if ($car->activeScheduledUnavailabilityWindowLabel())
+                                                <div class="small text-danger mt-1">Hold {{ $car->activeScheduledUnavailabilityWindowLabel() }}</div>
+                                            @endif
                                             @if ($car->operationalStatusContextNote())
                                                 <div class="small text-warning mt-1">{{ $car->operationalStatusContextNote() }}</div>
                                             @endif
@@ -646,6 +649,9 @@
                                                 <span class="fw-semibold">
                                                     {{ $car->unavailabilityReasonLabel() ?? ($car->operationalStatus() === \App\Models\Car::STATUS_PRE_RESERVED ? 'Upcoming booking is already planned' : ($car->operationalStatus() === \App\Models\Car::STATUS_RESERVED ? 'Currently inside rental window' : 'Ready for dispatch')) }}
                                                 </span>
+                                                @if ($car->activeScheduledUnavailabilityWindowLabel())
+                                                    <span class="text-danger small">Hold {{ $car->activeScheduledUnavailabilityWindowLabel() }}</span>
+                                                @endif
                                                 @if ($upcomingReservation && $car->operationalStatus() !== \App\Models\Car::STATUS_PRE_RESERVED)
                                                     <span class="text-muted small">Next pickup {{ $upcomingReservation->pickup_date ? \Carbon\Carbon::parse($upcomingReservation->pickup_date)->format('Y-m-d H:i') : '—' }}</span>
                                                 @endif
@@ -709,6 +715,14 @@
 
                                     @if ($attentionCar['reason_label'])
                                         <div class="attention-queue-card__reason">{{ $attentionCar['reason_label'] }}</div>
+                                    @endif
+
+                                    @if ($attentionCar['active_window_label'])
+                                        <div class="attention-queue-card__note">Hold {{ $attentionCar['active_window_label'] }}</div>
+                                    @endif
+
+                                    @if ($attentionCar['active_window_note'])
+                                        <div class="text-muted small mt-1">{{ $attentionCar['active_window_note'] }}</div>
                                     @endif
 
                                     @if ($attentionCar['context_note'])
