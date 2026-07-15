@@ -40,7 +40,8 @@ $publicRoot = rtrim(env('PUBLIC_PATH', $hostedPublicPath ?: $defaultPublicPath),
 
 $storageLinkPath = rtrim(env('PUBLIC_STORAGE_PATH', $publicRoot . '/storage'), DIRECTORY_SEPARATOR);
 $storageLinkTarget = rtrim(env('PUBLIC_STORAGE_TARGET', storage_path('app/public')), DIRECTORY_SEPARATOR);
-$publicDiskRoot = rtrim(env('PUBLIC_DISK_ROOT', $storageLinkTarget), DIRECTORY_SEPARATOR);
+$storageLinkIsPhysicalDirectory = is_dir($storageLinkPath) && !is_link($storageLinkPath);
+$publicDiskRoot = rtrim(env('PUBLIC_DISK_ROOT', $storageLinkIsPhysicalDirectory ? $storageLinkPath : $storageLinkTarget), DIRECTORY_SEPARATOR);
 $publicDiskUrl = rtrim((string) env('PUBLIC_DISK_URL', '/storage'), '/');
 $carPicsUrl = rtrim((string) env('CAR_PICS_URL', '/assets/car-pics'), '/');
 $myImageUrl = rtrim((string) env('MYIMAGE_URL', $publicDiskUrl), '/');
