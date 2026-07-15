@@ -264,6 +264,30 @@ class EditCarFormTest extends TestCase
         $this->assertSame(Car::MANUAL_STATUS_UNAVAILABLE, $component->status);
     }
 
+    public function test_edit_form_accepts_change_plate_unavailable_reason(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $car = Car::factory()->available()->create();
+
+        $component = app(EditCarForm::class);
+        $component->mount($car->id);
+        $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
+        $component->hold_reason = Car::UNAVAILABILITY_REASON_CHANGE_PLATE;
+        $component->hold_start_date = Carbon::today()->toDateString();
+        $component->hold_end_date = Carbon::today()->addDay()->toDateString();
+        $component->hold_note = 'Plate change in progress';
+
+        $component->submit();
+
+        $this->assertDatabaseHas('car_unavailability_periods', [
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_CHANGE_PLATE,
+        ]);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_CHANGE_PLATE, $car->fresh()->unavailability_reason);
+    }
+
     public function test_submit_with_available_status_clears_selected_unavailable_window(): void
     {
         $user = User::factory()->create();

@@ -30,6 +30,7 @@ class Car extends Model
     public const UNAVAILABILITY_REASON_MANAGEMENT_DECISION = 'management_decision';
     public const UNAVAILABILITY_REASON_FOR_SALE = 'for_sale';
     public const UNAVAILABILITY_REASON_REGISTRATION = 'registration';
+    public const UNAVAILABILITY_REASON_CHANGE_PLATE = 'change_plate';
     public const UNAVAILABILITY_REASON_NEED_ACTION = 'need_action';
 
     private const RENTABLE_STATUSES = [self::STATUS_AVAILABLE, self::STATUS_PRE_RESERVED];
@@ -48,6 +49,7 @@ class Car extends Model
         self::UNAVAILABILITY_REASON_MANAGEMENT_DECISION,
         self::UNAVAILABILITY_REASON_FOR_SALE,
         self::UNAVAILABILITY_REASON_REGISTRATION,
+        self::UNAVAILABILITY_REASON_CHANGE_PLATE,
     ];
     private const UNAVAILABILITY_REASON_LABELS = [
         self::UNAVAILABILITY_REASON_MAINTENANCE => 'Maintenance',
@@ -58,6 +60,7 @@ class Car extends Model
         self::UNAVAILABILITY_REASON_MANAGEMENT_DECISION => 'Management Decision',
         self::UNAVAILABILITY_REASON_FOR_SALE => 'For Sale',
         self::UNAVAILABILITY_REASON_REGISTRATION => 'Registration',
+        self::UNAVAILABILITY_REASON_CHANGE_PLATE => 'Change Plate',
         self::UNAVAILABILITY_REASON_NEED_ACTION => 'Need Action',
     ];
 
@@ -575,6 +578,7 @@ class Car extends Model
                 self::UNAVAILABILITY_REASON_ACCIDENT,
                 self::UNAVAILABILITY_REASON_INSURANCE,
                 self::UNAVAILABILITY_REASON_REGISTRATION,
+                self::UNAVAILABILITY_REASON_CHANGE_PLATE,
                 self::UNAVAILABILITY_REASON_NEED_ACTION => 'bg-danger',
                 self::UNAVAILABILITY_REASON_FOR_SALE => 'bg-dark',
                 default => 'bg-secondary',
@@ -612,6 +616,7 @@ class Car extends Model
                 self::UNAVAILABILITY_REASON_ACCIDENT,
                 self::UNAVAILABILITY_REASON_INSURANCE,
                 self::UNAVAILABILITY_REASON_REGISTRATION,
+                self::UNAVAILABILITY_REASON_CHANGE_PLATE,
                 self::UNAVAILABILITY_REASON_NEED_ACTION => 'bg-danger-subtle text-danger',
                 self::UNAVAILABILITY_REASON_FOR_SALE => 'bg-dark-subtle text-dark',
                 default => 'bg-secondary-subtle text-secondary',

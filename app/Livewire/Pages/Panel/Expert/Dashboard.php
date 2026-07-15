@@ -1063,6 +1063,7 @@ class Dashboard extends Component
             $car->unavailability_reason === Car::UNAVAILABILITY_REASON_FOR_SALE => 'Hold for sale workflow only',
             $car->unavailability_reason === Car::UNAVAILABILITY_REASON_REGISTRATION => 'Renew registration before reuse',
             $car->unavailability_reason === Car::UNAVAILABILITY_REASON_INSURANCE => 'Renew insurance before dispatch',
+            $car->unavailability_reason === Car::UNAVAILABILITY_REASON_CHANGE_PLATE => 'Complete plate change before reuse',
             default => 'Resolve hold reason before dispatch',
         };
     }
