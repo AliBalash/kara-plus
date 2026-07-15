@@ -5,6 +5,8 @@ namespace Tests\Feature\Reports;
 use App\Livewire\Pages\Panel\Expert\Reports\CustomerBalanceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\CustomerRequestReport;
 use App\Livewire\Pages\Panel\Expert\Reports\FleetPerformanceReport;
+use App\Livewire\Pages\Panel\Expert\Reports\FirstTimeCustomerReport;
+use App\Livewire\Pages\Panel\Expert\Reports\LeadSourceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\PaymentCollectionReport;
 use App\Models\User;
 use Carbon\Carbon;
@@ -38,6 +40,31 @@ class ReportRenderTest extends TestCase
         $html = $component->render()->render();
 
         $this->assertStringContainsString('Customer Balance Monitor', $html);
+    }
+
+    public function test_first_time_customer_report_view_renders(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $component = app(FirstTimeCustomerReport::class);
+        $component->mount();
+
+        $html = $component->render()->render();
+
+        $this->assertStringContainsString('First-Time Customer Acquisition', $html);
+    }
+
+    public function test_lead_source_report_view_renders(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $component = app(LeadSourceReport::class);
+
+        $html = $component->render()->render();
+
+        $this->assertStringContainsString('Lead Source Intelligence', $html);
     }
 
     public function test_fleet_performance_report_view_renders(): void

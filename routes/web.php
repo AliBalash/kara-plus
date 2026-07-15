@@ -29,6 +29,8 @@ use App\Livewire\Pages\Panel\Expert\Profile\Profile;
 use App\Livewire\Pages\Panel\Expert\Reports\CustomerBalanceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\CustomerRequestReport;
 use App\Livewire\Pages\Panel\Expert\Reports\FleetPerformanceReport;
+use App\Livewire\Pages\Panel\Expert\Reports\FirstTimeCustomerReport;
+use App\Livewire\Pages\Panel\Expert\Reports\LeadSourceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\PaymentCollectionReport;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingPickupList;
@@ -160,6 +162,12 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/reports/customer-requests', CustomerRequestReport::class)->name('reports.customer-requests');
     Route::get('/expert/reports/customer-requests/export', [ReportExportController::class, 'customerRequests'])
         ->name('reports.customer-requests.export');
+    Route::get('/expert/reports/first-time-customers', FirstTimeCustomerReport::class)->name('reports.first-time-customers');
+    Route::get('/expert/reports/first-time-customers/export', [ReportExportController::class, 'firstTimeCustomers'])
+        ->name('reports.first-time-customers.export');
+    Route::get('/expert/reports/lead-sources', LeadSourceReport::class)->name('reports.lead-sources');
+    Route::get('/expert/reports/lead-sources/export', [ReportExportController::class, 'leadSources'])
+        ->name('reports.lead-sources.export');
     Route::get('/expert/reports/customer-balances', CustomerBalanceReport::class)->name('reports.customer-balances');
     Route::get('/expert/reports/customer-balances/export', [ReportExportController::class, 'customerBalances'])
         ->name('reports.customer-balances.export');

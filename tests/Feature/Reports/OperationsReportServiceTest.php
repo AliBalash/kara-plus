@@ -3,9 +3,11 @@
 namespace Tests\Feature\Reports;
 
 use App\Models\Car;
+use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
+use App\Models\Lead;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Reports\OperationsReportService;
@@ -235,6 +237,172 @@ class OperationsReportServiceTest extends TestCase
         $this->assertSame((string) $activeContract->id, $report['rows'][0]['open_contract_ids']);
         $this->assertStringNotContainsString((string) $cancelledContract->id, $report['rows'][0]['open_contract_ids']);
         $this->assertSame(600.0, $report['summary']['total_outstanding']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_first_time_customer_report_only_returns_customers_without_an_older_eligible_contract(): void
+    {
+        $car = Car::factory()->create();
+
+        $existingCustomer = Customer::factory()->create([
+            'first_name' => 'Old',
+            'last_name' => 'Customer',
+            'gender' => 'male',
+        ]);
+        Contract::factory()->for($existingCustomer)->for($car)->status('complete')->create([
+            'pickup_date' => Carbon::parse('2025-06-20 10:00:00'),
+            'return_date' => Carbon::parse('2025-06-23 10:00:00'),
+            'created_at' => Carbon::parse('2025-06-10 09:00:00'),
+            'total_price' => 700,
+        ]);
+        $excludedJulyContract = Contract::factory()->for($existingCustomer)->for($car)->status('complete')->create([
+            'pickup_date' => Carbon::parse('2025-07-05 10:00:00'),
+            'return_date' => Carbon::parse('2025-07-08 10:00:00'),
+            'created_at' => Carbon::parse('2025-07-01 09:00:00'),
+            'total_price' => 900,
+        ]);
+
+        $newCustomer = Customer::factory()->create([
+            'first_name' => 'New',
+            'last_name' => 'Customer',
+            'gender' => 'female',
+        ]);
+        $includedJulyContract = Contract::factory()->for($newCustomer)->for($car)->status('reserved')->create([
+            'pickup_date' => Carbon::parse('2025-07-10 10:00:00'),
+            'return_date' => Carbon::parse('2025-07-14 10:00:00'),
+            'created_at' => Carbon::parse('2025-07-02 09:00:00'),
+            'total_price' => 1200,
+            'used_daily_rate' => 300,
+        ]);
+
+        $cancelledBeforeCustomer = Customer::factory()->create([
+            'first_name' => 'Retry',
+            'last_name' => 'Customer',
+            'gender' => 'female',
+        ]);
+        Contract::factory()->for($cancelledBeforeCustomer)->for($car)->status('cancelled')->create([
+            'pickup_date' => Carbon::parse('2025-06-15 10:00:00'),
+            'return_date' => Carbon::parse('2025-06-16 10:00:00'),
+            'created_at' => Carbon::parse('2025-06-01 09:00:00'),
+            'total_price' => 500,
+        ]);
+        $includedAfterCancelledContract = Contract::factory()->for($cancelledBeforeCustomer)->for($car)->status('complete')->create([
+            'pickup_date' => Carbon::parse('2025-07-18 10:00:00'),
+            'return_date' => Carbon::parse('2025-07-20 10:00:00'),
+            'created_at' => Carbon::parse('2025-07-03 09:00:00'),
+            'total_price' => 800,
+        ]);
+
+        $report = $this->service->firstTimeCustomers([
+            'date_field' => 'pickup_date',
+            'date_from' => '2025-07-01',
+            'date_to' => '2025-07-31',
+        ]);
+
+        $this->assertCount(2, $report['rows']);
+        $this->assertSame(2, $report['summary']['new_customers']);
+        $this->assertSame(2, $report['summary']['first_contracts']);
+        $this->assertSame('Pickup Date', $report['rows'][0]['first_contract_basis']);
+        $this->assertSame(
+            collect([$includedAfterCancelledContract->id, $includedJulyContract->id])->sort()->values()->all(),
+            collect($report['rows'])->pluck('contract_id')->sort()->values()->all()
+        );
+        $this->assertNotContains($excludedJulyContract->id, collect($report['rows'])->pluck('contract_id')->all());
+        $this->assertContains('First Contract Date', $report['export_headings']);
+    }
+
+    public function test_lead_source_report_summarizes_channels_and_conversion_in_date_window(): void
+    {
+        Carbon::setTestNow('2026-07-15 10:00:00');
+
+        $assignedUser = User::factory()->create(['first_name' => 'Leila', 'last_name' => 'Owner']);
+        $createdBy = User::factory()->create(['first_name' => 'Omid', 'last_name' => 'Creator']);
+        $convertedBy = User::factory()->create(['first_name' => 'Nima', 'last_name' => 'Closer']);
+        $customer = Customer::factory()->create([
+            'first_name' => 'Converted',
+            'last_name' => 'Customer',
+            'gender' => 'female',
+        ]);
+        $model = CarModel::factory()->create([
+            'brand' => 'BMW',
+            'model' => 'X5',
+        ]);
+
+        Lead::create([
+            'first_name' => 'Sara',
+            'last_name' => 'Ads',
+            'phone' => '+971501111111',
+            'email' => 'sara@example.com',
+            'source' => 'google_ads',
+            'discovery_source' => 'Summer campaign',
+            'requested_brand' => 'BMW',
+            'requested_model_id' => $model->id,
+            'request_date' => '2026-07-10',
+            'pickup_date' => '2026-07-20',
+            'return_date' => '2026-07-25',
+            'priority' => Lead::PRIORITY_HIGH,
+            'status' => Lead::STATUS_FOLLOW_UP,
+            'assigned_to' => $assignedUser->id,
+            'created_by' => $createdBy->id,
+            'next_follow_up_at' => '2026-07-14 09:00:00',
+            'last_contacted_at' => '2026-07-11 12:00:00',
+            'notes' => 'Needs SUV',
+            'created_at' => '2026-07-10 08:30:00',
+            'updated_at' => '2026-07-10 08:30:00',
+        ]);
+
+        Lead::create([
+            'first_name' => 'Mina',
+            'last_name' => 'Chat',
+            'phone' => '+971502222222',
+            'email' => 'mina@example.com',
+            'source' => 'whatsapp',
+            'discovery_source' => 'Referral',
+            'requested_brand' => 'BMW',
+            'requested_model_id' => $model->id,
+            'request_date' => '2026-07-12',
+            'priority' => Lead::PRIORITY_URGENT,
+            'status' => Lead::STATUS_CONVERTED,
+            'assigned_to' => $assignedUser->id,
+            'created_by' => $createdBy->id,
+            'customer_id' => $customer->id,
+            'converted_by' => $convertedBy->id,
+            'converted_at' => '2026-07-13 15:00:00',
+            'created_at' => '2026-07-12 09:00:00',
+            'updated_at' => '2026-07-13 15:00:00',
+        ]);
+
+        Lead::create([
+            'first_name' => 'Outside',
+            'last_name' => 'Window',
+            'phone' => '+971503333333',
+            'source' => 'google_ads',
+            'request_date' => '2026-06-25',
+            'priority' => Lead::PRIORITY_NORMAL,
+            'status' => Lead::STATUS_NEW,
+            'created_by' => $createdBy->id,
+            'created_at' => '2026-06-25 10:00:00',
+            'updated_at' => '2026-06-25 10:00:00',
+        ]);
+
+        $report = $this->service->leadSources([
+            'date_field' => 'request_date',
+            'date_from' => '2026-07-01',
+            'date_to' => '2026-07-31',
+        ]);
+
+        $this->assertCount(2, $report['rows']);
+        $this->assertSame(2, $report['summary']['matching_leads']);
+        $this->assertSame(1, $report['summary']['converted_leads']);
+        $this->assertSame(50.0, $report['summary']['conversion_rate']);
+        $this->assertSame(1, $report['summary']['due_follow_ups']);
+        $this->assertSame(2, $report['summary']['unique_channels']);
+        $this->assertContains('Google Ads', collect($report['rows'])->pluck('source_label')->all());
+        $this->assertContains('WhatsApp', collect($report['rows'])->pluck('source_label')->all());
+        $this->assertContains('Communication Channel', $report['export_headings']);
+        $this->assertSame('All channels', $report['filter_summary']['Communication Channel']);
+        $this->assertCount(2, $report['extra_sheets']);
 
         Carbon::setTestNow();
     }

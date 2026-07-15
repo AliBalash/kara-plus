@@ -39,6 +39,30 @@ class ReportExportController extends Controller
         );
     }
 
+    public function firstTimeCustomers(Request $request): BinaryFileResponse
+    {
+        $payload = $this->reports->firstTimeCustomers($request->query());
+
+        return $this->download(
+            title: 'First-Time Customer Report',
+            filePrefix: 'first_time_customer_report',
+            dataSheetTitle: 'First-Time Customers',
+            payload: $payload
+        );
+    }
+
+    public function leadSources(Request $request): BinaryFileResponse
+    {
+        $payload = $this->reports->leadSources($request->query());
+
+        return $this->download(
+            title: 'Lead Source Report',
+            filePrefix: 'lead_source_report',
+            dataSheetTitle: 'Lead Sources',
+            payload: $payload
+        );
+    }
+
     public function fleetPerformance(Request $request): BinaryFileResponse
     {
         $payload = $this->reports->fleetPerformance($request->query());

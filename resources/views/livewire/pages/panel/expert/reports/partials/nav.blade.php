@@ -1,6 +1,8 @@
 @php
     $items = [
         ['route' => 'reports.customer-requests', 'label' => 'Customer Requests', 'icon' => 'bx bx-folder-open'],
+        ['route' => 'reports.first-time-customers', 'label' => 'First-Time Customers', 'icon' => 'bx bx-user-plus'],
+        ['route' => 'reports.lead-sources', 'label' => 'Lead Sources', 'icon' => 'bx bx-share-alt'],
         ['route' => 'reports.customer-balances', 'label' => 'Customer Balances', 'icon' => 'bx bx-wallet-alt'],
         ['route' => 'reports.fleet-performance', 'label' => 'Fleet Performance', 'icon' => 'bx bx-car'],
         ['route' => 'reports.payment-collections', 'label' => 'Payment Collections', 'icon' => 'bx bx-receipt'],

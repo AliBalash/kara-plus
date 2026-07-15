@@ -5,6 +5,7 @@ namespace App\Services\Reports;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\Customer;
+use App\Models\Lead;
 use App\Models\Payment;
 use App\Support\ContractStatus;
 use Carbon\Carbon;
@@ -16,10 +17,13 @@ use Illuminate\Support\Str;
 class OperationsReportService
 {
     private const CUSTOMER_REQUEST_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
+    private const FIRST_TIME_CUSTOMER_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
+    private const FIRST_TIME_CUSTOMER_EXCLUDED_STATUSES = ['cancelled', 'rejected', 'draft'];
 
     private const BALANCE_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
 
     private const PAYMENT_DATE_FIELDS = ['payment_date', 'created_at'];
+    private const LEAD_DATE_FIELDS = ['request_date', 'created_at', 'converted_at', 'next_follow_up_at', 'last_contacted_at', 'pickup_date', 'return_date'];
 
     private const MONTHLY_CONTRACT_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
     private const MONTHLY_CONTRACT_ACTIVE_STATUSES = ['reserved', 'awaiting_return'];
@@ -450,6 +454,456 @@ class OperationsReportService
                     $row['status_label'],
                 ];
             })->all(),
+        ];
+    }
+
+    public function firstTimeCustomers(array $filters = []): array
+    {
+        $filters = $this->normalizeFirstTimeCustomerFilters($filters);
+
+        $contracts = Contract::query()
+            ->with([
+                'customer',
+                'car.carModel',
+                'payments',
+                'charges',
+                'pickupDocument.user',
+                'pickupDocument.tarsApprover',
+                'pickupDocument.kardoApprover',
+                'returnDocument.user',
+                'user',
+                'agent',
+                'deliveryDriver',
+                'returnDriver',
+                'statuses.user',
+            ])
+            ->tap(fn (Builder $query) => $this->applyFirstTimeCustomerScope($query, $filters['date_field']))
+            ->tap(fn (Builder $query) => $this->applyContractSearch($query, $filters['search']))
+            ->when(
+                $filters['status'] !== 'all',
+                fn (Builder $query) => $query->where('current_status', $filters['status'])
+            )
+            ->when(
+                $filters['agent_id'] !== null,
+                fn (Builder $query) => $query->where('agent_id', $filters['agent_id'])
+            )
+            ->when(
+                $filters['kardo'] === 'required',
+                fn (Builder $query) => $query->where('kardo_required', true)
+            )
+            ->when(
+                $filters['kardo'] === 'not_required',
+                fn (Builder $query) => $query->where('kardo_required', false)
+            )
+            ->tap(fn (Builder $query) => $this->applyDateRange(
+                $query,
+                $filters['date_field'],
+                $filters['date_from'],
+                $filters['date_to']
+            ))
+            ->get()
+            ->sortByDesc(fn (Contract $contract) => $this->timestampValue($contract->{$filters['date_field']} ?? $contract->created_at))
+            ->values();
+
+        $dateBasisLabel = Str::headline(str_replace('_', ' ', $filters['date_field']));
+
+        $rows = $contracts->map(function (Contract $contract) use ($dateBasisLabel, $filters): array {
+            $row = $this->mapCustomerRequestRow($contract);
+            $row['first_contract_basis'] = $dateBasisLabel;
+            $row['first_contract_date'] = $this->formatDateTime($contract->{$filters['date_field']} ?? $contract->created_at);
+
+            return $row;
+        })->values();
+
+        $statusBreakdown = $rows
+            ->countBy('status_label')
+            ->sortDesc();
+
+        $summary = [
+            'first_contracts' => $rows->count(),
+            'new_customers' => $rows->pluck('customer_id')->filter()->unique()->count(),
+            'gross_contract_value' => round((float) $rows->sum('total_price'), 2),
+            'recorded_payments' => round((float) $rows->sum('net_payments'), 2),
+            'outstanding_balance' => round((float) $rows->sum('remaining_balance_positive'), 2),
+            'average_rental_days' => round((float) $rows->avg('duration_days'), 1),
+        ];
+
+        return [
+            'filters' => $filters,
+            'filter_summary' => [
+                'Customer Search' => $filters['search'] !== '' ? $filters['search'] : 'All customers',
+                'First Contract Basis' => $dateBasisLabel,
+                'Date From' => $filters['date_from'] ?? 'Open',
+                'Date To' => $filters['date_to'] ?? 'Open',
+                'Status' => $filters['status'] === 'all' ? 'All eligible statuses' : ContractStatus::label($filters['status']),
+                'KARDO' => match ($filters['kardo']) {
+                    'required' => 'Required only',
+                    'not_required' => 'Not required only',
+                    default => 'All contracts',
+                },
+            ],
+            'summary' => $summary,
+            'summary_sections' => [
+                'New Customer Snapshot' => [
+                    'First Contracts' => $summary['first_contracts'],
+                    'New Customers' => $summary['new_customers'],
+                    'Gross Contract Value (AED)' => $summary['gross_contract_value'],
+                    'Recorded Payments (AED)' => $summary['recorded_payments'],
+                    'Outstanding Balance (AED)' => $summary['outstanding_balance'],
+                    'Average Rental Days' => $summary['average_rental_days'],
+                ],
+                'Status Mix' => $statusBreakdown->all(),
+            ],
+            'rows' => $rows,
+            'export_headings' => [
+                'First Contract Basis',
+                'First Contract Date',
+                'Contract ID',
+                'Request Date',
+                'Pickup Date',
+                'Return Date',
+                'Rental Days',
+                'Rental Rate AED/Day',
+                'Status',
+                'Customer',
+                'Phone',
+                'Nationality',
+                'Passport',
+                'License',
+                'Car',
+                'Plate',
+                'Fleet',
+                'Pickup Location',
+                'Return Location',
+                'Submitted By',
+                'Sales Agent',
+                'Assigned Expert',
+                'Delivery Driver',
+                'Return Driver',
+                'Pickup Recorded By',
+                'Return Recorded By',
+                'Licensed Driver',
+                'Agreement Number',
+                'TARS Approved At',
+                'TARS Approved By',
+                'KARDO Approved At',
+                'KARDO Approved By',
+                'Pickup Fuel Level',
+                'Pickup Mileage',
+                'Return Fuel Level',
+                'Return Mileage',
+                'Pickup Document Completed',
+                'Return Document Completed',
+                'Operational Timeline',
+                'Total Contract AED',
+                'Recorded Payments AED',
+                'Security Deposit Paid AED',
+                'Discounts AED',
+                'Refunds AED',
+                'Extras Paid AED',
+                'Outstanding AED',
+                'Security Hold',
+                'Payment On Delivery',
+                'KARDO',
+                'Insurance',
+                'Driver Service Hours',
+                'Driver Service Cost AED',
+                'Driving License Option',
+                'Driving License Cost AED',
+                'Charge Total AED',
+                'Charge Breakdown',
+                'Payment Breakdown',
+                'Security Deposit Note',
+                'Notes',
+            ],
+            'export_rows' => $rows->map(function (array $row): array {
+                return [
+                    $row['first_contract_basis'],
+                    $row['first_contract_date'],
+                    $row['contract_id'],
+                    $row['request_date'],
+                    $row['pickup_date'],
+                    $row['return_date'],
+                    $row['duration_days'],
+                    $row['rental_rate'],
+                    $row['status_label'],
+                    $row['customer_name'],
+                    $row['customer_phone'],
+                    $row['customer_nationality'],
+                    $row['passport_number'],
+                    $row['license_number'],
+                    $row['car_name'],
+                    $row['plate_number'],
+                    $row['ownership'],
+                    $row['pickup_location'],
+                    $row['return_location'],
+                    $row['submitted_by'],
+                    $row['sales_agent'],
+                    $row['assigned_expert'],
+                    $row['delivery_driver'],
+                    $row['return_driver'],
+                    $row['pickup_recorded_by'],
+                    $row['return_recorded_by'],
+                    $row['licensed_driver_name'],
+                    $row['agreement_number'],
+                    $row['tars_approved_at'],
+                    $row['tars_approved_by'],
+                    $row['kardo_approved_at'],
+                    $row['kardo_approved_by'],
+                    $row['pickup_fuel_level'],
+                    $row['pickup_mileage'],
+                    $row['return_fuel_level'],
+                    $row['return_mileage'],
+                    $row['pickup_document_completed'],
+                    $row['return_document_completed'],
+                    $row['status_timeline'],
+                    $row['total_price'],
+                    $row['net_payments'],
+                    $row['security_deposit_paid'],
+                    $row['discounts'],
+                    $row['refunds'],
+                    $row['extras_paid'],
+                    $row['remaining_balance'],
+                    $row['deposit_hold'],
+                    $row['payment_on_delivery'],
+                    $row['kardo_required'],
+                    $row['selected_insurance'],
+                    $row['driver_service_hours'],
+                    $row['driver_service_cost'],
+                    $row['driving_license_option'],
+                    $row['driving_license_cost'],
+                    $row['charge_total'],
+                    $row['charge_breakdown'],
+                    $row['payment_breakdown'],
+                    $row['security_deposit_note'],
+                    $row['notes'],
+                ];
+            })->all(),
+            'extra_sheets' => [
+                [
+                    'title' => 'Status Timeline',
+                    'headings' => [
+                        'Contract ID',
+                        'Customer',
+                        'Vehicle',
+                        'Status',
+                        'Changed At',
+                        'Changed By',
+                        'Notes',
+                    ],
+                    'rows' => $this->buildCustomerRequestTimelineRows($contracts),
+                    'accentColor' => '1D4ED8',
+                ],
+                [
+                    'title' => 'Payment Ledger',
+                    'headings' => [
+                        'Contract ID',
+                        'Customer',
+                        'Vehicle',
+                        'Payment Date',
+                        'Type',
+                        'Method',
+                        'Currency',
+                        'Amount',
+                        'Amount AED',
+                        'Approval',
+                        'Paid',
+                        'Refundable',
+                        'Description',
+                        'Note',
+                    ],
+                    'rows' => $this->buildCustomerRequestPaymentRows($contracts),
+                    'accentColor' => '7C3AED',
+                ],
+                [
+                    'title' => 'Charge Breakdown',
+                    'headings' => [
+                        'Contract ID',
+                        'Customer',
+                        'Vehicle',
+                        'Charge Title',
+                        'Charge Type',
+                        'Amount AED',
+                        'Description',
+                    ],
+                    'rows' => $this->buildCustomerRequestChargeRows($contracts),
+                    'accentColor' => 'B45309',
+                ],
+            ],
+        ];
+    }
+
+    public function leadSources(array $filters = []): array
+    {
+        $filters = $this->normalizeLeadFilters($filters);
+
+        $leads = Lead::query()
+            ->with(['assignedUser', 'creator', 'convertedBy', 'customer', 'requestedModel'])
+            ->tap(fn (Builder $query) => $this->applyLeadSearch($query, $filters['search']))
+            ->when(
+                $filters['source'] !== 'all',
+                fn (Builder $query) => $query->where('source', $filters['source'])
+            )
+            ->when(
+                $filters['status'] !== 'all',
+                fn (Builder $query) => $query->where('status', $filters['status'])
+            )
+            ->when(
+                $filters['priority'] !== 'all',
+                fn (Builder $query) => $query->where('priority', $filters['priority'])
+            )
+            ->tap(fn (Builder $query) => $this->applyDateRange(
+                $query,
+                $filters['date_field'],
+                $filters['date_from'],
+                $filters['date_to']
+            ))
+            ->get()
+            ->sortByDesc(fn (Lead $lead) => $this->timestampValue($lead->{$filters['date_field']} ?? $lead->request_date ?? $lead->created_at))
+            ->values();
+
+        $rows = $leads->map(fn (Lead $lead) => $this->mapLeadSourceRow($lead, $filters['date_field']))->values();
+
+        $channelBreakdown = $rows->countBy('source_label')->sortDesc();
+        $statusBreakdown = $rows->countBy('status_label')->sortDesc();
+        $priorityBreakdown = $rows->countBy('priority_label')->sortDesc();
+        $discoveryBreakdown = $rows
+            ->pluck('discovery_source')
+            ->filter(fn ($value) => $value !== 'No discovery source')
+            ->countBy()
+            ->sortDesc();
+
+        $matchingLeads = $rows->count();
+        $convertedLeads = $rows->where('is_converted', true)->count();
+        $conversionRate = $matchingLeads > 0 ? round(($convertedLeads / $matchingLeads) * 100, 1) : 0.0;
+
+        $summary = [
+            'matching_leads' => $matchingLeads,
+            'converted_leads' => $convertedLeads,
+            'conversion_rate' => $conversionRate,
+            'due_follow_ups' => $rows->where('follow_up_due', true)->count(),
+            'unique_channels' => $rows->pluck('source')->filter()->unique()->count(),
+            'top_channel' => $channelBreakdown->keys()->first() ?? 'No channel',
+            'top_discovery_source' => $discoveryBreakdown->keys()->first() ?? 'No discovery source',
+        ];
+
+        return [
+            'filters' => $filters,
+            'filter_summary' => [
+                'Search' => $filters['search'] !== '' ? $filters['search'] : 'All leads',
+                'Date Basis' => Str::headline(str_replace('_', ' ', $filters['date_field'])),
+                'Date From' => $filters['date_from'] ?? 'Open',
+                'Date To' => $filters['date_to'] ?? 'Open',
+                'Communication Channel' => $filters['source'] === 'all'
+                    ? 'All channels'
+                    : Contract::communicationChannelLabel($filters['source']),
+                'Lead Status' => $filters['status'] === 'all'
+                    ? 'All statuses'
+                    : (Lead::statuses()[$filters['status']] ?? Str::headline(str_replace('_', ' ', $filters['status']))),
+                'Priority' => $filters['priority'] === 'all'
+                    ? 'All priorities'
+                    : (Lead::priorities()[$filters['priority']] ?? Str::headline(str_replace('_', ' ', $filters['priority']))),
+            ],
+            'summary' => $summary,
+            'summary_sections' => [
+                'Lead Snapshot' => [
+                    'Matching Leads' => $summary['matching_leads'],
+                    'Converted Leads' => $summary['converted_leads'],
+                    'Conversion Rate (%)' => $summary['conversion_rate'],
+                    'Due Follow-ups' => $summary['due_follow_ups'],
+                    'Unique Channels' => $summary['unique_channels'],
+                    'Top Channel' => $summary['top_channel'],
+                    'Top Discovery Source' => $summary['top_discovery_source'],
+                ],
+                'Channel Mix' => $channelBreakdown->all(),
+                'Status Mix' => $statusBreakdown->all(),
+                'Priority Mix' => $priorityBreakdown->all(),
+            ],
+            'rows' => $rows,
+            'export_headings' => [
+                'Lead ID',
+                'Selected Date Basis',
+                'Selected Date',
+                'Request Date',
+                'Lead',
+                'Phone',
+                'Messenger Phone',
+                'Email',
+                'Communication Channel',
+                'How Found Us',
+                'Status',
+                'Priority',
+                'Requested Vehicle',
+                'Assigned To',
+                'Created By',
+                'Next Follow-up',
+                'Last Contact',
+                'Converted',
+                'Converted At',
+                'Converted By',
+                'Customer ID',
+                'Customer',
+                'Created At',
+                'Pickup Date',
+                'Return Date',
+                'Notes',
+            ],
+            'export_rows' => $rows->map(function (array $row): array {
+                return [
+                    $row['lead_id'],
+                    $row['selected_date_basis'],
+                    $row['selected_date'],
+                    $row['request_date'],
+                    $row['lead_name'],
+                    $row['phone'],
+                    $row['messenger_phone'],
+                    $row['email'],
+                    $row['source_label'],
+                    $row['discovery_source'],
+                    $row['status_label'],
+                    $row['priority_label'],
+                    $row['requested_vehicle'],
+                    $row['assigned_to'],
+                    $row['created_by'],
+                    $row['next_follow_up_at'],
+                    $row['last_contacted_at'],
+                    $row['is_converted_label'],
+                    $row['converted_at'],
+                    $row['converted_by'],
+                    $row['customer_id'],
+                    $row['customer_name'],
+                    $row['created_at'],
+                    $row['pickup_date'],
+                    $row['return_date'],
+                    $row['notes'],
+                ];
+            })->all(),
+            'extra_sheets' => [
+                [
+                    'title' => 'Channel Summary',
+                    'headings' => [
+                        'Communication Channel',
+                        'Lead Count',
+                        'Converted',
+                        'Open',
+                        'Due Follow-ups',
+                        'Conversion Rate %',
+                    ],
+                    'rows' => $this->buildLeadSourceChannelRows($rows),
+                    'accentColor' => '0F766E',
+                ],
+                [
+                    'title' => 'Discovery Sources',
+                    'headings' => [
+                        'Discovery Source',
+                        'Lead Count',
+                        'Converted',
+                        'Top Channel',
+                    ],
+                    'rows' => $this->buildLeadSourceDiscoveryRows($rows),
+                    'accentColor' => '9333EA',
+                ],
+            ],
         ];
     }
 
@@ -1298,6 +1752,88 @@ class OperationsReportService
         ];
     }
 
+    private function mapLeadSourceRow(Lead $lead, string $dateField): array
+    {
+        $source = trim((string) ($lead->source ?? ''));
+        $selectedDate = $lead->{$dateField} ?? $lead->request_date ?? $lead->created_at;
+        $converted = $lead->isConverted();
+
+        return [
+            'lead_id' => $lead->id,
+            'selected_date_basis' => Str::headline(str_replace('_', ' ', $dateField)),
+            'selected_date' => $this->formatLeadDateField($dateField, $selectedDate),
+            'request_date' => $this->formatDate($lead->request_date),
+            'lead_name' => $lead->displayName(),
+            'phone' => $lead->phone ?: '—',
+            'messenger_phone' => $lead->messenger_phone ?: '—',
+            'email' => $lead->email ?: '—',
+            'source' => $source,
+            'source_label' => $source !== '' ? Contract::communicationChannelLabel($source) : 'No channel',
+            'discovery_source' => $lead->discovery_source ?: 'No discovery source',
+            'status' => $lead->status,
+            'status_label' => Lead::statuses()[$lead->status] ?? Str::headline(str_replace('_', ' ', $lead->status)),
+            'priority' => $lead->priority,
+            'priority_label' => Lead::priorities()[$lead->priority] ?? Str::headline(str_replace('_', ' ', $lead->priority)),
+            'requested_vehicle' => $lead->requestedVehicleLabel(),
+            'assigned_to' => $lead->assignedUser?->fullName() ?? 'Unassigned',
+            'created_by' => $lead->creator?->fullName() ?? '—',
+            'next_follow_up_at' => $this->formatDateTime($lead->next_follow_up_at),
+            'last_contacted_at' => $this->formatDateTime($lead->last_contacted_at),
+            'is_converted' => $converted,
+            'is_converted_label' => $converted ? 'Yes' : 'No',
+            'converted_at' => $this->formatDateTime($lead->converted_at),
+            'converted_by' => $lead->convertedBy?->fullName() ?? '—',
+            'customer_id' => $lead->customer_id ?: '—',
+            'customer_name' => $lead->customer?->fullName() ?? '—',
+            'created_at' => $this->formatDateTime($lead->created_at),
+            'pickup_date' => $this->formatDate($lead->pickup_date),
+            'return_date' => $this->formatDate($lead->return_date),
+            'follow_up_due' => $lead->isFollowUpDue(),
+            'notes' => trim((string) ($lead->notes ?? '')) !== '' ? trim((string) $lead->notes) : '—',
+        ];
+    }
+
+    private function buildLeadSourceChannelRows(Collection $rows): array
+    {
+        return $rows
+            ->groupBy('source_label')
+            ->map(function (Collection $items, string $label): array {
+                $leadCount = $items->count();
+                $converted = $items->where('is_converted', true)->count();
+
+                return [
+                    $label,
+                    $leadCount,
+                    $converted,
+                    $leadCount - $converted,
+                    $items->where('follow_up_due', true)->count(),
+                    $leadCount > 0 ? round(($converted / $leadCount) * 100, 1) : 0.0,
+                ];
+            })
+            ->sortByDesc(fn (array $row) => $row[1])
+            ->values()
+            ->all();
+    }
+
+    private function buildLeadSourceDiscoveryRows(Collection $rows): array
+    {
+        return $rows
+            ->groupBy('discovery_source')
+            ->map(function (Collection $items, string $label): array {
+                $topChannel = $items->countBy('source_label')->sortDesc()->keys()->first() ?? 'No channel';
+
+                return [
+                    $label,
+                    $items->count(),
+                    $items->where('is_converted', true)->count(),
+                    $topChannel,
+                ];
+            })
+            ->sortByDesc(fn (array $row) => $row[1])
+            ->values()
+            ->all();
+    }
+
     private function mapMonthlyContractRow(Contract $contract, Carbon $endingSoonStart, Carbon $endingSoonEnd): array
     {
         $pickupAt = $contract->pickup_date instanceof Carbon ? $contract->pickup_date : Carbon::parse($contract->pickup_date);
@@ -1367,6 +1903,27 @@ class OperationsReportService
         ];
     }
 
+    private function normalizeFirstTimeCustomerFilters(array $filters): array
+    {
+        $dateField = (string) ($filters['date_field'] ?? 'pickup_date');
+        $dateFrom = $this->normalizeDateString($filters['date_from'] ?? null);
+        $dateTo = $this->normalizeDateString($filters['date_to'] ?? null);
+
+        if ($dateFrom !== null && $dateTo !== null && Carbon::parse($dateFrom)->greaterThan(Carbon::parse($dateTo))) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
+        return [
+            'search' => trim((string) ($filters['search'] ?? '')),
+            'date_field' => in_array($dateField, self::FIRST_TIME_CUSTOMER_DATE_FIELDS, true) ? $dateField : 'pickup_date',
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'status' => trim((string) ($filters['status'] ?? 'all')) ?: 'all',
+            'agent_id' => isset($filters['agent_id']) && $filters['agent_id'] !== '' ? (int) $filters['agent_id'] : null,
+            'kardo' => trim((string) ($filters['kardo'] ?? 'all')) ?: 'all',
+        ];
+    }
+
     private function normalizeFleetFilters(array $filters): array
     {
         $dateFrom = $this->normalizeDateString($filters['date_from'] ?? null);
@@ -1416,6 +1973,42 @@ class OperationsReportService
             'approval_status' => trim((string) ($filters['approval_status'] ?? 'all')) ?: 'all',
             'payment_state' => trim((string) ($filters['payment_state'] ?? 'all')) ?: 'all',
             'payment_method' => trim((string) ($filters['payment_method'] ?? 'all')) ?: 'all',
+        ];
+    }
+
+    private function normalizeLeadFilters(array $filters): array
+    {
+        $dateField = (string) ($filters['date_field'] ?? 'request_date');
+        $dateFrom = $this->normalizeDateString($filters['date_from'] ?? null);
+        $dateTo = $this->normalizeDateString($filters['date_to'] ?? null);
+        $source = trim((string) ($filters['source'] ?? 'all')) ?: 'all';
+        $status = trim((string) ($filters['status'] ?? 'all')) ?: 'all';
+        $priority = trim((string) ($filters['priority'] ?? 'all')) ?: 'all';
+
+        if ($dateFrom !== null && $dateTo !== null && Carbon::parse($dateFrom)->greaterThan(Carbon::parse($dateTo))) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
+        if ($source !== 'all' && ! in_array($source, Contract::COMMUNICATION_CHANNELS, true)) {
+            $source = 'all';
+        }
+
+        if ($status !== 'all' && ! array_key_exists($status, Lead::statuses())) {
+            $status = 'all';
+        }
+
+        if ($priority !== 'all' && ! array_key_exists($priority, Lead::priorities())) {
+            $priority = 'all';
+        }
+
+        return [
+            'search' => trim((string) ($filters['search'] ?? '')),
+            'date_field' => in_array($dateField, self::LEAD_DATE_FIELDS, true) ? $dateField : 'request_date',
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'source' => $source,
+            'status' => $status,
+            'priority' => $priority,
         ];
     }
 
@@ -1474,6 +2067,56 @@ class OperationsReportService
                         });
                 });
         });
+    }
+
+    private function applyLeadSearch(Builder $query, string $search): void
+    {
+        if ($search === '') {
+            return;
+        }
+
+        $like = $this->likeValue($search);
+
+        $query->where(function (Builder $leadQuery) use ($like) {
+            $leadQuery->where('leads.id', 'like', $like)
+                ->orWhere('first_name', 'like', $like)
+                ->orWhere('last_name', 'like', $like)
+                ->orWhere('phone', 'like', $like)
+                ->orWhere('messenger_phone', 'like', $like)
+                ->orWhere('email', 'like', $like)
+                ->orWhere('source', 'like', $like)
+                ->orWhere('discovery_source', 'like', $like)
+                ->orWhere('requested_brand', 'like', $like)
+                ->orWhere('requested_vehicle', 'like', $like)
+                ->orWhere('notes', 'like', $like)
+                ->orWhereHas('requestedModel', function (Builder $modelQuery) use ($like) {
+                    $modelQuery->where('brand', 'like', $like)
+                        ->orWhere('model', 'like', $like);
+                });
+        });
+    }
+
+    private function applyFirstTimeCustomerScope(Builder $query, string $dateField): void
+    {
+        $query
+            ->whereNotNull('customer_id')
+            ->whereNotNull($dateField)
+            ->whereNotIn('current_status', self::FIRST_TIME_CUSTOMER_EXCLUDED_STATUSES)
+            ->whereNotExists(function ($previousQuery) use ($dateField) {
+                $previousQuery->selectRaw('1')
+                    ->from('contracts as previous_contracts')
+                    ->whereColumn('previous_contracts.customer_id', 'contracts.customer_id')
+                    ->whereNotNull("previous_contracts.{$dateField}")
+                    ->whereNotIn('previous_contracts.current_status', self::FIRST_TIME_CUSTOMER_EXCLUDED_STATUSES)
+                    ->where(function ($timelineQuery) use ($dateField) {
+                        $timelineQuery->whereColumn("previous_contracts.{$dateField}", '<', "contracts.{$dateField}")
+                            ->orWhere(function ($sameMomentQuery) use ($dateField) {
+                                $sameMomentQuery
+                                    ->whereColumn("previous_contracts.{$dateField}", '=', "contracts.{$dateField}")
+                                    ->whereColumn('previous_contracts.id', '<', 'contracts.id');
+                            });
+                    });
+            });
     }
 
     private function applyDateRange(Builder|Relation $query, string $column, ?string $from, ?string $to): void
@@ -1544,6 +2187,36 @@ class OperationsReportService
         }
 
         return '—';
+    }
+
+    private function formatDate(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        if ($value instanceof Carbon) {
+            return $value->format('Y-m-d');
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value)->format('Y-m-d');
+        }
+
+        if (is_string($value) && trim($value) !== '') {
+            return Carbon::parse($value)->format('Y-m-d');
+        }
+
+        return '—';
+    }
+
+    private function formatLeadDateField(string $dateField, mixed $value): string
+    {
+        if (in_array($dateField, ['request_date', 'pickup_date', 'return_date'], true)) {
+            return $this->formatDate($value);
+        }
+
+        return $this->formatDateTime($value);
     }
 
     private function durationDays(mixed $start, mixed $end): int

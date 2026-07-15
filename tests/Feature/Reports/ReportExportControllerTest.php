@@ -35,4 +35,36 @@ class ReportExportControllerTest extends TestCase
 
         Excel::assertDownloaded('customer_requests_report_20250610_113000.xlsx');
     }
+
+    public function test_first_time_customer_export_controller_triggers_an_excel_download(): void
+    {
+        Carbon::setTestNow('2025-06-10 11:30:00');
+        Excel::fake();
+
+        $request = Request::create('/expert/reports/first-time-customers/export', 'GET', [
+            'date_field' => 'pickup_date',
+            'date_from' => '2025-07-01',
+            'date_to' => '2025-07-31',
+        ]);
+
+        app(ReportExportController::class)->firstTimeCustomers($request);
+
+        Excel::assertDownloaded('first_time_customer_report_20250610_113000.xlsx');
+    }
+
+    public function test_lead_source_export_controller_triggers_an_excel_download(): void
+    {
+        Carbon::setTestNow('2025-06-10 11:30:00');
+        Excel::fake();
+
+        $request = Request::create('/expert/reports/lead-sources/export', 'GET', [
+            'date_field' => 'request_date',
+            'date_from' => '2026-07-01',
+            'date_to' => '2026-07-31',
+        ]);
+
+        app(ReportExportController::class)->leadSources($request);
+
+        Excel::assertDownloaded('lead_source_report_20250610_113000.xlsx');
+    }
 }
