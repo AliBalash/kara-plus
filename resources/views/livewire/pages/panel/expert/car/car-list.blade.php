@@ -202,6 +202,7 @@
                                     {{ $car->operationalStatusContextNote() }}
                                 </div>
                             @endif
+                            <x-car-need-action-alert :car="$car" compact show-edit-link class="mt-2 text-wrap" />
                         </td>
                         <td>{{ optional(optional($car->currentContract)->pickup_date)->format('Y-m-d') ?? '—' }}</td>
                         <td>{{ optional(optional($car->currentContract)->return_date)->format('Y-m-d') ?? '—' }}</td>

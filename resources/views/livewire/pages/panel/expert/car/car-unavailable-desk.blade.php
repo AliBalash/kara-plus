@@ -27,7 +27,123 @@
         <div class="fw-semibold mb-1">How to read this page</div>
         <div class="small mb-0">
             <strong>Dated records</strong> have a reason plus start/end date and are the current system.
+            <strong>Need Action</strong> means the car has an overdue open contract and must be resolved from Edit Car or the contract file.
             <strong>Needs review</strong> means old unavailable cars without dates; their reason may be only a legacy default and should be corrected from Edit Car.
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+            <div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <h5 class="card-title mb-0">Need Action Queue</h5>
+                    <span class="badge bg-danger-subtle text-danger">{{ number_format($needActionCars->total()) }} cars</span>
+                </div>
+                <p class="text-muted small mb-0">Overdue open contracts. Resolve return, extension, or next base status from Edit Car.</p>
+            </div>
+            <div class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
+                <select class="form-select form-select-sm" wire:model.live="needActionFutureFilter">
+                    <option value="all">All Need Action</option>
+                    <option value="with_upcoming">Has upcoming booking</option>
+                    <option value="without_upcoming">No upcoming booking</option>
+                </select>
+                <a href="{{ route('expert.dashboard', ['availableReadiness' => 'need_action']) }}" class="btn btn-sm btn-outline-dark text-nowrap">
+                    View on dashboard
+                </a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Car</th>
+                        <th>Current Contract</th>
+                        <th>Customer</th>
+                        <th>Upcoming</th>
+                        <th>System Note</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($needActionCars as $needActionCar)
+                        @php
+                            $currentContract = $needActionCar->currentContract;
+                            $upcomingReservation = $needActionCar->upcomingReservation;
+                        @endphp
+                        <tr class="table-danger-subtle">
+                            <td>
+                                <div class="fw-semibold">{{ $needActionCar->fullName() }}</div>
+                                <div class="text-muted small">
+                                    {{ optional($needActionCar->carModel)->brand }} {{ optional($needActionCar->carModel)->model }}
+                                    @if ($needActionCar->plate_number)
+                                        · {{ $needActionCar->plate_number }}
+                                    @endif
+                                </div>
+                            </td>
+                            <td>
+                                @if ($currentContract)
+                                    <div class="fw-semibold">#{{ $currentContract->id }}</div>
+                                    <div class="text-muted small">
+                                        Return {{ $currentContract->return_date ? \Carbon\Carbon::parse($currentContract->return_date)->format('Y-m-d H:i') : '—' }}
+                                    </div>
+                                    @if ($currentContract->return_date)
+                                        <div class="small text-danger">{{ \Carbon\Carbon::parse($currentContract->return_date)->diffForHumans() }}</div>
+                                    @endif
+                                @else
+                                    <span class="text-muted small">No active contract relation loaded</span>
+                                @endif
+                            </td>
+                            <td>
+                                <div class="fw-semibold small">{{ $currentContract?->customer?->fullName() ?? '—' }}</div>
+                                @if ($currentContract?->customer?->phone)
+                                    <div class="text-muted small">{{ $currentContract->customer->phone }}</div>
+                                @endif
+                            </td>
+                            <td>
+                                @if ($upcomingReservation)
+                                    <span class="badge bg-info-subtle text-info">Upcoming exists</span>
+                                    <div class="text-muted small mt-1">
+                                        {{ $upcomingReservation->pickup_date ? \Carbon\Carbon::parse($upcomingReservation->pickup_date)->format('Y-m-d H:i') : '—' }}
+                                    </div>
+                                    @if ($upcomingReservation->customer)
+                                        <div class="text-muted small">{{ $upcomingReservation->customer->fullName() }}</div>
+                                    @endif
+                                @else
+                                    <span class="badge bg-light text-dark">No upcoming booking</span>
+                                @endif
+                            </td>
+                            <td style="min-width: 240px;">
+                                <div class="fw-semibold text-danger small">Need Action Required</div>
+                                <div class="text-muted small">{{ $needActionCar->needActionAlertMessage() }}</div>
+                                @if ($needActionCar->operationalStatusContextNote())
+                                    <div class="small text-warning mt-1">{{ $needActionCar->operationalStatusContextNote() }}</div>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-2">
+                                    @if ($currentContract)
+                                        <a href="{{ route('rental-requests.details', $currentContract->id) }}" class="btn btn-sm btn-outline-dark">
+                                            Contract
+                                        </a>
+                                    @endif
+                                    <a href="{{ route('car.edit', $needActionCar->id) }}" class="btn btn-sm btn-danger">
+                                        Edit Car
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-5">
+                                No Need Action cars match the current filters.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white border-0">
+            {{ $needActionCars->links(data: ['scrollTo' => false]) }}
         </div>
     </div>
 
@@ -350,7 +466,7 @@
                 </div>
 
                 <div class="card-footer bg-white border-0">
-                    {{ $periods->links() }}
+                    {{ $periods->links(data: ['scrollTo' => false]) }}
                 </div>
             </div>
         </div>

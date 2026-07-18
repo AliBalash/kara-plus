@@ -17,7 +17,16 @@ class Header extends Component
 
     public function render()
     {
-        return view('livewire.components.panel.header');
+        return view('livewire.components.panel.header', [
+            'needActionCarsCount' => $this->needActionCarsCount(),
+        ]);
+    }
+
+    private function needActionCarsCount(): int
+    {
+        return Car::query()
+            ->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION)
+            ->count();
     }
 
     public function updatedQuery()

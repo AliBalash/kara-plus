@@ -26,9 +26,47 @@
                                 @enderror
                             </div>
 
+                            @php
+                                $baseStatusLabel = \App\Models\Car::manualStatusLabels()[$status] ?? ucfirst((string) $status);
+                                $isNeedActionPreview = $this->effectiveUnavailabilityReasonLabel === 'Need Action';
+                            @endphp
+                            <div class="card border-0 shadow-sm bg-light-subtle mb-0">
+                                <div class="card-body py-3">
+                                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                                        <div>
+                                            <div class="small text-muted text-uppercase fw-semibold mb-1">Current operational status</div>
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <span class="badge {{ $this->effectiveStatusBadgeClass }}">
+                                                    {{ $this->effectiveStatusLabel }}
+                                                </span>
+                                                @if ($this->effectiveUnavailabilityReasonLabel)
+                                                    <span class="badge bg-danger-subtle text-danger">{{ $this->effectiveUnavailabilityReasonLabel }}</span>
+                                                @endif
+                                            </div>
+                                            @if ($this->effectiveStatusExplanation)
+                                                <div class="small text-muted mt-2">{{ $this->effectiveStatusExplanation }}</div>
+                                            @endif
+                                        </div>
+                                        <div class="text-lg-end">
+                                            <div class="small text-muted text-uppercase fw-semibold mb-1">Manual base status</div>
+                                            <span class="badge bg-light text-dark border">{{ $baseStatusLabel }}</span>
+                                            <div class="small text-muted mt-2">This is the editable/manual status below.</div>
+                                        </div>
+                                    </div>
+                                    @if ($isNeedActionPreview)
+                                        <div class="alert alert-danger border-0 py-2 px-3 mt-3 mb-0">
+                                            <div class="fw-semibold">Why Base Status shows Available</div>
+                                            <div class="small">
+                                                This car is operationally unavailable because an open contract is overdue. The manual base status can stay Available; close/extend the contract or set a real unavailable window if the car must remain blocked.
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
                             <!-- Vehicle Status -->
                             <div class="input-group">
-                                <span class="input-group-text" id="status-addon">Base Status</span>
+                                <span class="input-group-text" id="status-addon">Base Status (Manual)</span>
                                 <select class="form-control border border-warning @error('status') is-invalid @enderror"
                                     name="status" wire:model.live="status" required>
                                     <option value="available" {{ $status == 'available' ? 'selected' : '' }}>Available
@@ -41,6 +79,9 @@
                                 @error('status')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                            </div>
+                            <div class="form-text mt-1">
+                                Base Status is only the manual decision. Final status can still become Need Action, Active booking, Upcoming booking, or Scheduled unavailable automatically.
                             </div>
 
                             <div class="card border-0 shadow-sm bg-light-subtle mb-0">
@@ -189,6 +230,8 @@
                                     <div class="small mt-1">{{ $this->effectiveStatusExplanation }}</div>
                                 @endif
                             </div>
+
+                            <x-car-need-action-alert :car="$car" class="mb-0" />
 
                                 <!-- Ownership -->
                                 <div class="input-group">

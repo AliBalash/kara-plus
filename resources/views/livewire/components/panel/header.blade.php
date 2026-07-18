@@ -29,6 +29,16 @@
             <ul class="navbar-nav flex-row align-items-center flex-shrink-0">
                 @if ($showSearch)
                     <li class="nav-item me-2">
+                        <a href="{{ route('expert.dashboard', ['availableReadiness' => 'need_action']) }}"
+                            class="btn btn-icon rounded-circle shadow-sm position-relative need-action-nav-alert {{ $needActionCarsCount > 0 ? 'btn-danger' : 'btn-outline-secondary' }}"
+                            aria-label="Open Need Action vehicles">
+                            <i class="bx bx-error-circle"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill {{ $needActionCarsCount > 0 ? 'bg-warning text-dark' : 'bg-secondary' }}">
+                                {{ $needActionCarsCount > 99 ? '99+' : number_format($needActionCarsCount) }}
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nav-item me-2">
                         <button type="button" class="btn btn-icon btn-outline-secondary rounded-circle shadow-sm"
                             data-bs-toggle="offcanvas" data-bs-target="#quickSearchOffcanvas"
                             aria-controls="quickSearchOffcanvas" aria-label="Open quick vehicle search">
@@ -187,6 +197,7 @@
                                 @if ($car->operationalStatusContextNote())
                                     <div class="text-warning small mt-1">{{ $car->operationalStatusContextNote() }}</div>
                                 @endif
+                                <x-car-need-action-alert :car="$car" compact show-edit-link class="mt-2" />
 
                                 <div class="result-card-highlights">
                                     <div class="highlight-card">

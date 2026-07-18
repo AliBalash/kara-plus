@@ -6,6 +6,7 @@ use App\Livewire\Concerns\InteractsWithToasts;
 use App\Models\Car;
 use App\Models\CarUnavailabilityPeriod;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -23,10 +24,11 @@ class CarUnavailableDesk extends Component
     public ?string $dateFrom = null;
     public ?string $dateTo = null;
     public string $sort = 'active_first';
+    public string $needActionFutureFilter = 'all';
 
     public bool $databaseReady = false;
 
-    protected $queryString = ['search', 'stateFilter', 'reasonFilter', 'carFilter', 'dateFrom', 'dateTo', 'sort'];
+    protected $queryString = ['search', 'stateFilter', 'reasonFilter', 'carFilter', 'dateFrom', 'dateTo', 'sort', 'needActionFutureFilter'];
 
     public function mount(): void
     {
@@ -47,14 +49,17 @@ class CarUnavailableDesk extends Component
     {
         $this->search = trim($this->searchInput);
         $this->resetPage();
+        $this->resetPage('needActionPage');
     }
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'searchInput', 'stateFilter', 'reasonFilter', 'carFilter', 'dateFrom', 'dateTo', 'sort']);
+        $this->reset(['search', 'searchInput', 'stateFilter', 'reasonFilter', 'carFilter', 'dateFrom', 'dateTo', 'sort', 'needActionFutureFilter']);
         $this->stateFilter = $this->databaseReady ? 'active' : 'all';
         $this->sort = 'active_first';
+        $this->needActionFutureFilter = 'all';
         $this->resetPage();
+        $this->resetPage('needActionPage');
     }
 
     public function setStateFilter(string $state): void
@@ -67,6 +72,41 @@ class CarUnavailableDesk extends Component
 
         $this->stateFilter = $state;
         $this->resetPage();
+    }
+
+    public function updatedReasonFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedCarFilter(): void
+    {
+        $this->resetPage();
+        $this->resetPage('needActionPage');
+    }
+
+    public function updatedDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedDateTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSort(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedNeedActionFutureFilter(): void
+    {
+        if (! in_array($this->needActionFutureFilter, ['all', 'with_upcoming', 'without_upcoming'], true)) {
+            $this->needActionFutureFilter = 'all';
+        }
+
+        $this->resetPage('needActionPage');
     }
 
     protected function syncCars(array $carIds): void
@@ -107,7 +147,9 @@ class CarUnavailableDesk extends Component
                 $summary['manual'] = $manualHolds->count();
             }
 
-            return view('livewire.pages.panel.expert.car.car-unavailable-desk', compact('cars', 'periods', 'summary', 'manualHolds'));
+            $needActionCars = $this->needActionCarsQuery($search)->paginate(10, ['*'], 'needActionPage');
+
+            return view('livewire.pages.panel.expert.car.car-unavailable-desk', compact('cars', 'periods', 'summary', 'manualHolds', 'needActionCars'));
         }
 
         $likeSearch = '%' . $search . '%';
@@ -166,9 +208,55 @@ class CarUnavailableDesk extends Component
             $query->cancelled();
         }
 
-        $periods = $this->applySorting($query, $today)->paginate(10);
+        $periods = $this->applySorting($query, $today)->paginate(10, ['*'], 'periodsPage');
+        $needActionCars = $this->needActionCarsQuery($search)->paginate(10, ['*'], 'needActionPage');
 
-        return view('livewire.pages.panel.expert.car.car-unavailable-desk', compact('cars', 'periods', 'summary', 'manualHolds'));
+        return view('livewire.pages.panel.expert.car.car-unavailable-desk', compact('cars', 'periods', 'summary', 'manualHolds', 'needActionCars'));
+    }
+
+    protected function needActionCarsQuery(string $search)
+    {
+        $likeSearch = '%' . trim($search) . '%';
+        $now = Carbon::now();
+
+        return Car::query()
+            ->with([
+                'carModel',
+                'currentContract.customer',
+                'upcomingReservation.customer',
+            ])
+            ->byUnavailabilityReason(Car::UNAVAILABILITY_REASON_NEED_ACTION)
+            ->when($this->carFilter !== '', fn ($builder) => $builder->where('id', (int) $this->carFilter))
+            ->when($search !== '', function ($builder) use ($likeSearch) {
+                $builder->where(function ($searchBuilder) use ($likeSearch) {
+                    $searchBuilder->where('plate_number', 'like', $likeSearch)
+                        ->orWhereHas('carModel', function ($carModelQuery) use ($likeSearch) {
+                            $carModelQuery->where('brand', 'like', $likeSearch)
+                                ->orWhere('model', 'like', $likeSearch);
+                        })
+                        ->orWhereHas('contracts.customer', function ($customerQuery) use ($likeSearch) {
+                            $customerQuery->where('first_name', 'like', $likeSearch)
+                                ->orWhere('last_name', 'like', $likeSearch)
+                                ->orWhere('phone', 'like', $likeSearch);
+                        });
+                });
+            })
+            ->when($this->needActionFutureFilter === 'with_upcoming', function (Builder $builder) use ($now) {
+                $builder->whereHas('contracts', function ($contractQuery) use ($now) {
+                    $contractQuery->whereIn('current_status', Car::reservingStatuses())
+                        ->whereNotNull('pickup_date')
+                        ->where('pickup_date', '>', $now);
+                });
+            })
+            ->when($this->needActionFutureFilter === 'without_upcoming', function (Builder $builder) use ($now) {
+                $builder->whereDoesntHave('contracts', function ($contractQuery) use ($now) {
+                    $contractQuery->whereIn('current_status', Car::reservingStatuses())
+                        ->whereNotNull('pickup_date')
+                        ->where('pickup_date', '>', $now);
+                });
+            })
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
     }
 
     protected function applySorting($query, Carbon $today)

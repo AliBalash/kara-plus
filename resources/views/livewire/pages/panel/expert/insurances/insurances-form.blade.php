@@ -48,6 +48,7 @@
                             @if ($car->operationalStatusContextNote())
                                 <div class="form-text text-warning">{{ $car->operationalStatusContextNote() }}</div>
                             @endif
+                            <x-car-need-action-alert :car="$car" compact show-edit-link class="mt-2" />
                         @endif
                     </div>
                 </div>

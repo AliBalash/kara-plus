@@ -278,6 +278,18 @@ class Car extends Model
         return $notes !== [] ? implode(' ', $notes) : null;
     }
 
+    public function needsAction(): bool
+    {
+        return $this->operationalStatus() === self::STATUS_UNAVAILABLE
+            && static::hasStatusSupportColumn('unavailability_reason')
+            && $this->unavailability_reason === self::UNAVAILABILITY_REASON_NEED_ACTION;
+    }
+
+    public function needActionAlertMessage(): string
+    {
+        return 'This car has an overdue open contract. Confirm return, extend the contract, or set the next base status before dispatch.';
+    }
+
     /**
      * @return array{manual_status: string, manual_unavailability_reason: string|null}
      */

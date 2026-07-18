@@ -5,6 +5,43 @@
                 width: min(460px, 100vw);
             }
 
+            .need-action-nav-alert.btn-danger {
+                box-shadow: 0 12px 28px rgba(220, 53, 69, 0.32) !important;
+                animation: need-action-pulse 1.8s ease-in-out infinite;
+            }
+
+            @keyframes need-action-pulse {
+                0%,
+                100% {
+                    transform: translateY(0);
+                }
+
+                50% {
+                    transform: translateY(-2px);
+                }
+            }
+
+            .need-action-alert {
+                background: linear-gradient(135deg, #dc3545 0%, #9f1239 100%);
+                color: #fff;
+            }
+
+            .need-action-alert .text-dark {
+                color: rgba(255, 255, 255, 0.88) !important;
+            }
+
+            .need-action-alert--clickable {
+                cursor: pointer;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .need-action-alert--clickable:hover,
+            .need-action-alert--clickable:focus-visible {
+                color: #fff;
+                transform: translateY(-1px);
+                box-shadow: 0 16px 34px rgba(159, 18, 57, 0.24) !important;
+            }
+
             .search-offcanvas .offcanvas-body {
                 padding: 1.9rem 1.75rem;
                 background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);

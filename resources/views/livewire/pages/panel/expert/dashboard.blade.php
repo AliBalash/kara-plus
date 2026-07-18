@@ -481,6 +481,23 @@
                         </div>
                     </div>
                 @endif
+
+                @if ($fleetNeedAction > 0)
+                    <div class="alert alert-danger border-0 shadow-sm mt-3 mb-0" role="alert">
+                        <div class="d-flex flex-column flex-lg-row gap-3 align-items-lg-center justify-content-between">
+                            <div class="d-flex gap-2 align-items-start">
+                                <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                                <div>
+                                    <div class="fw-bold">{{ number_format($fleetNeedAction) }} vehicle{{ $fleetNeedAction === 1 ? '' : 's' }} need immediate action</div>
+                                    <div class="small">These cars have overdue open contracts. Accounting and operations should confirm return, extension, or next base status before reuse.</div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-light btn-sm text-danger fw-semibold" wire:click="showNeedActionFleet">
+                                Show Need Action cars
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -593,7 +610,7 @@
                                         $upcomingReservation = $car->upcomingReservation;
                                         $returnedAt = $car->latest_returned_at ? \Carbon\Carbon::parse($car->latest_returned_at) : null;
                                     @endphp
-                                    <tr>
+                                    <tr @class(['available-fleet-row--need-action' => $car->needsAction()])>
                                         <td>
                                             <div class="fw-semibold">{{ trim(($brand ? $brand . ' ' : '') . ($model ?? 'Vehicle')) }}</div>
                                             <div class="text-muted small">{{ $car->plate_number ?? '—' }} · {{ ucfirst($car->color ?? '—') }} · {{ $car->manufacturing_year ?? '—' }}</div>
@@ -655,6 +672,13 @@
                                                 @if ($upcomingReservation && $car->operationalStatus() !== \App\Models\Car::STATUS_PRE_RESERVED)
                                                     <span class="text-muted small">Next pickup {{ $upcomingReservation->pickup_date ? \Carbon\Carbon::parse($upcomingReservation->pickup_date)->format('Y-m-d H:i') : '—' }}</span>
                                                 @endif
+                                                <x-car-need-action-alert
+                                                    :car="$car"
+                                                    compact
+                                                    :show-context="false"
+                                                    title="Need Action"
+                                                    message="Click to open car edit and decide return, extension, or next status."
+                                                    class="mt-2 need-action-alert--fleet-board" />
                                             </div>
                                         </td>
                                         <td>
@@ -690,12 +714,17 @@
         </div>
 
         <div class="card shadow-lg border-0 rounded-4 mb-4">
-            <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex justify-content-between align-items-center">
+            <div class="card-header border-0 bg-transparent pt-4 px-4 d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
                 <div>
-                    <h5 class="fw-bold mb-1"><i class="bi bi-exclamation-circle text-danger me-2"></i>Attention Queue</h5>
-                    <span class="text-muted small">Vehicles that are unavailable, sold, or require immediate follow-up.</span>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-exclamation-circle text-danger me-2"></i>Attention Preview</h5>
+                    <span class="text-muted small">Latest 6 attention items only. Use Unavailable Desk for full filters and pagination.</span>
                 </div>
-                <span class="badge bg-danger-subtle text-danger">{{ count($fleetAttentionCars) }} items</span>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="badge bg-danger-subtle text-danger">{{ count($fleetAttentionCars) }} shown</span>
+                    <a href="{{ route('car.unavailable-desk') }}" class="btn btn-sm btn-outline-dark">
+                        Open Unavailable Desk
+                    </a>
+                </div>
             </div>
             <div class="card-body pt-0 px-4 pb-4">
                 @if (empty($fleetAttentionCars))
@@ -704,13 +733,16 @@
                     <div class="row g-3">
                         @foreach ($fleetAttentionCars as $attentionCar)
                             <div class="col-12 col-xl-6">
-                                <div class="attention-queue-card">
+                                <a href="{{ route('car.edit', $attentionCar['id']) }}" class="attention-queue-card text-decoration-none">
                                     <div class="d-flex justify-content-between align-items-start gap-3">
                                         <div>
                                             <div class="fw-semibold">{{ $attentionCar['car_name'] }}</div>
                                             <div class="text-muted small">{{ $attentionCar['ownership_label'] }}</div>
                                         </div>
-                                        <span class="badge {{ $attentionCar['status_badge_class'] }}">{{ $attentionCar['status_label'] }}</span>
+                                        <div class="d-flex flex-column align-items-end gap-1">
+                                            <span class="badge {{ $attentionCar['status_badge_class'] }}">{{ $attentionCar['status_label'] }}</span>
+                                            <span class="badge bg-light text-dark">{{ $attentionCar['priority_label'] }}</span>
+                                        </div>
                                     </div>
 
                                     @if ($attentionCar['reason_label'])
@@ -729,7 +761,9 @@
                                         <div class="attention-queue-card__note">{{ $attentionCar['context_note'] }}</div>
                                     @endif
 
-                                    <div class="attention-queue-card__action">{{ $attentionCar['action_label'] }}</div>
+                                    <div class="attention-queue-card__action">
+                                        <i class="bi bi-arrow-right-circle me-1"></i>{{ $attentionCar['action_label'] }}
+                                    </div>
 
                                     <div class="attention-queue-card__meta">
                                         @if ($attentionCar['current_contract_id'])
@@ -744,7 +778,8 @@
                                             <span>Next pickup {{ $attentionCar['next_pickup_at'] }}</span>
                                         @endif
                                     </div>
-                                </div>
+                                    <div class="attention-queue-card__open">Click to open car edit</div>
+                                </a>
                             </div>
                         @endforeach
                     </div>

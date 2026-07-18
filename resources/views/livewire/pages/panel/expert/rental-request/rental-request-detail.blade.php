@@ -382,6 +382,7 @@
                             @if ($contract->car?->operationalStatusContextNote())
                                 <div class="small text-warning">{{ $contract->car->operationalStatusContextNote() }}</div>
                             @endif
+                            <x-car-need-action-alert :car="$contract->car" compact show-edit-link class="mt-2" />
                         </div>
                     </div>
                 </div>

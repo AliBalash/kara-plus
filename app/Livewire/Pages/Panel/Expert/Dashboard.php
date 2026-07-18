@@ -14,6 +14,11 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
+    protected $queryString = [
+        'availableReadiness' => ['except' => 'available'],
+        'availableReason' => ['except' => 'all'],
+    ];
+
     public $title = 'Dashboard';
 
     public $totalContracts;
@@ -542,7 +547,7 @@ class Dashboard extends Component
                 $updatedAt = $car->updated_at?->getTimestamp() ?? 0;
 
                 return $priority . '-' . str_pad((string) (9999999999 - $updatedAt), 10, '0', STR_PAD_LEFT);
-            })->values();
+            })->take(6)->values();
         }
 
         $this->fleetAttentionCars = collect($cars)
@@ -614,6 +619,13 @@ class Dashboard extends Component
         $this->availableSort = 'returned_oldest';
         $this->availableSearch = '';
         $this->normalizeAvailableFleetFilters();
+        $this->prepareAvailableBrands();
+    }
+
+    public function showNeedActionFleet(): void
+    {
+        $this->availableReadiness = 'need_action';
+        $this->availableReason = Car::UNAVAILABILITY_REASON_NEED_ACTION;
         $this->prepareAvailableBrands();
     }
 
@@ -1047,6 +1059,7 @@ class Dashboard extends Component
             'active_window_note' => $car->activeScheduledUnavailabilityPeriod()?->note,
             'context_note' => $car->operationalStatusContextNote(),
             'action_label' => $this->fleetAttentionActionLabel($car),
+            'priority_label' => $this->fleetAttentionPriorityLabel($car),
             'current_contract_id' => $currentContract?->id,
             'current_customer' => $currentContract?->customer?->fullName() ?? '—',
             'current_return_at' => $currentContract?->return_date ? Carbon::parse($currentContract->return_date)->format('Y-m-d H:i') : '—',
@@ -1065,6 +1078,16 @@ class Dashboard extends Component
             $car->unavailability_reason === Car::UNAVAILABILITY_REASON_INSURANCE => 'Renew insurance before dispatch',
             $car->unavailability_reason === Car::UNAVAILABILITY_REASON_CHANGE_PLATE => 'Complete plate change before reuse',
             default => 'Resolve hold reason before dispatch',
+        };
+    }
+
+    protected function fleetAttentionPriorityLabel(Car $car): string
+    {
+        return match (true) {
+            $car->unavailability_reason === Car::UNAVAILABILITY_REASON_NEED_ACTION => 'Immediate decision required',
+            $car->operationalStatus() === Car::STATUS_SOLD => 'Sold vehicle',
+            $car->operationalStatus() === Car::STATUS_UNAVAILABLE => 'Unavailable hold',
+            default => 'Attention item',
         };
     }
 

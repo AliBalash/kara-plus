@@ -657,6 +657,17 @@ class EditCarForm extends Component
         return Car::unavailabilityReasonLabelFor($previewState['unavailability_reason'] ?? null);
     }
 
+    public function getEffectiveStatusBadgeClassProperty(): string
+    {
+        $previewState = $this->statusPreviewState();
+
+        return Car::operationalStatusSubtleBadgeClassFor(
+            $previewState['status'],
+            $previewState['availability'],
+            $previewState['unavailability_reason'] ?? null
+        );
+    }
+
     public function getEffectiveStatusExplanationProperty(): ?string
     {
         $previewState = $this->statusPreviewState();

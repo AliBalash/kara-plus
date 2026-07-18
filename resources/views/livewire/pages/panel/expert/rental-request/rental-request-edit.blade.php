@@ -680,6 +680,7 @@
                                         @endif
                                     </div>
                                 </div>
+                                <x-car-need-action-alert :car="$selectedCar" compact show-edit-link class="mt-3" />
                                 @if ($selectedCar->currentContract)
                                     @php
                                         $activeContract = $selectedCar->currentContract;
