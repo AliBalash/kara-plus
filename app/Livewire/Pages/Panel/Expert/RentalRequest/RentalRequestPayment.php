@@ -733,6 +733,10 @@ class RentalRequestPayment extends Component
 
     private function roundCurrency($value): float
     {
-        return round((float) $value, 2);
+        $rounded = round((float) $value, 2);
+
+        // Keep Livewire snapshots stable: JavaScript serializes -0.0 as 0,
+        // which otherwise changes the checksum between requests.
+        return $rounded == 0.0 ? 0.0 : $rounded;
     }
 }

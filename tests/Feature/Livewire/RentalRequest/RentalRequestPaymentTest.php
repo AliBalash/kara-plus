@@ -5,6 +5,7 @@ namespace Tests\Feature\Livewire\RentalRequest;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPayment;
 use App\Models\Car;
 use App\Models\Contract;
+use App\Models\ContractBalanceTransfer;
 use App\Models\Customer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
@@ -339,6 +340,62 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertStringContainsString('Charge in balance: 520.00 AED', $normalizedHtml);
         $this->assertStringContainsString('Registered: ' . now()->setTime(10, 15, 0)->format('Y-m-d H:i'), $normalizedHtml);
         $this->assertStringContainsString('Registered: ' . now()->setTime(12, 45, 0)->format('Y-m-d H:i'), $normalizedHtml);
+    }
+
+    public function test_zero_remaining_balance_is_not_serialized_as_negative_zero(): void
+    {
+        config(['audit.capture.business_reads' => false]);
+
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for(Car::factory())
+            ->status('payment')
+            ->create(['total_price' => 363.97, 'meta' => []]);
+
+        foreach ([
+            ['rental_fee', 536.33],
+            ['discount', 60.33],
+            ['salik_4_aed', 8.00],
+            ['salik_6_aed', 12.00],
+            ['salik_other_revenue', 4.00],
+            ['damage', 50.00],
+            ['fuel', 35.00],
+        ] as [$type, $amount]) {
+            Payment::factory()
+                ->for($contract)
+                ->for($customer)
+                ->for($user)
+                ->create([
+                    'payment_type' => $type,
+                    'amount' => $amount,
+                    'amount_in_aed' => $amount,
+                ]);
+        }
+
+        $sourceContract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for(Car::factory())
+            ->create();
+
+        ContractBalanceTransfer::create([
+            'from_contract_id' => $sourceContract->id,
+            'to_contract_id' => $contract->id,
+            'customer_id' => $customer->id,
+            'created_by' => $user->id,
+            'amount' => 123.69,
+            'currency' => 'AED',
+            'transferred_at' => now(),
+        ]);
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+
+        $this->assertSame(0.0, $component->remainingBalance);
+        $this->assertSame('0', json_encode($component->remainingBalance));
     }
 
     protected function tearDown(): void
