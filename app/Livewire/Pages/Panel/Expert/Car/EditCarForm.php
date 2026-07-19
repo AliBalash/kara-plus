@@ -349,6 +349,11 @@ class EditCarForm extends Component
             ]);
         }
 
+        $this->resolveExpiredUnavailableWindows(
+            'Resolved because a new unavailable window was saved.',
+            $period->id
+        );
+
         if ($this->car->resolvedManualStatus() === Car::MANUAL_STATUS_UNAVAILABLE) {
             $this->car->forceFill([
                 'manual_status' => Car::MANUAL_STATUS_AVAILABLE,
@@ -677,7 +682,7 @@ class EditCarForm extends Component
             $previewState['status'] === Car::STATUS_UNAVAILABLE
             && ($previewState['unavailability_reason'] ?? null) === Car::UNAVAILABILITY_REASON_NEED_ACTION
         ) {
-            return 'Need Action is automatic. It is used when the contract return time has passed and the contract is still open.';
+            return 'Need Action is automatic. It blocks release when a contract is overdue or an unavailable window ended without explicit review.';
         }
 
         if ($previewState['status'] === Car::STATUS_RESERVED) {
@@ -705,7 +710,7 @@ class EditCarForm extends Component
         }
 
         return CarUnavailabilityPeriod::query()
-            ->with(['creator', 'updater', 'canceller'])
+            ->with(['creator', 'updater', 'canceller', 'resolver'])
             ->where('car_id', $this->car->id)
             ->orderByDesc('start_date')
             ->orderByDesc('id')
@@ -828,6 +833,9 @@ class EditCarForm extends Component
             $this->cancelEditableUnavailableWindow($validated['status'] === Car::MANUAL_STATUS_SOLD
                 ? 'Cancelled because car was marked sold.'
                 : 'Cancelled because base status was changed to available.');
+            $this->resolveExpiredUnavailableWindows($validated['status'] === Car::MANUAL_STATUS_SOLD
+                ? 'Resolved after review because car was marked sold.'
+                : 'Resolved after review because base status was confirmed available.');
 
             return null;
         }
@@ -847,12 +855,24 @@ class EditCarForm extends Component
                 ->findOrFail($this->unavailability_period_id);
             $period->update($attributes);
 
+            $this->resolveExpiredUnavailableWindows(
+                'Resolved because an unavailable window was updated.',
+                $period->id
+            );
+
             return $period;
         }
 
-        return CarUnavailabilityPeriod::query()->create($attributes + [
+        $period = CarUnavailabilityPeriod::query()->create($attributes + [
             'created_by' => auth()->id(),
         ]);
+
+        $this->resolveExpiredUnavailableWindows(
+            'Resolved because a new unavailable window was saved.',
+            $period->id
+        );
+
+        return $period;
     }
 
     private function cancelEditableUnavailableWindow(string $note): void
@@ -873,6 +893,20 @@ class EditCarForm extends Component
         $period?->cancel(auth()->id(), $note);
     }
 
+    private function resolveExpiredUnavailableWindows(string $note, ?int $exceptPeriodId = null): void
+    {
+        if (! $this->unavailableDeskReady || ! CarUnavailabilityPeriod::supportsResolutionColumns()) {
+            return;
+        }
+
+        CarUnavailabilityPeriod::query()
+            ->where('car_id', $this->car->id)
+            ->when($exceptPeriodId, fn ($query) => $query->where('id', '!=', $exceptPeriodId))
+            ->expiredBefore(Carbon::today())
+            ->get()
+            ->each(fn (CarUnavailabilityPeriod $period) => $period->resolve(auth()->id(), $note));
+    }
+
     /**
      * @return array{status: string, availability: bool, unavailability_reason: string|null}
      */
@@ -881,9 +915,11 @@ class EditCarForm extends Component
         $hasActiveReservation = false;
         $hasUpcomingReservation = false;
         $needsAction = false;
+        $scheduledReason = $this->previewScheduledUnavailabilityReason();
 
         if ($this->car instanceof Car && $this->car->exists) {
-            $needsAction = $this->car->hasNeedActionReservationWindow();
+            $needsAction = $this->car->hasNeedActionReservationWindow()
+                || ($scheduledReason === null && $this->car->hasExpiredUnresolvedScheduledUnavailability());
             $hasActiveReservation = ! $needsAction && $this->car->hasActiveReservationWindow();
             $hasUpcomingReservation = ! $needsAction && ! $hasActiveReservation && $this->car->hasUpcomingReservationWindow();
         }
@@ -892,8 +928,6 @@ class EditCarForm extends Component
             $this->status === Car::MANUAL_STATUS_SOLD ? Car::MANUAL_STATUS_SOLD : Car::MANUAL_STATUS_AVAILABLE,
             null
         );
-        $scheduledReason = $this->previewScheduledUnavailabilityReason();
-
         return Car::synchronizedStateForReservationWindow(
             $manualState['manual_status'],
             $manualState['manual_unavailability_reason'],

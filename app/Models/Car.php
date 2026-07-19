@@ -242,12 +242,17 @@ class Car extends Model
         $notes = [];
         $activeHold = $this->activeScheduledUnavailabilityPeriod($now);
         $upcomingHold = $this->upcomingScheduledUnavailabilityPeriod($now);
+        $expiredHold = $this->expiredUnresolvedScheduledUnavailabilityPeriod($now);
         $hasUpcomingReservation = $this->hasUpcomingReservationWindow($now);
 
         if (
             static::hasStatusSupportColumn('unavailability_reason')
             && $this->unavailability_reason === self::UNAVAILABILITY_REASON_NEED_ACTION
         ) {
+            if ($expiredHold) {
+                $notes[] = 'Expired hold awaiting review: ' . ($expiredHold->reasonLabel() ?? 'Unavailable') . ' ' . $expiredHold->dateWindowLabel() . '.';
+            }
+
             if ($activeHold) {
                 $notes[] = 'Active hold also exists: ' . ($activeHold->reasonLabel() ?? 'Unavailable') . ' ' . $activeHold->dateWindowLabel() . '.';
             }
@@ -287,6 +292,14 @@ class Car extends Model
 
     public function needActionAlertMessage(): string
     {
+        if ($this->hasNeedActionReservationWindow()) {
+            return 'This car has an overdue open contract. Confirm return, extend the contract, or set the next base status before dispatch.';
+        }
+
+        if ($this->hasExpiredUnresolvedScheduledUnavailability()) {
+            return 'This car has an expired unavailable window. Inspect it and explicitly save Available, Sold, or a new unavailable window before dispatch.';
+        }
+
         return 'This car has an overdue open contract. Confirm return, extend the contract, or set the next base status before dispatch.';
     }
 
@@ -459,7 +472,8 @@ class Car extends Model
             $this->unavailability_reason
         );
         $activeScheduledUnavailability = $this->activeScheduledUnavailabilityPeriod($now);
-        $needsAction = $this->hasNeedActionReservationWindow($now);
+        $needsAction = $this->hasNeedActionReservationWindow($now)
+            || ($activeScheduledUnavailability === null && $this->hasExpiredUnresolvedScheduledUnavailability($now));
         $hasActiveReservation = ! $needsAction && $this->hasActiveReservationWindow($now);
         $hasUpcomingReservation = ! $needsAction && ! $hasActiveReservation && $this->hasUpcomingReservationWindow($now);
         $operationalState = static::synchronizedStateForReservationWindow(
@@ -895,6 +909,35 @@ class Car extends Model
             ->orderBy('start_date')
             ->orderBy('id')
             ->first();
+    }
+
+    public function expiredUnresolvedScheduledUnavailabilityPeriod(?Carbon $date = null): ?CarUnavailabilityPeriod
+    {
+        if (! static::supportsScheduledUnavailabilityPeriods() || ! CarUnavailabilityPeriod::supportsResolutionColumns()) {
+            return null;
+        }
+
+        $date ??= Carbon::today();
+
+        if ($this->relationLoaded('unavailabilityPeriods')) {
+            return $this->unavailabilityPeriods
+                ->filter(fn (CarUnavailabilityPeriod $period) => ! $period->isCancelled()
+                    && ! $period->isResolved()
+                    && $period->end_date?->lessThan($date) === true)
+                ->sortByDesc(fn (CarUnavailabilityPeriod $period) => $period->end_date?->getTimestamp() ?? 0)
+                ->first();
+        }
+
+        return $this->unavailabilityPeriods()
+            ->expiredBefore($date)
+            ->orderByDesc('end_date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    public function hasExpiredUnresolvedScheduledUnavailability(?Carbon $date = null): bool
+    {
+        return $this->expiredUnresolvedScheduledUnavailabilityPeriod($date) !== null;
     }
 
     public function overlappingUnavailabilityPeriods(Carbon $start, Carbon $end)

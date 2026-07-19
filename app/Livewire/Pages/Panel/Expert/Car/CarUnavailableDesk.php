@@ -156,7 +156,7 @@ class CarUnavailableDesk extends Component
         $today = Carbon::today();
 
         $query = CarUnavailabilityPeriod::query()
-            ->with(['car.carModel', 'creator', 'updater'])
+            ->with(['car.carModel', 'creator', 'updater', 'resolver'])
             ->when($search !== '', function ($builder) use ($likeSearch) {
                 $builder->where(function ($searchBuilder) use ($likeSearch) {
                     $searchBuilder->where('note', 'like', $likeSearch)
@@ -185,6 +185,7 @@ class CarUnavailableDesk extends Component
         $summary['upcoming'] = (clone $query)->upcomingFrom($today)->count();
         $summary['completed'] = (clone $query)
             ->open()
+            ->when(CarUnavailabilityPeriod::supportsResolutionColumns(), fn ($builder) => $builder->whereNotNull('resolved_at'))
             ->whereDate('end_date', '<', $today->toDateString())
             ->count();
         $summary['cancelled'] = (clone $query)->cancelled()->count();
@@ -203,7 +204,9 @@ class CarUnavailableDesk extends Component
         } elseif ($this->stateFilter === 'upcoming') {
             $query->upcomingFrom($today);
         } elseif ($this->stateFilter === 'completed') {
-            $query->open()->whereDate('end_date', '<', $today->toDateString());
+            $query->open()
+                ->when(CarUnavailabilityPeriod::supportsResolutionColumns(), fn ($builder) => $builder->whereNotNull('resolved_at'))
+                ->whereDate('end_date', '<', $today->toDateString());
         } elseif ($this->stateFilter === 'cancelled') {
             $query->cancelled();
         }

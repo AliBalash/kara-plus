@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Car;
+use App\Models\CarUnavailabilityPeriod;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class SyncCarOperationalStatusCommand extends Command
@@ -37,6 +39,12 @@ class SyncCarOperationalStatusCommand extends Command
                     ->orWhereHas('contracts', function ($contractBuilder) {
                         $contractBuilder->whereIn('current_status', Car::reservingStatuses());
                     });
+
+                if (Car::supportsScheduledUnavailabilityPeriods() && CarUnavailabilityPeriod::supportsResolutionColumns()) {
+                    $builder->orWhereHas('unavailabilityPeriods', function ($periodBuilder) {
+                        $periodBuilder->expiredBefore(Carbon::today());
+                    });
+                }
             })
             ->orderBy('id')
             ->chunkById($chunkSize, function ($cars) use (&$processed, &$updated) {

@@ -343,7 +343,7 @@ class CreateCarForm extends Component
             $effectiveStatus === Car::STATUS_UNAVAILABLE
             && ($previewState['unavailability_reason'] ?? null) === Car::UNAVAILABILITY_REASON_NEED_ACTION
         ) {
-            return 'Need Action is automatic. It is used when the contract return time has passed and the contract is still open.';
+            return 'Need Action is automatic. It blocks release when an operational issue requires explicit review.';
         }
 
         return match ($effectiveStatus) {

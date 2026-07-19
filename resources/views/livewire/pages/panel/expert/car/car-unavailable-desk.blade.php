@@ -27,7 +27,7 @@
         <div class="fw-semibold mb-1">How to read this page</div>
         <div class="small mb-0">
             <strong>Dated records</strong> have a reason plus start/end date and are the current system.
-            <strong>Need Action</strong> means the car has an overdue open contract and must be resolved from Edit Car or the contract file.
+            <strong>Need Action</strong> means the car has an overdue open contract or an expired unavailable window and must be reviewed before release.
             <strong>Needs review</strong> means old unavailable cars without dates; their reason may be only a legacy default and should be corrected from Edit Car.
         </div>
     </div>
@@ -39,7 +39,7 @@
                     <h5 class="card-title mb-0">Need Action Queue</h5>
                     <span class="badge bg-danger-subtle text-danger">{{ number_format($needActionCars->total()) }} cars</span>
                 </div>
-                <p class="text-muted small mb-0">Overdue open contracts. Resolve return, extension, or next base status from Edit Car.</p>
+                <p class="text-muted small mb-0">Overdue contracts and expired unavailable windows. Confirm the next status from Edit Car or resolve the contract.</p>
             </div>
             <div class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
                 <select class="form-select form-select-sm" wire:model.live="needActionFutureFilter">
@@ -427,8 +427,10 @@
                                                 Starts {{ $period->start_date?->diffForHumans() }}
                                             @elseif ($period->state() === 'cancelled')
                                                 Cancelled {{ $period->cancelled_at?->diffForHumans() }}
+                                            @elseif ($period->state() === 'needs_action')
+                                                Awaiting review since {{ $period->end_date?->diffForHumans() }}
                                             @else
-                                                Closed {{ $period->end_date?->diffForHumans() }}
+                                                Resolved {{ $period->resolved_at?->diffForHumans() }}
                                             @endif
                                         </div>
                                     </td>
@@ -441,6 +443,8 @@
                                             <div><span class="text-muted">Updated:</span> {{ $period->updater?->name ?? '—' }}</div>
                                             @if ($period->isCancelled())
                                                 <div><span class="text-muted">Cancelled:</span> {{ $period->canceller?->name ?? '—' }}</div>
+                                            @elseif ($period->isResolved())
+                                                <div><span class="text-muted">Resolved:</span> {{ $period->resolver?->name ?? '—' }}</div>
                                             @endif
                                         </div>
                                     </td>

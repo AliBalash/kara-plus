@@ -379,4 +379,72 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertNull($car->activeScheduledUnavailabilityPeriod());
         $this->assertSame('cancelled', $period->fresh()->state());
     }
+
+    public function test_expired_unresolved_unavailability_stays_blocked_as_need_action(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        $period = CarUnavailabilityPeriod::query()->create([
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_SERVICE_OIL,
+            'start_date' => Carbon::today()->subDays(2)->toDateString(),
+            'end_date' => Carbon::today()->subDay()->toDateString(),
+        ]);
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
+        $this->assertFalse((bool) $car->availability);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
+        $this->assertSame('needs_action', $period->fresh()->state());
+
+        $car->syncOperationalState();
+        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->fresh()->unavailability_reason);
+    }
+
+    public function test_resolved_expired_unavailability_releases_ready_car(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        $period = CarUnavailabilityPeriod::query()->create([
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_MAINTENANCE,
+            'start_date' => Carbon::today()->subDays(2)->toDateString(),
+            'end_date' => Carbon::today()->subDay()->toDateString(),
+        ]);
+        $period->resolve(null, 'Inspected and released');
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
+        $this->assertTrue((bool) $car->availability);
+        $this->assertNull($car->unavailability_reason);
+        $this->assertSame('completed', $period->fresh()->state());
+    }
+
+    public function test_active_hold_takes_precedence_over_older_expired_hold(): void
+    {
+        $car = Car::factory()->available()->create();
+
+        CarUnavailabilityPeriod::query()->create([
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_SERVICE_OIL,
+            'start_date' => Carbon::today()->subDays(3)->toDateString(),
+            'end_date' => Carbon::today()->subDays(2)->toDateString(),
+        ]);
+        CarUnavailabilityPeriod::query()->create([
+            'car_id' => $car->id,
+            'reason' => Car::UNAVAILABILITY_REASON_CHANGE_PLATE,
+            'start_date' => Carbon::today()->toDateString(),
+            'end_date' => Carbon::today()->addDay()->toDateString(),
+        ]);
+
+        $car->syncOperationalState();
+        $car->refresh();
+
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_CHANGE_PLATE, $car->unavailability_reason);
+    }
 }

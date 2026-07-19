@@ -283,7 +283,7 @@
                 [
                     'label' => 'Need Action',
                     'value' => number_format($fleetNeedAction),
-                    'sub' => 'Overdue returns requiring a decision',
+                    'sub' => 'Operational blocks requiring a decision',
                     'icon' => 'bi bi-wrench-adjustable-circle',
                     'tone' => 'warning',
                 ],
@@ -489,7 +489,7 @@
                                 <i class="bi bi-exclamation-triangle-fill fs-4"></i>
                                 <div>
                                     <div class="fw-bold">{{ number_format($fleetNeedAction) }} vehicle{{ $fleetNeedAction === 1 ? '' : 's' }} need immediate action</div>
-                                    <div class="small">These cars have overdue open contracts. Accounting and operations should confirm return, extension, or next base status before reuse.</div>
+                                    <div class="small">These cars have overdue contracts or expired unavailable windows. Operations must confirm the next status before reuse.</div>
                                 </div>
                             </div>
                             <button type="button" class="btn btn-light btn-sm text-danger fw-semibold" wire:click="showNeedActionFleet">

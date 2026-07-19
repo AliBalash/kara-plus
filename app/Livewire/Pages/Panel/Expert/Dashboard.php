@@ -1071,7 +1071,7 @@ class Dashboard extends Component
     protected function fleetAttentionActionLabel(Car $car): string
     {
         return match (true) {
-            $car->unavailability_reason === Car::UNAVAILABILITY_REASON_NEED_ACTION => 'Close overdue contract and confirm next step',
+            $car->unavailability_reason === Car::UNAVAILABILITY_REASON_NEED_ACTION => 'Review the blocking issue and confirm the next status',
             $car->operationalStatus() === Car::STATUS_SOLD => 'Keep hidden from dispatch and reservations',
             $car->unavailability_reason === Car::UNAVAILABILITY_REASON_FOR_SALE => 'Hold for sale workflow only',
             $car->unavailability_reason === Car::UNAVAILABILITY_REASON_REGISTRATION => 'Renew registration before reuse',

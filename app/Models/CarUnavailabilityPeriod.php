@@ -23,16 +23,21 @@ class CarUnavailabilityPeriod extends Model
         'cancelled_at',
         'cancelled_by',
         'cancellation_note',
+        'resolved_at',
+        'resolved_by',
+        'resolution_note',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
         'cancelled_at' => 'datetime',
+        'resolved_at' => 'datetime',
     ];
 
     private static ?bool $tableExistsCache = null;
     private static ?bool $cancellationColumnsExistCache = null;
+    private static ?bool $resolutionColumnsExistCache = null;
 
     public function car()
     {
@@ -54,6 +59,11 @@ class CarUnavailabilityPeriod extends Model
         return $this->belongsTo(User::class, 'cancelled_by');
     }
 
+    public function resolver()
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
+
     public function scopeOpen($query)
     {
         if (! static::supportsCancellationColumns()) {
@@ -70,6 +80,25 @@ class CarUnavailabilityPeriod extends Model
         }
 
         return $query->whereNotNull('cancelled_at');
+    }
+
+    public function scopeUnresolved($query)
+    {
+        if (! static::supportsResolutionColumns()) {
+            return $query;
+        }
+
+        return $query->whereNull('resolved_at');
+    }
+
+    public function scopeExpiredBefore($query, Carbon|string|null $date = null)
+    {
+        $dateValue = ($date instanceof Carbon ? $date : Carbon::parse($date ?? Carbon::today()))->toDateString();
+
+        return $query
+            ->open()
+            ->unresolved()
+            ->whereDate('end_date', '<', $dateValue);
     }
 
     public function scopeActiveOn($query, Carbon|string|null $date = null)
@@ -120,6 +149,10 @@ class CarUnavailabilityPeriod extends Model
             return 'upcoming';
         }
 
+        if (static::supportsResolutionColumns() && ! $this->isResolved()) {
+            return 'needs_action';
+        }
+
         return 'completed';
     }
 
@@ -129,6 +162,7 @@ class CarUnavailabilityPeriod extends Model
             'active' => 'Active',
             'upcoming' => 'Upcoming',
             'cancelled' => 'Cancelled',
+            'needs_action' => 'Need Action',
             default => 'Completed',
         };
     }
@@ -139,6 +173,7 @@ class CarUnavailabilityPeriod extends Model
             'active' => 'bg-label-danger',
             'upcoming' => 'bg-label-info',
             'cancelled' => 'bg-label-warning',
+            'needs_action' => 'bg-label-danger',
             default => 'bg-label-secondary',
         };
     }
@@ -162,6 +197,25 @@ class CarUnavailabilityPeriod extends Model
             'cancelled_at' => Carbon::now(),
             'cancelled_by' => $userId ?? Auth::id(),
             'cancellation_note' => $note,
+            'updated_by' => $userId ?? Auth::id(),
+        ])->save();
+    }
+
+    public function isResolved(): bool
+    {
+        return static::supportsResolutionColumns() && $this->resolved_at !== null;
+    }
+
+    public function resolve(?int $userId = null, ?string $note = null): bool
+    {
+        if (! static::supportsResolutionColumns() || $this->isCancelled() || $this->isResolved()) {
+            return false;
+        }
+
+        return $this->forceFill([
+            'resolved_at' => Carbon::now(),
+            'resolved_by' => $userId ?? Auth::id(),
+            'resolution_note' => $note,
             'updated_by' => $userId ?? Auth::id(),
         ])->save();
     }
@@ -199,6 +253,21 @@ class CarUnavailabilityPeriod extends Model
                 && Schema::hasColumn('car_unavailability_periods', 'cancellation_note');
         } catch (\Throwable) {
             return self::$cancellationColumnsExistCache = false;
+        }
+    }
+
+    public static function supportsResolutionColumns(): bool
+    {
+        if (self::$resolutionColumnsExistCache !== null) {
+            return self::$resolutionColumnsExistCache;
+        }
+
+        try {
+            return self::$resolutionColumnsExistCache = Schema::hasColumn('car_unavailability_periods', 'resolved_at')
+                && Schema::hasColumn('car_unavailability_periods', 'resolved_by')
+                && Schema::hasColumn('car_unavailability_periods', 'resolution_note');
+        } catch (\Throwable) {
+            return self::$resolutionColumnsExistCache = false;
         }
     }
 }

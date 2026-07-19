@@ -57,7 +57,7 @@
                                         <div class="alert alert-danger border-0 py-2 px-3 mt-3 mb-0">
                                             <div class="fw-semibold">Why Base Status shows Available</div>
                                             <div class="small">
-                                                This car is operationally unavailable because an open contract is overdue. The manual base status can stay Available; close/extend the contract or set a real unavailable window if the car must remain blocked.
+                                                {{ $car->needActionAlertMessage() }} The manual base status can stay Available, but you must save the reviewed decision before this car is released.
                                             </div>
                                         </div>
                                     @endif
