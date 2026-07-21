@@ -73,9 +73,9 @@
 
                                 <div class="card border-0 shadow-sm bg-light-subtle mb-0">
                                     <div class="card-body">
-                                        <div class="fw-semibold mb-1">Unavailable Window</div>
+                                        <div class="fw-semibold mb-1">Manual Unavailable Status</div>
                                         <div class="small text-muted mb-3">
-                                            If base status is Unavailable, reason and date range are saved as the first history record for this car.
+                                            If base status is Unavailable, reason and note are saved now. The timeline start is the submit time and it stays open until the next status change.
                                         </div>
 
                                         <div class="row g-3">
@@ -89,24 +89,6 @@
                                                     @endforeach
                                                 </select>
                                                 @error('hold_reason')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-
-                                            <div class="col-md-6">
-                                                <label class="form-label small text-muted mb-1">Start date</label>
-                                                <input type="date" class="form-control @error('hold_start_date') is-invalid @enderror"
-                                                    wire:model.live="hold_start_date" @disabled($status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
-                                                @error('hold_start_date')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-
-                                            <div class="col-md-6">
-                                                <label class="form-label small text-muted mb-1">End date</label>
-                                                <input type="date" class="form-control @error('hold_end_date') is-invalid @enderror"
-                                                    wire:model.live="hold_end_date" @disabled($status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
-                                                @error('hold_end_date')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
                                             </div>

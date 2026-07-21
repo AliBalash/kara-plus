@@ -1,8 +1,114 @@
 <div>
     <form wire:submit.prevent="submit">
+        @php
+            $baseStatusLabel = \App\Models\Car::manualStatusLabels()[$status] ?? ucfirst((string) $status);
+            $isNeedActionPreview = $this->effectiveUnavailabilityReasonLabel === 'Need Action';
+        @endphp
+
+        <section class="card border-0 shadow-sm mb-4 overflow-hidden">
+            <div class="card-body p-0">
+                <div class="p-4 border-bottom" style="background: linear-gradient(135deg, #f9fafb 0%, #eef7ff 48%, #fff5ec 100%);">
+                    <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
+                        <div>
+                            <div class="small text-uppercase text-muted fw-semibold mb-1">Status Control</div>
+                            <h5 class="mb-1">Base Status Decision</h5>
+                            <div class="text-muted">Set the manual decision here. Automatic booking states are shown as the final operational result.</div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 align-items-start">
+                            <span class="badge bg-light text-dark border">Base: {{ $baseStatusLabel }}</span>
+                            <span class="badge {{ $this->effectiveStatusBadgeClass }}">Final: {{ $this->effectiveStatusLabel }}</span>
+                            @if ($this->effectiveUnavailabilityReasonLabel)
+                                <span class="badge bg-danger-subtle text-danger">{{ $this->effectiveUnavailabilityReasonLabel }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    <div class="row g-4">
+                        <div class="col-lg-4">
+                            <label class="form-label small text-muted mb-1">Base Status</label>
+                            <select class="form-select form-select-lg border-warning @error('status') is-invalid @enderror"
+                                name="status" wire:model.live="status" required>
+                                <option value="available" {{ $status == 'available' ? 'selected' : '' }}>Available</option>
+                                <option value="unavailable" {{ $status == 'unavailable' ? 'selected' : '' }}>Unavailable</option>
+                                <option value="sold" {{ $status == 'sold' ? 'selected' : '' }}>Sold</option>
+                            </select>
+                            @error('status')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">Manual unavailable and sold stay fixed until you change them.</div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <label class="form-label small text-muted mb-1">Unavailable Reason</label>
+                            <select class="form-select @error('hold_reason') is-invalid @enderror"
+                                wire:model.live="hold_reason" @disabled($status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
+                                <option value="">Select reason</option>
+                                @foreach (\App\Models\Car::scheduledUnavailabilityReasonLabels() as $reasonValue => $reasonLabel)
+                                    <option value="{{ $reasonValue }}">{{ $reasonLabel }}</option>
+                                @endforeach
+                            </select>
+                            @error('hold_reason')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">Required only when Base Status is Unavailable.</div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <label class="form-label small text-muted mb-1">Status Note</label>
+                            <textarea class="form-control @error('hold_note') is-invalid @enderror" rows="2"
+                                placeholder="Example: Accident repair, workshop check, management decision."
+                                wire:model.defer="hold_note" @disabled($status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)></textarea>
+                            @error('hold_note')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-lg-8">
+                            <div class="alert alert-secondary border-0 mb-0">
+                                <div class="fw-semibold">Final Status: {{ $this->effectiveStatusLabel }}</div>
+                                @if ($this->effectiveUnavailabilityReasonLabel)
+                                    <div class="small text-dark mt-1">Reason: {{ $this->effectiveUnavailabilityReasonLabel }}</div>
+                                @endif
+                                <div class="small text-muted">
+                                    {{ $this->effectiveStatusExplanation ?? 'Final status is synchronized automatically from base status and reservation timeline.' }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="d-flex flex-column flex-sm-row flex-lg-column gap-2">
+                                <a href="{{ route('car.unavailable-desk', ['carFilter' => $car->id]) }}" class="btn btn-outline-dark">
+                                    Open Unavailable Report
+                                </a>
+                                @if ($car->manual_status === \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)
+                                    <span class="badge bg-danger-subtle text-danger py-2">Manual unavailable active</span>
+                                @else
+                                    <span class="badge bg-success-subtle text-success py-2">No manual unavailable hold</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    @if ($isNeedActionPreview)
+                        <div class="alert alert-danger border-0 mt-3 mb-0">
+                            <div class="fw-semibold">Need Action requires review</div>
+                            <div class="small">
+                                {{ $car->needActionAlertMessage() }} Click the car, review the contract/status, then save the correct base status.
+                            </div>
+                        </div>
+                    @endif
+
+                    <x-car-need-action-alert :car="$car" class="mt-3 mb-0" />
+                </div>
+            </div>
+        </section>
+
         <div class="row">
             <!-- Car Information -->
-            <div class="col-md-6">
+            <div class="col-12">
                 <div class="col-md-12">
                     <div class="card mb-4">
                         <h5 class="card-header">Car Information</h5>
@@ -25,213 +131,6 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-
-                            @php
-                                $baseStatusLabel = \App\Models\Car::manualStatusLabels()[$status] ?? ucfirst((string) $status);
-                                $isNeedActionPreview = $this->effectiveUnavailabilityReasonLabel === 'Need Action';
-                            @endphp
-                            <div class="card border-0 shadow-sm bg-light-subtle mb-0">
-                                <div class="card-body py-3">
-                                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
-                                        <div>
-                                            <div class="small text-muted text-uppercase fw-semibold mb-1">Current operational status</div>
-                                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                                <span class="badge {{ $this->effectiveStatusBadgeClass }}">
-                                                    {{ $this->effectiveStatusLabel }}
-                                                </span>
-                                                @if ($this->effectiveUnavailabilityReasonLabel)
-                                                    <span class="badge bg-danger-subtle text-danger">{{ $this->effectiveUnavailabilityReasonLabel }}</span>
-                                                @endif
-                                            </div>
-                                            @if ($this->effectiveStatusExplanation)
-                                                <div class="small text-muted mt-2">{{ $this->effectiveStatusExplanation }}</div>
-                                            @endif
-                                        </div>
-                                        <div class="text-lg-end">
-                                            <div class="small text-muted text-uppercase fw-semibold mb-1">Manual base status</div>
-                                            <span class="badge bg-light text-dark border">{{ $baseStatusLabel }}</span>
-                                            <div class="small text-muted mt-2">This is the editable/manual status below.</div>
-                                        </div>
-                                    </div>
-                                    @if ($isNeedActionPreview)
-                                        <div class="alert alert-danger border-0 py-2 px-3 mt-3 mb-0">
-                                            <div class="fw-semibold">Why Base Status shows Available</div>
-                                            <div class="small">
-                                                {{ $car->needActionAlertMessage() }} The manual base status can stay Available, but you must save the reviewed decision before this car is released.
-                                            </div>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <!-- Vehicle Status -->
-                            <div class="input-group">
-                                <span class="input-group-text" id="status-addon">Base Status (Manual)</span>
-                                <select class="form-control border border-warning @error('status') is-invalid @enderror"
-                                    name="status" wire:model.live="status" required>
-                                    <option value="available" {{ $status == 'available' ? 'selected' : '' }}>Available
-                                    </option>
-                                    <option value="unavailable" {{ $status == 'unavailable' ? 'selected' : '' }}>
-                                        Unavailable
-                                    </option>
-                                    <option value="sold" {{ $status == 'sold' ? 'selected' : '' }}>Sold</option>
-                                </select>
-                                @error('status')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="form-text mt-1">
-                                Base Status is only the manual decision. Final status can still become Need Action, Active booking, Upcoming booking, or Scheduled unavailable automatically.
-                            </div>
-
-                            <div class="card border-0 shadow-sm bg-light-subtle mb-0">
-                                <div class="card-body">
-                                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-3">
-                                        <div>
-                                            <div class="fw-semibold">Unavailable Window</div>
-                                            <div class="small text-muted">
-                                                When status is Unavailable, reason and date range are saved as the car's operational hold.
-                                            </div>
-                                        </div>
-                                        <div class="d-flex flex-wrap gap-2 align-items-start">
-                                            @if ($unavailability_period_id)
-                                                <span class="badge bg-danger-subtle text-danger">Window #{{ $unavailability_period_id }}</span>
-                                            @elseif ($car->manual_status === \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)
-                                                <span class="badge bg-warning-subtle text-warning">Legacy hold ready to convert</span>
-                                            @else
-                                                <span class="badge bg-success-subtle text-success">No dated hold</span>
-                                            @endif
-                                            <a href="{{ route('car.unavailable-desk', ['carFilter' => $car->id]) }}" class="btn btn-sm btn-outline-dark">
-                                                Open Desk
-                                            </a>
-                                        </div>
-                                    </div>
-
-                                    @if (! $unavailableDeskReady)
-                                        <div class="alert alert-warning py-2 px-3 mb-3" role="alert">
-                                            <div class="fw-semibold">Database update required</div>
-                                            <div class="small">Create `car_unavailability_periods` before managing unavailable windows.</div>
-                                        </div>
-                                    @endif
-
-                                    <div class="row g-3">
-                                        <div class="col-md-12">
-                                            <label class="form-label small text-muted mb-1">Reason</label>
-                                            <select class="form-select @error('hold_reason') is-invalid @enderror"
-                                                wire:model.live="hold_reason" @disabled(! $unavailableDeskReady || $status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
-                                                <option value="">Select reason</option>
-                                                @foreach (\App\Models\Car::scheduledUnavailabilityReasonLabels() as $reasonValue => $reasonLabel)
-                                                    <option value="{{ $reasonValue }}">{{ $reasonLabel }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error('hold_reason')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label small text-muted mb-1">Start date</label>
-                                            <input type="date" class="form-control @error('hold_start_date') is-invalid @enderror"
-                                                wire:model.live="hold_start_date" @disabled(! $unavailableDeskReady || $status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
-                                            @error('hold_start_date')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label small text-muted mb-1">End date</label>
-                                            <input type="date" class="form-control @error('hold_end_date') is-invalid @enderror"
-                                                wire:model.live="hold_end_date" @disabled(! $unavailableDeskReady || $status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
-                                            @error('hold_end_date')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-12">
-                                            <label class="form-label small text-muted mb-1">Detail note</label>
-                                            <textarea class="form-control @error('hold_note') is-invalid @enderror" rows="3"
-                                                placeholder="Example: Accident repair, expected release after workshop check."
-                                                wire:model.defer="hold_note" @disabled(! $unavailableDeskReady || $status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)></textarea>
-                                            @error('hold_note')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-
-                                    <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-3">
-                                        <button type="button" class="btn btn-dark"
-                                            wire:click="saveUnavailableWindow"
-                                            @disabled(! $unavailableDeskReady || $status !== \App\Models\Car::MANUAL_STATUS_UNAVAILABLE)>
-                                            {{ $unavailability_period_id ? 'Update Window' : 'Save Window' }}
-                                        </button>
-                                    </div>
-
-                                    <div class="border-top mt-4 pt-3">
-                                        <div class="d-flex justify-content-between align-items-center gap-3 mb-2">
-                                            <div>
-                                                <div class="fw-semibold">Unavailable History</div>
-                                                <div class="small text-muted">Previous, active, upcoming, and cancelled holds for this car.</div>
-                                            </div>
-                                            <span class="badge bg-light text-dark">{{ $this->unavailableHistory->count() }} shown</span>
-                                        </div>
-
-                                        <div class="table-responsive">
-                                            <table class="table table-sm align-middle mb-0">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Reason</th>
-                                                        <th>Window</th>
-                                                        <th>State</th>
-                                                        <th>Note</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @forelse ($this->unavailableHistory as $history)
-                                                        <tr>
-                                                            <td>
-                                                                <span class="badge bg-label-danger">{{ $history->reasonLabel() ?? 'Unavailable' }}</span>
-                                                            </td>
-                                                            <td>
-                                                                <div class="fw-semibold small">{{ $history->dateWindowLabel() }}</div>
-                                                                @if ($history->isCancelled())
-                                                                    <div class="small text-muted">Cancelled {{ $history->cancelled_at?->format('Y-m-d H:i') }}</div>
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                <span class="badge {{ $history->stateBadgeClass() }}">{{ $history->stateLabel() }}</span>
-                                                            </td>
-                                                            <td class="small text-muted" style="min-width: 160px;">
-                                                                {{ $history->isCancelled() ? ($history->cancellation_note ?: $history->note ?: '—') : ($history->note ?: '—') }}
-                                                            </td>
-                                                        </tr>
-                                                    @empty
-                                                        <tr>
-                                                            <td colspan="4" class="text-center text-muted py-3">No unavailable history yet.</td>
-                                                        </tr>
-                                                    @endforelse
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="alert alert-secondary py-2 px-3 mb-0" role="alert">
-                                <div class="fw-semibold">Final Status: {{ $this->effectiveStatusLabel }}</div>
-                                @if ($this->effectiveUnavailabilityReasonLabel)
-                                    <div class="small text-dark mt-1">
-                                        Reason: {{ $this->effectiveUnavailabilityReasonLabel }}
-                                    </div>
-                                @endif
-                                <div class="small text-muted">
-                                    Final status is synchronized automatically from the base status and the reservation timeline.
-                                </div>
-                                @if ($this->effectiveStatusExplanation)
-                                    <div class="small mt-1">{{ $this->effectiveStatusExplanation }}</div>
-                                @endif
-                            </div>
-
-                            <x-car-need-action-alert :car="$car" class="mb-0" />
 
                                 <!-- Ownership -->
                                 <div class="input-group">
@@ -736,4 +635,142 @@
                 aria-hidden="true"></span>
         </div>
     </form>
+
+    <section class="card border-0 shadow-sm mt-4 overflow-hidden">
+        <div class="card-body p-0">
+            <div class="p-4 border-bottom" style="background: linear-gradient(135deg, #f8fafc 0%, #eef6f2 52%, #fff7ed 100%);">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                    <div>
+                        <div class="small text-uppercase text-muted fw-semibold mb-1">Vehicle Status Audit</div>
+                        <h5 class="mb-1">Status Timeline</h5>
+                        <div class="text-muted">
+                            Every manual or automatic status change is kept here. The previous status closes automatically when the next one starts.
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-start">
+                        <span class="badge bg-light text-dark border">{{ $this->statusTimeline->count() }} records shown</span>
+                        <span class="badge {{ $this->effectiveStatusBadgeClass }}">{{ $this->effectiveStatusLabel }}</span>
+                        @if ($this->effectiveUnavailabilityReasonLabel)
+                            <span class="badge bg-danger-subtle text-danger">{{ $this->effectiveUnavailabilityReasonLabel }}</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            @if (! \App\Models\CarStatusPeriod::tableExists())
+                <div class="alert alert-warning m-4">
+                    <div class="fw-semibold">Database update required</div>
+                    <div class="small">Create `car_status_periods` to enable full status timeline.</div>
+                </div>
+            @else
+                <div class="row g-0">
+                    <div class="col-lg-7 border-end">
+                        <div class="p-4">
+                            @forelse ($this->statusTimeline as $period)
+                                <div class="d-flex gap-3 pb-4 {{ ! $loop->last ? 'border-bottom mb-4' : '' }}">
+                                    <div class="flex-shrink-0 text-center">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center {{ \App\Models\Car::operationalStatusSubtleBadgeClassFor($period->status, (bool) $period->availability, $period->reason) }}"
+                                            style="width: 44px; height: 44px;">
+                                            <i class="{{ \App\Models\Car::operationalStatusIconFor($period->status, (bool) $period->availability) }}"></i>
+                                        </div>
+                                        @if (! $period->ended_at)
+                                            <span class="badge bg-success-subtle text-success mt-2">Open</span>
+                                        @endif
+                                    </div>
+
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                                            <div>
+                                                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                                    <span class="badge {{ \App\Models\Car::operationalStatusSubtleBadgeClassFor($period->status, (bool) $period->availability, $period->reason) }}">
+                                                        {{ $period->statusLabel() }}
+                                                    </span>
+                                                    @if ($period->reasonLabel())
+                                                        <span class="badge bg-danger-subtle text-danger">{{ $period->reasonLabel() }}</span>
+                                                    @endif
+                                                    <span class="badge {{ $period->sourceBadgeClass() }}">{{ $period->sourceLabel() }}</span>
+                                                </div>
+                                                <div class="fw-semibold">
+                                                    {{ $period->started_at?->format('Y-m-d H:i') ?? '—' }}
+                                                    @if ($period->ended_at)
+                                                        <span class="text-muted fw-normal">to {{ $period->ended_at->format('Y-m-d H:i') }}</span>
+                                                    @else
+                                                        <span class="text-success fw-normal">to now</span>
+                                                    @endif
+                                                </div>
+                                                <div class="small text-muted">{{ $period->durationLabel() }}</div>
+                                            </div>
+
+                                            <div class="d-flex align-items-center gap-2 text-md-end">
+                                                <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center small fw-semibold"
+                                                    style="width: 34px; height: 34px;">
+                                                    {{ $period->actorInitials() }}
+                                                </div>
+                                                <div>
+                                                    <div class="small fw-semibold">{{ $period->actorName() }}</div>
+                                                    <div class="small text-muted">{{ $period->trigger_type ?: 'status_sync' }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        @if ($period->note)
+                                            <div class="bg-light rounded-3 px-3 py-2 mt-3 small text-muted">
+                                                {{ $period->note }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-5">
+                                    <div class="fw-semibold mb-1">No timeline yet</div>
+                                    <div class="small">It will start after the SQL is run and the car is synced.</div>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5">
+                        <div class="p-4">
+                            <div class="fw-semibold mb-3">Status History Table</div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Status</th>
+                                            <th>Start</th>
+                                            <th>End</th>
+                                            <th>User</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse ($this->statusTimeline as $period)
+                                            <tr>
+                                                <td>
+                                                    <span class="badge {{ \App\Models\Car::operationalStatusSubtleBadgeClassFor($period->status, (bool) $period->availability, $period->reason) }}">
+                                                        {{ $period->statusLabel() }}
+                                                    </span>
+                                                    @if ($period->reasonLabel())
+                                                        <div class="small text-muted mt-1">{{ $period->reasonLabel() }}</div>
+                                                    @endif
+                                                </td>
+                                                <td class="small">{{ $period->started_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                                                <td class="small">
+                                                    {{ $period->ended_at?->format('Y-m-d H:i') ?? 'Open' }}
+                                                </td>
+                                                <td class="small">{{ $period->actorName() }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted py-3">No records</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </section>
 </div>
