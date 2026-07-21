@@ -333,7 +333,7 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertStringContainsString('Active hold also exists: Maintenance', $car->operationalStatusContextNote());
     }
 
-    public function test_active_scheduled_unavailability_marks_car_unavailable(): void
+    public function test_active_legacy_unavailability_window_is_report_only(): void
     {
         $car = Car::factory()->available()->create();
 
@@ -348,9 +348,9 @@ class ContractCarAvailabilityTest extends TestCase
         $car->syncOperationalState();
         $car->refresh();
 
-        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
-        $this->assertFalse($car->availability);
-        $this->assertSame(Car::UNAVAILABILITY_REASON_SERVICE_OIL, $car->unavailability_reason);
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
+        $this->assertTrue((bool) $car->availability);
+        $this->assertNull($car->unavailability_reason);
         $this->assertSame(
             Carbon::today()->subDay()->format('Y-m-d') . ' → ' . Carbon::today()->addDay()->format('Y-m-d'),
             $car->activeScheduledUnavailabilityWindowLabel()
@@ -380,7 +380,7 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertSame('cancelled', $period->fresh()->state());
     }
 
-    public function test_expired_unresolved_unavailability_stays_blocked_as_need_action(): void
+    public function test_expired_unresolved_legacy_unavailability_window_does_not_block_car(): void
     {
         $car = Car::factory()->available()->create();
 
@@ -394,13 +394,13 @@ class ContractCarAvailabilityTest extends TestCase
         $car->syncOperationalState();
         $car->refresh();
 
-        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
-        $this->assertFalse((bool) $car->availability);
-        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
+        $this->assertTrue((bool) $car->availability);
+        $this->assertNull($car->unavailability_reason);
         $this->assertSame('needs_action', $period->fresh()->state());
 
         $car->syncOperationalState();
-        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->fresh()->unavailability_reason);
+        $this->assertNull($car->fresh()->unavailability_reason);
     }
 
     public function test_resolved_expired_unavailability_releases_ready_car(): void
@@ -424,7 +424,7 @@ class ContractCarAvailabilityTest extends TestCase
         $this->assertSame('completed', $period->fresh()->state());
     }
 
-    public function test_active_hold_takes_precedence_over_older_expired_hold(): void
+    public function test_active_legacy_hold_does_not_override_base_status(): void
     {
         $car = Car::factory()->available()->create();
 
@@ -444,7 +444,9 @@ class ContractCarAvailabilityTest extends TestCase
         $car->syncOperationalState();
         $car->refresh();
 
-        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
-        $this->assertSame(Car::UNAVAILABILITY_REASON_CHANGE_PLATE, $car->unavailability_reason);
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
+        $this->assertTrue((bool) $car->availability);
+        $this->assertNull($car->unavailability_reason);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_CHANGE_PLATE, $car->activeScheduledUnavailabilityPeriod()?->reason);
     }
 }

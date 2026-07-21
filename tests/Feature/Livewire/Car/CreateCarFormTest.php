@@ -6,6 +6,7 @@ use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
 use App\Models\Car;
 use App\Models\CarUnavailabilityPeriod;
 use App\Models\CarModel;
+use App\Models\CarStatusPeriod;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -116,7 +117,7 @@ class CreateCarFormTest extends TestCase
         $this->assertSame('Sold', $component->effectiveStatusLabel);
     }
 
-    public function test_submit_can_create_unavailable_car_with_history_window(): void
+    public function test_submit_can_create_unavailable_car_with_status_timeline(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -133,8 +134,6 @@ class CreateCarFormTest extends TestCase
         $component->plate_number = 'UN-1234';
         $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
         $component->hold_reason = Car::UNAVAILABILITY_REASON_REGISTRATION;
-        $component->hold_start_date = Carbon::today()->toDateString();
-        $component->hold_end_date = Carbon::today()->addDays(2)->toDateString();
         $component->hold_note = 'New car registration hold';
         $component->mileage = 10;
         $component->manufacturing_year = now()->year;
@@ -149,11 +148,16 @@ class CreateCarFormTest extends TestCase
         $this->assertFalse((bool) $car->availability);
         $this->assertSame(Car::UNAVAILABILITY_REASON_REGISTRATION, $car->unavailability_reason);
 
-        $this->assertDatabaseHas('car_unavailability_periods', [
+        $this->assertSame(Car::MANUAL_STATUS_UNAVAILABLE, $car->manual_status);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_REGISTRATION, $car->manual_unavailability_reason);
+        $this->assertSame(0, CarUnavailabilityPeriod::query()->where('car_id', $car->id)->count());
+        $this->assertDatabaseHas('car_status_periods', [
             'car_id' => $car->id,
+            'status' => Car::STATUS_UNAVAILABLE,
             'reason' => Car::UNAVAILABILITY_REASON_REGISTRATION,
+            'source' => CarStatusPeriod::SOURCE_MANUAL,
             'note' => 'New car registration hold',
+            'ended_at' => null,
         ]);
-        $this->assertSame(1, CarUnavailabilityPeriod::query()->where('car_id', $car->id)->count());
     }
 }

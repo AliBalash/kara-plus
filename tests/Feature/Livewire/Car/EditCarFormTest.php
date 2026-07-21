@@ -6,6 +6,7 @@ use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
 use App\Models\Car;
 use App\Models\CarUnavailabilityPeriod;
 use App\Models\CarOption;
+use App\Models\CarStatusPeriod;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
@@ -185,7 +186,8 @@ class EditCarFormTest extends TestCase
 
         $this->assertSame(Car::MANUAL_STATUS_UNAVAILABLE, $component->status);
         $this->assertSame(Car::UNAVAILABILITY_REASON_MAINTENANCE, $component->hold_reason);
-        $this->assertSame(Carbon::today()->toDateString(), $component->hold_start_date);
+        $this->assertNull($component->hold_start_date);
+        $this->assertNull($component->hold_end_date);
     }
 
     public function test_edit_form_shows_final_status_and_hides_manual_availability_controls(): void
@@ -206,7 +208,7 @@ class EditCarFormTest extends TestCase
         $this->assertTrue($component->availability);
     }
 
-    public function test_edit_form_can_save_unavailable_window(): void
+    public function test_edit_form_no_longer_creates_unavailable_window_records(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -216,25 +218,20 @@ class EditCarFormTest extends TestCase
         $component = app(EditCarForm::class);
         $component->mount($car->id);
         $component->hold_reason = Car::UNAVAILABILITY_REASON_ACCIDENT;
-        $component->hold_start_date = Carbon::today()->toDateString();
-        $component->hold_end_date = Carbon::today()->addDays(2)->toDateString();
         $component->hold_note = 'Workshop inspection';
 
         $component->saveUnavailableWindow();
 
-        $period = CarUnavailabilityPeriod::query()->where('car_id', $car->id)->first();
-        $this->assertNotNull($period);
-        $this->assertSame(Car::UNAVAILABILITY_REASON_ACCIDENT, $period->reason);
-        $this->assertSame('Workshop inspection', $period->note);
+        $this->assertArrayHasKey('status', $component->getErrorBag()->toArray());
+        $this->assertSame(0, CarUnavailabilityPeriod::query()->where('car_id', $car->id)->count());
 
         $car->refresh();
-        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
-        $this->assertFalse((bool) $car->availability);
-        $this->assertSame(Car::UNAVAILABILITY_REASON_ACCIDENT, $car->unavailability_reason);
-        $this->assertSame($period->id, $component->unavailability_period_id);
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
+        $this->assertTrue((bool) $car->availability);
+        $this->assertNull($car->unavailability_reason);
     }
 
-    public function test_submit_with_unavailable_status_creates_dated_window(): void
+    public function test_submit_with_unavailable_status_creates_open_status_period(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -245,23 +242,29 @@ class EditCarFormTest extends TestCase
         $component->mount($car->id);
         $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
         $component->hold_reason = Car::UNAVAILABILITY_REASON_REGISTRATION;
-        $component->hold_start_date = Carbon::today()->toDateString();
-        $component->hold_end_date = Carbon::today()->addDays(3)->toDateString();
         $component->hold_note = 'Registration renewal';
 
         $component->submit();
 
-        $this->assertDatabaseHas('car_unavailability_periods', [
+        $this->assertDatabaseMissing('car_unavailability_periods', [
             'car_id' => $car->id,
-            'reason' => Car::UNAVAILABILITY_REASON_REGISTRATION,
-            'note' => 'Registration renewal',
         ]);
 
         $car->refresh();
-        $this->assertSame(Car::MANUAL_STATUS_AVAILABLE, $car->manual_status);
+        $this->assertSame(Car::MANUAL_STATUS_UNAVAILABLE, $car->manual_status);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_REGISTRATION, $car->manual_unavailability_reason);
         $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
         $this->assertSame(Car::UNAVAILABILITY_REASON_REGISTRATION, $car->unavailability_reason);
         $this->assertSame(Car::MANUAL_STATUS_UNAVAILABLE, $component->status);
+
+        $this->assertDatabaseHas('car_status_periods', [
+            'car_id' => $car->id,
+            'status' => Car::STATUS_UNAVAILABLE,
+            'reason' => Car::UNAVAILABILITY_REASON_REGISTRATION,
+            'source' => CarStatusPeriod::SOURCE_MANUAL,
+            'note' => 'Registration renewal',
+            'ended_at' => null,
+        ]);
     }
 
     public function test_edit_form_accepts_change_plate_unavailable_reason(): void
@@ -275,20 +278,20 @@ class EditCarFormTest extends TestCase
         $component->mount($car->id);
         $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
         $component->hold_reason = Car::UNAVAILABILITY_REASON_CHANGE_PLATE;
-        $component->hold_start_date = Carbon::today()->toDateString();
-        $component->hold_end_date = Carbon::today()->addDay()->toDateString();
         $component->hold_note = 'Plate change in progress';
 
         $component->submit();
 
-        $this->assertDatabaseHas('car_unavailability_periods', [
+        $this->assertDatabaseHas('car_status_periods', [
             'car_id' => $car->id,
+            'status' => Car::STATUS_UNAVAILABLE,
             'reason' => Car::UNAVAILABILITY_REASON_CHANGE_PLATE,
+            'source' => CarStatusPeriod::SOURCE_MANUAL,
         ]);
         $this->assertSame(Car::UNAVAILABILITY_REASON_CHANGE_PLATE, $car->fresh()->unavailability_reason);
     }
 
-    public function test_submit_with_available_status_clears_selected_unavailable_window(): void
+    public function test_submit_with_available_status_does_not_edit_legacy_unavailable_window(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -306,20 +309,20 @@ class EditCarFormTest extends TestCase
 
         $component = app(EditCarForm::class);
         $component->mount($car->id);
-        $this->assertSame(Car::MANUAL_STATUS_UNAVAILABLE, $component->status);
+        $this->assertSame(Car::MANUAL_STATUS_AVAILABLE, $component->status);
 
         $component->status = Car::MANUAL_STATUS_AVAILABLE;
         $component->submit();
 
         $this->assertDatabaseHas('car_unavailability_periods', ['id' => $period->id]);
-        $this->assertNotNull($period->fresh()->cancelled_at);
+        $this->assertNull($period->fresh()->cancelled_at);
         $car->refresh();
         $this->assertSame(Car::STATUS_AVAILABLE, $car->status);
         $this->assertTrue((bool) $car->availability);
         $this->assertSame(Car::MANUAL_STATUS_AVAILABLE, $component->status);
     }
 
-    public function test_edit_form_converts_legacy_manual_unavailable_to_dated_window(): void
+    public function test_edit_form_keeps_legacy_manual_unavailable_without_default_end_date(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -338,20 +341,14 @@ class EditCarFormTest extends TestCase
 
         $this->assertNull($component->unavailability_period_id);
         $this->assertSame(Car::UNAVAILABILITY_REASON_SERVICE_OIL, $component->hold_reason);
-        $this->assertSame(Carbon::today()->toDateString(), $component->hold_start_date);
+        $this->assertNull($component->hold_start_date);
+        $this->assertNull($component->hold_end_date);
 
-        $component->hold_end_date = Carbon::today()->addDay()->toDateString();
-        $component->saveUnavailableWindow();
-
-        $this->assertDatabaseHas('car_unavailability_periods', [
-            'car_id' => $car->id,
-            'reason' => Car::UNAVAILABILITY_REASON_SERVICE_OIL,
-            'note' => 'Legacy oil service',
-        ]);
+        $component->submit();
 
         $car->refresh();
-        $this->assertSame(Car::MANUAL_STATUS_AVAILABLE, $car->manual_status);
-        $this->assertNull($car->manual_unavailability_reason);
+        $this->assertSame(Car::MANUAL_STATUS_UNAVAILABLE, $car->manual_status);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_SERVICE_OIL, $car->manual_unavailability_reason);
         $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
         $this->assertSame(Car::UNAVAILABILITY_REASON_SERVICE_OIL, $car->unavailability_reason);
     }
@@ -374,7 +371,8 @@ class EditCarFormTest extends TestCase
 
         $component = app(EditCarForm::class);
         $component->mount($car->id);
-        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->fresh()->unavailability_reason);
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->fresh()->status);
+        $this->assertNull($car->fresh()->unavailability_reason);
 
         $component->status = Car::MANUAL_STATUS_AVAILABLE;
         $component->submit();
@@ -388,7 +386,7 @@ class EditCarFormTest extends TestCase
         $this->assertNull($car->unavailability_reason);
     }
 
-    public function test_new_unavailable_window_resolves_older_expired_window(): void
+    public function test_manual_unavailable_status_resolves_older_expired_legacy_window(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -408,8 +406,6 @@ class EditCarFormTest extends TestCase
         $component->mount($car->id);
         $component->status = Car::MANUAL_STATUS_UNAVAILABLE;
         $component->hold_reason = Car::UNAVAILABILITY_REASON_CHANGE_PLATE;
-        $component->hold_start_date = Carbon::today()->toDateString();
-        $component->hold_end_date = Carbon::today()->addDay()->toDateString();
         $component->hold_note = 'Further inspection required';
         $component->submit();
 
