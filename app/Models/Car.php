@@ -296,10 +296,6 @@ class Car extends Model
             return 'This car has an overdue open contract. Confirm return, extend the contract, or set the next base status before dispatch.';
         }
 
-        if ($this->hasExpiredUnresolvedScheduledUnavailability()) {
-            return 'This car has an expired unavailable window. Inspect it and explicitly save Available, Sold, or a new unavailable window before dispatch.';
-        }
-
         return 'This car has an overdue open contract. Confirm return, extend the contract, or set the next base status before dispatch.';
     }
 
@@ -410,6 +406,14 @@ class Car extends Model
             ];
         }
 
+        if ($manualState['manual_status'] === self::MANUAL_STATUS_UNAVAILABLE) {
+            return [
+                'status' => self::STATUS_UNAVAILABLE,
+                'availability' => false,
+                'unavailability_reason' => $manualState['manual_unavailability_reason'],
+            ];
+        }
+
         if ($needsAction) {
             return [
                 'status' => self::STATUS_UNAVAILABLE,
@@ -431,14 +435,6 @@ class Car extends Model
                 'status' => self::STATUS_UNAVAILABLE,
                 'availability' => false,
                 'unavailability_reason' => $scheduledUnavailabilityReason,
-            ];
-        }
-
-        if ($manualState['manual_status'] === self::MANUAL_STATUS_UNAVAILABLE) {
-            return [
-                'status' => self::STATUS_UNAVAILABLE,
-                'availability' => false,
-                'unavailability_reason' => $manualState['manual_unavailability_reason'],
             ];
         }
 
@@ -471,9 +467,7 @@ class Car extends Model
             (bool) $this->availability,
             $this->unavailability_reason
         );
-        $activeScheduledUnavailability = $this->activeScheduledUnavailabilityPeriod($now);
-        $needsAction = $this->hasNeedActionReservationWindow($now)
-            || ($activeScheduledUnavailability === null && $this->hasExpiredUnresolvedScheduledUnavailability($now));
+        $needsAction = $this->hasNeedActionReservationWindow($now);
         $hasActiveReservation = ! $needsAction && $this->hasActiveReservationWindow($now);
         $hasUpcomingReservation = ! $needsAction && ! $hasActiveReservation && $this->hasUpcomingReservationWindow($now);
         $operationalState = static::synchronizedStateForReservationWindow(
@@ -481,15 +475,22 @@ class Car extends Model
             $manualState['manual_unavailability_reason'],
             $hasActiveReservation,
             $hasUpcomingReservation,
-            $needsAction,
-            $activeScheduledUnavailability?->reason
+            $needsAction
         );
 
         return array_merge($operationalState, $manualState);
     }
 
-    public function syncOperationalState(?Carbon $now = null): bool
+    public function syncOperationalState(
+        ?Carbon $now = null,
+        string $source = CarStatusPeriod::SOURCE_AUTOMATIC,
+        ?int $actorId = null,
+        ?string $note = null,
+        ?string $triggerType = null,
+        ?int $triggerId = null
+    ): bool
     {
+        $now ??= Carbon::now();
         $attributes = $this->synchronizedOperationalState($now);
         $currentAvailability = (bool) $this->availability;
 
@@ -500,13 +501,97 @@ class Car extends Model
             && $this->manual_status === $attributes['manual_status']
             && $this->manual_unavailability_reason === $attributes['manual_unavailability_reason']
         ) {
+            $this->recordCurrentStatusPeriod($source, $actorId, $note, $triggerType, $triggerId, $now);
+
             return false;
         }
 
         $this->forceFill($attributes);
         $this->saveQuietly();
+        $this->recordCurrentStatusPeriod($source, $actorId, $note, $triggerType, $triggerId, $now);
 
         return true;
+    }
+
+    public function recordCurrentStatusPeriod(
+        string $source = CarStatusPeriod::SOURCE_AUTOMATIC,
+        ?int $actorId = null,
+        ?string $note = null,
+        ?string $triggerType = null,
+        ?int $triggerId = null,
+        ?Carbon $at = null
+    ): ?CarStatusPeriod {
+        if (! static::supportsStatusPeriods()) {
+            return null;
+        }
+
+        $at ??= Carbon::now();
+        $status = $this->operationalStatus();
+        $reason = $status === self::STATUS_UNAVAILABLE ? $this->unavailability_reason : null;
+        $manualStatus = $this->resolvedManualStatus();
+        $manualReason = $this->resolvedManualUnavailabilityReason();
+
+        $current = $this->statusPeriods()
+            ->open()
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (
+            $current
+            && $current->status === $status
+            && (bool) $current->availability === (bool) $this->availability
+            && $current->reason === $reason
+        ) {
+            $periodAttributes = [
+                'manual_status' => $manualStatus,
+                'manual_reason' => $manualReason,
+                'updated_at' => $at,
+            ];
+
+            if ($actorId !== null && $current->started_by === null) {
+                $periodAttributes['started_by'] = $actorId;
+            }
+
+            if ($source === CarStatusPeriod::SOURCE_MANUAL && $current->source === CarStatusPeriod::SOURCE_MIGRATION) {
+                $periodAttributes['source'] = CarStatusPeriod::SOURCE_MANUAL;
+            }
+
+            if ($note !== null && $current->note === null) {
+                $periodAttributes['note'] = $note;
+            }
+
+            $current->forceFill($periodAttributes)->saveQuietly();
+
+            return $current;
+        }
+
+        if ($current) {
+            $current->close($at, $actorId);
+        }
+
+        return $this->statusPeriods()->create([
+            'status' => $status,
+            'availability' => (bool) $this->availability,
+            'reason' => $reason,
+            'manual_status' => $manualStatus,
+            'manual_reason' => $manualReason,
+            'source' => in_array($source, [
+                CarStatusPeriod::SOURCE_MANUAL,
+                CarStatusPeriod::SOURCE_AUTOMATIC,
+                CarStatusPeriod::SOURCE_MIGRATION,
+            ], true) ? $source : CarStatusPeriod::SOURCE_AUTOMATIC,
+            'note' => $note,
+            'started_at' => $at,
+            'started_by' => $actorId,
+            'trigger_type' => $triggerType,
+            'trigger_id' => $triggerId,
+            'metadata' => [
+                'car_status' => $this->status,
+                'availability' => (bool) $this->availability,
+                'unavailability_reason' => $this->unavailability_reason,
+            ],
+        ]);
     }
 
     public function operationalStatus(): string
@@ -729,13 +814,7 @@ class Car extends Model
                     });
             });
 
-        if (! static::supportsScheduledUnavailabilityPeriods()) {
-            return $query;
-        }
-
-        return $query->whereDoesntHave('unavailabilityPeriods', function ($builder) {
-            $builder->activeOn(Carbon::today());
-        });
+        return $query;
     }
 
     public function isSelectableForReservation(): bool
@@ -867,6 +946,16 @@ class Car extends Model
     public function unavailabilityPeriods()
     {
         return $this->hasMany(CarUnavailabilityPeriod::class)->orderByDesc('start_date')->orderByDesc('id');
+    }
+
+    public function statusPeriods()
+    {
+        return $this->hasMany(CarStatusPeriod::class);
+    }
+
+    public function currentStatusPeriod()
+    {
+        return $this->hasOne(CarStatusPeriod::class)->whereNull('ended_at')->latestOfMany('started_at');
     }
 
     public function activeScheduledUnavailabilityPeriod(?Carbon $date = null): ?CarUnavailabilityPeriod
@@ -1156,6 +1245,19 @@ class Car extends Model
             return static::$tableExistenceCache['car_unavailability_periods'] = Schema::hasTable('car_unavailability_periods');
         } catch (\Throwable) {
             return static::$tableExistenceCache['car_unavailability_periods'] = false;
+        }
+    }
+
+    public static function supportsStatusPeriods(): bool
+    {
+        if (array_key_exists('car_status_periods', static::$tableExistenceCache)) {
+            return static::$tableExistenceCache['car_status_periods'];
+        }
+
+        try {
+            return static::$tableExistenceCache['car_status_periods'] = Schema::hasTable('car_status_periods');
+        } catch (\Throwable) {
+            return static::$tableExistenceCache['car_status_periods'] = false;
         }
     }
 
