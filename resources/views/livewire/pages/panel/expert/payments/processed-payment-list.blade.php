@@ -53,7 +53,7 @@
         <div class="col-md-3 mb-2">
             <form class="input-group" wire:submit.prevent="applySearch">
                 <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="search" class="form-control" placeholder="Search by Contract ID or Customer Last Name..."
+                <input type="search" class="form-control" placeholder="Search by contract ID, agreement no. or customer..."
                     wire:model.defer="searchInput">
                 <button class="btn btn-primary" type="submit" wire:loading.attr="disabled" wire:target="applySearch">
                     <span wire:loading.remove wire:target="applySearch">Search</span>
@@ -134,8 +134,14 @@
                         @php
                             $firstPayment = $paymentGroup->first();
                         @endphp
-                        <strong>Contract #{{ $contractId }} - Customer:
-                            {{ $firstPayment?->customer?->fullName() ?? 'Unknown' }}</strong>
+                        <strong>
+                            @if ($firstPayment?->contract)
+                                <x-contract-reference :contract="$firstPayment->contract" />
+                            @else
+                                Contract #{{ $contractId }}
+                            @endif
+                            - Customer: {{ $firstPayment?->customer?->fullName() ?? 'Unknown' }}
+                        </strong>
                         <span class="ms-3 badge bg-info">{{ count($paymentGroup) }} Payment(s)</span>
                     </button>
                 </h2>
@@ -193,7 +199,7 @@
                                 <thead>
                                     <tr>
                                         <th>Row</th>
-                                        <th>Contract ID</th>
+                                        <th>Contract reference</th>
                                         <th>Payment ID</th>
                                         <th>Customer</th>
                                         <th>Car</th>
@@ -211,7 +217,13 @@
                                     @foreach ($paymentGroup as $payment)
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
-                                            <td>{{ $payment->contract_id }}</td>
+                                            <td>
+                                                @if ($payment->contract)
+                                                    <x-contract-reference :contract="$payment->contract" />
+                                                @else
+                                                    #{{ $payment->contract_id }}
+                                                @endif
+                                            </td>
                                             <td>{{ $payment->id }}</td>
                                             <td>
                                                 <div>{{ $payment->customer?->fullName() ?? '-' }}</div>

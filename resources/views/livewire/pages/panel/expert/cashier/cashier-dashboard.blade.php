@@ -123,7 +123,11 @@
                                         <tr>
                                             <td>{{ $payment->id }}</td>
                                             <td>
-                                                <span class="fw-semibold">#{{ $payment->contract_id }}</span>
+                                                @if ($payment->contract)
+                                                    <x-contract-reference :contract="$payment->contract" />
+                                                @else
+                                                    <span class="fw-semibold">#{{ $payment->contract_id }}</span>
+                                                @endif
                                                 <div class="text-muted small d-flex align-items-center gap-2">
                                                     <span>{{ $payment->contract?->car?->fullName() ?? '-' }}</span>
                                                     <x-car-ownership-badge :car="$payment->contract?->car" />
