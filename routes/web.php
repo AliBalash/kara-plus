@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BalanceTransferController;
 use App\Livewire\Pages\Panel\Expert\Dashboard;
 use App\Livewire\Pages\Panel\Auth\Login;
 use App\Livewire\Pages\Panel\Expert\Agent\AgentList;
@@ -79,6 +80,8 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/pickup-document/{contractId}', RentalRequestPickupDocument::class)->name('rental-requests.pickup-document');
     Route::get('/expert/rental-requests/return-document/{contractId}', RentalRequestReturnDocument::class)->name('rental-requests.return-document');
     Route::get('/expert/rental-requests/balance-transfer/{contractId}', RentalRequestBalanceTransfer::class)->name('rental-requests.balance-transfer');
+    Route::post('/expert/rental-requests/balance-transfer/{contractId}', [BalanceTransferController::class, 'store'])->name('rental-requests.balance-transfer.store');
+    Route::delete('/expert/rental-requests/balance-transfer/{contractId}/{transfer}', [BalanceTransferController::class, 'destroy'])->name('rental-requests.balance-transfer.destroy');
 
     Route::get('/expert/rental-requests/awaiting-pickup', RentalRequestAwaitingPickupList::class)->name('rental-requests.awaiting.pickup');
     Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
