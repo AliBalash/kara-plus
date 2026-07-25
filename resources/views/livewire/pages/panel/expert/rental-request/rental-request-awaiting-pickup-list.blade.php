@@ -119,7 +119,7 @@
             <tbody class="table-border-bottom-0">
                 @forelse ($contracts as $contract)
                     <tr>
-                        <td>{{ $contract->id }}</td>
+                        <td><x-contract-reference :contract="$contract" /></td>
                         <td>
                             <div>{{ $contract->customer?->fullName() ?? '—' }}</div>
                             <div class="text-muted small">{{ $contract->customer?->phone ?? '—' }}</div>

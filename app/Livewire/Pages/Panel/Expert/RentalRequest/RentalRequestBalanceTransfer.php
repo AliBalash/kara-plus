@@ -39,6 +39,7 @@ class RentalRequestBalanceTransfer extends Component
             'payments',
             'incomingBalanceTransfers',
             'outgoingBalanceTransfers',
+            'pickupDocument',
         ])->findOrFail($contractId);
 
         $this->metadataRows = [
@@ -162,11 +163,12 @@ class RentalRequestBalanceTransfer extends Component
             'outgoingBalanceTransfers',
             'car',
             'customer',
+            'pickupDocument',
         ]);
 
         $this->currentOutstanding = round($this->contract->calculateRemainingBalance($this->contract->payments), 2);
 
-        $this->contractsList = Contract::with(['car', 'payments', 'incomingBalanceTransfers', 'outgoingBalanceTransfers'])
+        $this->contractsList = Contract::with(['car', 'pickupDocument', 'payments', 'incomingBalanceTransfers', 'outgoingBalanceTransfers'])
             ->where('customer_id', $this->contract->customer_id)
             ->where('id', '!=', $this->contract->id)
             ->latest()
@@ -176,7 +178,9 @@ class RentalRequestBalanceTransfer extends Component
 
                 return [
                     'id' => $contract->id,
-                    'label' => 'Contract #' . $contract->id . ' · ' . ($contract->car?->fullName() ?? 'Vehicle'),
+                    'label' => 'Contract #' . $contract->id
+                        . ($contract->agreement_number ? ' · AG ' . $contract->agreement_number : '')
+                        . ' · ' . ($contract->car?->fullName() ?? 'Vehicle'),
                     'status' => $contract->current_status,
                     'outstanding' => $balance,
                 ];

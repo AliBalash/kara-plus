@@ -180,7 +180,7 @@
                         $kardoBadge = $kardoDone ? 'bg-success' : 'bg-warning text-dark';
                     @endphp
                     <tr>
-                        <td>{{ $contract->id }}</td>
+                        <td><x-contract-reference :contract="$contract" /></td>
                         <td>
                             <div>{{ optional($contract->customer)->fullName() ?? '—' }}</div>
                             <div class="text-muted small">{{ optional($contract->customer)->phone ?? '—' }}</div>

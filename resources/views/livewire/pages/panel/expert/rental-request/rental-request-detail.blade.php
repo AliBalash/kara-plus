@@ -6,7 +6,7 @@
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="badge bg-label-primary text-uppercase">{{ $contract->statusLabel() }}</span>
-            <span class="badge bg-label-secondary">#{{ $contract->id }}</span>
+            <x-contract-reference :contract="$contract" />
         </div>
     </div>
 

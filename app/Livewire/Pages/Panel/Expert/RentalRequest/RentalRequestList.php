@@ -108,11 +108,11 @@ class RentalRequestList extends Component
         $likeSearch = '%' . $search . '%';
         $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
-        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'latestStatus.user', 'agent'])
+        $contracts = Contract::with(['customer', 'car.carModel', 'user', 'pickupDocument', 'latestStatus.user', 'agent'])
             ->when($search !== '', function ($query) use ($search, $likeSearch, $isPhoneSearch) {
                 $query->where(function ($scopedQuery) use ($search, $likeSearch, $isPhoneSearch) {
                     $scopedQuery
-                        ->where('contracts.id', 'like', $likeSearch)
+                        ->whereReferenceLike($likeSearch)
                         ->orWhereHas('customer', function ($customerQuery) use ($likeSearch, $isPhoneSearch) {
                             $customerQuery
                                 ->where('first_name', 'like', $likeSearch)

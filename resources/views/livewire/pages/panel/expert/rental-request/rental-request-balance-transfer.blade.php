@@ -27,7 +27,7 @@
 
                     <hr>
                     <ul class="list-unstyled mb-0 small text-muted">
-                        <li class="mb-2"><strong>Contract:</strong> #{{ $contract->id }}</li>
+                        <li class="mb-2"><strong>Contract:</strong> <x-contract-reference :contract="$contract" /></li>
                         <li class="mb-2"><strong>Customer:</strong> {{ $contract->customer?->fullName() }}</li>
                         <li>
                             <strong>Vehicle:</strong> {{ $contract->car?->fullName() ?? '—' }}

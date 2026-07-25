@@ -133,7 +133,7 @@
             <tbody class="table-border-bottom-0" wire:poll.10s>
                 @forelse ($contracts as $contract)
                     <tr wire:key="contract-me-{{ $contract->id }}">
-                        <td>{{ $contract->id }}</td>
+                        <td><x-contract-reference :contract="$contract" /></td>
                         <td>
                             <div>{{ $contract->customer->fullName() }}</div>
                             <div class="text-muted small">{{ $contract->customer->phone ?? '—' }}</div>

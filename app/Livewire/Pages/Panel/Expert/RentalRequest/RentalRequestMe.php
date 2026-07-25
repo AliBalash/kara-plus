@@ -129,11 +129,11 @@ class RentalRequestMe extends Component
 
         $query = Contract::query()
             ->where('user_id', auth()->id())
-            ->with(['customer', 'car.carModel', 'user', 'latestStatus.user', 'agent']);
+            ->with(['customer', 'car.carModel', 'user', 'pickupDocument', 'latestStatus.user', 'agent']);
 
         if ($search !== '') {
             $query->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
-                $scoped->where('contracts.id', 'like', $likeSearch)
+                $scoped->whereReferenceLike($likeSearch)
                     ->orWhereHas('customer', function ($customerQuery) use ($likeSearch, $isPhoneSearch) {
                         $customerQuery->where('first_name', 'like', $likeSearch)
                             ->orWhere('last_name', 'like', $likeSearch);
