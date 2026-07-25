@@ -48,7 +48,7 @@
                                 <tbody class="table-border-bottom-0">
                                     @foreach ($contracts as $contract)
                                         <tr>
-                                            <td>{{ $contract->id }}</td> <!-- نمایش ID قرارداد -->
+                                            <td><x-contract-reference :contract="$contract" /></td>
                                             <td>{{ $contract->customer->fullName() }}</td>
                                             <td>
                                                 <div class="d-flex align-items-center gap-2">
