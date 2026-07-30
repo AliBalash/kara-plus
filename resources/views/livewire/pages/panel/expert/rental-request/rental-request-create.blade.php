@@ -160,8 +160,14 @@
                                             </div>
                                             <div class="customer-match-card__meta mt-2">
                                                 <span><i class="bx bx-phone"></i> {{ $selectedLead['phone'] }}</span>
+                                                @if (!empty($selectedLead['messenger_phone']))
+                                                    <span><i class="bx bx-chat"></i> {{ $selectedLead['messenger_phone'] }}</span>
+                                                @endif
                                                 @if (!empty($selectedLead['email']))
                                                     <span><i class="bx bx-envelope"></i> {{ $selectedLead['email'] }}</span>
+                                                @endif
+                                                @if (!empty($selectedLead['source']))
+                                                    <span><i class="bx bx-share-alt"></i> {{ $selectedLead['source'] }}</span>
                                                 @endif
                                             </div>
                                             <div class="customer-match-card__hint mt-2">

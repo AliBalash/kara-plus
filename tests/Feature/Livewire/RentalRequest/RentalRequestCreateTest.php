@@ -255,6 +255,43 @@ class RentalRequestCreateTest extends TestCase
         $this->assertSame([], $component->customerPhoneSuggestions);
     }
 
+    public function test_selecting_a_lead_clears_customer_only_fields_from_a_previous_selection(): void
+    {
+        $customer = Customer::factory()->create([
+            'phone' => '+971500000111',
+            'messenger_phone' => '+971500000112',
+            'address' => 'Customer address',
+            'nationality' => 'IR',
+            'national_code' => '1234567890',
+            'passport_number' => 'P123',
+            'license_number' => 'LIC-123',
+        ]);
+        $lead = Lead::create([
+            'first_name' => 'Lead',
+            'last_name' => 'Only',
+            'phone' => '+971500000221',
+            'messenger_phone' => '+971500000222',
+            'email' => 'lead@example.com',
+            'priority' => Lead::PRIORITY_NORMAL,
+            'status' => Lead::STATUS_NEW,
+        ]);
+
+        $component = app(RentalRequestCreate::class);
+        $component->mount();
+        $component->selectExistingCustomer($customer->id);
+        $component->selectLead($lead->id);
+
+        $this->assertSame($lead->id, $component->selectedLeadId);
+        $this->assertNull($component->selectedExistingCustomerId);
+        $this->assertSame('Lead', $component->first_name);
+        $this->assertSame('Only', $component->last_name);
+        $this->assertNull($component->address);
+        $this->assertNull($component->nationality);
+        $this->assertNull($component->national_code);
+        $this->assertNull($component->passport_number);
+        $this->assertNull($component->license_number);
+    }
+
     public function test_submit_reuses_existing_customer_when_a_matching_lead_is_selected(): void
     {
         Carbon::setTestNow('2025-01-01 09:00:00');

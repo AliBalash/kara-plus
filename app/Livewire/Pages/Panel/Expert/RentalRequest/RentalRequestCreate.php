@@ -510,12 +510,7 @@ class RentalRequestCreate extends Component
         $this->selectedLeadId = $lead->id;
         $this->selectedLead = $this->formatLeadLookupItem($lead);
         $this->customerPhoneSuggestions = [];
-        $this->first_name = $lead->first_name;
-        $this->last_name = $lead->last_name;
-        $this->email = $this->normalizeEmail($lead->email);
-        $this->phone = $lead->phone;
-        $this->messenger_phone = $lead->messenger_phone;
-        $this->nationality = null;
+        $this->fillCustomerFieldsFromLead($lead);
         $this->resetValidation($this->customerFieldNames());
     }
 
@@ -533,6 +528,19 @@ class RentalRequestCreate extends Component
         $this->passport_expiry_date = $customer->passport_expiry_date?->format('Y-m-d');
         $this->nationality = $customer->nationality;
         $this->license_number = $customer->license_number;
+    }
+
+    private function fillCustomerFieldsFromLead(Lead $lead): void
+    {
+        foreach ($this->customerFieldNames() as $field) {
+            $this->{$field} = null;
+        }
+
+        $this->first_name = $lead->first_name;
+        $this->last_name = $lead->last_name;
+        $this->email = $this->normalizeEmail($lead->email);
+        $this->phone = $lead->phone;
+        $this->messenger_phone = $lead->messenger_phone;
     }
 
     private function clearExistingCustomerSelection(): void
