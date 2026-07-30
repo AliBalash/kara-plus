@@ -28,6 +28,7 @@ class PanelHeaderTest extends TestCase
         $car = Car::factory()->create([
             'car_model_id' => $carModel->id,
             'plate_number' => 'DXB-90812',
+            'ownership_type' => 'company',
             'status' => 'available',
             'availability' => true,
         ]);
@@ -68,6 +69,7 @@ class PanelHeaderTest extends TestCase
         Car::factory()->create([
             'car_model_id' => $carModel->id,
             'plate_number' => 'SYNC-51004',
+            'ownership_type' => 'company',
             'status' => 'available',
             'availability' => false,
         ]);
@@ -78,5 +80,34 @@ class PanelHeaderTest extends TestCase
 
         $this->assertCount(1, $component->cars);
         $this->assertSame('Unavailable', $component->cars->first()->operationalStatusLabel());
+    }
+
+    public function test_quick_vehicle_search_only_returns_our_fleet_cars(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $companyCar = Car::factory()->for(CarModel::factory()->state([
+            'brand' => 'Mercedes-Benz',
+            'model' => 'C-Class',
+        ]))->create([
+            'plate_number' => 'BENZ-OUR-1',
+            'ownership_type' => 'company',
+        ]);
+
+        $partnerCar = Car::factory()->for(CarModel::factory()->state([
+            'brand' => 'Mercedes-Benz',
+            'model' => 'C-Class',
+        ]))->create([
+            'plate_number' => 'BENZ-PARTNER-1',
+            'ownership_type' => 'golden_key',
+        ]);
+
+        $component = app(Header::class);
+        $component->query = 'benz';
+        $component->updatedQuery();
+
+        $this->assertCount(1, $component->cars);
+        $this->assertTrue($component->cars->first()->is($companyCar));
+        $this->assertFalse($component->cars->contains($partnerCar));
     }
 }

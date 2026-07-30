@@ -58,6 +58,13 @@ class Header extends Component
                         ->orderBy('pickup_date');
                 },
             ])
+                ->where(function ($builder) {
+                    $builder->where('ownership_type', 'company')
+                        ->orWhere(function ($legacy) {
+                            $legacy->whereNull('ownership_type')
+                                ->where('is_company_car', true);
+                        });
+                })
                 ->where(function ($builder) use ($term) {
                     $builder->where('plate_number', 'like', '%' . $term . '%')
                         ->orWhereHas('carModel', function ($q) use ($term) {
