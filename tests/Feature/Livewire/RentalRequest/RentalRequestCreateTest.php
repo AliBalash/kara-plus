@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\ContractStatus;
 use App\Models\Customer;
+use App\Models\Lead;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,6 +54,17 @@ class RentalRequestCreateTest extends TestCase
         $component = Mockery::mock(RentalRequestCreate::class)->makePartial();
         $component->shouldAllowMockingProtectedMethods();
         $component->mount();
+
+        $lead = Lead::create([
+            'first_name' => 'Sara',
+            'last_name' => 'Nazari',
+            'phone' => '+971500000001',
+            'messenger_phone' => '+971500000002',
+            'email' => 'sara.nazari@example.com',
+            'priority' => Lead::PRIORITY_NORMAL,
+            'status' => Lead::STATUS_NEW,
+        ]);
+        $component->selectLead($lead->id);
 
         $component->selectedBrand = $carModel->brand;
         $component->selectedModelId = $carModel->id;
@@ -136,6 +148,12 @@ class RentalRequestCreateTest extends TestCase
         $this->assertEqualsWithDelta($expectedSubtotal + $expectedTax, (float) $contract->total_price, 0.01);
 
         $this->assertEquals('Contract created successfully!', session('success'));
+
+        $lead->refresh();
+        $this->assertSame(Lead::STATUS_CONVERTED, $lead->status);
+        $this->assertSame($customer->id, $lead->customer_id);
+        $this->assertSame($user->id, $lead->converted_by);
+        $this->assertNotNull($lead->converted_at);
     }
 
     public function test_phone_lookup_suggests_existing_customer_and_requires_explicit_selection(): void
@@ -196,7 +214,48 @@ class RentalRequestCreateTest extends TestCase
         $this->assertSame([], $component->customerPhoneSuggestions);
     }
 
-    public function test_submit_reuses_existing_customer_when_phone_matches_saved_profile(): void
+    public function test_phone_lookup_suggests_unconverted_leads_and_selecting_one_loads_its_fields(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $lead = Lead::create([
+            'first_name' => 'Leila',
+            'last_name' => 'Karimi',
+            'phone' => '+971500000777',
+            'messenger_phone' => '+971500000778',
+            'email' => 'leila@example.com',
+            'source' => 'whatsapp',
+            'priority' => Lead::PRIORITY_NORMAL,
+            'status' => Lead::STATUS_NEW,
+        ]);
+        $convertedLead = Lead::create([
+            'first_name' => 'Converted',
+            'phone' => '+971500000779',
+            'priority' => Lead::PRIORITY_NORMAL,
+            'status' => Lead::STATUS_CONVERTED,
+        ]);
+
+        $component = app(RentalRequestCreate::class);
+        $component->mount();
+        $component->phone = '+971500000';
+        $component->updated('phone');
+
+        $suggestions = collect($component->customerPhoneSuggestions);
+        $this->assertTrue($suggestions->where('type', 'lead')->pluck('id')->contains($lead->id));
+        $this->assertFalse($suggestions->where('type', 'lead')->pluck('id')->contains($convertedLead->id));
+
+        $component->selectLead($lead->id);
+
+        $this->assertSame($lead->id, $component->selectedLeadId);
+        $this->assertNull($component->selectedExistingCustomerId);
+        $this->assertSame('Leila', $component->first_name);
+        $this->assertSame('Karimi', $component->last_name);
+        $this->assertSame('+971500000777', $component->phone);
+        $this->assertSame('+971500000778', $component->messenger_phone);
+        $this->assertSame('leila@example.com', $component->email);
+        $this->assertSame([], $component->customerPhoneSuggestions);
+    }
+
+    public function test_submit_reuses_existing_customer_when_a_matching_lead_is_selected(): void
     {
         Carbon::setTestNow('2025-01-01 09:00:00');
 
@@ -245,7 +304,16 @@ class RentalRequestCreateTest extends TestCase
         $component->shouldAllowMockingProtectedMethods();
         $component->mount();
 
-        $component->selectExistingCustomer($customer->id);
+        $lead = Lead::create([
+            'first_name' => 'Sara',
+            'last_name' => 'Nazari',
+            'phone' => '+971500000001',
+            'messenger_phone' => '+971500000002',
+            'email' => 'sara.nazari@example.com',
+            'priority' => Lead::PRIORITY_NORMAL,
+            'status' => Lead::STATUS_NEW,
+        ]);
+        $component->selectLead($lead->id);
         $component->selectedBrand = $carModel->brand;
         $component->selectedModelId = $carModel->id;
         $component->selectedCarId = $car->id;
@@ -312,6 +380,10 @@ class RentalRequestCreateTest extends TestCase
         $this->assertNotNull($contract);
         $this->assertEquals('pending', $contract->current_status);
         $this->assertEquals('Contract created successfully!', session('success'));
+
+        $lead->refresh();
+        $this->assertSame(Lead::STATUS_CONVERTED, $lead->status);
+        $this->assertSame($customer->id, $lead->customer_id);
     }
 
     public function test_submit_requires_loading_existing_customer_when_phone_matches_saved_profile(): void
@@ -582,6 +654,7 @@ class RentalRequestCreateTest extends TestCase
         $this->assertEquals('assigned', $contract->current_status);
         $this->assertEquals('Contract assigned to you successfully.', session('success'));
     }
+
     protected function tearDown(): void
     {
         Mockery::close();

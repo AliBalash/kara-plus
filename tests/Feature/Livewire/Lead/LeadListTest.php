@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class LeadListTest extends TestCase
@@ -154,5 +155,136 @@ class LeadListTest extends TestCase
         } catch (ValidationException $exception) {
             $this->assertSame('A customer with this email already exists.', $exception->validator->errors()->first('email'));
         }
+    }
+
+    public function test_filters_leads_from_a_request_date(): void
+    {
+        $before = $this->createLead(['request_date' => '2026-06-01']);
+        $from = $this->createLead(['request_date' => '2026-06-15']);
+        $after = $this->createLead(['request_date' => '2026-06-30']);
+
+        $component = $this->leadList();
+        $component->dateFrom = '2026-06-15';
+
+        $this->assertSame([$after->id, $from->id], $this->renderedLeadIds($component));
+        $this->assertNotContains($before->id, $this->renderedLeadIds($component));
+    }
+
+    public function test_filters_leads_to_a_request_date(): void
+    {
+        $before = $this->createLead(['request_date' => '2026-06-01']);
+        $to = $this->createLead(['request_date' => '2026-06-15']);
+        $after = $this->createLead(['request_date' => '2026-06-30']);
+
+        $component = $this->leadList();
+        $component->dateTo = '2026-06-15';
+
+        $this->assertSame([$to->id, $before->id], $this->renderedLeadIds($component));
+        $this->assertNotContains($after->id, $this->renderedLeadIds($component));
+    }
+
+    public function test_filters_leads_between_request_dates(): void
+    {
+        $before = $this->createLead(['request_date' => '2026-06-01']);
+        $start = $this->createLead(['request_date' => '2026-06-10']);
+        $end = $this->createLead(['request_date' => '2026-06-20']);
+        $after = $this->createLead(['request_date' => '2026-06-30']);
+
+        $component = $this->leadList();
+        $component->dateFrom = '2026-06-10';
+        $component->dateTo = '2026-06-20';
+
+        $this->assertSame([$end->id, $start->id], $this->renderedLeadIds($component));
+        $this->assertNotContains($before->id, $this->renderedLeadIds($component));
+        $this->assertNotContains($after->id, $this->renderedLeadIds($component));
+    }
+
+    public function test_sorts_request_dates_ascending_and_descending(): void
+    {
+        $first = $this->createLead(['request_date' => '2026-06-01']);
+        $second = $this->createLead(['request_date' => '2026-06-15']);
+        $third = $this->createLead(['request_date' => '2026-06-30']);
+
+        $component = $this->leadList();
+        $component->sortField = 'request_date';
+        $component->sortDirection = 'asc';
+        $this->assertSame([$first->id, $second->id, $third->id], $this->renderedLeadIds($component));
+
+        $component->sortDirection = 'desc';
+        $this->assertSame([$third->id, $second->id, $first->id], $this->renderedLeadIds($component));
+    }
+
+    public function test_invalid_sort_fields_fall_back_safely(): void
+    {
+        $this->createLead(['request_date' => '2026-06-01']);
+
+        $component = $this->leadList();
+        $component->sortField = 'phone; drop table leads';
+        $component->sortDirection = 'sideways';
+        $this->renderedLeadIds($component);
+
+        $this->assertSame('updated_at', $component->sortField);
+        $this->assertSame('desc', $component->sortDirection);
+        $this->assertDatabaseCount('leads', 1);
+    }
+
+    public function test_clearing_date_filters_restores_all_leads(): void
+    {
+        $first = $this->createLead(['request_date' => '2026-06-01']);
+        $second = $this->createLead(['request_date' => '2026-06-30']);
+
+        $component = $this->leadList();
+        $component->dateFrom = '2026-06-15';
+        $this->assertSame([$second->id], $this->renderedLeadIds($component));
+
+        $component->clearDateFilters();
+        $this->assertSame('', $component->dateFrom);
+        $this->assertSame('', $component->dateTo);
+        $this->assertSame([$second->id, $first->id], $this->renderedLeadIds($component));
+    }
+
+    public function test_date_filters_and_sorting_are_applied_before_pagination(): void
+    {
+        foreach (range(1, 12) as $day) {
+            $this->createLead(['request_date' => sprintf('2026-06-%02d', $day)]);
+        }
+
+        Livewire::test(LeadList::class)
+            ->set('dateFrom', '2026-06-02')
+            ->set('sortField', 'request_date')
+            ->set('sortDirection', 'asc')
+            ->call('setPage', 2)
+            ->assertViewHas('leads', function ($leads) {
+                return $leads->total() === 11
+                    && $leads->pluck('request_date')->map->format('Y-m-d')->all() === ['2026-06-12'];
+            });
+    }
+
+    private function leadList(): LeadList
+    {
+        $component = app(LeadList::class);
+        $component->mount();
+        $component->sortField = 'request_date';
+        $component->sortDirection = 'desc';
+
+        return $component;
+    }
+
+    private function renderedLeadIds(LeadList $component): array
+    {
+        return $component->render()->getData()['leads']->pluck('id')->all();
+    }
+
+    private function createLead(array $attributes = []): Lead
+    {
+        static $sequence = 0;
+        $sequence++;
+
+        return Lead::create(array_merge([
+            'first_name' => 'Lead '.$sequence,
+            'phone' => '+97150000'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
+            'priority' => Lead::PRIORITY_NORMAL,
+            'status' => Lead::STATUS_NEW,
+        ], $attributes));
     }
 }
