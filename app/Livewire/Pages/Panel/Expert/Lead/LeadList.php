@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Panel\Expert\Lead;
 
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\Customer;
@@ -477,10 +478,14 @@ class LeadList extends Component
         }
 
         if (($data['selectedBrand'] ?? null) && ($data['selectedModelId'] ?? null)) {
-            $model = CarModel::query()->find($data['selectedModelId']);
+            $model = CarModel::query()
+                ->whereKey($data['selectedModelId'])
+                ->where('brand', $data['selectedBrand'])
+                ->whereHas('cars', fn ($query) => $query->reservableForSelection())
+                ->first();
 
-            if ($model && $model->brand !== $data['selectedBrand']) {
-                $this->addError('selectedModelId', 'Selected car model does not match the selected brand.');
+            if (! $model) {
+                $this->addError('selectedModelId', 'Selected car model is not available for the selected brand.');
                 $this->dispatch('kara-scroll-to-error', field: 'selectedModelId');
                 throw \Illuminate\Validation\ValidationException::withMessages($this->getErrorBag()->toArray());
             }
@@ -603,9 +608,23 @@ class LeadList extends Component
             'summary' => $summary,
             'statuses' => Lead::statuses(),
             'priorities' => Lead::priorities(),
-            'brands' => CarModel::query()->distinct()->pluck('brand')->filter()->sort()->values(),
+            'brands' => Car::query()
+                ->reservableForSelection()
+                ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
+                ->whereNotNull('car_models.brand')
+                ->where('car_models.brand', '!=', '')
+                ->distinct()
+                ->orderBy('car_models.brand')
+                ->pluck('car_models.brand'),
             'models' => $this->selectedBrand
-                ? CarModel::query()->where('brand', $this->selectedBrand)->orderBy('model')->get()
+                ? Car::query()
+                    ->reservableForSelection()
+                    ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
+                    ->where('car_models.brand', $this->selectedBrand)
+                    ->selectRaw('MIN(car_models.id) as id, car_models.model, MAX(cars.manufacturing_year) as manufacturing_year')
+                    ->groupBy('car_models.model')
+                    ->orderBy('car_models.model')
+                    ->get()
                 : collect(),
             'communicationChannelOptions' => Contract::COMMUNICATION_CHANNELS,
             'communicationChannelLabels' => Contract::COMMUNICATION_CHANNEL_LABELS,

@@ -149,7 +149,9 @@
                                 @disabled(blank($selectedBrand))>
                                 <option value="">Select model</option>
                                 @foreach ($models as $model)
-                                    <option value="{{ $model->id }}">{{ $model->model }}</option>
+                                    <option value="{{ $model->id }}">
+                                        {{ $model->model }}{{ $model->manufacturing_year ? ' (' . $model->manufacturing_year . ')' : '' }}
+                                    </option>
                                 @endforeach
                             </select>
                             <x-panel.form-error-highlighter field="selectedModelId" />

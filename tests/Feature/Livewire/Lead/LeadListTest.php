@@ -3,6 +3,7 @@
 namespace Tests\Feature\Livewire\Lead;
 
 use App\Livewire\Pages\Panel\Expert\Lead\LeadList;
+use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\Customer;
 use App\Models\Lead;
@@ -24,6 +25,7 @@ class LeadListTest extends TestCase
             'brand' => 'BMW',
             'model' => 'X5',
         ]);
+        Car::factory()->available()->create(['car_model_id' => $carModel->id]);
 
         $this->actingAs($user);
 
@@ -59,6 +61,34 @@ class LeadListTest extends TestCase
         $this->assertSame('2026-06-26', $lead->request_date?->format('Y-m-d'));
 
         $this->assertDatabaseCount('customers', 0);
+    }
+
+    public function test_vehicle_options_only_include_reservable_cars_and_deduplicate_models(): void
+    {
+        $selectableModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ACCENT']);
+        $duplicateModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ACCENT']);
+        $unavailableModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ELANTRA']);
+        CarModel::factory()->create(['brand' => 'Kia', 'model' => 'K5']);
+
+        Car::factory()->available()->create([
+            'car_model_id' => $selectableModel->id,
+            'manufacturing_year' => 2024,
+        ]);
+        Car::factory()->available()->create([
+            'car_model_id' => $duplicateModel->id,
+            'manufacturing_year' => 2023,
+        ]);
+        Car::factory()->unavailable()->create(['car_model_id' => $unavailableModel->id]);
+
+        $component = $this->leadList();
+        $component->selectedBrand = 'Hyundai';
+        $viewData = $component->render()->getData();
+
+        $this->assertSame(['Hyundai'], $viewData['brands']->all());
+        $this->assertCount(1, $viewData['models']);
+        $this->assertSame('ACCENT', $viewData['models']->first()->model);
+        $this->assertSame(2024, (int) $viewData['models']->first()->manufacturing_year);
+        $this->assertNotContains('Kia', $viewData['brands']->all());
     }
 
     public function test_convert_to_customer_creates_customer_and_marks_lead_converted(): void
