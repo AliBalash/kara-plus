@@ -168,6 +168,10 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/reports/first-time-customers', FirstTimeCustomerReport::class)->name('reports.first-time-customers');
     Route::get('/expert/reports/first-time-customers/export', [ReportExportController::class, 'firstTimeCustomers'])
         ->name('reports.first-time-customers.export');
+    Route::get('/expert/marketing/communication-channels', LeadSourceReport::class)
+        ->name('marketing.communication-channels');
+    Route::get('/expert/marketing/communication-channels/export', [ReportExportController::class, 'leadSources'])
+        ->name('marketing.communication-channels.export');
     Route::get('/expert/reports/lead-sources', LeadSourceReport::class)->name('reports.lead-sources');
     Route::get('/expert/reports/lead-sources/export', [ReportExportController::class, 'leadSources'])
         ->name('reports.lead-sources.export');

@@ -41,7 +41,6 @@
             $reportRoutes = [
                 ['route' => 'reports.customer-requests', 'label' => 'Customer Requests'],
                 ['route' => 'reports.first-time-customers', 'label' => 'First-Time Customers'],
-                ['route' => 'reports.lead-sources', 'label' => 'Lead Sources'],
                 ['route' => 'reports.customer-balances', 'label' => 'Customer Balances'],
                 ['route' => 'reports.fleet-performance', 'label' => 'Fleet Performance'],
                 ['route' => 'reports.payment-collections', 'label' => 'Payment Collections'],
@@ -121,13 +120,6 @@
                     </ul>
                 </li>
 
-                <li class="menu-item {{ Request::routeIs('leads.*') ? 'active' : '' }}">
-                    <a href="{{ route('leads.index') }}" class="menu-link">
-                        <i class="menu-icon tf-icons bx bx-phone-call"></i>
-                        <div data-i18n="Analytics">Leads</div>
-                    </a>
-                </li>
-
                 <li
                     class="menu-item {{ request()->routeIs('rental-requests.payment.list', 'rental-requests.payment', 'rental-requests.confirm-payment-list', 'rental-requests.processed-payments', 'cashier.dashboard') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -150,6 +142,26 @@
                             </a>
                         </li>
                     </ul>
+                </li>
+            @endcannot
+
+            @cannot('car')
+                <li class="menu-header small text-uppercase">
+                    <span class="menu-header-text">Marketing</span>
+                </li>
+
+                <li class="menu-item {{ Request::routeIs('leads.*') ? 'active' : '' }}">
+                    <a href="{{ route('leads.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-phone-call"></i>
+                        <div data-i18n="Analytics">Leads</div>
+                    </a>
+                </li>
+
+                <li class="menu-item {{ Request::routeIs('marketing.communication-channels') ? 'active' : '' }}">
+                    <a href="{{ route('marketing.communication-channels') }}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-share-alt"></i>
+                        <div data-i18n="Analytics">Communication Channel</div>
+                    </a>
                 </li>
             @endcannot
 

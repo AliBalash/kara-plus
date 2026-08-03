@@ -9,10 +9,10 @@
         <div class="card-body p-4 p-lg-5 position-relative">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
                 <div>
-                    <span class="report-eyebrow"><i class="bx bx-share-alt"></i> Reports / Leads</span>
-                    <h3 class="mt-3 mb-2 text-white">Lead Source Intelligence</h3>
+                    <span class="report-eyebrow"><i class="bx bx-share-alt"></i> Marketing / Communication Channel</span>
+                    <h3 class="mt-3 mb-2 text-white">Communication Channel Intelligence</h3>
                     <p class="report-subtitle">
-                        Audit lead generation by communication channel and discovery source across any date range,
+                        Review lead acquisition, conversion, follow-up health, channels, and discovery sources across any date range,
                         then export both lead-level detail and channel performance in one Excel workbook.
                     </p>
                 </div>
@@ -22,8 +22,6 @@
             </div>
         </div>
     </section>
-
-    @include('livewire.pages.panel.expert.reports.partials.nav')
 
     <div class="row g-3 mb-4">
         <div class="col-md-6 col-xl-2">
