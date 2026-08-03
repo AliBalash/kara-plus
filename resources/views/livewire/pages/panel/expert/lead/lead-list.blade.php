@@ -242,48 +242,63 @@
                             <tr>
                                 <th>
                                     <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
-                                        wire:click="sortBy('first_name')">
+                                        wire:click="sortBy('first_name')" aria-label="Sort by lead"
+                                        title="Sort by lead">
                                         Lead
                                         @if ($sortField === 'first_name')
                                             <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
                                         @endif
                                     </button>
                                 </th>
                                 <th>Request</th>
                                 <th>
                                     <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
-                                        wire:click="sortBy('request_date')">
+                                        wire:click="sortBy('request_date')" aria-label="Sort by request date"
+                                        title="Sort by request date">
                                         Request Date
                                         @if ($sortField === 'request_date')
                                             <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
                                         @endif
                                     </button>
                                 </th>
                                 <th>
                                     <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
-                                        wire:click="sortBy('source')">
+                                        wire:click="sortBy('source')" aria-label="Sort by source"
+                                        title="Sort by source">
                                         Source
                                         @if ($sortField === 'source')
                                             <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
                                         @endif
                                     </button>
                                 </th>
                                 <th>
                                     <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
-                                        wire:click="sortBy('next_follow_up_at')">
+                                        wire:click="sortBy('next_follow_up_at')" aria-label="Sort by follow-up"
+                                        title="Sort by follow-up">
                                         Follow-up
                                         @if ($sortField === 'next_follow_up_at')
                                             <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
                                         @endif
                                     </button>
                                 </th>
                                 <th>Owner</th>
                                 <th>
                                     <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
-                                        wire:click="sortBy('status')">
+                                        wire:click="sortBy('status')" aria-label="Sort by status"
+                                        title="Sort by status">
                                         Status
                                         @if ($sortField === 'status')
                                             <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
                                         @endif
                                     </button>
                                 </th>
