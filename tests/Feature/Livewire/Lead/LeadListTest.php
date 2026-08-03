@@ -63,11 +63,12 @@ class LeadListTest extends TestCase
         $this->assertDatabaseCount('customers', 0);
     }
 
-    public function test_vehicle_options_only_include_reservable_cars_and_deduplicate_models(): void
+    public function test_vehicle_options_include_all_fleet_models_regardless_of_operational_status(): void
     {
         $selectableModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ACCENT']);
         $duplicateModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ACCENT']);
         $unavailableModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ELANTRA']);
+        $soldModel = CarModel::factory()->create(['brand' => 'BMW', 'model' => 'X5']);
         CarModel::factory()->create(['brand' => 'Kia', 'model' => 'K5']);
 
         Car::factory()->available()->create([
@@ -78,16 +79,24 @@ class LeadListTest extends TestCase
             'car_model_id' => $duplicateModel->id,
             'manufacturing_year' => 2023,
         ]);
-        Car::factory()->unavailable()->create(['car_model_id' => $unavailableModel->id]);
+        Car::factory()->unavailable()->create([
+            'car_model_id' => $unavailableModel->id,
+            'manufacturing_year' => 2022,
+        ]);
+        Car::factory()->sold()->create([
+            'car_model_id' => $soldModel->id,
+            'manufacturing_year' => 2021,
+        ]);
 
         $component = $this->leadList();
         $component->selectedBrand = 'Hyundai';
         $viewData = $component->render()->getData();
 
-        $this->assertSame(['Hyundai'], $viewData['brands']->all());
-        $this->assertCount(1, $viewData['models']);
-        $this->assertSame('ACCENT', $viewData['models']->first()->model);
-        $this->assertSame(2024, (int) $viewData['models']->first()->manufacturing_year);
+        $this->assertSame(['BMW', 'Hyundai'], $viewData['brands']->all());
+        $this->assertCount(2, $viewData['models']);
+        $this->assertSame(['ACCENT', 'ELANTRA'], $viewData['models']->pluck('model')->all());
+        $this->assertSame(2024, (int) $viewData['models']->firstWhere('model', 'ACCENT')->manufacturing_year);
+        $this->assertSame(2022, (int) $viewData['models']->firstWhere('model', 'ELANTRA')->manufacturing_year);
         $this->assertNotContains('Kia', $viewData['brands']->all());
     }
 

@@ -481,7 +481,7 @@ class LeadList extends Component
             $model = CarModel::query()
                 ->whereKey($data['selectedModelId'])
                 ->where('brand', $data['selectedBrand'])
-                ->whereHas('cars', fn ($query) => $query->reservableForSelection())
+                ->whereHas('cars')
                 ->first();
 
             if (! $model) {
@@ -609,7 +609,6 @@ class LeadList extends Component
             'statuses' => Lead::statuses(),
             'priorities' => Lead::priorities(),
             'brands' => Car::query()
-                ->reservableForSelection()
                 ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
                 ->whereNotNull('car_models.brand')
                 ->where('car_models.brand', '!=', '')
@@ -618,7 +617,6 @@ class LeadList extends Component
                 ->pluck('car_models.brand'),
             'models' => $this->selectedBrand
                 ? Car::query()
-                    ->reservableForSelection()
                     ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
                     ->where('car_models.brand', $this->selectedBrand)
                     ->selectRaw('MIN(car_models.id) as id, car_models.model, MAX(cars.manufacturing_year) as manufacturing_year')
