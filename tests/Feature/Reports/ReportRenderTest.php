@@ -64,7 +64,7 @@ class ReportRenderTest extends TestCase
 
         $html = $component->render()->render();
 
-        $this->assertStringContainsString('Lead Source Intelligence', $html);
+        $this->assertStringContainsString('Communication Channel Intelligence', $html);
     }
 
     public function test_fleet_performance_report_view_renders(): void
