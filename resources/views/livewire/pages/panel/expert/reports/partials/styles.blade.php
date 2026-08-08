@@ -24,6 +24,73 @@
                 filter: blur(12px);
             }
 
+            .communication-page--lead .report-hero {
+                background:
+                    radial-gradient(circle at top left, rgba(168, 85, 247, 0.38), transparent 42%),
+                    radial-gradient(circle at bottom right, rgba(249, 115, 22, 0.2), transparent 34%),
+                    linear-gradient(135deg, #312e81 0%, #581c87 54%, #9a3412 100%);
+            }
+
+            .communication-page--customer .report-hero {
+                background:
+                    radial-gradient(circle at top left, rgba(45, 212, 191, 0.3), transparent 42%),
+                    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.24), transparent 34%),
+                    linear-gradient(135deg, #064e3b 0%, #0f766e 54%, #1d4ed8 100%);
+            }
+
+            .communication-context {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                margin: -1rem 1rem 1.5rem;
+                padding: 1rem 1.15rem;
+                border: 1px solid rgba(148, 163, 184, 0.2);
+                border-radius: 16px;
+                background: #fff;
+                box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+            }
+
+            .communication-context__icon {
+                display: grid;
+                width: 42px;
+                height: 42px;
+                place-items: center;
+                flex: 0 0 auto;
+                border-radius: 12px;
+                font-size: 1.3rem;
+            }
+
+            .communication-context__label {
+                display: block;
+                color: #64748b;
+                font-size: 0.72rem;
+                font-weight: 800;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .communication-context__title {
+                display: block;
+                color: #0f172a;
+                font-weight: 800;
+            }
+
+            .communication-context__note {
+                margin: 0.15rem 0 0;
+                color: #64748b;
+                font-size: 0.86rem;
+            }
+
+            .communication-page--lead .communication-context__icon {
+                background: #f3e8ff;
+                color: #7e22ce;
+            }
+
+            .communication-page--customer .communication-context__icon {
+                background: #ccfbf1;
+                color: #0f766e;
+            }
+
             .report-eyebrow {
                 display: inline-flex;
                 align-items: center;
