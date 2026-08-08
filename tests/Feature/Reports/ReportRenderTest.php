@@ -3,9 +3,10 @@
 namespace Tests\Feature\Reports;
 
 use App\Livewire\Pages\Panel\Expert\Reports\CustomerBalanceReport;
+use App\Livewire\Pages\Panel\Expert\Reports\CustomerCommunicationChannelReport;
 use App\Livewire\Pages\Panel\Expert\Reports\CustomerRequestReport;
-use App\Livewire\Pages\Panel\Expert\Reports\FleetPerformanceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\FirstTimeCustomerReport;
+use App\Livewire\Pages\Panel\Expert\Reports\FleetPerformanceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\LeadSourceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\PaymentCollectionReport;
 use App\Models\User;
@@ -64,7 +65,16 @@ class ReportRenderTest extends TestCase
 
         $html = $component->render()->render();
 
-        $this->assertStringContainsString('Communication Channel Intelligence', $html);
+        $this->assertStringContainsString('Lead Communication Channel', $html);
+    }
+
+    public function test_customer_communication_channel_report_view_renders(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $html = app(CustomerCommunicationChannelReport::class)->render()->render();
+
+        $this->assertStringContainsString('Customer Communication Channel', $html);
     }
 
     public function test_fleet_performance_report_view_renders(): void

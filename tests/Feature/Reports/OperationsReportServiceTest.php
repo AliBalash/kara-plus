@@ -407,6 +407,38 @@ class OperationsReportServiceTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_customer_communication_channel_report_uses_contract_channels_and_date_filters(): void
+    {
+        $customer = Customer::factory()->create(['first_name' => 'Channel', 'last_name' => 'Customer']);
+        $car = Car::factory()->create(['plate_number' => 'CHN-1001']);
+
+        Contract::factory()->for($customer)->for($car)->create([
+            'communication_channel' => 'whatsapp',
+            'current_status' => 'complete',
+            'total_price' => 1200,
+            'created_at' => '2026-08-02 10:00:00',
+        ]);
+        Contract::factory()->create([
+            'communication_channel' => 'google_ads',
+            'created_at' => '2026-07-01 10:00:00',
+        ]);
+
+        $report = $this->service->customerCommunicationChannels([
+            'channel' => 'whatsapp',
+            'date_field' => 'created_at',
+            'date_from' => '2026-08-01',
+            'date_to' => '2026-08-03',
+        ]);
+
+        $this->assertSame(1, $report['summary']['matching_contracts']);
+        $this->assertSame(1, $report['summary']['unique_customers']);
+        $this->assertSame(1200.0, $report['summary']['contract_value']);
+        $this->assertSame('WhatsApp', $report['rows'][0]['channel_label']);
+        $this->assertSame('Channel Customer', $report['rows'][0]['customer_name']);
+        $this->assertSame('All customers', $report['filter_summary']['Search']);
+        $this->assertCount(1, $report['extra_sheets']);
+    }
+
     public function test_monthly_contracts_use_28_day_threshold_and_count_only_returns_ending_this_month_for_current_month_summary(): void
     {
         Carbon::setTestNow('2025-05-15 09:00:00');
