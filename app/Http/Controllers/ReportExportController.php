@@ -11,9 +11,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportExportController extends Controller
 {
-    public function __construct(private readonly OperationsReportService $reports)
-    {
-    }
+    public function __construct(private readonly OperationsReportService $reports) {}
 
     public function customerRequests(Request $request): BinaryFileResponse
     {
@@ -59,6 +57,18 @@ class ReportExportController extends Controller
             title: 'Lead Source Report',
             filePrefix: 'lead_source_report',
             dataSheetTitle: 'Lead Sources',
+            payload: $payload
+        );
+    }
+
+    public function customerCommunicationChannels(Request $request): BinaryFileResponse
+    {
+        $payload = $this->reports->customerCommunicationChannels($request->query());
+
+        return $this->download(
+            title: 'Customer Communication Channel Report',
+            filePrefix: 'customer_communication_channel_report',
+            dataSheetTitle: 'Customer Channels',
             payload: $payload
         );
     }

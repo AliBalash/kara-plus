@@ -160,7 +160,14 @@
                 <li class="menu-item {{ Request::routeIs('marketing.communication-channels') ? 'active' : '' }}">
                     <a href="{{ route('marketing.communication-channels') }}" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-share-alt"></i>
-                        <div data-i18n="Analytics">Communication Channel</div>
+                        <div data-i18n="Analytics">Lead Communication Channel</div>
+                    </a>
+                </li>
+
+                <li class="menu-item {{ Request::routeIs('marketing.customer-communication-channels') ? 'active' : '' }}">
+                    <a href="{{ route('marketing.customer-communication-channels') }}" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-user-voice"></i>
+                        <div data-i18n="Analytics">Customer Communication Channel</div>
                     </a>
                 </li>
             @endcannot

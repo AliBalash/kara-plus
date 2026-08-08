@@ -17,15 +17,21 @@ use Illuminate\Support\Str;
 class OperationsReportService
 {
     private const CUSTOMER_REQUEST_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
+
     private const FIRST_TIME_CUSTOMER_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
+
     private const FIRST_TIME_CUSTOMER_EXCLUDED_STATUSES = ['cancelled', 'rejected', 'draft'];
 
     private const BALANCE_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
 
     private const PAYMENT_DATE_FIELDS = ['payment_date', 'created_at'];
+
     private const LEAD_DATE_FIELDS = ['request_date', 'created_at', 'converted_at', 'next_follow_up_at', 'last_contacted_at', 'pickup_date', 'return_date'];
 
+    private const CUSTOMER_COMMUNICATION_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
+
     private const MONTHLY_CONTRACT_DATE_FIELDS = ['created_at', 'pickup_date', 'return_date'];
+
     private const MONTHLY_CONTRACT_ACTIVE_STATUSES = ['reserved', 'awaiting_return'];
 
     private const UPCOMING_DELIVERY_OWNERSHIP_SCOPES = ['company', 'golden_key', 'liverpool', 'safe_drive', 'other'];
@@ -907,6 +913,101 @@ class OperationsReportService
         ];
     }
 
+    public function customerCommunicationChannels(array $filters = []): array
+    {
+        $filters = $this->normalizeCustomerCommunicationFilters($filters);
+
+        $contracts = Contract::query()
+            ->with(['customer', 'car.carModel'])
+            ->tap(fn (Builder $query) => $this->applyContractSearch($query, $filters['search']))
+            ->when($filters['channel'] !== 'all', fn (Builder $query) => $query->where('communication_channel', $filters['channel']))
+            ->when($filters['status'] !== 'all', fn (Builder $query) => $query->where('current_status', $filters['status']))
+            ->tap(fn (Builder $query) => $this->applyDateRange(
+                $query,
+                $filters['date_field'],
+                $filters['date_from'],
+                $filters['date_to']
+            ))
+            ->get()
+            ->sortByDesc(fn (Contract $contract) => $this->timestampValue($contract->{$filters['date_field']} ?? $contract->created_at))
+            ->values();
+
+        $rows = $contracts->map(function (Contract $contract) use ($filters): array {
+            $channel = trim((string) ($contract->communication_channel ?? ''));
+
+            return [
+                'contract_id' => $contract->id,
+                'selected_date_basis' => Str::headline(str_replace('_', ' ', $filters['date_field'])),
+                'selected_date' => $this->formatDateTime($contract->{$filters['date_field']} ?? $contract->created_at),
+                'customer_id' => $contract->customer?->id,
+                'customer_name' => $contract->customer?->fullName() ?? '—',
+                'customer_phone' => $contract->customer?->phone ?? '—',
+                'channel' => $channel,
+                'channel_label' => $channel !== '' ? Contract::communicationChannelLabel($channel) : 'No channel',
+                'status' => $contract->current_status,
+                'status_label' => ContractStatus::label($contract->current_status),
+                'vehicle' => $contract->car?->modelName() ?? '—',
+                'plate_number' => $contract->car?->plate_number ?? '—',
+                'pickup_date' => $this->formatDateTime($contract->pickup_date),
+                'return_date' => $this->formatDateTime($contract->return_date),
+                'total_price' => round((float) ($contract->total_price ?? 0), 2),
+            ];
+        })->values();
+
+        $channelBreakdown = $rows->groupBy('channel_label')->map(function (Collection $items, string $label): array {
+            return [
+                $label,
+                $items->count(),
+                $items->pluck('customer_id')->filter()->unique()->count(),
+                round((float) $items->sum('total_price'), 2),
+                $items->where('status', 'complete')->count(),
+            ];
+        })->sortByDesc(fn (array $row) => $row[1])->values();
+
+        $summary = [
+            'matching_contracts' => $rows->count(),
+            'unique_customers' => $rows->pluck('customer_id')->filter()->unique()->count(),
+            'contract_value' => round((float) $rows->sum('total_price'), 2),
+            'completed_contracts' => $rows->where('status', 'complete')->count(),
+            'top_channel' => $channelBreakdown->first()[0] ?? 'No channel',
+        ];
+
+        return [
+            'filters' => $filters,
+            'filter_summary' => [
+                'Search' => $filters['search'] !== '' ? $filters['search'] : 'All customers',
+                'Date Basis' => Str::headline(str_replace('_', ' ', $filters['date_field'])),
+                'Date From' => $filters['date_from'] ?? 'Open',
+                'Date To' => $filters['date_to'] ?? 'Open',
+                'Communication Channel' => $filters['channel'] === 'all'
+                    ? 'All channels'
+                    : Contract::communicationChannelLabel($filters['channel']),
+                'Contract Status' => $filters['status'] === 'all' ? 'All statuses' : ContractStatus::label($filters['status']),
+            ],
+            'summary' => $summary,
+            'summary_sections' => [
+                'Customer Communication Snapshot' => [
+                    'Matching Contracts' => $summary['matching_contracts'],
+                    'Unique Customers' => $summary['unique_customers'],
+                    'Contract Value (AED)' => $summary['contract_value'],
+                    'Completed Contracts' => $summary['completed_contracts'],
+                    'Top Channel' => $summary['top_channel'],
+                ],
+            ],
+            'rows' => $rows,
+            'export_headings' => ['Contract ID', 'Selected Date Basis', 'Selected Date', 'Customer', 'Phone', 'Communication Channel', 'Status', 'Vehicle', 'Plate', 'Pickup Date', 'Return Date', 'Contract Value AED'],
+            'export_rows' => $rows->map(fn (array $row) => [
+                $row['contract_id'], $row['selected_date_basis'], $row['selected_date'], $row['customer_name'], $row['customer_phone'], $row['channel_label'], $row['status_label'], $row['vehicle'], $row['plate_number'], $row['pickup_date'], $row['return_date'], $row['total_price'],
+            ])->all(),
+            'extra_sheets' => [[
+                'title' => 'Channel Summary',
+                'headings' => ['Communication Channel', 'Contracts', 'Customers', 'Contract Value AED', 'Completed Contracts'],
+                'rows' => $channelBreakdown->all(),
+                'accentColor' => '0F766E',
+            ]],
+        ];
+    }
+
     public function fleetPerformance(array $filters = []): array
     {
         $filters = $this->normalizeFleetFilters($filters);
@@ -1491,10 +1592,10 @@ class OperationsReportService
             'security_deposit_note' => (string) data_get($contract->meta, 'security_deposit_note', '—') ?: '—',
             'notes' => $this->mergeNotes([
                 $contract->notes,
-                $pickupDocument?->note ? 'Pickup: ' . $pickupDocument->note : null,
-                $pickupDocument?->driver_note ? 'Pickup Driver Note: ' . $pickupDocument->driver_note : null,
-                $returnDocument?->note ? 'Return: ' . $returnDocument->note : null,
-                $returnDocument?->driver_note ? 'Return Driver Note: ' . $returnDocument->driver_note : null,
+                $pickupDocument?->note ? 'Pickup: '.$pickupDocument->note : null,
+                $pickupDocument?->driver_note ? 'Pickup Driver Note: '.$pickupDocument->driver_note : null,
+                $returnDocument?->note ? 'Return: '.$returnDocument->note : null,
+                $returnDocument?->driver_note ? 'Return Driver Note: '.$returnDocument->driver_note : null,
             ]),
         ];
     }
@@ -2012,6 +2113,32 @@ class OperationsReportService
         ];
     }
 
+    private function normalizeCustomerCommunicationFilters(array $filters): array
+    {
+        $dateField = (string) ($filters['date_field'] ?? 'created_at');
+        $dateFrom = $this->normalizeDateString($filters['date_from'] ?? null);
+        $dateTo = $this->normalizeDateString($filters['date_to'] ?? null);
+        $channel = trim((string) ($filters['channel'] ?? 'all')) ?: 'all';
+        $status = trim((string) ($filters['status'] ?? 'all')) ?: 'all';
+
+        if ($dateFrom !== null && $dateTo !== null && Carbon::parse($dateFrom)->greaterThan(Carbon::parse($dateTo))) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
+        if ($channel !== 'all' && ! in_array($channel, Contract::COMMUNICATION_CHANNELS, true)) {
+            $channel = 'all';
+        }
+
+        return [
+            'search' => trim((string) ($filters['search'] ?? '')),
+            'date_field' => in_array($dateField, self::CUSTOMER_COMMUNICATION_DATE_FIELDS, true) ? $dateField : 'created_at',
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'channel' => $channel,
+            'status' => $status,
+        ];
+    }
+
     private function normalizeMonthlyContractFilters(array $filters): array
     {
         $dateField = (string) ($filters['date_field'] ?? 'return_date');
@@ -2151,7 +2278,7 @@ class OperationsReportService
 
     private function likeValue(string $search): string
     {
-        return '%' . trim($search) . '%';
+        return '%'.trim($search).'%';
     }
 
     private function looksLikePhone(string $search): bool
@@ -2261,7 +2388,7 @@ class OperationsReportService
             return null;
         }
 
-        return Str::headline(str_replace('_', ' ', str_replace('_insurance', '', $normalized))) . ' Insurance';
+        return Str::headline(str_replace('_', ' ', str_replace('_insurance', '', $normalized))).' Insurance';
     }
 
     private function humanizeOption(string $value): string
