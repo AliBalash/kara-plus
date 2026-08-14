@@ -8,7 +8,7 @@
             <div class="filter-field">
                 <div class="d-flex justify-content-between align-items-center">
                     <label class="filter-label" for="rentalListSearch">Search</label>
-                    <span class="filter-hint">Name, plate or contract #</span>
+                    <span class="filter-hint">Name, plate, contract # or agreement #</span>
                 </div>
                 <form class="input-group" wire:submit.prevent="applySearch">
                     <span class="input-group-text"><i class="bx bx-search"></i></span>
@@ -153,7 +153,7 @@
             <tbody wire:poll.10s>
                 @forelse($contracts as $contract)
                     <tr wire:key="contract-{{ $contract->id }}">
-                        <td>{{ $contract->id }}</td>
+                        <td><x-contract-reference :contract="$contract" /></td>
                         <td>
                             <div>{{ $contract->customer->fullName() }}</div>
                             <div class="text-muted small">{{ $contract->customer->phone ?? '—' }}</div>

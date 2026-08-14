@@ -105,7 +105,7 @@ class RentalRequestAwaitingReturnList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         return Contract::query()
-            ->with(['customer', 'car.carModel', 'user', 'returnDriver', 'latestStatus.user', 'agent'])
+            ->with(['customer', 'car.carModel', 'user', 'pickupDocument', 'returnDriver', 'latestStatus.user', 'agent'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch, $isPhoneSearch) {
                 $query->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
@@ -117,6 +117,7 @@ class RentalRequestAwaitingReturnList extends Component
                             $q->orWhere('phone', 'like', $likeSearch);
                         }
                     })
+                        ->orWhereHas('pickupDocument', fn ($documentQuery) => $documentQuery->where('agreement_number', 'like', $likeSearch))
                         ->orWhere('contracts.id', 'like', $likeSearch)
                         ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
                             $carQuery->where('plate_number', 'like', $likeSearch)

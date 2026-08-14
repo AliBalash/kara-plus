@@ -1,41 +1,41 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Livewire\Pages\Panel\Expert\Dashboard;
+use App\Http\Controllers\BalanceTransferController;
+use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\ReportExportController;
+use App\Http\Controllers\Reports\AuditExportController;
+use App\Http\Controllers\UserRequestStatsController;
 use App\Livewire\Pages\Panel\Auth\Login;
 use App\Livewire\Pages\Panel\Expert\Agent\AgentList;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandDetail;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandForm;
 use App\Livewire\Pages\Panel\Expert\Brand\BrandList;
 use App\Livewire\Pages\Panel\Expert\Car\CarDetail;
-use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
-use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
 use App\Livewire\Pages\Panel\Expert\Car\CarList;
 use App\Livewire\Pages\Panel\Expert\Car\CarUnavailableDesk;
+use App\Livewire\Pages\Panel\Expert\Car\CreateCarForm;
+use App\Livewire\Pages\Panel\Expert\Car\EditCarForm;
+use App\Livewire\Pages\Panel\Expert\Cashier\CashierDashboard;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDebt;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDebtorList;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDetail;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerDocumentUpload;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerHistory;
 use App\Livewire\Pages\Panel\Expert\Customer\CustomerList;
-use App\Livewire\Pages\Panel\Expert\Cashier\CashierDashboard;
-use App\Livewire\Pages\Panel\Expert\DiscountCode\DiscountCodeList;
+use App\Livewire\Pages\Panel\Expert\Dashboard;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesForm;
 use App\Livewire\Pages\Panel\Expert\Insurances\InsurancesList;
 use App\Livewire\Pages\Panel\Expert\Lead\LeadList;
+use App\Livewire\Pages\Panel\Expert\LocationCost\LocationCostList;
 use App\Livewire\Pages\Panel\Expert\Payments\ConfirmPayementList;
+use App\Livewire\Pages\Panel\Expert\Payments\PaymentEdit;
 use App\Livewire\Pages\Panel\Expert\Payments\ProcessedPaymentList;
 use App\Livewire\Pages\Panel\Expert\Profile\Profile;
-use App\Livewire\Pages\Panel\Expert\Reports\CustomerBalanceReport;
-use App\Livewire\Pages\Panel\Expert\Reports\CustomerRequestReport;
-use App\Livewire\Pages\Panel\Expert\Reports\FleetPerformanceReport;
-use App\Livewire\Pages\Panel\Expert\Reports\FirstTimeCustomerReport;
-use App\Livewire\Pages\Panel\Expert\Reports\LeadSourceReport;
-use App\Livewire\Pages\Panel\Expert\Reports\PaymentCollectionReport;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAgreementInspection;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingPickupList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestAwaitingReturnList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestBalanceTransfer;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCancelledList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCreate;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestEdit;
@@ -49,23 +49,23 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPaymentList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPickupDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReserved;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReturnDocument;
-use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCancelledList;
-use App\Livewire\Pages\Panel\Expert\Payments\PaymentEdit;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
+use App\Livewire\Pages\Panel\Expert\Reports\AuditCenterReport;
+use App\Livewire\Pages\Panel\Expert\Reports\CustomerBalanceReport;
+use App\Livewire\Pages\Panel\Expert\Reports\CustomerCommunicationChannelReport;
+use App\Livewire\Pages\Panel\Expert\Reports\CustomerRequestReport;
+use App\Livewire\Pages\Panel\Expert\Reports\FirstTimeCustomerReport;
+use App\Livewire\Pages\Panel\Expert\Reports\FleetPerformanceReport;
+use App\Livewire\Pages\Panel\Expert\Reports\LeadSourceReport;
+use App\Livewire\Pages\Panel\Expert\Reports\PaymentCollectionReport;
 use App\Livewire\Pages\Panel\Expert\User\CreateUser;
 use App\Livewire\Pages\Panel\Expert\User\ManageUserRoles;
-use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
-use App\Livewire\Pages\Panel\Expert\LocationCost\LocationCostList;
-use App\Http\Controllers\MaintenanceController;
-use App\Http\Controllers\ReportExportController;
-use App\Http\Controllers\UserRequestStatsController;
-use App\Http\Controllers\Reports\AuditExportController;
-use App\Livewire\Pages\Panel\Expert\Reports\AuditCenterReport;
+use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/auth/login');
 
 Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
-
 
     Route::get('/expert/rental-requests/list', RentalRequestList::class)->name('rental-requests.list');
     Route::get('/expert/rental-requests/create/', RentalRequestCreate::class)->name('rental-requests.creat');
@@ -79,6 +79,8 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/pickup-document/{contractId}', RentalRequestPickupDocument::class)->name('rental-requests.pickup-document');
     Route::get('/expert/rental-requests/return-document/{contractId}', RentalRequestReturnDocument::class)->name('rental-requests.return-document');
     Route::get('/expert/rental-requests/balance-transfer/{contractId}', RentalRequestBalanceTransfer::class)->name('rental-requests.balance-transfer');
+    Route::post('/expert/rental-requests/balance-transfer/{contractId}', [BalanceTransferController::class, 'store'])->name('rental-requests.balance-transfer.store');
+    Route::delete('/expert/rental-requests/balance-transfer/{contractId}/{transfer}', [BalanceTransferController::class, 'destroy'])->name('rental-requests.balance-transfer.destroy');
 
     Route::get('/expert/rental-requests/awaiting-pickup', RentalRequestAwaitingPickupList::class)->name('rental-requests.awaiting.pickup');
     Route::get('/expert/rental-requests/agreement_inspection/{contractId}', RentalRequestAgreementInspection::class)->name('rental-requests.agreement-inspection');
@@ -111,7 +113,6 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/payment-list', RentalRequestPaymentList::class)->name('rental-requests.payment.list');
     Route::get('/expert/rental-requests/cancelled', RentalRequestCancelledList::class)->name('rental-requests.cancelled');
 
-
     Route::get('/expert/rental-requests/confirm-payment-list', ConfirmPayementList::class)->name('rental-requests.confirm-payment-list');
     Route::get('/expert/rental-requests/processed-payments', ProcessedPaymentList::class)->name('rental-requests.processed-payments');
     Route::get('/expert/payments/{paymentId}/edit', PaymentEdit::class)->name('payments.edit');
@@ -120,13 +121,8 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     Route::get('/expert/leads', LeadList::class)->name('leads.index');
 
-
-
-
     Route::get('/expert/car/list/', CarList::class)->name('car.list');
     Route::get('/expert/car/detail/{carId}', CarDetail::class)->name('car.detail');
-
-
 
     Route::get('/expert/car/create', CreateCarForm::class)->name('car.create');
     Route::get('/expert/car/edit/{carId}', EditCarForm::class)->name('car.edit');
@@ -136,7 +132,6 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/brand/detail/{brandId}', BrandDetail::class)->name('brand.detail');
     Route::get('/expert/brand/form/{brandId?}', BrandForm::class)->name('brand.form');
 
-
     Route::get('/expert/customer/list', CustomerList::class)->name('customer.list');
     Route::get('/expert/customer/debtors', CustomerDebtorList::class)->name('customer.debtor-list');
     Route::get('/expert/customer/detail/{customerId}', CustomerDetail::class)->name('customer.detail');
@@ -144,11 +139,8 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/customer/debt/{customerId}', CustomerDebt::class)->name('customer.debt');
     Route::get('/expert/customer/documents/{contractId}/{customerId}', CustomerDocumentUpload::class)->name('customer.documents');
 
-
     Route::get('/expert/insurance/list', InsurancesList::class)->name('insurance.list');
     Route::get('/expert/insurance/form/{insuranceId?}', InsurancesForm::class)->name('insurance.form');
-
-
 
     Route::get('/expert/location-costs', LocationCostList::class)->name('location-costs.index');
     Route::get('/expert/agents', AgentList::class)->name('agents.index');
@@ -165,6 +157,14 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/reports/first-time-customers', FirstTimeCustomerReport::class)->name('reports.first-time-customers');
     Route::get('/expert/reports/first-time-customers/export', [ReportExportController::class, 'firstTimeCustomers'])
         ->name('reports.first-time-customers.export');
+    Route::get('/expert/marketing/communication-channels', LeadSourceReport::class)
+        ->name('marketing.communication-channels');
+    Route::get('/expert/marketing/communication-channels/export', [ReportExportController::class, 'leadSources'])
+        ->name('marketing.communication-channels.export');
+    Route::get('/expert/marketing/customer-communication-channels', CustomerCommunicationChannelReport::class)
+        ->name('marketing.customer-communication-channels');
+    Route::get('/expert/marketing/customer-communication-channels/export', [ReportExportController::class, 'customerCommunicationChannels'])
+        ->name('marketing.customer-communication-channels.export');
     Route::get('/expert/reports/lead-sources', LeadSourceReport::class)->name('reports.lead-sources');
     Route::get('/expert/reports/lead-sources/export', [ReportExportController::class, 'leadSources'])
         ->name('reports.lead-sources.export');
@@ -187,15 +187,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/my-profile', Profile::class)->name('profile.me');
 });
 
-
-
-
-
 Route::get('/auth/login', Login::class)->name('auth.login')->middleware('auth.guest');
-
-
-
-
 
 // use App\Imports\CarImport;
 // use Maatwebsite\Excel\Facades\Excel;
@@ -209,11 +201,9 @@ Route::get('/auth/login', Login::class)->name('auth.login')->middleware('auth.gu
 //     return 'Data has been imported successfully from the given file.';
 // });
 
-
 // use App\Livewire\Reservation\ReserveCarForm;
 
 // Route::get('/reservations', ReserveCarForm::class);
-
 
 // Route::get('/test', function () {
 //     $permission = Permission::create(['name' => 'car']);

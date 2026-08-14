@@ -115,7 +115,7 @@
             <tbody class="table-border-bottom-0">
                 @forelse ($awaitContracts as $awaitContract)
                     <tr>
-                        <td>{{ $awaitContract->id }}</td>
+                        <td><x-contract-reference :contract="$awaitContract" /></td>
                         <td>
                             <div>{{ $awaitContract->customer->fullName() }}</div>
                             <div class="text-muted small">{{ $awaitContract->customer->phone ?? '—' }}</div>

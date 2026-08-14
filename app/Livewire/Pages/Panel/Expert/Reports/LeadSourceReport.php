@@ -55,7 +55,7 @@ class LeadSourceReport extends Component
 
     public function exportUrl(): string
     {
-        return route('reports.lead-sources.export', $this->exportQuery());
+        return route('marketing.communication-channels.export', $this->exportQuery());
     }
 
     public function render()

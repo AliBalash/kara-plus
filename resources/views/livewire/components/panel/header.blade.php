@@ -130,7 +130,7 @@
             <div class="offcanvas-header border-bottom">
                 <div>
                     <h5 class="offcanvas-title mb-1" id="quickSearchLabel">Quick Vehicle Search</h5>
-                    <p class="text-muted small mb-0">Search by plate, vehicle details or assigned customer.</p>
+                    <p class="text-muted small mb-0">Search Our Fleet by plate or vehicle details.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
@@ -142,7 +142,7 @@
                     <i class="bx bx-car" aria-hidden="true"></i>
                     <label class="visually-hidden" for="quickSearchInput">Search vehicles</label>
                     <input type="search" wire:model.live.debounce.400ms="query" class="form-control"
-                        placeholder="Start typing to search the fleet" aria-label="Search vehicles" autocomplete="off"
+                        placeholder="Search Our Fleet" aria-label="Search vehicles" autocomplete="off"
                         spellcheck="false" enterkeyhint="search" id="quickSearchInput">
                     @if ($queryLength > 1)
                         <button type="button" class="btn btn-sm btn-link text-muted" wire:click="$set('query', '')">

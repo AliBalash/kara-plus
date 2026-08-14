@@ -76,7 +76,7 @@ class CashierDashboard extends Component
     {
         try {
             $baseQuery = Payment::query()
-                ->with(['customer', 'contract.car'])
+                ->with(['customer', 'contract.car', 'contract.pickupDocument'])
                 ->where('is_paid', 1)
                 ->where(function ($query) {
                     $query->whereNull('payment_method')
@@ -116,13 +116,7 @@ class CashierDashboard extends Component
                                 ->orWhere('amount_in_aed', 'like', $numericLike);
                         }
 
-                        $inner->orWhereHas('contract', function ($contractQuery) use ($numericSearch, $likeSearch) {
-                            if (!is_null($numericSearch)) {
-                                $contractQuery->where('id', $numericSearch);
-                            } else {
-                                $contractQuery->where('id', 'like', $likeSearch);
-                            }
-                        })
+                        $inner->orWhereHas('contract', fn ($contractQuery) => $contractQuery->whereReferenceLike($likeSearch))
                             ->orWhereHas('customer', function ($customerQuery) use ($likeSearch, $isPhoneSearch) {
                                 $customerQuery->where('first_name', 'like', $likeSearch)
                                     ->orWhere('last_name', 'like', $likeSearch)

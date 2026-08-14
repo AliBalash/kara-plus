@@ -107,11 +107,10 @@ class ConfirmPayementList extends Component
         $statusMeta = $this->statusMeta();
         $search = trim($this->search);
         $likeSearch = '%' . $search . '%';
-        $isNumericSearch = is_numeric($search);
         $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
         $baseQuery = Payment::query()
-            ->when($search !== '', function ($q) use ($search, $isNumericSearch, $isPhoneSearch, $likeSearch) {
+            ->when($search !== '', function ($q) use ($isPhoneSearch, $likeSearch) {
                 if ($isPhoneSearch) {
                     $q->whereHas('customer', function ($q2) use ($likeSearch) {
                         $q2->where('phone', 'like', $likeSearch);
@@ -120,16 +119,13 @@ class ConfirmPayementList extends Component
                     return;
                 }
 
-                if ($isNumericSearch) {
-                    $numeric = (int) $search;
-                    $q->whereHas('contract', function ($q2) use ($numeric) {
-                        $q2->where('id', $numeric);
-                    });
-                } else {
-                    $q->whereHas('customer', function ($q2) use ($likeSearch) {
-                        $q2->where('last_name', 'like', $likeSearch);
-                    });
-                }
+                $q->where(function ($searchQuery) use ($likeSearch) {
+                    $searchQuery->whereHas('contract', fn ($contractQuery) => $contractQuery->whereReferenceLike($likeSearch))
+                        ->orWhereHas('customer', function ($customerQuery) use ($likeSearch) {
+                            $customerQuery->where('first_name', 'like', $likeSearch)
+                                ->orWhere('last_name', 'like', $likeSearch);
+                        });
+                });
             })
             ->when($this->statusFilter !== '', fn($q) => $q->where('approval_status', $this->statusFilter))
             ->when($this->currencyFilter, fn($q) => $q->where('currency', $this->currencyFilter))
@@ -144,7 +140,7 @@ class ConfirmPayementList extends Component
             ->paginate(10, ['contract_id']);
 
         $payments = (clone $baseQuery)
-            ->with(['customer', 'contract', 'car'])
+            ->with(['customer', 'contract.pickupDocument', 'car'])
             ->whereIn('contract_id', $contractsPaginator->pluck('contract_id'))
             ->orderByDesc('id')
             ->get()

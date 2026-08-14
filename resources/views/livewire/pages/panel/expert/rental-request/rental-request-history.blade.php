@@ -104,7 +104,7 @@
                         @endphp
                         <tr>
                             <td>{{ $statuses->count() + 1 }}</td>
-                            <td>{{ $contract->id }}</td>
+                            <td><x-contract-reference :contract="$contract" /></td>
                             <td>{{ $contract->customer->fullName() }}</td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">

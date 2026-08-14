@@ -157,7 +157,7 @@
             <tbody class="table-border-bottom-0">
                 @foreach ($reservedContracts as $reservedContract)
                     <tr>
-                        <td>{{ $reservedContract->id }}</td>
+                        <td><x-contract-reference :contract="$reservedContract" /></td>
                         <td>
                             <div>{{ $reservedContract->customer->fullName() }}</div>
                             <div class="text-muted small">{{ $reservedContract->customer->phone ?? '—' }}</div>

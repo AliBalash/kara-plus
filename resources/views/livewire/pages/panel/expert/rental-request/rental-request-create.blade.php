@@ -140,14 +140,47 @@
                             @error('phone')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                             @enderror
-                            @if (!$selectedExistingCustomer && empty($customerPhoneSuggestions))
+                            @if (!$selectedExistingCustomer && !$selectedLead && empty($customerPhoneSuggestions))
                                 <div class="form-text mt-2">
                                     If this phone already exists, load that customer first. New contracts must use the
                                     saved customer profile for matching phone numbers.
                                 </div>
                             @endif
 
-                            @if ($selectedExistingCustomer)
+                            @if ($selectedLead)
+                                <div class="customer-match-card customer-match-card--selected mt-3">
+                                    <div class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3">
+                                        <div class="flex-grow-1">
+                                            <span class="customer-match-card__badge bg-label-warning text-warning">
+                                                <i class="bx bx-bulb"></i> Lead selected
+                                            </span>
+                                            <span class="badge bg-label-success ms-1">First Contract</span>
+                                            <div class="customer-match-card__name mt-2">
+                                                {{ $selectedLead['full_name'] ?: 'Lead' }}
+                                            </div>
+                                            <div class="customer-match-card__meta mt-2">
+                                                <span><i class="bx bx-phone"></i> {{ $selectedLead['phone'] }}</span>
+                                                @if (!empty($selectedLead['messenger_phone']))
+                                                    <span><i class="bx bx-chat"></i> {{ $selectedLead['messenger_phone'] }}</span>
+                                                @endif
+                                                @if (!empty($selectedLead['email']))
+                                                    <span><i class="bx bx-envelope"></i> {{ $selectedLead['email'] }}</span>
+                                                @endif
+                                                @if (!empty($selectedLead['source']))
+                                                    <span><i class="bx bx-share-alt"></i> {{ $selectedLead['source'] }}</span>
+                                                @endif
+                                            </div>
+                                            <div class="customer-match-card__hint mt-2">
+                                                This person was previously registered as a Lead. This will be their first contract.
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary align-self-start"
+                                            wire:click="startNewCustomerDraft">
+                                            <i class="bx bx-refresh me-1"></i> Use Different Phone
+                                        </button>
+                                    </div>
+                                </div>
+                            @elseif ($selectedExistingCustomer)
                                 <div class="customer-match-card customer-match-card--selected mt-3">
                                     <div class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3">
                                         <div class="flex-grow-1">
@@ -198,14 +231,14 @@
                             @elseif (!empty($customerPhoneSuggestions))
                                 <div class="customer-suggestion-panel mt-3">
                                     <div class="customer-suggestion-panel__header">
-                                        Matching saved customers
+                                        Matching customers and leads
                                     </div>
                                     @foreach ($customerPhoneSuggestions as $suggestion)
                                         <button type="button" class="customer-suggestion-item"
-                                            wire:click="selectExistingCustomer({{ $suggestion['id'] }})">
+                                            wire:click="{{ $suggestion['type'] === 'lead' ? 'selectLead' : 'selectExistingCustomer' }}({{ $suggestion['id'] }})">
                                             <span class="customer-suggestion-item__main">
                                                 <span class="customer-suggestion-item__name">
-                                                    {{ $suggestion['full_name'] ?: 'Saved Customer' }}
+                                                    {{ $suggestion['full_name'] ?: ($suggestion['type'] === 'lead' ? 'Lead' : 'Saved Customer') }}
                                                 </span>
                                                 <span class="customer-suggestion-item__meta">
                                                     {{ $suggestion['phone'] }}
@@ -219,7 +252,16 @@
                                                 </span>
                                             </span>
                                             <span class="customer-suggestion-item__cta">
-                                                Load profile
+                                                @if ($suggestion['type'] === 'lead')
+                                                    <span class="badge bg-label-warning">Lead</span>
+                                                    <span class="badge bg-label-success">First Contract</span>
+                                                @elseif ($suggestion['is_first_contract'])
+                                                    <span class="badge bg-label-info">Customer</span>
+                                                    <span class="badge bg-label-success">First Contract</span>
+                                                @else
+                                                    <span class="badge bg-label-primary">Existing Customer</span>
+                                                    <span class="badge bg-label-secondary">{{ $suggestion['contracts_count'] }} contracts</span>
+                                                @endif
                                             </span>
                                         </button>
                                     @endforeach

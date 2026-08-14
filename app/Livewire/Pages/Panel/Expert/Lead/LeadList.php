@@ -3,9 +3,10 @@
 namespace App\Livewire\Pages\Panel\Expert\Lead;
 
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Models\Car;
 use App\Models\CarModel;
-use App\Models\Customer;
 use App\Models\Contract;
+use App\Models\Customer;
 use App\Models\Lead;
 use App\Support\PhoneNumber;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -17,42 +18,82 @@ use Livewire\WithPagination;
 
 class LeadList extends Component
 {
-    use WithPagination;
     use InteractsWithToasts;
+    use WithPagination;
 
     public string $search = '';
+
     public string $searchInput = '';
+
     public string $statusFilter = '';
+
     public string $priorityFilter = '';
 
+    public string $dateFrom = '';
+
+    public string $dateTo = '';
+
+    public string $sortField = 'updated_at';
+
+    public string $sortDirection = 'desc';
+
     public ?int $editingId = null;
+
     public ?int $convertingId = null;
 
     public ?string $first_name = '';
+
     public ?string $last_name = '';
+
     public string $phone = '';
+
     public ?string $messenger_phone = '';
+
     public ?string $email = '';
+
     public ?string $source = '';
+
     public ?string $discovery_source = '';
+
     public ?string $selectedBrand = '';
+
     public $selectedModelId = '';
+
     public ?string $request_date = '';
+
     public string $priority = Lead::PRIORITY_NORMAL;
+
     public string $status = Lead::STATUS_NEW;
+
     public ?string $next_follow_up_at = '';
+
     public ?string $last_contacted_at = '';
+
     public ?string $notes = '';
 
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => ''],
         'priorityFilter' => ['except' => ''],
+        'dateFrom' => ['except' => ''],
+        'dateTo' => ['except' => ''],
+        'sortField' => ['except' => 'updated_at'],
+        'sortDirection' => ['except' => 'desc'],
+    ];
+
+    protected const SORTABLE_FIELDS = [
+        'first_name',
+        'request_date',
+        'source',
+        'next_follow_up_at',
+        'status',
+        'updated_at',
     ];
 
     public function mount(): void
     {
         $this->searchInput = $this->search;
+        $this->normalizeSort();
     }
 
     public function updatedSearchInput(): void
@@ -67,6 +108,53 @@ class LeadList extends Component
 
     public function updatedPriorityFilter(): void
     {
+        $this->resetPage();
+    }
+
+    public function updatedDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedDateTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSortField(): void
+    {
+        $this->normalizeSort();
+        $this->resetPage();
+    }
+
+    public function updatedSortDirection(): void
+    {
+        $this->normalizeSort();
+        $this->resetPage();
+    }
+
+    public function clearDateFilters(): void
+    {
+        $this->dateFrom = '';
+        $this->dateTo = '';
+        $this->resetPage();
+    }
+
+    public function sortBy(string $field): void
+    {
+        if (! in_array($field, self::SORTABLE_FIELDS, true)) {
+            return;
+        }
+
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = in_array($field, ['request_date', 'next_follow_up_at', 'updated_at'], true)
+                ? 'desc'
+                : 'asc';
+        }
+
         $this->resetPage();
     }
 
@@ -141,6 +229,7 @@ class LeadList extends Component
     {
         if (! $this->leadsTableExists()) {
             $this->toast('error', 'Lead could not be saved right now. Please try again later.', false);
+
             return;
         }
 
@@ -153,6 +242,7 @@ class LeadList extends Component
 
         if (($validated['status'] ?? null) === Lead::STATUS_CONVERTED && ! $lead?->isConverted()) {
             $this->toast('error', 'Use Create Customer to convert a lead.', false);
+
             return;
         }
 
@@ -177,6 +267,7 @@ class LeadList extends Component
     {
         if (! $this->leadsTableExists()) {
             $this->toast('error', 'Lead could not be converted right now. Please try again later.', false);
+
             return;
         }
 
@@ -189,6 +280,7 @@ class LeadList extends Component
         if ($lead->isConverted()) {
             $this->toast('warning', 'This lead is already converted.');
             $this->resetForm();
+
             return;
         }
 
@@ -386,10 +478,14 @@ class LeadList extends Component
         }
 
         if (($data['selectedBrand'] ?? null) && ($data['selectedModelId'] ?? null)) {
-            $model = CarModel::query()->find($data['selectedModelId']);
+            $model = CarModel::query()
+                ->whereKey($data['selectedModelId'])
+                ->where('brand', $data['selectedBrand'])
+                ->whereHas('cars')
+                ->first();
 
-            if ($model && $model->brand !== $data['selectedBrand']) {
-                $this->addError('selectedModelId', 'Selected car model does not match the selected brand.');
+            if (! $model) {
+                $this->addError('selectedModelId', 'Selected car model is not available for the selected brand.');
                 $this->dispatch('kara-scroll-to-error', field: 'selectedModelId');
                 throw \Illuminate\Validation\ValidationException::withMessages($this->getErrorBag()->toArray());
             }
@@ -433,8 +529,21 @@ class LeadList extends Component
         return Schema::hasTable('leads');
     }
 
+    protected function normalizeSort(): void
+    {
+        if (! in_array($this->sortField, self::SORTABLE_FIELDS, true)) {
+            $this->sortField = 'updated_at';
+        }
+
+        if (! in_array($this->sortDirection, ['asc', 'desc'], true)) {
+            $this->sortDirection = 'desc';
+        }
+    }
+
     public function render()
     {
+        $this->normalizeSort();
+
         if (! $this->leadsTableExists()) {
             return view('livewire.pages.panel.expert.lead.lead-list', [
                 'leads' => new LengthAwarePaginator([], 0, 10),
@@ -455,7 +564,7 @@ class LeadList extends Component
         }
 
         $search = trim($this->search);
-        $likeSearch = '%' . $search . '%';
+        $likeSearch = '%'.$search.'%';
 
         $leads = Lead::query()
             ->with(['customer', 'assignedUser', 'requestedModel'])
@@ -479,7 +588,9 @@ class LeadList extends Component
             })
             ->when($this->statusFilter !== '', fn ($query) => $query->where('status', $this->statusFilter))
             ->when($this->priorityFilter !== '', fn ($query) => $query->where('priority', $this->priorityFilter))
-            ->latest('updated_at')
+            ->when($this->dateFrom !== '', fn ($query) => $query->whereDate('request_date', '>=', $this->dateFrom))
+            ->when($this->dateTo !== '', fn ($query) => $query->whereDate('request_date', '<=', $this->dateTo))
+            ->orderBy($this->sortField, $this->sortDirection)
             ->paginate(10);
 
         $summary = [
@@ -497,9 +608,21 @@ class LeadList extends Component
             'summary' => $summary,
             'statuses' => Lead::statuses(),
             'priorities' => Lead::priorities(),
-            'brands' => CarModel::query()->distinct()->pluck('brand')->filter()->sort()->values(),
+            'brands' => Car::query()
+                ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
+                ->whereNotNull('car_models.brand')
+                ->where('car_models.brand', '!=', '')
+                ->distinct()
+                ->orderBy('car_models.brand')
+                ->pluck('car_models.brand'),
             'models' => $this->selectedBrand
-                ? CarModel::query()->where('brand', $this->selectedBrand)->orderBy('model')->get()
+                ? Car::query()
+                    ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
+                    ->where('car_models.brand', $this->selectedBrand)
+                    ->selectRaw('MIN(car_models.id) as id, car_models.model, MAX(cars.manufacturing_year) as manufacturing_year')
+                    ->groupBy('car_models.model')
+                    ->orderBy('car_models.model')
+                    ->get()
                 : collect(),
             'communicationChannelOptions' => Contract::COMMUNICATION_CHANNELS,
             'communicationChannelLabels' => Contract::COMMUNICATION_CHANNEL_LABELS,

@@ -6,6 +6,7 @@ use App\Models\Car;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Payment;
+use App\Models\PickupDocument;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,6 +95,25 @@ class ContractTest extends TestCase
 
         $inactiveContract = $this->createBaselineContract(['current_status' => 'complete']);
         $this->assertFalse($inactiveContract->isActive());
+    }
+
+    public function test_contract_reference_search_matches_contract_id_and_agreement_number(): void
+    {
+        $contract = $this->createBaselineContract();
+        PickupDocument::factory()->for($contract)->create(['agreement_number' => 'AG-8509']);
+
+        $byAgreement = Contract::query()
+            ->with('pickupDocument')
+            ->whereReferenceLike('%8509%')
+            ->firstOrFail();
+
+        $byId = Contract::query()
+            ->whereReferenceLike('%' . $contract->id . '%')
+            ->firstOrFail();
+
+        $this->assertSame($contract->id, $byAgreement->id);
+        $this->assertSame('AG-8509', $byAgreement->agreement_number);
+        $this->assertSame($contract->id, $byId->id);
     }
 
     public function test_is_completed_returns_true_only_for_complete_status(): void

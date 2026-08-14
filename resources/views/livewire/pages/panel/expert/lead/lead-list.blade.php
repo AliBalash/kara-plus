@@ -46,6 +46,16 @@
                     <option value="{{ $value }}">{{ $label }}</option>
                 @endforeach
             </select>
+            <input type="date" class="form-control" wire:model.live="dateFrom" aria-label="From request date"
+                title="From request date">
+            <input type="date" class="form-control" wire:model.live="dateTo" aria-label="To request date"
+                title="To request date">
+            @if ($dateFrom || $dateTo)
+                <button class="btn btn-outline-secondary" type="button" wire:click="clearDateFilters"
+                    aria-label="Clear request date filters" title="Clear request date filters">
+                    <i class="bx bx-x"></i>
+                </button>
+            @endif
         </div>
     </div>
 
@@ -139,7 +149,9 @@
                                 @disabled(blank($selectedBrand))>
                                 <option value="">Select model</option>
                                 @foreach ($models as $model)
-                                    <option value="{{ $model->id }}">{{ $model->model }}</option>
+                                    <option value="{{ $model->id }}">
+                                        {{ $model->model }}{{ $model->manufacturing_year ? ' (' . $model->manufacturing_year . ')' : '' }}
+                                    </option>
                                 @endforeach
                             </select>
                             <x-panel.form-error-highlighter field="selectedModelId" />
@@ -228,12 +240,68 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Lead</th>
+                                <th>
+                                    <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
+                                        wire:click="sortBy('first_name')" aria-label="Sort by lead"
+                                        title="Sort by lead">
+                                        Lead
+                                        @if ($sortField === 'first_name')
+                                            <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
+                                        @endif
+                                    </button>
+                                </th>
                                 <th>Request</th>
-                                <th>Source</th>
-                                <th>Follow-up</th>
+                                <th>
+                                    <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
+                                        wire:click="sortBy('request_date')" aria-label="Sort by request date"
+                                        title="Sort by request date">
+                                        Request Date
+                                        @if ($sortField === 'request_date')
+                                            <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
+                                        @endif
+                                    </button>
+                                </th>
+                                <th>
+                                    <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
+                                        wire:click="sortBy('source')" aria-label="Sort by source"
+                                        title="Sort by source">
+                                        Source
+                                        @if ($sortField === 'source')
+                                            <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
+                                        @endif
+                                    </button>
+                                </th>
+                                <th>
+                                    <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
+                                        wire:click="sortBy('next_follow_up_at')" aria-label="Sort by follow-up"
+                                        title="Sort by follow-up">
+                                        Follow-up
+                                        @if ($sortField === 'next_follow_up_at')
+                                            <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
+                                        @endif
+                                    </button>
+                                </th>
                                 <th>Owner</th>
-                                <th>Status</th>
+                                <th>
+                                    <button type="button" class="btn btn-link p-0 text-reset text-decoration-none fw-bold"
+                                        wire:click="sortBy('status')" aria-label="Sort by status"
+                                        title="Sort by status">
+                                        Status
+                                        @if ($sortField === 'status')
+                                            <i class="bx bx-{{ $sortDirection === 'asc' ? 'up-arrow-alt' : 'down-arrow-alt' }}"></i>
+                                        @else
+                                            <i class="bx bx-sort-alt-2 text-muted"></i>
+                                        @endif
+                                    </button>
+                                </th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
@@ -249,6 +317,8 @@
                                     </td>
                                     <td>
                                         <div>{{ $lead->requestedVehicleLabel() }}</div>
+                                    </td>
+                                    <td>
                                         <div class="text-muted small">
                                             @if ($lead->request_date)
                                                 {{ $lead->request_date->format('Y-m-d') }}
@@ -304,7 +374,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted py-5">No leads found.</td>
+                                    <td colspan="8" class="text-center text-muted py-5">No leads found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -333,6 +403,10 @@
             min-width: 150px;
         }
 
+        .leads-page .lead-toolbar input[type="date"] {
+            min-width: 145px;
+        }
+
         .leads-page .lead-form-card {
             position: sticky;
             top: 1rem;
@@ -356,7 +430,8 @@
         @media (max-width: 767.98px) {
             .leads-page .lead-toolbar,
             .leads-page .lead-toolbar .input-group,
-            .leads-page .lead-toolbar .form-select {
+            .leads-page .lead-toolbar .form-select,
+            .leads-page .lead-toolbar input[type="date"] {
                 min-width: 100%;
             }
         }

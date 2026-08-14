@@ -122,7 +122,7 @@ class RentalRequestPaymentList extends Component
             : [$this->resolveStatus($this->statusFilter)];
 
         $paymentContracts = Contract::query()
-            ->with(['payments', 'customer', 'car', 'user', 'latestStatus.user', 'agent'])
+            ->with(['payments', 'customer', 'car', 'user', 'pickupDocument', 'latestStatus.user', 'agent'])
             ->whereIn('current_status', $statuses)
             ->when($search !== '', function ($query) use ($likeSearch, $isPhoneSearch) {
                 $query->where(function ($q) use ($likeSearch, $isPhoneSearch) {
@@ -134,6 +134,7 @@ class RentalRequestPaymentList extends Component
                             $customerQuery->orWhere('phone', 'like', $likeSearch);
                         }
                     })
+                        ->orWhereHas('pickupDocument', fn ($documentQuery) => $documentQuery->where('agreement_number', 'like', $likeSearch))
                         ->orWhere('contracts.id', 'like', $likeSearch)
                         ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
                             $carQuery->where('plate_number', 'like', $likeSearch)

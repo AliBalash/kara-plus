@@ -27,7 +27,7 @@
 
                     <hr>
                     <ul class="list-unstyled mb-0 small text-muted">
-                        <li class="mb-2"><strong>Contract:</strong> #{{ $contract->id }}</li>
+                        <li class="mb-2"><strong>Contract:</strong> <x-contract-reference :contract="$contract" /></li>
                         <li class="mb-2"><strong>Customer:</strong> {{ $contract->customer?->fullName() }}</li>
                         <li>
                             <strong>Vehicle:</strong> {{ $contract->car?->fullName() ?? '—' }}
@@ -47,42 +47,47 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    @if (session('success'))
+                        <div class="alert alert-success">{{ session('success') }}</div>
+                    @endif
+
                     @if (empty($contractsList))
                         <div class="alert alert-info">
                             Other contracts were not found for this customer, therefore the balance cannot be transferred yet.
                         </div>
                     @endif
 
-                    <form wire:submit.prevent="transferBalance" class="row g-3">
+                    <form method="POST" action="{{ route('rental-requests.balance-transfer.store', $contract->id) }}" class="row g-3">
+                        @csrf
                         <div class="col-12">
                             <label class="form-label d-block">Transfer mode</label>
                             <div class="btn-group" role="group">
                                 <input type="radio" class="btn-check" name="mode" id="mode-send" value="send"
-                                    wire:model.live="transferForm.mode">
+                                    @checked(old('mode', $transferForm['mode']) === 'send')>
                                 <label class="btn btn-outline-primary" for="mode-send">Send from this contract</label>
 
                                 <input type="radio" class="btn-check" name="mode" id="mode-receive" value="receive"
-                                    wire:model.live="transferForm.mode">
+                                    @checked(old('mode', $transferForm['mode']) === 'receive')>
                                 <label class="btn btn-outline-secondary" for="mode-receive">Receive from another contract</label>
                             </div>
-                            @error('transferForm.mode')
+                            @error('mode')
                                 <div class="text-danger small">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">Target contract</label>
-                            <select class="form-select" wire:model="transferForm.target_contract_id"
+                            <select class="form-select" name="target_contract_id"
                                 @disabled(empty($contractsList))>
                                 <option value="">Select contract...</option>
                                 @foreach ($contractsList as $option)
-                                    <option value="{{ $option['id'] }}">
+                                    <option value="{{ $option['id'] }}" @selected((string) old('target_contract_id', $transferForm['target_contract_id']) === (string) $option['id'])>
                                         #{{ $option['id'] }} · {{ $option['label'] }}
                                         ({{ number_format($option['outstanding'], 2) }} AED)
                                     </option>
                                 @endforeach
                             </select>
-                            @error('transferForm.target_contract_id')
+                            @error('target_contract_id')
                                 <div class="text-danger small">{{ $message }}</div>
                             @enderror
                         </div>
@@ -90,8 +95,8 @@
                         <div class="col-md-6">
                             <label class="form-label">Amount (AED)</label>
                             <input type="number" step="0.01" class="form-control" placeholder="0.00"
-                                wire:model.defer="transferForm.amount" />
-                            @error('transferForm.amount')
+                                name="amount" value="{{ old('amount') }}" />
+                            @error('amount')
                                 <div class="text-danger small">{{ $message }}</div>
                             @enderror
                         </div>
@@ -99,51 +104,19 @@
                         <div class="col-md-6">
                             <label class="form-label">Reference</label>
                             <input type="text" class="form-control" placeholder="Finance reference"
-                                wire:model.defer="transferForm.reference">
-                            @error('transferForm.reference')
+                                name="reference" value="{{ old('reference') }}">
+                            @error('reference')
                                 <div class="text-danger small">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="col-12">
                             <label class="form-label">Notes</label>
-                            <textarea class="form-control" rows="3" wire:model.defer="transferForm.notes"
-                                placeholder="Explain why this transfer is required"></textarea>
-                            @error('transferForm.notes')
+                            <textarea class="form-control" rows="3" name="notes"
+                                placeholder="Explain why this transfer is required">{{ old('notes') }}</textarea>
+                            @error('notes')
                                 <div class="text-danger small">{{ $message }}</div>
                             @enderror
-                        </div>
-
-                        <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="form-label mb-0">Metadata</label>
-                                <button type="button" class="btn btn-sm btn-outline-secondary"
-                                    wire:click="addMetaRow"><i class="bx bx-plus"></i> Add field</button>
-                            </div>
-                            <div class="row g-2">
-                                @foreach ($metadataRows as $index => $row)
-                                    <div class="col-12">
-                                        <div class="row g-2 align-items-center">
-                                            <div class="col-md-4">
-                                                <input type="text" class="form-control" placeholder="Key"
-                                                    wire:model="metadataRows.{{ $index }}.key">
-                                            </div>
-                                            <div class="col-md-7">
-                                                <input type="text" class="form-control" placeholder="Value"
-                                                    wire:model="metadataRows.{{ $index }}.value">
-                                            </div>
-                        
-                                            <div class="col-md-1 d-flex align-items-center">
-                                                <button type="button" class="btn btn-icon btn-outline-danger"
-                                                    wire:click="removeMetaRow({{ $index }})"
-                                                    aria-label="Remove metadata field">
-                                                    <i class="bx bx-x"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
                         </div>
 
                         <div class="col-12 mt-2">
@@ -224,11 +197,12 @@
                                 <div class="small">{{ $transfer['created_by'] ?? 'System' }}</div>
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-danger"
-                                    wire:click="deleteTransfer({{ $transfer['id'] }})"
-                                    onclick="return confirm('Remove this transfer?')">
-                                    Delete
-                                </button>
+                                <form method="POST" action="{{ route('rental-requests.balance-transfer.destroy', [$contract->id, $transfer['id']]) }}" class="d-inline"
+                                    onsubmit="return confirm('Remove this transfer?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
                             </td>
                         </tr>
                     @empty

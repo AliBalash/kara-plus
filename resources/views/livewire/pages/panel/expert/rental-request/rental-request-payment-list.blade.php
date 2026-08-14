@@ -158,7 +158,7 @@
                         $remaining = $contract->calculateRemainingBalance($payments);
                     @endphp
                     <tr>
-                        <td>{{ $contract->id }}</td>
+                        <td><x-contract-reference :contract="$contract" /></td>
                         <td>
                             <div>{{ $contract->customer->fullName() }}</div>
                             <div class="text-muted small">{{ $contract->customer->phone ?? '—' }}</div>

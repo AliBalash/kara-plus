@@ -2,66 +2,107 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\SearchesCustomerPhone;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\Concerns\HandlesServicePricing;
 use App\Models\Agent;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
+use App\Models\Lead;
 use App\Models\LocationCost;
-use App\Livewire\Concerns\SearchesCustomerPhone;
+use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
-use Illuminate\Support\Str;
-use App\Livewire\Concerns\InteractsWithToasts;
-use App\Livewire\Pages\Panel\Expert\RentalRequest\Concerns\HandlesServicePricing;
-use App\Support\PhoneNumber;
 
 class RentalRequestCreate extends Component
 {
-    use InteractsWithToasts;
     use HandlesServicePricing;
+    use InteractsWithToasts;
     use SearchesCustomerPhone;
+
     public $selectedBrand;
+
     public $selectedModelId;
+
     public $selectedCarId;
+
     public $pickup_location;
+
     public $return_location;
+
     public $pickup_date;
+
     public $return_date;
+
     public $notes;
+
     public $driver_note;
+
     public $agent_id;
+
     public $communication_channel;
+
     public $submitted_by_name;
+
     public $first_name;
+
     public $last_name;
+
     public $email;
+
     public ?int $selectedExistingCustomerId = null;
+
     public ?array $selectedExistingCustomer = null;
+
+    public ?int $selectedLeadId = null;
+
+    public ?array $selectedLead = null;
+
     public array $customerPhoneSuggestions = [];
+
     public $phone;
+
     public $messenger_phone;
+
     public $address;
+
     public $birth_date;
+
     public $national_code;
+
     public $passport_number;
+
     public $passport_expiry_date;
+
     public $nationality;
+
     public $license_number;
+
     public $licensed_driver_name;
+
     public $selected_services = [];
+
     public array $service_quantities = [
         'child_seat' => 0,
     ];
+
     public $selected_insurance = 'basic_insurance';
+
     public $services_total = 0;
+
     public $insurance_total = 0;
+
     public ?string $driving_license_option = null;
+
     public float $driving_license_cost = 0;
+
     public array $driving_license_options = [
         'one_year' => [
             'label' => 'Driving License (1 Year)',
@@ -72,34 +113,61 @@ class RentalRequestCreate extends Component
             'amount' => 220,
         ],
     ];
+
     public $driver_hours = 0;
+
     public $driver_cost = 0;
+
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
+
     public $tax_rate = 0.05;
+
     public $tax_amount = 0;
+
     public $subtotal = 0;
+
     public $final_total = 0;
+
     public $rental_days = 1;
+
     public $dailyRate;
+
     public $base_price;
+
     public $brands;
+
     public $models = [];
+
     public $carsForModel = [];
+
     public $services = [];
+
     public $contract;
+
     public $kardo_required = true;
+
     public $payment_on_delivery = true;
+
     public $apply_discount = false;
+
     public $custom_daily_rate = null;
+
     public $standard_daily_rate = 0;
+
     public $ldw_daily_rate = 0;
+
     public $scdw_daily_rate = 0;
+
     public $deposit = null;
+
     public $deposit_category = null;
+
     public $salesAgents = [];
+
     public array $communicationChannelOptions = [];
 
     public array $locationCosts = [];
+
     public array $locationOptions = [];
 
     public function mount()
@@ -133,7 +201,7 @@ class RentalRequestCreate extends Component
         $activeLocations = $locations->where('is_active', true)->pluck('location')->values()->all();
 
         foreach ([$this->pickup_location, $this->return_location] as $selectedLocation) {
-            if ($selectedLocation && !isset($this->locationCosts[$selectedLocation])) {
+            if ($selectedLocation && ! isset($this->locationCosts[$selectedLocation])) {
                 $this->locationCosts[$selectedLocation] = [
                     'under_3' => 0.0,
                     'over_3' => 0.0,
@@ -141,7 +209,7 @@ class RentalRequestCreate extends Component
                 ];
             }
 
-            if ($selectedLocation && !in_array($selectedLocation, $activeLocations, true)) {
+            if ($selectedLocation && ! in_array($selectedLocation, $activeLocations, true)) {
                 $activeLocations[] = $selectedLocation;
             }
         }
@@ -202,6 +270,7 @@ class RentalRequestCreate extends Component
             'driver_hours',
             'driving_license_option',
         ];
+
         return in_array($propertyName, $costRelatedFields) ||
             Str::startsWith($propertyName, 'selected_services.') ||
             Str::startsWith($propertyName, 'service_quantities.');
@@ -235,6 +304,7 @@ class RentalRequestCreate extends Component
 
         $this->selectedExistingCustomerId = $customer->id;
         $this->selectedExistingCustomer = $this->formatCustomerLookupItem($customer);
+        $this->clearLeadSelection();
         $this->customerPhoneSuggestions = [];
         $this->fillCustomerFieldsFromExisting($customer);
         $this->resetValidation($this->customerFieldNames());
@@ -243,6 +313,7 @@ class RentalRequestCreate extends Component
     public function startNewCustomerDraft(): void
     {
         $this->clearExistingCustomerSelection();
+        $this->clearLeadSelection();
         $this->phone = null;
         $this->customerPhoneSuggestions = [];
         $this->resetValidation($this->customerFieldNames());
@@ -259,6 +330,7 @@ class RentalRequestCreate extends Component
     {
         if (! $this->selectedModelId) {
             $this->carsForModel = [];
+
             return;
         }
 
@@ -273,11 +345,13 @@ class RentalRequestCreate extends Component
     {
         if ($this->email === null) {
             $this->validateOnly('email');
+
             return;
         }
 
         if (filter_var($this->email, FILTER_VALIDATE_EMAIL) === false) {
             $this->resetValidation('email');
+
             return;
         }
 
@@ -290,11 +364,13 @@ class RentalRequestCreate extends Component
 
         if ($phone === '') {
             $this->validateOnly('phone');
+
             return;
         }
 
         if (preg_match('/^\+\d{8,15}$/', $phone) !== 1) {
             $this->resetValidation('phone');
+
             return;
         }
 
@@ -305,9 +381,11 @@ class RentalRequestCreate extends Component
     {
         $lookupPhone = $this->lookupPhoneValue($this->phone);
         $selectedPhone = (string) ($this->selectedExistingCustomer['phone'] ?? '');
+        $selectedLeadPhone = (string) ($this->selectedLead['phone'] ?? '');
 
         if ($this->selectedExistingCustomerId && $lookupPhone === $selectedPhone) {
             $this->customerPhoneSuggestions = [];
+
             return;
         }
 
@@ -315,12 +393,23 @@ class RentalRequestCreate extends Component
             $this->clearExistingCustomerSelection();
         }
 
-        if (! $this->shouldSearchCustomersByPhone($lookupPhone)) {
+        if ($this->selectedLeadId && $lookupPhone === $selectedLeadPhone) {
             $this->customerPhoneSuggestions = [];
+
             return;
         }
 
-        $this->customerPhoneSuggestions = $this->lookupCustomersByPhone($lookupPhone);
+        if ($this->selectedLeadId && $lookupPhone !== $selectedLeadPhone) {
+            $this->clearLeadSelection();
+        }
+
+        if (! $this->shouldSearchCustomersByPhone($lookupPhone)) {
+            $this->customerPhoneSuggestions = [];
+
+            return;
+        }
+
+        $this->customerPhoneSuggestions = $this->lookupCustomersAndLeadsByPhone($lookupPhone);
     }
 
     private function shouldSearchCustomersByPhone(?string $lookupPhone): bool
@@ -328,16 +417,30 @@ class RentalRequestCreate extends Component
         return $lookupPhone !== null && $this->isCustomerPhoneSearch($lookupPhone);
     }
 
-    private function lookupCustomersByPhone(string $lookupPhone): array
+    private function lookupCustomersAndLeadsByPhone(string $lookupPhone): array
     {
-        return $this->customerLookupQuery()
-            ->where('phone', 'like', $lookupPhone . '%')
+        $customers = $this->customerLookupQuery()
+            ->where('phone', 'like', $lookupPhone.'%')
             ->orderByRaw('CASE WHEN phone = ? THEN 0 ELSE 1 END', [$lookupPhone])
             ->orderBy('phone')
-            ->limit(5)
+            ->limit(4)
             ->get()
             ->map(fn (Customer $customer): array => $this->formatCustomerLookupItem($customer))
             ->all();
+
+        $leads = Lead::query()
+            ->select(['id', 'first_name', 'last_name', 'phone', 'messenger_phone', 'email', 'source', 'status'])
+            ->whereNull('customer_id')
+            ->where('status', '!=', Lead::STATUS_CONVERTED)
+            ->where('phone', 'like', $lookupPhone.'%')
+            ->orderByRaw('CASE WHEN phone = ? THEN 0 ELSE 1 END', [$lookupPhone])
+            ->orderBy('phone')
+            ->limit(4)
+            ->get()
+            ->map(fn (Lead $lead): array => $this->formatLeadLookupItem($lead))
+            ->all();
+
+        return array_slice([...$customers, ...$leads], 0, 8);
     }
 
     private function customerLookupQuery()
@@ -364,6 +467,7 @@ class RentalRequestCreate extends Component
     private function formatCustomerLookupItem(Customer $customer): array
     {
         return [
+            'type' => 'customer',
             'id' => $customer->id,
             'full_name' => trim($customer->fullName()),
             'email' => (string) $customer->email,
@@ -374,7 +478,40 @@ class RentalRequestCreate extends Component
             'passport_number' => $customer->passport_number,
             'license_number' => $customer->license_number,
             'contracts_count' => (int) ($customer->contracts_count ?? 0),
+            'is_first_contract' => (int) ($customer->contracts_count ?? 0) === 0,
         ];
+    }
+
+    private function formatLeadLookupItem(Lead $lead): array
+    {
+        return [
+            'type' => 'lead',
+            'id' => $lead->id,
+            'full_name' => $lead->displayName(),
+            'email' => (string) $lead->email,
+            'phone' => $lead->phone,
+            'messenger_phone' => $lead->messenger_phone,
+            'nationality' => null,
+            'source' => $lead->source,
+            'status' => $lead->status,
+            'contracts_count' => 0,
+            'is_first_contract' => true,
+        ];
+    }
+
+    public function selectLead(int $leadId): void
+    {
+        $lead = Lead::query()
+            ->whereNull('customer_id')
+            ->where('status', '!=', Lead::STATUS_CONVERTED)
+            ->findOrFail($leadId);
+
+        $this->clearExistingCustomerSelection();
+        $this->selectedLeadId = $lead->id;
+        $this->selectedLead = $this->formatLeadLookupItem($lead);
+        $this->customerPhoneSuggestions = [];
+        $this->fillCustomerFieldsFromLead($lead);
+        $this->resetValidation($this->customerFieldNames());
     }
 
     private function fillCustomerFieldsFromExisting(Customer $customer): void
@@ -393,10 +530,29 @@ class RentalRequestCreate extends Component
         $this->license_number = $customer->license_number;
     }
 
+    private function fillCustomerFieldsFromLead(Lead $lead): void
+    {
+        foreach ($this->customerFieldNames() as $field) {
+            $this->{$field} = null;
+        }
+
+        $this->first_name = $lead->first_name;
+        $this->last_name = $lead->last_name;
+        $this->email = $this->normalizeEmail($lead->email);
+        $this->phone = $lead->phone;
+        $this->messenger_phone = $lead->messenger_phone;
+    }
+
     private function clearExistingCustomerSelection(): void
     {
         $this->selectedExistingCustomerId = null;
         $this->selectedExistingCustomer = null;
+    }
+
+    private function clearLeadSelection(): void
+    {
+        $this->selectedLeadId = null;
+        $this->selectedLead = null;
     }
 
     private function lookupPhoneValue($phone): ?string
@@ -419,7 +575,7 @@ class RentalRequestCreate extends Component
             return null;
         }
 
-        return str_starts_with($trimmed, '+') ? '+' . $digits : $digits;
+        return str_starts_with($trimmed, '+') ? '+'.$digits : $digits;
     }
 
     private function validationCustomerId(): ?int
@@ -472,6 +628,7 @@ class RentalRequestCreate extends Component
             $return = Carbon::parse($this->return_date);
             if ($return->lte($pickup)) {
                 $this->rental_days = 1;
+
                 return;
             }
             $seconds = $return->getTimestamp() - $pickup->getTimestamp();
@@ -505,17 +662,27 @@ class RentalRequestCreate extends Component
 
     private function getCarDailyRate(Car $car, int $days): float
     {
-        if ($days >= 28) return $car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short;
-        if ($days >= 7) return $car->price_per_day_mid ?? $car->price_per_day_short;
+        if ($days >= 28) {
+            return $car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short;
+        }
+        if ($days >= 7) {
+            return $car->price_per_day_mid ?? $car->price_per_day_short;
+        }
+
         return $car->price_per_day_short;
     }
 
     private function getInsuranceDailyRate(Car $car, string $type, int $days): float
     {
-        $prefix = $type . '_price_';
-        if ($days >= 28) return $car->{$prefix . 'long'} ?? $car->{$prefix . 'mid'} ?? $car->{$prefix . 'short'} ?? 0;
-        if ($days >= 7) return $car->{$prefix . 'mid'} ?? $car->{$prefix . 'short'} ?? 0;
-        return $car->{$prefix . 'short'} ?? 0;
+        $prefix = $type.'_price_';
+        if ($days >= 28) {
+            return $car->{$prefix.'long'} ?? $car->{$prefix.'mid'} ?? $car->{$prefix.'short'} ?? 0;
+        }
+        if ($days >= 7) {
+            return $car->{$prefix.'mid'} ?? $car->{$prefix.'short'} ?? 0;
+        }
+
+        return $car->{$prefix.'short'} ?? 0;
     }
 
     private function calculateTransferCosts()
@@ -533,6 +700,7 @@ class RentalRequestCreate extends Component
     private function calculateLocationFee($location, $days)
     {
         $feeType = ($days < 3) ? 'under_3' : 'over_3';
+
         return (float) ($this->locationCosts[$location][$feeType] ?? 0);
     }
 
@@ -544,7 +712,7 @@ class RentalRequestCreate extends Component
 
         foreach ($this->selected_services as $serviceId) {
             $service = $this->resolveServiceDefinition($serviceId);
-            if (!$service) {
+            if (! $service) {
                 continue;
             }
 
@@ -577,6 +745,7 @@ class RentalRequestCreate extends Component
 
         if ($hours <= 0) {
             $this->driver_cost = $this->roundCurrency(0);
+
             return;
         }
 
@@ -584,6 +753,7 @@ class RentalRequestCreate extends Component
 
         if ($totalMinutes <= 0) {
             $this->driver_cost = $this->roundCurrency(0);
+
             return;
         }
 
@@ -592,6 +762,7 @@ class RentalRequestCreate extends Component
 
         if ($totalMinutes <= $includedMinutes) {
             $this->driver_cost = $this->roundCurrency($baseCost);
+
             return;
         }
 
@@ -606,9 +777,10 @@ class RentalRequestCreate extends Component
     {
         $selectedKey = $this->driving_license_option ?: null;
 
-        if (!$selectedKey || !isset($this->driving_license_options[$selectedKey])) {
+        if (! $selectedKey || ! isset($this->driving_license_options[$selectedKey])) {
             $this->driving_license_cost = $this->roundCurrency(0);
             $this->driving_license_option = $selectedKey ?: null;
+
             return;
         }
 
@@ -637,7 +809,9 @@ class RentalRequestCreate extends Component
 
     private function getCarReservations($carId)
     {
-        if (!$carId) return [];
+        if (! $carId) {
+            return [];
+        }
 
         return Contract::where('car_id', $carId)
             ->whereIn('current_status', ['pending', 'assigned', 'under_review', 'reserved', 'delivery', 'agreement_inspection', 'awaiting_return'])
@@ -742,7 +916,7 @@ class RentalRequestCreate extends Component
                 'required',
                 'date',
                 function ($attribute, $value, $fail) {
-                    if (!$this->selectedCarId || !$this->return_date) {
+                    if (! $this->selectedCarId || ! $this->return_date) {
                         return;
                     }
 
@@ -760,7 +934,7 @@ class RentalRequestCreate extends Component
                 'date',
                 'after:pickup_date',
                 function ($attribute, $value, $fail) {
-                    if (!$this->selectedCarId || !$this->pickup_date) {
+                    if (! $this->selectedCarId || ! $this->pickup_date) {
                         return;
                     }
 
@@ -805,7 +979,7 @@ class RentalRequestCreate extends Component
         $rules = ['nullable'];
 
         $rules[] = function ($attribute, $value, $fail) {
-            if (!$this->deposit_category && ($value !== null && $value !== '')) {
+            if (! $this->deposit_category && ($value !== null && $value !== '')) {
                 $fail('Please select a security hold category before entering details.');
             }
         };
@@ -1008,6 +1182,7 @@ class RentalRequestCreate extends Component
             $contract->changeStatus('pending', auth()->id());
             $this->contract = $contract;
             $this->storeContractCharges($contract);
+            $this->convertSelectedLead($customer);
 
             DB::commit();
             $this->toast('success', 'Contract created successfully!');
@@ -1017,7 +1192,7 @@ class RentalRequestCreate extends Component
             throw $exception;
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
+            $this->toast('error', 'An error occurred: '.$e->getMessage(), false);
         }
     }
 
@@ -1036,7 +1211,7 @@ class RentalRequestCreate extends Component
         $errors = $exception->errors();
         $firstKey = array_key_first($errors);
 
-        if (!is_string($firstKey) || $firstKey === '') {
+        if (! is_string($firstKey) || $firstKey === '') {
             return '';
         }
 
@@ -1048,7 +1223,7 @@ class RentalRequestCreate extends Component
         $matchedCustomer = $this->findCustomerByPhone(true);
 
         if ($matchedCustomer) {
-            if ((int) $this->selectedExistingCustomerId !== (int) $matchedCustomer->id) {
+            if (! $this->selectedLeadId && (int) $this->selectedExistingCustomerId !== (int) $matchedCustomer->id) {
                 throw ValidationException::withMessages([
                     'phone' => 'This phone number already belongs to an existing customer. Please load that customer before saving the contract.',
                 ]);
@@ -1069,14 +1244,47 @@ class RentalRequestCreate extends Component
             ]);
         }
 
-        return new Customer();
+        return new Customer;
+    }
+
+    private function convertSelectedLead(Customer $customer): void
+    {
+        if (! $this->selectedLeadId) {
+            return;
+        }
+
+        $lead = Lead::query()->lockForUpdate()->find($this->selectedLeadId);
+
+        if (! $lead || $lead->isConverted() || $lead->customer_id !== null) {
+            throw ValidationException::withMessages([
+                'phone' => 'The selected lead is no longer available. Please search again.',
+            ]);
+        }
+
+        if ($this->lookupPhoneValue($lead->phone) !== $this->lookupPhoneValue($this->phone)) {
+            throw ValidationException::withMessages([
+                'phone' => 'The selected lead no longer matches this phone number. Please search again.',
+            ]);
+        }
+
+        $lead->update([
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'messenger_phone' => $this->messenger_phone,
+            'status' => Lead::STATUS_CONVERTED,
+            'customer_id' => $customer->id,
+            'converted_by' => auth()->id(),
+            'converted_at' => now(),
+        ]);
     }
 
     private function findCustomerByPhone(bool $lockForUpdate = false): ?Customer
     {
         $phone = $this->lookupPhoneValue($this->phone);
 
-        if ($phone === null || !str_starts_with($phone, '+')) {
+        if ($phone === null || ! str_starts_with($phone, '+')) {
             return null;
         }
 
@@ -1106,13 +1314,13 @@ class RentalRequestCreate extends Component
             $meta['driver_service_cost'] = $this->roundCurrency($this->driver_cost);
         }
 
-        if ($this->payment_on_delivery && !is_null($this->driver_note) && trim((string) $this->driver_note) !== '') {
+        if ($this->payment_on_delivery && ! is_null($this->driver_note) && trim((string) $this->driver_note) !== '') {
             $meta['driver_note'] = $this->driver_note;
         }
 
         $serviceQuantities = $this->normalizedServiceQuantities();
 
-        if (!empty($serviceQuantities)) {
+        if (! empty($serviceQuantities)) {
             $meta['service_quantities'] = $serviceQuantities;
         }
 
@@ -1121,12 +1329,12 @@ class RentalRequestCreate extends Component
             $meta['driving_license_cost'] = $this->roundCurrency($this->driving_license_cost);
         }
 
-        return !empty($meta) ? $meta : null;
+        return ! empty($meta) ? $meta : null;
     }
 
     private function normalizedDeposit(): ?string
     {
-        if (!$this->deposit_category) {
+        if (! $this->deposit_category) {
             return null;
         }
 
@@ -1141,7 +1349,7 @@ class RentalRequestCreate extends Component
 
     private function normalizedServiceQuantities(bool $includeZeros = false): array
     {
-        if (!is_array($this->service_quantities)) {
+        if (! is_array($this->service_quantities)) {
             return [];
         }
 
@@ -1228,7 +1436,7 @@ class RentalRequestCreate extends Component
         if ($this->driving_license_cost > 0 && $this->driving_license_option) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => 'driving_license_' . $this->driving_license_option,
+                'title' => 'driving_license_'.$this->driving_license_option,
                 'amount' => $this->roundCurrency($this->driving_license_cost),
                 'type' => 'service',
                 'description' => $this->buildDrivingLicenseDescription(),
@@ -1237,12 +1445,12 @@ class RentalRequestCreate extends Component
 
         foreach ($this->selected_services as $serviceId) {
             $resolvedId = $this->resolveServiceId($serviceId);
-            if (!$resolvedId) {
+            if (! $resolvedId) {
                 continue;
             }
 
             $service = $this->services[$resolvedId] ?? null;
-            if (!$service) {
+            if (! $service) {
                 continue;
             }
 
@@ -1322,7 +1530,7 @@ class RentalRequestCreate extends Component
 
     private function buildDrivingLicenseDescription(): string
     {
-        if (!$this->driving_license_option || !isset($this->driving_license_options[$this->driving_license_option])) {
+        if (! $this->driving_license_option || ! isset($this->driving_license_options[$this->driving_license_option])) {
             return 'Driving license fee';
         }
 
@@ -1347,6 +1555,7 @@ class RentalRequestCreate extends Component
     {
         $services = array_map(function ($service) {
             $service['label'] = $service['label_en'];
+
             return $service;
         }, $this->services);
 

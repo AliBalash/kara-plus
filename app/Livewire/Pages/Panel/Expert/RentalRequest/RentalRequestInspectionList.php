@@ -149,6 +149,7 @@ class RentalRequestInspectionList extends Component
                             $customerQuery->orWhere('phone', 'like', $likeSearch);
                         }
                     })
+                        ->orWhereHas('pickupDocument', fn ($documentQuery) => $documentQuery->where('agreement_number', 'like', $likeSearch))
                         ->orWhere('contracts.id', 'like', $likeSearch)
                         ->orWhereHas('car', function ($carQuery) use ($likeSearch) {
                             $carQuery->where('plate_number', 'like', $likeSearch)

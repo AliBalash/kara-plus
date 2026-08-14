@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use App\Models\Car;
 use App\Models\ContractBalanceTransfer;
@@ -352,6 +353,30 @@ class Contract extends Model
     public function pickupDocument()
     {
         return $this->hasOne(PickupDocument::class);
+    }
+
+    /**
+     * Agreement numbers belong to the pickup document, but are part of the
+     * contract reference that staff use throughout the panel.
+     */
+    public function getAgreementNumberAttribute(): ?string
+    {
+        return $this->pickupDocument?->agreement_number;
+    }
+
+    /**
+     * Match the two identifiers that can be used to locate a contract.
+     *
+     * This scope is deliberately relation-based instead of joining pickup
+     * documents, so it remains correct for contracts that do not yet have an
+     * agreement number.
+     */
+    public function scopeWhereReferenceLike(Builder $query, string $like): Builder
+    {
+        return $query
+            ->where('contracts.id', 'like', $like)
+            ->orWhereHas('pickupDocument', fn (Builder $documentQuery) => $documentQuery
+                ->where('agreement_number', 'like', $like));
     }
 
     public function returnDocument()
