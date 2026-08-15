@@ -49,7 +49,7 @@ class PublicReservationController extends Controller
         return response()->json([
             'data' => $this->reservationService->cars(
                 isset($validated['model_id']) ? (int) $validated['model_id'] : null,
-                $validated['brand'] ?? null,
+                isset($validated['brand']) ? trim($validated['brand']) : null,
                 $validated['pickup_date'] ?? null,
                 $validated['return_date'] ?? null
             ),

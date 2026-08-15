@@ -62,7 +62,7 @@ class PublicReservationService
     public function brands(): array
     {
         return CarModel::query()
-            ->select('brand')
+            ->selectRaw('TRIM(brand) as brand')
             ->distinct()
             ->orderBy('brand')
             ->pluck('brand')
@@ -79,14 +79,14 @@ class PublicReservationService
             ->orderBy('model');
 
         if ($brand !== null && trim($brand) !== '') {
-            $query->where('brand', trim($brand));
+            $query->whereRaw('TRIM(brand) = ?', [trim($brand)]);
         }
 
         return $query->get()
             ->map(static function (CarModel $model): array {
                 return [
                     'id' => $model->id,
-                    'brand' => $model->brand,
+                    'brand' => trim((string) $model->brand),
                     'model' => $model->model,
                     'is_featured' => (bool) $model->is_featured,
                 ];
