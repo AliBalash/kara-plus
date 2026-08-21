@@ -10,6 +10,7 @@ Route::prefix('public/reservations')
         Route::get('/brands', [PublicReservationController::class, 'brands']);
         Route::get('/models', [PublicReservationController::class, 'models']);
         Route::get('/cars', [PublicReservationController::class, 'cars']);
+        Route::get('/catalog-selection', [PublicReservationController::class, 'catalogSelection']);
         Route::post('/quote', [PublicReservationController::class, 'quote']);
         Route::post('/submit', [PublicReservationController::class, 'store']);
         Route::post('/', [PublicReservationController::class, 'store']);

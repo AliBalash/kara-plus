@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\LocationCost;
+use App\Models\VehicleCatalogItem;
 use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -93,7 +94,7 @@ class PublicReservationService
             ->all();
     }
 
-    public function cars(?int $modelId = null, ?string $brand = null, ?string $pickupDate = null, ?string $returnDate = null): array
+    public function cars(?int $modelId = null, ?string $brand = null, ?string $pickupDate = null, ?string $returnDate = null, ?VehicleCatalogItem $catalogItem = null): array
     {
         $pickup = $pickupDate ? Carbon::parse($pickupDate) : null;
         $return = $returnDate ? Carbon::parse($returnDate) : null;
@@ -108,6 +109,14 @@ class PublicReservationService
             ->when($modelId !== null, static fn ($query) => $query->where('car_model_id', $modelId))
             ->when($brand !== null && trim($brand) !== '', static function ($query) use ($brand) {
                 $query->whereHas('carModel', static fn ($modelQuery) => $modelQuery->where('brand', trim($brand)));
+            })
+            ->when($catalogItem, function ($query) use ($catalogItem) {
+                $query->where('manufacturing_year', $catalogItem->manufacturing_year)
+                    ->whereHas('carModel', static function ($modelQuery) use ($catalogItem) {
+                        $modelQuery
+                            ->whereRaw('LOWER(TRIM(brand)) = ?', [mb_strtolower(trim($catalogItem->match_brand))])
+                            ->whereRaw('LOWER(TRIM(model)) = ?', [mb_strtolower(trim($catalogItem->match_model))]);
+                    });
             })
             ->orderByDesc('availability')
             ->orderByRaw('(select brand from car_models where car_models.id = cars.car_model_id limit 1)')
@@ -178,6 +187,22 @@ class PublicReservationService
         })->all();
     }
 
+    public function catalogSelection(string $vehicleCode, ?string $pickupDate = null, ?string $returnDate = null): array
+    {
+        $catalogItem = $this->catalogItemForCode($vehicleCode);
+
+        return [
+            'catalog_item' => [
+                'code' => $catalogItem->code,
+                'website_slug' => $catalogItem->website_slug,
+                'display_name' => $catalogItem->display_name,
+                'manufacturing_year' => $catalogItem->manufacturing_year,
+                'trim' => $catalogItem->trim,
+            ],
+            'cars' => $this->cars(null, null, $pickupDate, $returnDate, $catalogItem),
+        ];
+    }
+
     public function quote(array $payload): array
     {
         $normalized = $this->normalizeQuotePayload($payload);
@@ -198,6 +223,16 @@ class PublicReservationService
             /** @var Car $car */
             $car = Car::query()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
             $car->syncOperationalState();
+
+            $catalogItem = isset($payload['marketing_vehicle_code'])
+                ? $this->catalogItemForCode($payload['marketing_vehicle_code'])
+                : null;
+
+            if ($catalogItem && ! $catalogItem->appliesToCar($car)) {
+                throw ValidationException::withMessages([
+                    'selected_car_id' => ['The selected vehicle does not match the requested catalogue vehicle.'],
+                ]);
+            }
 
             $quote = $this->buildQuote($normalized, $car);
             $this->ensureReservableOrFail($car, $normalized, $quote);
@@ -241,6 +276,12 @@ class PublicReservationService
                 'service_quantities' => $quote['service_quantities'],
                 'quote_snapshot' => Arr::except($quote, ['availability']),
             ];
+
+            if ($catalogItem) {
+                $meta['marketing_vehicle_code'] = $catalogItem->code;
+                $meta['marketing_vehicle_name'] = $catalogItem->display_name;
+                $meta['marketing_vehicle_year'] = $catalogItem->manufacturing_year;
+            }
 
             if (($quote['driver_hours'] ?? 0) > 0) {
                 $meta['driver_hours'] = (float) $quote['driver_hours'];
@@ -292,6 +333,20 @@ class PublicReservationService
                 'quote' => $quote,
             ];
         });
+    }
+
+    private function catalogItemForCode(string $vehicleCode): VehicleCatalogItem
+    {
+        $code = strtoupper(trim($vehicleCode));
+        $catalogItem = VehicleCatalogItem::query()->active()->where('code', $code)->first();
+
+        if (! $catalogItem) {
+            throw ValidationException::withMessages([
+                'vehicle_code' => ['The requested vehicle code is invalid or inactive.'],
+            ]);
+        }
+
+        return $catalogItem;
     }
 
     private function buildQuote(array $normalized, Car $car): array

@@ -473,6 +473,44 @@ class PublicReservationApiTest extends TestCase
         }
     }
 
+    public function test_catalog_selection_resolves_a_vehicle_code_to_matching_fleet_cars(): void
+    {
+        $picanto = CarModel::factory()->create([
+            'brand' => 'KIA',
+            'model' => 'PICANTO',
+        ]);
+        $otherModel = CarModel::factory()->create([
+            'brand' => 'KIA',
+            'model' => 'RIO',
+        ]);
+
+        $matchingCar = Car::factory()->available()->create([
+            'car_model_id' => $picanto->id,
+            'manufacturing_year' => 2022,
+        ]);
+        Car::factory()->available()->create([
+            'car_model_id' => $picanto->id,
+            'manufacturing_year' => 2023,
+        ]);
+        Car::factory()->available()->create([
+            'car_model_id' => $otherModel->id,
+            'manufacturing_year' => 2022,
+        ]);
+
+        $response = $this->getJson('http://localhost/api/public/reservations/catalog-selection?vehicle_code=KIA-PIC-22&pickup_date=2026-04-10%2010:00:00&return_date=2026-04-12%2010:00:00');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.catalog_item.code', 'KIA-PIC-22')
+            ->assertJsonPath('data.catalog_item.manufacturing_year', 2022)
+            ->assertJsonCount(1, 'data.cars')
+            ->assertJsonPath('data.cars.0.id', $matchingCar->id);
+
+        $this->getJson('http://localhost/api/public/reservations/catalog-selection?vehicle_code=UNKNOWN-CAR')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['vehicle_code']);
+    }
+
     private function seedCarWithKnownPricing(): Car
     {
         $model = CarModel::factory()->create([

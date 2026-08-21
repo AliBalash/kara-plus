@@ -30,6 +30,7 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
             'payment_on_delivery' => ['nullable', 'boolean'],
             'deposit_category' => ['nullable', Rule::in(['cash_aed', 'cheque', 'transfer_cash_irr']), 'required_with:deposit'],
             'deposit' => $this->depositRules(),
+            'marketing_vehicle_code' => ['nullable', 'string', 'max:40', Rule::exists('vehicle_catalog_items', 'code')->where('is_active', true)],
         ]);
     }
 
@@ -70,6 +71,7 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
             'payment_on_delivery' => 'پرداخت در محل',
             'deposit_category' => 'نوع ودیعه',
             'deposit' => 'مبلغ/جزئیات ودیعه',
+            'marketing_vehicle_code' => 'کد خودروی کاتالوگ',
         ]);
     }
 

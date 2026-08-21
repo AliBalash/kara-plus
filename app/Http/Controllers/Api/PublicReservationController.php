@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\PublicReservationCarsRequest;
+use App\Http\Requests\Api\PublicReservationCatalogSelectionRequest;
 use App\Http\Requests\Api\ReservationQuoteRequest;
 use App\Http\Requests\Api\StorePublicReservationRequest;
 use App\Services\Reservations\PublicReservationService;
@@ -51,6 +52,19 @@ class PublicReservationController extends Controller
                 $validated['brand'] ?? null,
                 $validated['pickup_date'] ?? null,
                 $validated['return_date'] ?? null
+            ),
+        ]);
+    }
+
+    public function catalogSelection(PublicReservationCatalogSelectionRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        return response()->json([
+            'data' => $this->reservationService->catalogSelection(
+                $validated['vehicle_code'],
+                $validated['pickup_date'] ?? null,
+                $validated['return_date'] ?? null,
             ),
         ]);
     }
