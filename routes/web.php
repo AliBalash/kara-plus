@@ -60,6 +60,7 @@ use App\Livewire\Pages\Panel\Expert\Reports\LeadSourceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\PaymentCollectionReport;
 use App\Livewire\Pages\Panel\Expert\User\CreateUser;
 use App\Livewire\Pages\Panel\Expert\User\ManageUserRoles;
+use App\Livewire\Pages\Panel\Expert\VehicleCatalog\VehicleCatalogList;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/auth/login');
@@ -131,6 +132,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/brand/list', BrandList::class)->name('brand.list');
     Route::get('/expert/brand/detail/{brandId}', BrandDetail::class)->name('brand.detail');
     Route::get('/expert/brand/form/{brandId?}', BrandForm::class)->name('brand.form');
+    Route::get('/expert/vehicle-catalog', VehicleCatalogList::class)->name('vehicle-catalog.index');
 
     Route::get('/expert/customer/list', CustomerList::class)->name('customer.list');
     Route::get('/expert/customer/debtors', CustomerDebtorList::class)->name('customer.debtor-list');
