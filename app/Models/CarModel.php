@@ -22,11 +22,13 @@ class CarModel extends Model
         'brand',
         'model',
         'brand_icon',
-        'is_featured'
+        'is_featured',
+        'show_year_variants_in_reservation',
     ];
 
     protected $casts = [
         'is_featured' => 'boolean',
+        'show_year_variants_in_reservation' => 'boolean',
     ];
 
 

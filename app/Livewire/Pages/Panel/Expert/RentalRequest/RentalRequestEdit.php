@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\Payment;
+use App\Services\Reservations\ReviewReservationApprovalService;
 use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\LocationCost;
 use App\Livewire\Concerns\SearchesCustomerPhone;
@@ -125,7 +126,7 @@ class RentalRequestEdit extends Component
             ->get();
         $this->communicationChannelOptions = Contract::COMMUNICATION_CHANNELS;
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
-        $this->contract = Contract::with(['customer', 'car.carModel', 'payments'])->findOrFail($contractId);
+        $this->contract = Contract::with(['customer', 'car.carModel', 'requestedCar.carModel', 'payments'])->findOrFail($contractId);
 
         $this->apply_discount = (bool) ($this->contract->custom_daily_rate_enabled ?? false);
 
@@ -523,6 +524,10 @@ class RentalRequestEdit extends Component
                 'required',
                 'exists:cars,id',
                 function ($attribute, $value, $fail) {
+                    if ($this->contract?->isReviewPending()) {
+                        return;
+                    }
+
                     $car = Car::query()
                         ->select([
                             'id',
@@ -555,6 +560,10 @@ class RentalRequestEdit extends Component
                 'required',
                 'date',
                 function ($attribute, $value, $fail) {
+                    if ($this->contract?->isReviewPending()) {
+                        return;
+                    }
+
                     if (!$this->selectedCarId || !$this->return_date) {
                         return;
                     }
@@ -573,6 +582,10 @@ class RentalRequestEdit extends Component
                 'date',
                 'after_or_equal:pickup_date',
                 function ($attribute, $value, $fail) {
+                    if ($this->contract?->isReviewPending()) {
+                        return;
+                    }
+
                     if (!$this->selectedCarId || !$this->pickup_date) {
                         return;
                     }
@@ -1038,33 +1051,74 @@ class RentalRequestEdit extends Component
 
     public function submit()
     {
+        try {
+            [$oldTotal, $newTotal] = $this->persistEdits();
+
+            if ($newTotal > $oldTotal) {
+                $this->toast('info', "Extension cost: " . ($newTotal - $oldTotal) . " AED", false);
+            }
+            $this->toast('success', $this->contract->isReviewPending()
+                ? 'Website request saved. Approve it when the vehicle and price are confirmed.'
+                : 'Contract updated successfully!');
+        } catch (ValidationException $exception) {
+            $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
+            throw $exception;
+        } catch (\Throwable $e) {
+            $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
+        }
+    }
+
+    public function approveWebsiteRequest(): void
+    {
+        if (! $this->contract->isReviewPending()) {
+            $this->toast('error', 'This request has already been reviewed. Please reload the page.', false);
+
+            return;
+        }
+
+        try {
+            $this->persistEdits();
+            $this->contract = app(ReviewReservationApprovalService::class)
+                ->approve($this->contract->id, (int) auth()->id());
+            $this->originalSelections = $this->captureSelectionSnapshot();
+            $this->originalCosts = $this->captureCurrentCostSnapshot();
+            $this->toast('success', 'Website request approved and assigned to you.');
+        } catch (ValidationException $exception) {
+            $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
+            throw $exception;
+        } catch (\Throwable $e) {
+            $this->toast('error', 'The request could not be approved: ' . $e->getMessage(), false);
+        }
+    }
+
+    /**
+     * Save the editable request data first. Review-pending requests deliberately
+     * defer availability validation until the explicit approval action.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function persistEdits(): array
+    {
+        if ($this->contract->isReviewPending() && (int) $this->contract->user_id !== (int) auth()->id()) {
+            throw ValidationException::withMessages([
+                'contract' => ['Claim this website request before changing it.'],
+            ]);
+        }
+
         $this->normalizePhoneFields();
         $this->normalizeCustomerIdentityFields();
         $this->syncExistingCustomerSuggestionsByPhone();
         $this->validateWithScroll();
-        DB::beginTransaction();
 
-        try {
+        return DB::transaction(function (): array {
             $this->calculateCosts();
+            $oldTotal = (float) $this->contract->total_price;
             $this->updateCustomer();
             $this->updateContract();
             $this->storeContractCharges($this->contract);
 
-            $oldTotal = $this->contract->total_price;
-            $newTotal = $this->final_total;
-            if ($newTotal > $oldTotal) {
-                $this->toast('info', "Extension cost: " . ($newTotal - $oldTotal) . " AED", false);
-            }
-            DB::commit();
-            $this->toast('success', 'Contract Updated successfully!');
-        } catch (ValidationException $exception) {
-            DB::rollBack();
-            $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
-            throw $exception;
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
-        }
+            return [$oldTotal, (float) $this->final_total];
+        });
     }
 
     private function validateWithScroll(?array $rules = null): array
@@ -1424,6 +1478,19 @@ class RentalRequestEdit extends Component
     public function assignToMe($contractId)
     {
         $contract = Contract::findOrFail($contractId);
+
+        if ($contract->isReviewPending()) {
+            try {
+                $this->contract = app(ReviewReservationApprovalService::class)
+                    ->claim($contract->id, (int) auth()->id());
+                $this->toast('success', 'Website request assigned to you for review. Resolve any issue, then approve it.');
+            } catch (ValidationException $exception) {
+                $this->toast('error', collect($exception->errors())->flatten()->first() ?? 'This request could not be assigned.', false);
+            }
+
+            return;
+        }
+
         if (is_null($contract->user_id)) {
             $contract->update([
                 'user_id' => auth()->id(),
@@ -1508,6 +1575,13 @@ class RentalRequestEdit extends Component
     public function changeStatusToReserve($contractId)
     {
         $contract = Contract::findOrFail($contractId);
+
+        if ($contract->isReviewPending()) {
+            $this->approveWebsiteRequest();
+
+            return;
+        }
+
         $contract->changeStatus('reserved', auth()->id());
 
         $this->toast('success', 'Status changed to Reserved successfully.');
@@ -1545,6 +1619,21 @@ class RentalRequestEdit extends Component
             return $service;
         }, $this->services);
 
+        $reviewDiagnostics = null;
+        if ($this->contract->isReviewPending()) {
+            // Evaluate the form values without saving them. This keeps the
+            // approve button truthful while the expert is trying another car
+            // or date, and never turns a draft into a reservation by itself.
+            $reviewContract = clone $this->contract;
+            $reviewContract->car_id = $this->selectedCarId ?: $this->contract->car_id;
+            $reviewContract->pickup_date = $this->pickup_date;
+            $reviewContract->return_date = $this->return_date;
+            $reviewContract->unsetRelation('car');
+
+            $reviewDiagnostics = app(ReviewReservationApprovalService::class)
+                ->diagnostics($reviewContract);
+        }
+
         return view('livewire.pages.panel.expert.rental-request.rental-request-edit', [
             'brands' => $this->brands,
             'services' => $services,
@@ -1553,6 +1642,7 @@ class RentalRequestEdit extends Component
             'comparisonRows' => $this->costComparisonData,
             'deliveryInformation' => $this->deliveryInformationText,
             'returnInformation' => $this->returnInformationText,
+            'reviewDiagnostics' => $reviewDiagnostics,
         ]);
     }
 

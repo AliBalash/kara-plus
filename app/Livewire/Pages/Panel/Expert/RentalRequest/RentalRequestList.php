@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Agent;
 use App\Models\Contract;
+use App\Services\Reservations\ReviewReservationApprovalService;
 use App\Livewire\Concerns\HandlesContractCancellation;
 use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Concerns\SearchesCustomerPhone;
@@ -31,6 +32,7 @@ class RentalRequestList extends Component
     public $searchInput = '';
     public $agentFilter = '';
     public $kardoFilter = '';
+    public $sourceFilter = '';
     public $salesAgents = [];
 
     protected $listeners = ['refreshContracts' => '$refresh'];
@@ -44,6 +46,7 @@ class RentalRequestList extends Component
         'returnTo',
         'agentFilter',
         'kardoFilter',
+        'sourceFilter',
         'sortField',
         'sortDirection'
     ];
@@ -78,6 +81,7 @@ class RentalRequestList extends Component
             'returnTo',
             'agentFilter',
             'kardoFilter',
+            'sourceFilter',
         ]);
         $this->searchInput = '';
         $this->resetPage();
@@ -92,6 +96,26 @@ class RentalRequestList extends Component
     public function assignToMe($contractId)
     {
         $contract = Contract::findOrFail($contractId);
+
+        if ($contract->isReviewPending()) {
+            try {
+                app(ReviewReservationApprovalService::class)->claim($contract->id, (int) auth()->id());
+                $this->toast('success', 'Website request assigned to you for review. Open the Review Queue to resolve it.');
+                $this->dispatch('refreshContracts');
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                $message = collect($exception->errors())->flatten()->first() ?? 'The request could not be approved.';
+                $this->toast('error', $message, false);
+            } catch (Throwable $exception) {
+                Log::error('Unable to approve website reservation request.', [
+                    'contract_id' => $contract->id,
+                    'exception' => $exception,
+                ]);
+                $this->toast('error', 'The request could not be approved. Please try again.', false);
+            }
+
+            return;
+        }
+
         if (is_null($contract->user_id)) {
             $contract->update(['user_id' => auth()->id()]);
             $contract->changeStatus('assigned', auth()->id());
@@ -109,6 +133,7 @@ class RentalRequestList extends Component
         $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
         $contracts = Contract::with(['customer', 'car.carModel', 'user', 'pickupDocument', 'latestStatus.user', 'agent'])
+            ->where('current_status', '!=', Contract::STATUS_REVIEW_PENDING)
             ->when($search !== '', function ($query) use ($search, $likeSearch, $isPhoneSearch) {
                 $query->where(function ($scopedQuery) use ($search, $likeSearch, $isPhoneSearch) {
                     $scopedQuery
@@ -144,7 +169,8 @@ class RentalRequestList extends Component
             ->when($this->agentFilter && $this->agentFilter !== 'none', fn($q) => $q->where('agent_id', $this->agentFilter))
             ->when($this->kardoFilter === 'required', fn($q) => $q->where('kardo_required', true))
             ->when($this->kardoFilter === 'not_required', fn($q) => $q->where('kardo_required', false))
-            ->orderByRaw("FIELD(current_status, 'pending') DESC") // Pending همیشه بالا
+            ->when($this->sourceFilter, fn ($q) => $q->where('intake_source', $this->sourceFilter))
+            ->orderByRaw("FIELD(current_status, 'review_pending', 'pending') DESC")
             ->when($this->sortField === 'agent_name', fn($q) => $q->orderBy(
                 Agent::select('name')->whereColumn('agents.id', 'contracts.agent_id'),
                 $this->sortDirection

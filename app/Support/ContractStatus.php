@@ -12,6 +12,10 @@ class ContractStatus
      * @var array<string, array{label?: string, badge?: string}>
      */
     protected const STATUSES = [
+        'review_pending' => [
+            'badge' => 'bg-label-warning',
+            'label' => 'Website Request · Needs Review',
+        ],
         'pending' => [
             'badge' => 'bg-label-warning',
         ],

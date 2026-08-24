@@ -1018,7 +1018,7 @@ class OperationsReportService
                 'currentContract.customer',
                 'contracts' => function ($query) use ($filters) {
                     $query->with(['customer', 'payments'])
-                        ->whereNotIn('current_status', ['cancelled', 'rejected']);
+                        ->whereNotIn('current_status', Contract::CUSTOMER_BALANCE_EXCLUDED_STATUSES);
 
                     $hasDateWindow = $filters['date_from'] !== null || $filters['date_to'] !== null;
 
@@ -1066,12 +1066,12 @@ class OperationsReportService
             )
             ->when($filters['reservation_days_ahead'] !== null, function (Builder $query) use ($filters) {
                 $query->whereHas('contracts', function (Builder $contractQuery) use ($filters) {
-                    $contractQuery->whereNotIn('current_status', ['cancelled', 'rejected']);
+                    $contractQuery->whereNotIn('current_status', Contract::CUSTOMER_BALANCE_EXCLUDED_STATUSES);
                     $this->applyUpcomingReservationWindow($contractQuery, $filters['reservation_days_ahead']);
                 });
             })
             ->whereHas('contracts', function (Builder $query) use ($filters) {
-                $query->whereNotIn('current_status', ['cancelled', 'rejected']);
+                $query->whereNotIn('current_status', Contract::CUSTOMER_BALANCE_EXCLUDED_STATUSES);
 
                 $hasDateWindow = $filters['date_from'] !== null || $filters['date_to'] !== null;
 
@@ -1353,7 +1353,7 @@ class OperationsReportService
             ->with(['customer', 'car.carModel', 'user', 'agent', 'pickupDocument'])
             ->whereNotNull('pickup_date')
             ->whereNotNull('return_date')
-            ->whereNotIn('current_status', ['cancelled', 'rejected', 'draft'])
+            ->whereNotIn('current_status', [...Contract::CUSTOMER_BALANCE_EXCLUDED_STATUSES, 'draft'])
             ->when(
                 $filters['ownership'] !== 'all',
                 fn (Builder $query) => $query->whereHas('car', fn (Builder $carQuery) => $carQuery->where('ownership_type', $filters['ownership']))

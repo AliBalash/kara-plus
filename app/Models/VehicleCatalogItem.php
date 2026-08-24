@@ -33,7 +33,12 @@ class VehicleCatalogItem extends Model
     public function appliesToCar(Car $car): bool
     {
         return $car->manufacturing_year === $this->manufacturing_year
-            && $this->normalise($car->carModel?->brand) === $this->normalise($this->match_brand)
+            && $this->matchesCarModel($car);
+    }
+
+    public function matchesCarModel(Car $car): bool
+    {
+        return $this->normalise($car->carModel?->brand) === $this->normalise($this->match_brand)
             && $this->normalise($car->carModel?->model) === $this->normalise($this->match_model);
     }
 

@@ -50,6 +50,7 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPickupDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReserved;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestReturnDocument;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestTarsApproval;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestWebsiteReview;
 use App\Livewire\Pages\Panel\Expert\Reports\AuditCenterReport;
 use App\Livewire\Pages\Panel\Expert\Reports\CustomerBalanceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\CustomerCommunicationChannelReport;
@@ -69,6 +70,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/dashboard', Dashboard::class)->name('expert.dashboard');
 
     Route::get('/expert/rental-requests/list', RentalRequestList::class)->name('rental-requests.list');
+    Route::get('/expert/rental-requests/website-review', RentalRequestWebsiteReview::class)->name('rental-requests.website-review');
     Route::get('/expert/rental-requests/create/', RentalRequestCreate::class)->name('rental-requests.creat');
     Route::get('/expert/rental-requests/edit/{contractId}/', RentalRequestEdit::class)->name('rental-requests.edit');
 

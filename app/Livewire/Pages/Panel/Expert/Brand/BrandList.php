@@ -58,6 +58,20 @@ class BrandList extends Component
         $this->resetPage();
     }
 
+    public function toggleReservationYearVariants(int $id): void
+    {
+        $carModel = CarModel::findOrFail($id);
+        $carModel->show_year_variants_in_reservation = ! $carModel->show_year_variants_in_reservation;
+        $carModel->save();
+
+        $this->toast(
+            'success',
+            $carModel->show_year_variants_in_reservation
+                ? 'Reservation will show one card for each manufacturing year of this model.'
+                : 'Reservation will show one card for this model.'
+        );
+    }
+
     public function deleteBrand($id)
     {
         $brand = CarModel::findOrFail($id);

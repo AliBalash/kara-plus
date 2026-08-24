@@ -25,6 +25,7 @@
                     <th>Model</th>
                     <th>Gearbox Type</th>
                     <th>Number of Cars</th>
+                    <th>Reservation display</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -45,6 +46,20 @@
                         <td>{{ $brand->model }}</td>
                         <td>{{ ucfirst($brand->gearbox_type ?? 'N/A') }}</td>
                         <td>{{ $brand->cars_count }}</td>
+                        <td>
+                            <button
+                                type="button"
+                                class="btn btn-sm {{ $brand->show_year_variants_in_reservation ? 'btn-primary' : 'btn-outline-secondary' }}"
+                                wire:click="toggleReservationYearVariants({{ $brand->id }})"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleReservationYearVariants({{ $brand->id }})">
+                                @if ($brand->show_year_variants_in_reservation)
+                                    <i class="bx bx-calendar-check me-1"></i> Each year
+                                @else
+                                    <i class="bx bx-layer me-1"></i> One card
+                                @endif
+                            </button>
+                        </td>
                         <td>
                             <div class="dropdown">
                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow"

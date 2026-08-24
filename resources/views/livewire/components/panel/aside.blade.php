@@ -20,6 +20,10 @@
     <ul class="menu-inner py-1">
         @php
             $isDriver = auth()->user()?->hasRole('driver');
+            $websiteReviewCount = $isDriver ? 0 : \App\Models\Contract::query()
+                ->where('current_status', \App\Models\Contract::STATUS_REVIEW_PENDING)
+                ->where('intake_source', \App\Models\Contract::INTAKE_SOURCE_WEBSITE)
+                ->count();
             $rentalLifecycle = [
                 ['route' => 'rental-requests.creat', 'label' => 'Add'],
                 ['route' => 'rental-requests.list', 'label' => 'Reserve'],
@@ -99,6 +103,17 @@
                     </a>
 
                     <ul class="menu-sub">
+                        <li class="menu-item pt-0 pb-1 px-3 text-uppercase text-muted fw-semibold small">Website Intake</li>
+                        <li class="menu-item {{ Request::routeIs('rental-requests.website-review') ? 'active' : '' }}">
+                            <a href="{{ route('rental-requests.website-review') }}" class="menu-link d-flex align-items-center gap-2">
+                                <div data-i18n="Without menu">Review Queue</div>
+                                @if ($websiteReviewCount > 0)
+                                    <span class="badge rounded-pill bg-danger ms-auto">{{ $websiteReviewCount }}</span>
+                                @endif
+                            </a>
+                        </li>
+
+                        <li class="menu-divider"></li>
                         <li class="menu-item pt-0 pb-1 px-3 text-uppercase text-muted fw-semibold small">Lifecycle</li>
                         @foreach ($rentalLifecycle as $item)
                             <li class="menu-item {{ Request::routeIs($item['route']) ? 'active' : '' }}">

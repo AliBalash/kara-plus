@@ -16,9 +16,9 @@
                         </span>
                     </div>
                     <button type="button" class="btn assign-action btn-gradient-ocean"
-                        onclick="window.confirm('Assign this contract to yourself?') && @this.assignToMe({{ $contract->id }})">
-                        <i class="bx bx-user-plus me-1"></i>
-                        <span>Assign to Me</span>
+                        onclick="window.confirm('{{ $contract->isReviewPending() ? 'Assign this website request to yourself for review?' : 'Assign this contract to yourself?' }}') && @this.assignToMe({{ $contract->id }})">
+                        <i class="bx {{ $contract->isReviewPending() ? 'bx-user-plus' : 'bx-user-plus' }} me-1"></i>
+                        <span>{{ $contract->isReviewPending() ? 'Claim Review' : 'Assign to Me' }}</span>
                     </button>
                 </div>
             @else
@@ -30,11 +30,13 @@
                             {{ optional($contract->user)->shortName() ?? 'Team Member' }}
                         </span>
                     </div>
-                    <button type="button" class="btn assign-action btn-gradient-sunset"
-                        onclick="window.confirm('Set this contract status to Booking?') && @this.changeStatusToReserve({{ $contract->id }})">
-                        <i class="bx bxs-log-in-circle me-1"></i>
-                        <span>Set to Booking</span>
-                    </button>
+                    @unless ($contract->isReviewPending())
+                        <button type="button" class="btn assign-action btn-gradient-sunset"
+                            onclick="window.confirm('Set this contract status to Booking?') && @this.changeStatusToReserve({{ $contract->id }})">
+                            <i class="bx bxs-log-in-circle me-1"></i>
+                            <span>Set to Booking</span>
+                        </button>
+                    @endunless
                 </div>
             @endif
         </div>
@@ -59,10 +61,54 @@
     @endif
 
     @include('livewire.components.waiting-overlay', [
-        'target' => 'submit',
+        'target' => 'submit,approveWebsiteRequest',
         'title' => 'Updating rental request',
         'subtitle' => 'We are syncing your latest changes. Hang tight for a moment.',
     ])
+
+    @if ($contract->isReviewPending())
+        @php
+            $reviewOwnedByCurrentExpert = (int) $contract->user_id === (int) auth()->id();
+            $reviewReadyForApproval = (bool) ($reviewDiagnostics['ready'] ?? false);
+        @endphp
+        <div class="alert alert-warning border-0 shadow-sm d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4" role="status">
+            <div>
+                <div class="fw-bold"><i class="bx bx-globe me-1"></i> Website request — review required</div>
+                <div class="small text-muted mt-1">
+                    This request does not reserve a vehicle yet. Once it is assigned to you, update it and approve only after the final vehicle, dates and price are confirmed.
+                    @if ($contract->requestedCar)
+                        Original customer choice: <strong>{{ $contract->requestedCar->fullName() }}</strong>.
+                    @endif
+                </div>
+            </div>
+            @if ($reviewOwnedByCurrentExpert && $reviewReadyForApproval)
+                <button type="button" class="btn btn-warning flex-shrink-0"
+                    onclick="window.confirm('Approve this request and reserve the selected vehicle?') && @this.approveWebsiteRequest()">
+                    <i class="bx bx-check-shield me-1"></i> Approve & Assign to Me
+                </button>
+            @elseif ($reviewOwnedByCurrentExpert)
+                <span class="badge bg-label-danger text-danger flex-shrink-0"><i class="bx bx-block me-1"></i>Resolve blocking issues first</span>
+            @elseif (is_null($contract->user_id))
+                <button type="button" class="btn btn-outline-warning flex-shrink-0"
+                    onclick="window.confirm('Assign this website request to yourself for review?') && @this.assignToMe({{ $contract->id }})">
+                    <i class="bx bx-user-plus me-1"></i> Claim Review First
+                </button>
+            @else
+                <span class="badge bg-label-secondary text-muted flex-shrink-0"><i class="bx bx-lock-alt me-1"></i>Assigned to another expert</span>
+            @endif
+        </div>
+
+        @if (! $reviewReadyForApproval)
+            <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
+                <div class="fw-bold mb-2"><i class="bx bx-error-circle me-1"></i> Approval is blocked until these issues are resolved</div>
+                <ul class="mb-0 ps-3">
+                    @foreach ($reviewDiagnostics['issues'] ?? [] as $issue)
+                        <li class="mb-1"><strong>{{ $issue['title'] }}:</strong> {{ $issue['detail'] }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+    @endif
 
     @pushOnce('styles', 'contract-validation-summary-styles')
         <style>
@@ -1233,9 +1279,17 @@
 
         <!-- Sticky Save Button -->
         <div class="fixed-bottom bg-white p-3 shadow-lg d-flex justify-content-end">
-            <button type="submit" class="btn btn-primary btn-lg transition-all duration-300 hover:bg-primary-dark">
-                <i class="bx bx-save me-2"></i> Update Contract
-            </button>
+            @if ($contract->isReviewPending() && (int) $contract->user_id === (int) auth()->id() && ($reviewDiagnostics['ready'] ?? false))
+                <button type="button" class="btn btn-warning btn-lg me-2"
+                    onclick="window.confirm('Approve this request and reserve the selected vehicle?') && @this.approveWebsiteRequest()">
+                    <i class="bx bx-check-shield me-2"></i> Approve Request
+                </button>
+            @endif
+            @if (! $contract->isReviewPending() || (int) $contract->user_id === (int) auth()->id())
+                <button type="submit" class="btn btn-primary btn-lg transition-all duration-300 hover:bg-primary-dark">
+                    <i class="bx bx-save me-2"></i> {{ $contract->isReviewPending() ? 'Save Review Draft' : 'Update Contract' }}
+                </button>
+            @endif
         </div>
     </form>
 </div>

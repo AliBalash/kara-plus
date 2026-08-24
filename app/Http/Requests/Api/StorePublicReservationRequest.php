@@ -2,16 +2,22 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Models\Contract;
 use Illuminate\Validation\Rule;
 
 class StorePublicReservationRequest extends ReservationQuoteRequest
 {
     public function rules(): array
     {
+        $emailRules = ['nullable', 'email', 'max:255'];
+        if (! $this->isKnownIdempotentRetry()) {
+            $emailRules[] = Rule::unique('customers', 'email');
+        }
+
         return array_merge(parent::rules(), [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')],
+            'email' => $emailRules,
             'phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'messenger_phone' => ['required', 'regex:/^\+\d{8,15}$/'],
             'address' => ['nullable', 'string', 'max:255'],
@@ -31,6 +37,7 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
             'deposit_category' => ['nullable', Rule::in(['cash_aed', 'cheque', 'transfer_cash_irr']), 'required_with:deposit'],
             'deposit' => $this->depositRules(),
             'marketing_vehicle_code' => ['nullable', 'string', 'max:40', Rule::exists('vehicle_catalog_items', 'code')->where('is_active', true)],
+            'public_request_uuid' => ['nullable', 'uuid'],
         ]);
     }
 
@@ -72,6 +79,7 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
             'deposit_category' => 'نوع ودیعه',
             'deposit' => 'مبلغ/جزئیات ودیعه',
             'marketing_vehicle_code' => 'کد خودروی کاتالوگ',
+            'public_request_uuid' => 'شناسه درخواست',
         ]);
     }
 
@@ -91,5 +99,14 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
         }
 
         return $rules;
+    }
+
+    private function isKnownIdempotentRetry(): bool
+    {
+        $uuid = trim((string) $this->input('public_request_uuid'));
+
+        return $uuid !== '' && Contract::query()
+            ->where('public_request_uuid', $uuid)
+            ->exists();
     }
 }

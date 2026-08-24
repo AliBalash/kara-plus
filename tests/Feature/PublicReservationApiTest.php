@@ -102,7 +102,7 @@ class PublicReservationApiTest extends TestCase
         $this->assertSame('automatic', $payload['options']['gear'] ?? null);
     }
 
-    public function test_quote_endpoint_returns_validation_error_for_conflicting_reservation(): void
+    public function test_quote_endpoint_reports_conflicting_reservation_without_blocking_request_pricing(): void
     {
         LocationCost::query()->create([
             'location' => 'Dubai Marina',
@@ -136,11 +136,11 @@ class PublicReservationApiTest extends TestCase
             'return_date' => '2030-05-13 10:00:00',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['selected_car_id']);
+        $response->assertOk()
+            ->assertJsonPath('data.availability.has_conflict', true);
     }
 
-    public function test_quote_endpoint_returns_validation_error_for_scheduled_unavailability(): void
+    public function test_quote_endpoint_reports_scheduled_unavailability_without_blocking_request_pricing(): void
     {
         LocationCost::query()->create([
             'location' => 'Dubai Marina',
@@ -172,8 +172,8 @@ class PublicReservationApiTest extends TestCase
             'return_date' => '2030-05-13 10:00:00',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['selected_car_id']);
+        $response->assertOk()
+            ->assertJsonPath('data.availability.has_conflict', true);
     }
 
     public function test_quote_endpoint_calculates_expected_totals(): void
@@ -287,7 +287,7 @@ class PublicReservationApiTest extends TestCase
             ]);
 
             $response->assertCreated()
-                ->assertJsonPath('data.status', 'pending');
+                ->assertJsonPath('data.status', 'review_pending');
 
             $this->assertDatabaseHas('customers', [
                 'phone' => '+971500000001',
@@ -301,7 +301,7 @@ class PublicReservationApiTest extends TestCase
             $this->assertSame($car->id, $contract->car_id);
             $this->assertDatabaseHas('contract_statuses', [
                 'contract_id' => $contract->id,
-                'status' => 'pending',
+                'status' => 'review_pending',
             ]);
 
             $titles = ContractCharges::query()

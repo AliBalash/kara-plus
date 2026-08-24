@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Image;
 use App\Models\LocationCost;
+use App\Models\VehicleCatalogItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -82,7 +83,7 @@ class PublicReservationApiTest extends TestCase
         $this->assertIsInt($payload['default_agent_id']);
     }
 
-    public function test_quote_endpoint_calculates_totals_and_detects_conflicts(): void
+    public function test_quote_endpoint_calculates_totals_and_reports_conflicts_without_blocking_a_request(): void
     {
         $car = $this->seedCarWithKnownPricing();
 
@@ -147,8 +148,8 @@ class PublicReservationApiTest extends TestCase
         ]);
 
         $conflictResponse
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['selected_car_id']);
+            ->assertOk()
+            ->assertJsonPath('data.availability.has_conflict', true);
     }
 
     public function test_store_endpoint_creates_contract_and_charges(): void
@@ -187,12 +188,19 @@ class PublicReservationApiTest extends TestCase
 
         $response
             ->assertCreated()
-            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.status', 'review_pending')
+            ->assertJsonPath('data.requires_review', true)
             ->assertJsonPath('data.quote.rental_days', 2);
 
         $this->assertEquals(210.0, (float) $response->json('data.quote.final_total'));
 
         $this->assertDatabaseCount('contracts', 1);
+        $this->assertDatabaseHas('contracts', [
+            'car_id' => $car->id,
+            'requested_car_id' => $car->id,
+            'intake_source' => 'website',
+            'current_status' => 'review_pending',
+        ]);
         $this->assertDatabaseCount('contract_charges', 2);
         $this->assertDatabaseHas('contract_charges', [
             'title' => 'base_rental',
@@ -201,6 +209,57 @@ class PublicReservationApiTest extends TestCase
         $this->assertDatabaseHas('contract_charges', [
             'title' => 'tax',
             'amount' => 10.00,
+        ]);
+    }
+
+    public function test_store_accepts_a_conflicting_vehicle_as_a_review_request_and_does_not_duplicate_retries(): void
+    {
+        $car = $this->seedCarWithKnownPricing();
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Main',
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+
+        Contract::factory()->create([
+            'car_id' => $car->id,
+            'pickup_date' => '2026-04-10 10:00:00',
+            'return_date' => '2026-04-14 10:00:00',
+            'current_status' => 'assigned',
+        ]);
+
+        $payload = [
+            'selected_car_id' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Main',
+            'return_location' => 'UAE/Dubai/Main',
+            'pickup_date' => '2026-04-11 10:00:00',
+            'return_date' => '2026-04-12 10:00:00',
+            'first_name' => 'Conflict',
+            'last_name' => 'Request',
+            'email' => 'conflict-request@example.com',
+            'phone' => '+971501234571',
+            'messenger_phone' => '+971501234572',
+            'nationality' => 'Iranian',
+            'public_request_uuid' => 'b9a1a7de-1a3f-4300-9a06-2b7a65f91501',
+        ];
+
+        $first = $this->postJson('http://localhost/api/public/reservations/submit', $payload);
+        $first
+            ->assertCreated()
+            ->assertJsonPath('data.status', Contract::STATUS_REVIEW_PENDING)
+            ->assertJsonPath('data.requires_review', true);
+
+        $second = $this->postJson('http://localhost/api/public/reservations/submit', $payload);
+        $second
+            ->assertCreated()
+            ->assertJsonPath('data.duplicate_submission', true)
+            ->assertJsonPath('data.contract_id', $first->json('data.contract_id'));
+
+        $this->assertDatabaseCount('contracts', 2);
+        $this->assertDatabaseHas('contracts', [
+            'public_request_uuid' => $payload['public_request_uuid'],
+            'current_status' => Contract::STATUS_REVIEW_PENDING,
         ]);
     }
 
@@ -400,20 +459,28 @@ class PublicReservationApiTest extends TestCase
 
     public function test_cars_endpoint_returns_encoded_image_urls_and_safe_fallback_for_missing_files(): void
     {
-        $model = CarModel::factory()->create([
+        $realImageModel = CarModel::factory()->create([
             'brand' => 'ImageBrand',
-            'model' => 'ImageModel',
+            'model' => 'ImageModel One',
+        ]);
+        $missingImageModel = CarModel::factory()->create([
+            'brand' => 'ImageBrand',
+            'model' => 'ImageModel Two',
+        ]);
+        $similarImageModel = CarModel::factory()->create([
+            'brand' => 'ImageBrand',
+            'model' => 'ImageModel Three',
         ]);
 
         $carWithRealImage = Car::factory()->available()->create([
-            'car_model_id' => $model->id,
+            'car_model_id' => $realImageModel->id,
         ]);
 
         $carWithMissingImage = Car::factory()->available()->create([
-            'car_model_id' => $model->id,
+            'car_model_id' => $missingImageModel->id,
         ]);
         $carWithSimilarImage = Car::factory()->available()->create([
-            'car_model_id' => $model->id,
+            'car_model_id' => $similarImageModel->id,
         ]);
 
         $relativeDir = 'assets/car-pics';
@@ -449,7 +516,7 @@ class PublicReservationApiTest extends TestCase
             'imageable_type' => Car::class,
         ]);
 
-        $response = $this->getJson("http://localhost/api/public/reservations/cars?model_id={$model->id}");
+        $response = $this->getJson('http://localhost/api/public/reservations/cars');
 
         $response->assertOk();
 
@@ -509,6 +576,74 @@ class PublicReservationApiTest extends TestCase
         $this->getJson('http://localhost/api/public/reservations/catalog-selection?vehicle_code=UNKNOWN-CAR')
             ->assertStatus(422)
             ->assertJsonValidationErrors(['vehicle_code']);
+    }
+
+    public function test_reservation_cards_group_model_years_by_default_and_separate_enabled_model_years(): void
+    {
+        $model = CarModel::factory()->create([
+            'brand' => 'Test Brand',
+            'model' => 'Test Model',
+        ]);
+        $olderCar = Car::factory()->available()->create([
+            'car_model_id' => $model->id,
+            'manufacturing_year' => 2023,
+            'price_per_day_short' => 100,
+        ]);
+        $newerCar = Car::factory()->available()->create([
+            'car_model_id' => $model->id,
+            'manufacturing_year' => 2025,
+            'price_per_day_short' => 120,
+        ]);
+
+        $grouped = $this->getJson("http://localhost/api/public/reservations/cars?model_id={$model->id}");
+
+        $grouped
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.reservation_display.is_year_variant', false)
+            ->assertJsonPath('data.0.reservation_display.year_from', 2023)
+            ->assertJsonPath('data.0.reservation_display.year_to', 2025)
+            ->assertJsonPath('data.0.reservation_display.candidate_count', 2)
+            ->assertJsonPath('data.0.id', $newerCar->id);
+
+        $model->update(['show_year_variants_in_reservation' => true]);
+
+        $separated = $this->getJson("http://localhost/api/public/reservations/cars?model_id={$model->id}");
+        $cards = collect($separated->json('data'));
+
+        $separated->assertOk()->assertJsonCount(2, 'data');
+        $this->assertSame($newerCar->id, $cards->firstWhere('reservation_display.year', 2025)['id']);
+        $this->assertSame($olderCar->id, $cards->firstWhere('reservation_display.year', 2023)['id']);
+    }
+
+    public function test_catalog_selection_falls_back_to_matching_model_when_requested_year_is_not_in_fleet(): void
+    {
+        $model = CarModel::factory()->create([
+            'brand' => 'Fallback Brand',
+            'model' => 'Fallback Model',
+        ]);
+        $fallbackCar = Car::factory()->available()->create([
+            'car_model_id' => $model->id,
+            'manufacturing_year' => 2024,
+        ]);
+        VehicleCatalogItem::query()->create([
+            'code' => 'FALLBACK-22',
+            'website_slug' => 'fallback-model-2022',
+            'display_name' => 'Fallback Brand Fallback Model',
+            'brand' => 'Fallback Brand',
+            'model' => 'Fallback Model',
+            'match_brand' => 'Fallback Brand',
+            'match_model' => 'Fallback Model',
+            'manufacturing_year' => 2022,
+            'is_active' => true,
+        ]);
+
+        $response = $this->getJson('http://localhost/api/public/reservations/catalog-selection?vehicle_code=FALLBACK-22');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.selection_mode', 'model_fallback')
+            ->assertJsonPath('data.cars.0.id', $fallbackCar->id);
     }
 
     private function seedCarWithKnownPricing(): Car

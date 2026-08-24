@@ -23,6 +23,7 @@ class BrandForm extends Component
     public $brandIcon;
     public $currentBrandIcon;
     public $additionalImage;
+    public bool $showYearVariantsInReservation = false;
     protected DeferredImageUploadService $deferredUploader;
 
     public function boot(DeferredImageUploadService $deferredUploader): void
@@ -45,6 +46,7 @@ class BrandForm extends Component
         $this->brand = $carModel->brand;
         $this->model = $carModel->model;
         $this->currentBrandIcon = $carModel->brand_icon;
+        $this->showYearVariantsInReservation = $carModel->show_year_variants_in_reservation;
     }
 
     public function save(): void
@@ -54,6 +56,7 @@ class BrandForm extends Component
             'model' => 'required|string|max:255',
             'brandIcon' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'additionalImage' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5048',
+            'showYearVariantsInReservation' => 'boolean',
         ]);
 
         $isEditing = (bool) $this->brandId;
@@ -67,6 +70,7 @@ class BrandForm extends Component
         try {
             $carModel->brand = $this->brand;
             $carModel->model = $this->model;
+            $carModel->show_year_variants_in_reservation = $this->showYearVariantsInReservation;
 
             if ($this->brandIcon) {
                 $newBrandIconPath = $this->deferredUploader->store(

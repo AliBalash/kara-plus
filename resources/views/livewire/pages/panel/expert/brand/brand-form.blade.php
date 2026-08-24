@@ -16,6 +16,15 @@
                             @enderror
                         </div>
 
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" type="checkbox" role="switch" id="showYearVariantsInReservation"
+                                wire:model="showYearVariantsInReservation">
+                            <label class="form-check-label" for="showYearVariantsInReservation">
+                                Show one reservation card for each manufacturing year
+                            </label>
+                            <div class="form-text">Off: one card for this brand and model. On: one card for every available manufacturing year.</div>
+                        </div>
+
                         <!-- Model -->
                         <div class="input-group">
                             <span class="input-group-text" id="model-addon">Model</span>

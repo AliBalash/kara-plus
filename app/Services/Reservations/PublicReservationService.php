@@ -13,6 +13,7 @@ use App\Models\VehicleCatalogItem;
 use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -94,7 +95,14 @@ class PublicReservationService
             ->all();
     }
 
-    public function cars(?int $modelId = null, ?string $brand = null, ?string $pickupDate = null, ?string $returnDate = null, ?VehicleCatalogItem $catalogItem = null): array
+    public function cars(
+        ?int $modelId = null,
+        ?string $brand = null,
+        ?string $pickupDate = null,
+        ?string $returnDate = null,
+        ?VehicleCatalogItem $catalogItem = null,
+        bool $matchCatalogYear = true,
+    ): array
     {
         $pickup = $pickupDate ? Carbon::parse($pickupDate) : null;
         $return = $returnDate ? Carbon::parse($returnDate) : null;
@@ -110,8 +118,8 @@ class PublicReservationService
             ->when($brand !== null && trim($brand) !== '', static function ($query) use ($brand) {
                 $query->whereHas('carModel', static fn ($modelQuery) => $modelQuery->where('brand', trim($brand)));
             })
-            ->when($catalogItem, function ($query) use ($catalogItem) {
-                $query->where('manufacturing_year', $catalogItem->manufacturing_year)
+            ->when($catalogItem, function ($query) use ($catalogItem, $matchCatalogYear) {
+                $query->when($matchCatalogYear, static fn ($scoped) => $scoped->where('manufacturing_year', $catalogItem->manufacturing_year))
                     ->whereHas('carModel', static function ($modelQuery) use ($catalogItem) {
                         $modelQuery
                             ->whereRaw('LOWER(TRIM(brand)) = ?', [mb_strtolower(trim($catalogItem->match_brand))])
@@ -129,7 +137,7 @@ class PublicReservationService
             $conflictsByCarId = $this->availabilityConflictsForCars($cars->pluck('id')->all(), $pickup, $return);
         }
 
-        return $cars->map(function (Car $car) use ($conflictsByCarId): array {
+        $cards = $cars->map(function (Car $car) use ($conflictsByCarId): array {
             $conflicts = $conflictsByCarId[$car->id] ?? [];
             $hasConflict = count($conflicts) > 0;
             $isAvailable = !$hasConflict && $car->isAvailable();
@@ -154,6 +162,7 @@ class PublicReservationService
                     'brand' => $car->carModel?->brand,
                     'model' => $car->carModel?->model,
                     'is_featured' => (bool) ($car->carModel?->is_featured ?? false),
+                    'show_year_variants_in_reservation' => (bool) ($car->carModel?->show_year_variants_in_reservation ?? false),
                 ],
                 'pricing' => [
                     'short' => (float) $car->price_per_day_short,
@@ -184,12 +193,16 @@ class PublicReservationService
                 ] : null,
                 'conflicts' => $conflicts,
             ];
-        })->all();
+        });
+
+        return $this->groupReservationCards($cards);
     }
 
     public function catalogSelection(string $vehicleCode, ?string $pickupDate = null, ?string $returnDate = null): array
     {
         $catalogItem = $this->catalogItemForCode($vehicleCode);
+        $exactCars = $this->cars(null, null, $pickupDate, $returnDate, $catalogItem);
+        $usesFallback = $exactCars === [];
 
         return [
             'catalog_item' => [
@@ -199,18 +212,78 @@ class PublicReservationService
                 'manufacturing_year' => $catalogItem->manufacturing_year,
                 'trim' => $catalogItem->trim,
             ],
-            'cars' => $this->cars(null, null, $pickupDate, $returnDate, $catalogItem),
+            'selection_mode' => $usesFallback ? 'model_fallback' : 'exact_year',
+            'message' => $usesFallback
+                ? 'The requested model year is no longer in the fleet. Showing the closest available model instead.'
+                : 'The requested model year is available in the fleet.',
+            'cars' => $usesFallback
+                ? $this->cars(null, null, $pickupDate, $returnDate, $catalogItem, false)
+                : $exactCars,
         ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $cards
+     * @return array<int, array<string, mixed>>
+     */
+    private function groupReservationCards($cards): array
+    {
+        return $cards
+            ->map(function (array $card): array {
+                $showYearVariants = (bool) ($card['car_model']['show_year_variants_in_reservation'] ?? false);
+                $card['_reservation_group_key'] = sprintf(
+                    '%s:%s',
+                    $card['car_model']['id'] ?? $card['id'],
+                    $showYearVariants ? 'year-'.($card['manufacturing_year'] ?? '') : 'model',
+                );
+                $card['_reservation_show_year_variants'] = $showYearVariants;
+
+                return $card;
+            })
+            ->groupBy('_reservation_group_key')
+            ->map(function ($group): array {
+                $selected = $group->sortBy([
+                    ['is_available_for_selection', 'desc'],
+                    ['availability', 'desc'],
+                    ['manufacturing_year', 'desc'],
+                    ['id', 'asc'],
+                ])->first();
+                $years = $group->pluck('manufacturing_year')->filter()->sort()->values();
+                $selected['reservation_display'] = [
+                    'is_year_variant' => (bool) $selected['_reservation_show_year_variants'],
+                    'year' => $selected['_reservation_show_year_variants'] ? (int) $selected['manufacturing_year'] : null,
+                    'year_from' => $years->first() ? (int) $years->first() : null,
+                    'year_to' => $years->last() ? (int) $years->last() : null,
+                    'candidate_count' => $group->count(),
+                ];
+                unset($selected['_reservation_group_key'], $selected['_reservation_show_year_variants']);
+
+                return $selected;
+            })
+            ->values()
+            ->all();
+    }
+
+    private function hasExactCatalogFleetCar(VehicleCatalogItem $catalogItem): bool
+    {
+        return Car::query()
+            ->where('status', '!=', 'sold')
+            ->where('manufacturing_year', $catalogItem->manufacturing_year)
+            ->whereHas('carModel', static function ($query) use ($catalogItem) {
+                $query
+                    ->whereRaw('LOWER(TRIM(brand)) = ?', [mb_strtolower(trim($catalogItem->match_brand))])
+                    ->whereRaw('LOWER(TRIM(model)) = ?', [mb_strtolower(trim($catalogItem->match_model))]);
+            })
+            ->exists();
     }
 
     public function quote(array $payload): array
     {
         $normalized = $this->normalizeQuotePayload($payload);
+        $this->ensureRequestScheduleOrFail($normalized);
         $car = Car::query()->with('carModel')->findOrFail($normalized['selected_car_id']);
         $car->syncOperationalState();
         $quote = $this->buildQuote($normalized, $car);
-
-        $this->ensureReservableOrFail($car, $normalized, $quote);
 
         return $quote;
     }
@@ -218,121 +291,164 @@ class PublicReservationService
     public function createReservation(array $payload): array
     {
         $normalized = $this->normalizeQuotePayload($payload);
+        $publicRequestUuid = $this->nullableString($payload['public_request_uuid'] ?? null) ?? (string) Str::uuid();
 
-        return DB::transaction(function () use ($normalized, $payload): array {
-            /** @var Car $car */
-            $car = Car::query()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
-            $car->syncOperationalState();
+        $existingRequest = Contract::query()
+            ->where('public_request_uuid', $publicRequestUuid)
+            ->first();
 
-            $catalogItem = isset($payload['marketing_vehicle_code'])
-                ? $this->catalogItemForCode($payload['marketing_vehicle_code'])
-                : null;
+        if ($existingRequest) {
+            return $this->reservationResponse($existingRequest, true);
+        }
 
-            if ($catalogItem && ! $catalogItem->appliesToCar($car)) {
-                throw ValidationException::withMessages([
-                    'selected_car_id' => ['The selected vehicle does not match the requested catalogue vehicle.'],
+        try {
+            return DB::transaction(function () use ($normalized, $payload, $publicRequestUuid): array {
+                $this->ensureRequestScheduleOrFail($normalized);
+
+                /** @var Car $car */
+                $car = Car::query()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
+                $car->syncOperationalState();
+
+                if ($car->status === Car::STATUS_SOLD) {
+                    throw ValidationException::withMessages([
+                        'selected_car_id' => ['The selected vehicle is no longer listed. Please choose another vehicle.'],
+                    ]);
+                }
+
+                $catalogItem = isset($payload['marketing_vehicle_code'])
+                    ? $this->catalogItemForCode($payload['marketing_vehicle_code'])
+                    : null;
+
+                $allowsCatalogFallback = $catalogItem && ! $this->hasExactCatalogFleetCar($catalogItem);
+
+                if ($catalogItem && ! $catalogItem->appliesToCar($car) && ! ($allowsCatalogFallback && $catalogItem->matchesCarModel($car))) {
+                    throw ValidationException::withMessages([
+                        'selected_car_id' => ['The selected vehicle does not match the requested catalogue vehicle.'],
+                    ]);
+                }
+
+                $quote = $this->buildQuote($normalized, $car);
+
+                $phone = PhoneNumber::normalize($payload['phone'] ?? null) ?? trim((string) ($payload['phone'] ?? ''));
+                $messengerPhone = PhoneNumber::normalize($payload['messenger_phone'] ?? null) ?? trim((string) ($payload['messenger_phone'] ?? ''));
+                $email = isset($payload['email']) ? trim((string) $payload['email']) : null;
+                $nationalCode = $this->nullableString(isset($payload['national_code']) ? (string) $payload['national_code'] : null);
+                $passportNumber = isset($payload['passport_number']) ? trim((string) $payload['passport_number']) : null;
+                $licenseNumber = isset($payload['license_number']) ? trim((string) $payload['license_number']) : null;
+
+                $customer = $this->resolveCustomer();
+
+                $customer->fill([
+                    'first_name' => trim((string) ($payload['first_name'] ?? '')),
+                    'last_name' => trim((string) ($payload['last_name'] ?? '')),
+                    'national_code' => $nationalCode,
+                    'email' => $email !== '' ? $email : null,
+                    'phone' => $phone,
+                    'messenger_phone' => $messengerPhone,
+                    'address' => $this->nullableString($payload['address'] ?? null),
+                    'birth_date' => $payload['birth_date'] ?? null,
+                    'passport_number' => $passportNumber !== '' ? $passportNumber : null,
+                    'passport_expiry_date' => $payload['passport_expiry_date'] ?? null,
+                    'nationality' => trim((string) ($payload['nationality'] ?? '')),
+                    'license_number' => $licenseNumber !== '' ? $licenseNumber : null,
                 ]);
+                $customer->save();
+
+                $agentId = isset($payload['agent_id'])
+                    ? (int) $payload['agent_id']
+                    : Agent::query()->where('name', 'Website')->value('id');
+
+                $applyDiscount = (bool) ($normalized['apply_discount'] ?? false);
+                $customRate = $normalized['custom_daily_rate'];
+
+                $meta = [
+                    'source' => 'public_website_api',
+                    'selected_services' => $quote['selected_services'],
+                    'selected_insurance' => $quote['selected_insurance'],
+                    'service_quantities' => $quote['service_quantities'],
+                    'quote_snapshot' => Arr::except($quote, ['availability']),
+                    'availability_at_submission' => $quote['availability'],
+                ];
+
+                if ($catalogItem) {
+                    $meta['marketing_vehicle_code'] = $catalogItem->code;
+                    $meta['marketing_vehicle_name'] = $catalogItem->display_name;
+                    $meta['marketing_vehicle_year'] = $catalogItem->manufacturing_year;
+                }
+
+                if (($quote['driver_hours'] ?? 0) > 0) {
+                    $meta['driver_hours'] = (float) $quote['driver_hours'];
+                    $meta['driver_service_cost'] = (float) $quote['driver_cost'];
+                }
+
+                if (($payload['payment_on_delivery'] ?? true) && $this->nullableString($payload['driver_note'] ?? null) !== null) {
+                    $meta['driver_note'] = $this->nullableString($payload['driver_note']);
+                }
+
+                if ($quote['driving_license_option'] !== null) {
+                    $meta['driving_license_option'] = $quote['driving_license_option'];
+                    $meta['driving_license_cost'] = (float) $quote['driving_license_cost'];
+                }
+
+                $contract = Contract::create([
+                    'user_id' => null,
+                    'customer_id' => $customer->id,
+                    'car_id' => $car->id,
+                    'requested_car_id' => $car->id,
+                    'agent_id' => $agentId,
+                    'intake_source' => Contract::INTAKE_SOURCE_WEBSITE,
+                    'public_request_uuid' => $publicRequestUuid,
+                    'submitted_by_name' => $this->nullableString($payload['submitted_by_name'] ?? null) ?? 'Website',
+                    'pickup_date' => $quote['pickup_date'],
+                    'return_date' => $quote['return_date'],
+                    'pickup_location' => $quote['pickup_location'],
+                    'return_location' => $quote['return_location'],
+                    'total_price' => $quote['final_total'],
+                    'kardo_required' => (bool) ($payload['kardo_required'] ?? true),
+                    'payment_on_delivery' => (bool) ($payload['payment_on_delivery'] ?? true),
+                    'notes' => $this->nullableString($payload['notes'] ?? null),
+                    'licensed_driver_name' => $this->nullableString($payload['licensed_driver_name'] ?? null),
+                    'deposit' => $this->normalizedDeposit($payload['deposit_category'] ?? null, $payload['deposit'] ?? null),
+                    'deposit_category' => $this->nullableString($payload['deposit_category'] ?? null),
+                    'used_daily_rate' => $quote['daily_rate'],
+                    'custom_daily_rate_enabled' => $applyDiscount,
+                    'discount_note' => ($applyDiscount && $customRate !== null)
+                        ? sprintf('Discount applied: %.2f AED instead of standard rate', (float) $customRate)
+                        : null,
+                    'meta' => $meta,
+                ]);
+
+                $contract->changeStatus(Contract::STATUS_REVIEW_PENDING, null, 'Website reservation request submitted.');
+                $this->storeContractCharges($contract, $quote, $car);
+
+                return $this->reservationResponse($contract);
+            });
+        } catch (QueryException $exception) {
+            $existingRequest = Contract::query()
+                ->where('public_request_uuid', $publicRequestUuid)
+                ->first();
+
+            if ($existingRequest) {
+                return $this->reservationResponse($existingRequest, true);
             }
 
-            $quote = $this->buildQuote($normalized, $car);
-            $this->ensureReservableOrFail($car, $normalized, $quote);
+            throw $exception;
+        }
+    }
 
-            $phone = PhoneNumber::normalize($payload['phone'] ?? null) ?? trim((string) ($payload['phone'] ?? ''));
-            $messengerPhone = PhoneNumber::normalize($payload['messenger_phone'] ?? null) ?? trim((string) ($payload['messenger_phone'] ?? ''));
-            $email = isset($payload['email']) ? trim((string) $payload['email']) : null;
-            $nationalCode = $this->nullableString(isset($payload['national_code']) ? (string) $payload['national_code'] : null);
-            $passportNumber = isset($payload['passport_number']) ? trim((string) $payload['passport_number']) : null;
-            $licenseNumber = isset($payload['license_number']) ? trim((string) $payload['license_number']) : null;
+    private function reservationResponse(Contract $contract, bool $isDuplicate = false): array
+    {
+        $meta = is_array($contract->meta) ? $contract->meta : [];
 
-            $customer = $this->resolveCustomer();
-
-            $customer->fill([
-                'first_name' => trim((string) ($payload['first_name'] ?? '')),
-                'last_name' => trim((string) ($payload['last_name'] ?? '')),
-                'national_code' => $nationalCode,
-                'email' => $email !== '' ? $email : null,
-                'phone' => $phone,
-                'messenger_phone' => $messengerPhone,
-                'address' => $this->nullableString($payload['address'] ?? null),
-                'birth_date' => $payload['birth_date'] ?? null,
-                'passport_number' => $passportNumber !== '' ? $passportNumber : null,
-                'passport_expiry_date' => $payload['passport_expiry_date'] ?? null,
-                'nationality' => trim((string) ($payload['nationality'] ?? '')),
-                'license_number' => $licenseNumber !== '' ? $licenseNumber : null,
-            ]);
-            $customer->save();
-
-            $agentId = isset($payload['agent_id'])
-                ? (int) $payload['agent_id']
-                : Agent::query()->where('name', 'Website')->value('id');
-
-            $applyDiscount = (bool) ($normalized['apply_discount'] ?? false);
-            $customRate = $normalized['custom_daily_rate'];
-
-            $meta = [
-                'source' => 'public_website_api',
-                'selected_services' => $quote['selected_services'],
-                'selected_insurance' => $quote['selected_insurance'],
-                'service_quantities' => $quote['service_quantities'],
-                'quote_snapshot' => Arr::except($quote, ['availability']),
-            ];
-
-            if ($catalogItem) {
-                $meta['marketing_vehicle_code'] = $catalogItem->code;
-                $meta['marketing_vehicle_name'] = $catalogItem->display_name;
-                $meta['marketing_vehicle_year'] = $catalogItem->manufacturing_year;
-            }
-
-            if (($quote['driver_hours'] ?? 0) > 0) {
-                $meta['driver_hours'] = (float) $quote['driver_hours'];
-                $meta['driver_service_cost'] = (float) $quote['driver_cost'];
-            }
-
-            if (($payload['payment_on_delivery'] ?? true) && $this->nullableString($payload['driver_note'] ?? null) !== null) {
-                $meta['driver_note'] = $this->nullableString($payload['driver_note']);
-            }
-
-            if ($quote['driving_license_option'] !== null) {
-                $meta['driving_license_option'] = $quote['driving_license_option'];
-                $meta['driving_license_cost'] = (float) $quote['driving_license_cost'];
-            }
-
-            $contract = Contract::create([
-                'user_id' => null,
-                'customer_id' => $customer->id,
-                'car_id' => $car->id,
-                'agent_id' => $agentId,
-                'submitted_by_name' => $this->nullableString($payload['submitted_by_name'] ?? null) ?? 'Website',
-                'pickup_date' => $quote['pickup_date'],
-                'return_date' => $quote['return_date'],
-                'pickup_location' => $quote['pickup_location'],
-                'return_location' => $quote['return_location'],
-                'total_price' => $quote['final_total'],
-                'kardo_required' => (bool) ($payload['kardo_required'] ?? true),
-                'payment_on_delivery' => (bool) ($payload['payment_on_delivery'] ?? true),
-                'notes' => $this->nullableString($payload['notes'] ?? null),
-                'licensed_driver_name' => $this->nullableString($payload['licensed_driver_name'] ?? null),
-                'deposit' => $this->normalizedDeposit($payload['deposit_category'] ?? null, $payload['deposit'] ?? null),
-                'deposit_category' => $this->nullableString($payload['deposit_category'] ?? null),
-                'used_daily_rate' => $quote['daily_rate'],
-                'custom_daily_rate_enabled' => $applyDiscount,
-                'discount_note' => ($applyDiscount && $customRate !== null)
-                    ? sprintf('Discount applied: %.2f AED instead of standard rate', (float) $customRate)
-                    : null,
-                'meta' => $meta,
-            ]);
-
-            $contract->changeStatus('pending', null);
-            $this->storeContractCharges($contract, $quote, $car);
-
-            return [
-                'contract_id' => $contract->id,
-                'status' => $contract->current_status,
-                'customer_id' => $customer->id,
-                'total_price' => (float) $contract->total_price,
-                'quote' => $quote,
-            ];
-        });
+        return [
+            'contract_id' => $contract->id,
+            'status' => $contract->current_status,
+            'requires_review' => $contract->isReviewPending(),
+            'duplicate_submission' => $isDuplicate,
+            'customer_id' => $contract->customer_id,
+            'total_price' => (float) $contract->total_price,
+            'quote' => $meta['quote_snapshot'] ?? null,
+        ];
     }
 
     private function catalogItemForCode(string $vehicleCode): VehicleCatalogItem
@@ -999,24 +1115,12 @@ class PublicReservationService
         return round((float) $value, 2);
     }
 
-    private function ensureReservableOrFail(Car $car, array $normalized, array $quote): void
+    private function ensureRequestScheduleOrFail(array $normalized): void
     {
-        $errors = [];
-
         if (($normalized['pickup'] ?? null) instanceof Carbon && $normalized['pickup']->lt($this->minimumPickupAt())) {
-            $errors['pickup_date'] = ['زمان تحویل باید از زمان فعلی بزرگ‌تر باشد.'];
-        }
-
-        if ($car->status === 'sold' || !$car->isAvailable()) {
-            $errors['selected_car_id'] = ['خودروی انتخاب‌شده در دسترس نیست.'];
-        }
-
-        if (($quote['availability']['has_conflict'] ?? false) === true) {
-            $errors['selected_car_id'] = [$quote['availability']['message'] ?? 'خودروی انتخاب‌شده در بازه زمانی انتخابی در دسترس نیست.'];
-        }
-
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
+            throw ValidationException::withMessages([
+                'pickup_date' => ['زمان تحویل باید از زمان فعلی بزرگ‌تر باشد.'],
+            ]);
         }
     }
 

@@ -14,7 +14,10 @@ class Contract extends Model
 {
     use HasFactory;
 
-    public const CUSTOMER_BALANCE_EXCLUDED_STATUSES = ['cancelled', 'rejected'];
+    public const STATUS_REVIEW_PENDING = 'review_pending';
+    public const INTAKE_SOURCE_PANEL = 'panel';
+    public const INTAKE_SOURCE_WEBSITE = 'website';
+    public const CUSTOMER_BALANCE_EXCLUDED_STATUSES = ['cancelled', 'rejected', self::STATUS_REVIEW_PENDING];
     public const COMMUNICATION_CHANNELS = [
         'google_ads',
         'meta_ads',
@@ -58,7 +61,10 @@ class Contract extends Model
         'user_id',
         'customer_id',
         'car_id',
+        'requested_car_id',
         'agent_id',
+        'intake_source',
+        'public_request_uuid',
         'communication_channel',
         'submitted_by_name',
         'pickup_date',
@@ -213,6 +219,21 @@ class Contract extends Model
     public function car()
     {
         return $this->belongsTo(Car::class);
+    }
+
+    public function requestedCar()
+    {
+        return $this->belongsTo(Car::class, 'requested_car_id');
+    }
+
+    public function isReviewPending(): bool
+    {
+        return $this->current_status === self::STATUS_REVIEW_PENDING;
+    }
+
+    public function isWebsiteIntake(): bool
+    {
+        return $this->intake_source === self::INTAKE_SOURCE_WEBSITE;
     }
 
 

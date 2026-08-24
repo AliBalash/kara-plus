@@ -80,6 +80,17 @@
 
         <div class="col-md-2">
             <div class="filter-field">
+                <label class="filter-label" for="rentalListSource">Source</label>
+                <select id="rentalListSource" class="form-select" wire:model.live="sourceFilter">
+                    <option value="">All Sources</option>
+                    <option value="website">Website Requests</option>
+                    <option value="panel">Panel</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="filter-field">
                 <label class="filter-label" for="rentalListPickupFrom">Pickup From</label>
                 <input id="rentalListPickupFrom" type="date" class="form-control" wire:model.live="pickupFrom">
             </div>
@@ -207,7 +218,14 @@
                             </span>
                         </td>
                         <td>
-                            <span class="badge bg-info text-dark">{{ $contract->submitted_by_name ?? 'Website' }}</span>
+                            <div class="d-flex flex-column align-items-start gap-1">
+                                <span class="badge {{ $contract->isWebsiteIntake() ? 'bg-label-warning text-warning' : 'bg-info text-dark' }}">
+                                    {{ $contract->isWebsiteIntake() ? 'Website request' : ($contract->submitted_by_name ?? 'Panel') }}
+                                </span>
+                                @if ($contract->isWebsiteIntake() && $contract->requested_car_id !== $contract->car_id)
+                                    <small class="text-muted">Vehicle replaced</small>
+                                @endif
+                            </div>
                         </td>
                         <td>
                             @if ($contract->user)
