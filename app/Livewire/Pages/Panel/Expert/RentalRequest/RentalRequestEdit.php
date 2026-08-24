@@ -1059,7 +1059,7 @@ class RentalRequestEdit extends Component
             }
             $this->toast('success', $this->contract->isReviewPending()
                 ? 'Website request saved. Approve it when the vehicle and price are confirmed.'
-                : 'Contract updated successfully!');
+                : 'Contract Updated successfully!');
         } catch (ValidationException $exception) {
             $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
             throw $exception;
