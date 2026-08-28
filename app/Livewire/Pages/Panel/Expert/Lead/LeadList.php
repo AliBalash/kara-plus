@@ -234,6 +234,7 @@ class LeadList extends Component
         }
 
         $this->trimFormFields();
+        $this->normalizePhoneFieldsBeforeValidation();
 
         $validated = $this->validateLeadForm();
         $validated = $this->normalizeLeadData($validated);
@@ -285,6 +286,7 @@ class LeadList extends Component
         }
 
         $this->trimFormFields();
+        $this->normalizePhoneFieldsBeforeValidation();
 
         $validated = $this->validateConversionForm();
 
@@ -323,8 +325,8 @@ class LeadList extends Component
         return [
             'first_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['nullable', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'min:7', 'max:50', 'regex:/^[0-9+()\-\s]+$/'],
-            'messenger_phone' => ['nullable', 'string', 'min:7', 'max:50', 'regex:/^[0-9+()\-\s]+$/'],
+            'phone' => ['required', 'string', 'regex:/^\+\d{8,15}$/'],
+            'messenger_phone' => ['nullable', 'string', 'regex:/^\+\d{8,15}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'source' => ['nullable', 'string', Rule::in(Contract::COMMUNICATION_CHANNELS)],
             'discovery_source' => ['nullable', 'string', 'max:255'],
@@ -344,8 +346,8 @@ class LeadList extends Component
         return [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'min:7', 'max:50', 'regex:/^[0-9+()\-\s]+$/'],
-            'messenger_phone' => ['required', 'string', 'min:7', 'max:50', 'regex:/^[0-9+()\-\s]+$/'],
+            'phone' => ['required', 'string', 'regex:/^\+\d{8,15}$/'],
+            'messenger_phone' => ['required', 'string', 'regex:/^\+\d{8,15}$/'],
             'email' => ['required', 'email', 'max:255', Rule::unique('customers', 'email')],
         ];
     }
@@ -359,6 +361,16 @@ class LeadList extends Component
         );
 
         return $this->normalizePhoneFields($validated, false);
+    }
+
+    /**
+     * Match the customer form behaviour: normalize user input before applying
+     * the canonical international-number validation rules.
+     */
+    protected function normalizePhoneFieldsBeforeValidation(): void
+    {
+        $this->phone = PhoneNumber::normalize($this->phone) ?? trim((string) $this->phone);
+        $this->messenger_phone = PhoneNumber::normalize($this->messenger_phone) ?? trim((string) $this->messenger_phone);
     }
 
     protected function validateConversionForm(): array
@@ -412,13 +424,9 @@ class LeadList extends Component
             'first_name.max' => 'First name cannot be longer than 255 characters.',
             'last_name.max' => 'Last name cannot be longer than 255 characters.',
             'phone.required' => 'Phone number is required.',
-            'phone.min' => 'Phone number is too short.',
-            'phone.max' => 'Phone number cannot be longer than 50 characters.',
-            'phone.regex' => 'Phone number may only contain digits, spaces, +, -, and parentheses.',
+            'phone.regex' => 'Enter a valid international phone number.',
             'messenger_phone.required' => 'Messenger phone is required to create a customer.',
-            'messenger_phone.min' => 'Messenger phone number is too short.',
-            'messenger_phone.max' => 'Messenger phone number cannot be longer than 50 characters.',
-            'messenger_phone.regex' => 'Messenger phone may only contain digits, spaces, +, -, and parentheses.',
+            'messenger_phone.regex' => 'Enter a valid international messenger phone number.',
             'email.required' => 'Email is required to create a customer.',
             'email.email' => 'Enter a valid email address.',
             'email.max' => 'Email cannot be longer than 255 characters.',

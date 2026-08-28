@@ -63,6 +63,24 @@ class LeadListTest extends TestCase
         $this->assertDatabaseCount('customers', 0);
     }
 
+    public function test_save_normalizes_phone_numbers_before_using_customer_validation_rules(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+
+        $this->actingAs($user);
+
+        $component = app(LeadList::class);
+        $component->mount();
+        $component->phone = '050 111 1111';
+        $component->messenger_phone = '00971 (50) 222-2222';
+        $component->save();
+
+        $this->assertDatabaseHas('leads', [
+            'phone' => '+971501111111',
+            'messenger_phone' => '+971502222222',
+        ]);
+    }
+
     public function test_vehicle_options_include_all_fleet_models_regardless_of_operational_status(): void
     {
         $selectableModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ACCENT']);
