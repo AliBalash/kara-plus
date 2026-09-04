@@ -38,12 +38,27 @@ class VehicleCatalogItem extends Model
 
     public function matchesCarModel(Car $car): bool
     {
-        return $this->normalise($car->carModel?->brand) === $this->normalise($this->match_brand)
-            && $this->normalise($car->carModel?->model) === $this->normalise($this->match_model);
+        return self::normalise($car->carModel?->brand) === self::normalise($this->match_brand)
+            && self::normalise($car->carModel?->model) === self::normalise($this->match_model);
     }
 
-    private function normalise(?string $value): string
+    /**
+     * The CRM is not consistent about casing and surrounding whitespace. Keep
+     * the catalogue's family identity in one place so public and admin views
+     * cannot drift from each other.
+     */
+    public static function normalise(?string $value): string
     {
         return mb_strtolower(trim((string) $value));
+    }
+
+    public function familyKey(): string
+    {
+        return self::familyKeyFor($this->match_brand, $this->match_model);
+    }
+
+    public static function familyKeyFor(?string $brand, ?string $model): string
+    {
+        return self::normalise($brand).'|'.self::normalise($model);
     }
 }

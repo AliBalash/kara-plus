@@ -50,13 +50,7 @@
                         <label class="form-label">Trim (optional)</label>
                         <input class="form-control @error('trim') is-invalid @enderror" wire:model.defer="trim" placeholder="SE Titanium">
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" role="switch" id="catalog-active" wire:model.defer="isActive">
-                            <label class="form-check-label" for="catalog-active">Available for public reservation</label>
-                        </div>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end justify-content-end gap-2">
+                    <div class="col-md-8 d-flex align-items-end justify-content-end gap-2">
                         @if ($editingId)
                             <button type="button" class="btn btn-outline-secondary" wire:click="resetEditor">Cancel</button>
                         @endif
@@ -72,28 +66,46 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body border-bottom">
-                <input class="form-control" wire:model.live.debounce.300ms="search" placeholder="Search by code, name or website slug">
+                <input class="form-control" wire:model.live.debounce.300ms="search" placeholder="Search by family, code, year or website slug">
             </div>
             <div class="table-responsive text-nowrap">
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>Code</th><th>Vehicle</th><th>CRM match</th><th>Website slug</th><th>Reservation link</th><th>Status</th><th></th>
+                            <th>Vehicle family</th><th>Years</th><th>Variants</th><th>Public</th><th>CRM match</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($items as $item)
-                            <tr wire:key="catalog-item-{{ $item->id }}">
-                                <td><code>{{ $item->code }}</code></td>
-                                <td>{{ $item->display_name }} · {{ $item->manufacturing_year }}@if($item->trim) <small class="text-muted">({{ $item->trim }})</small> @endif</td>
-                                <td>{{ $item->match_brand }} {{ $item->match_model }}</td>
-                                <td>{{ $item->website_slug }}</td>
-                                <td><a href="{{ $reservationUrl }}/?vehicle={{ urlencode($item->code) }}" target="_blank" rel="noreferrer">Open link</a></td>
-                                <td><span class="badge bg-label-{{ $item->is_active ? 'success' : 'secondary' }}">{{ $item->is_active ? 'Active' : 'Inactive' }}</span></td>
-                                <td><button type="button" class="btn btn-sm btn-outline-primary" wire:click="edit({{ $item->id }})">Edit</button></td>
+                        @forelse ($items as $family)
+                            <tr wire:key="catalog-family-{{ md5($family['key']) }}">
+                                <td>{{ $family['name'] }}</td>
+                                <td>{{ $family['years']->join(', ') }}</td>
+                                <td>{{ $family['variant_count'] }}</td>
+                                <td>{{ $family['public_mode'] === 'all_years' ? 'All years' : 'Latest year only ('.$family['latest_year'].')' }}</td>
+                                <td>{{ $family['match_brand'] }} {{ $family['match_model'] }}</td>
+                                <td><button type="button" class="btn btn-sm btn-outline-primary" wire:click="toggleFamily('{{ $family['key'] }}')">{{ $expandedFamilyKey === $family['key'] ? 'Hide variants' : 'Edit' }}</button></td>
                             </tr>
+                            @if ($expandedFamilyKey === $family['key'])
+                                <tr wire:key="catalog-family-variants-{{ md5($family['key']) }}"><td colspan="6" class="bg-light p-0">
+                                    <div class="p-3 border-bottom d-flex flex-wrap align-items-center gap-2">
+                                        <strong class="me-2">Public reservation:</strong>
+                                        <button type="button" class="btn btn-sm {{ $family['public_mode'] === 'all_years' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setFamilyYearMode('{{ $family['key'] }}', true)">Show all years</button>
+                                        <button type="button" class="btn btn-sm {{ $family['public_mode'] === 'latest_year_only' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setFamilyYearMode('{{ $family['key'] }}', false)">Latest year only ({{ $family['latest_year'] }})</button>
+                                        <small class="text-muted">Same prices become one reservation card; different prices remain separate cards.</small>
+                                    </div>
+                                    <table class="table table-sm mb-0"><tbody>
+                                        @foreach ($family['variants'] as $item)
+                                            <tr wire:key="catalog-item-{{ $item->id }}">
+                                                <td class="ps-4">{{ $item->manufacturing_year }}</td><td><code>{{ $item->code }}</code></td><td>{{ $item->website_slug }}</td>
+                                                <td colspan="2">Short/Mid/Long: {{ count($item->price_signatures) ? implode(' · ', $item->price_signatures) : 'No matching fleet price' }}</td>
+                                                <td><span class="badge bg-label-{{ $item->is_active ? 'success' : 'secondary' }}">{{ $item->is_active ? 'Included' : 'Not included' }}</span> <button type="button" class="btn btn-sm btn-outline-primary ms-2" wire:click="edit({{ $item->id }})">Edit variant</button></td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody></table>
+                                </td></tr>
+                            @endif
                         @empty
-                            <tr><td colspan="7" class="text-center py-4 text-muted">No catalogue vehicles found.</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-muted">No catalogue vehicle families found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

@@ -3,8 +3,11 @@
 namespace App\Livewire\Pages\Panel\Expert\VehicleCatalog;
 
 use App\Livewire\Concerns\InteractsWithToasts;
+use App\Models\Car;
 use App\Models\VehicleCatalogItem;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -25,27 +28,108 @@ class VehicleCatalogList extends Component
     public string $manufacturingYear = '';
     public string $trim = '';
     public bool $isActive = true;
+    public ?string $expandedFamilyKey = null;
 
     public function render()
     {
-        $items = VehicleCatalogItem::query()
+        $variants = VehicleCatalogItem::query()
             ->when(trim($this->search) !== '', function ($query) {
                 $term = '%' . trim($this->search) . '%';
                 $query->where(function ($scoped) use ($term) {
                     $scoped->where('code', 'like', $term)
                         ->orWhere('display_name', 'like', $term)
-                        ->orWhere('website_slug', 'like', $term);
+                        ->orWhere('website_slug', 'like', $term)
+                        ->orWhere('brand', 'like', $term)
+                        ->orWhere('model', 'like', $term)
+                        ->orWhere('match_brand', 'like', $term)
+                        ->orWhere('match_model', 'like', $term)
+                        ->orWhereRaw('CAST(manufacturing_year AS CHAR) like ?', [$term]);
                 });
             })
-            ->orderBy('brand')
-            ->orderBy('model')
             ->orderBy('manufacturing_year')
-            ->paginate(20);
+            ->get();
+
+        $fleetCars = Car::query()->where('status', '!=', Car::STATUS_SOLD)->with('carModel')->get();
+        $variants->each(function (VehicleCatalogItem $variant) use ($fleetCars): void {
+            $variant->setAttribute('price_signatures', $fleetCars
+                ->filter(fn (Car $car): bool => $variant->appliesToCar($car))
+                ->map(static fn (Car $car): string => sprintf(
+                    '%s / %s / %s',
+                    number_format((float) $car->price_per_day_short, 2),
+                    number_format((float) ($car->price_per_day_mid ?? $car->price_per_day_short), 2),
+                    number_format((float) ($car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short), 2),
+                ))
+                ->unique()->values()->all());
+        });
+
+        $families = $variants->groupBy(static fn (VehicleCatalogItem $item) => $item->familyKey())
+            ->map(function ($variants, string $familyKey): array {
+                $variants = $variants->sortBy('manufacturing_year')->values();
+                $representative = $variants->first();
+
+                return [
+                    'key' => $familyKey,
+                    'name' => trim($representative->brand.' '.$representative->model),
+                    'match_brand' => $representative->match_brand,
+                    'match_model' => $representative->match_model,
+                    'years' => $variants->pluck('manufacturing_year')->unique()->sort()->values(),
+                    'variant_count' => $variants->count(),
+                    'active_count' => $variants->where('is_active', true)->count(),
+                    'public_mode' => $variants->every('is_active') ? 'all_years' : 'latest_year_only',
+                    'latest_year' => (int) $variants->last()->manufacturing_year,
+                    'variants' => $variants,
+                ];
+            })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 20;
+        $items = new LengthAwarePaginator(
+            $families->forPage($page, $perPage)->values(),
+            $families->count(), $perPage, $page,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
+        );
 
         return view('livewire.pages.panel.expert.vehicle-catalog.vehicle-catalog-list', [
             'items' => $items,
-            'reservationUrl' => rtrim((string) config('reservation.public_url'), '/'),
         ]);
+    }
+
+    public function toggleFamily(string $familyKey): void
+    {
+        $this->expandedFamilyKey = $this->expandedFamilyKey === $familyKey ? null : $familyKey;
+    }
+
+    /**
+     * A public reservation setting belongs to a model family, never to a
+     * plate or an individually managed year row. We keep the year variants
+     * intact and express the setting through their existing active flags.
+     */
+    public function setFamilyYearMode(string $familyKey, bool $showAllYears): void
+    {
+        $variants = VehicleCatalogItem::query()->get()
+            ->filter(static fn (VehicleCatalogItem $item): bool => $item->familyKey() === $familyKey)
+            ->sortByDesc('manufacturing_year')
+            ->values();
+
+        if ($variants->isEmpty()) {
+            return;
+        }
+
+        DB::transaction(function () use ($variants, $showAllYears): void {
+            VehicleCatalogItem::query()->whereIn('id', $variants->pluck('id'))->update([
+                'is_active' => $showAllYears,
+            ]);
+
+            // "Latest year only" always leaves a valid public product rather
+            // than hiding the model family completely.
+            if (! $showAllYears) {
+                VehicleCatalogItem::query()->whereKey($variants->first()->id)->update(['is_active' => true]);
+            }
+        });
+
+        $this->toast('success', $showAllYears
+            ? 'All model years are available for public reservation.'
+            : 'Only the latest model year is available for public reservation.');
     }
 
     public function edit(int $id): void

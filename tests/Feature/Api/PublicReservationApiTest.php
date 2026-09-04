@@ -482,6 +482,9 @@ class PublicReservationApiTest extends TestCase
         $carWithSimilarImage = Car::factory()->available()->create([
             'car_model_id' => $similarImageModel->id,
         ]);
+        $this->createCatalogVariant($realImageModel, $carWithRealImage->manufacturing_year, 'IMAGE-ONE');
+        $this->createCatalogVariant($missingImageModel, $carWithMissingImage->manufacturing_year, 'IMAGE-TWO');
+        $this->createCatalogVariant($similarImageModel, $carWithSimilarImage->manufacturing_year, 'IMAGE-THREE');
 
         $relativeDir = 'assets/car-pics';
         $fileNameWithSpace = 'qa image test.webp';
@@ -594,19 +597,8 @@ class PublicReservationApiTest extends TestCase
             'manufacturing_year' => 2025,
             'price_per_day_short' => 120,
         ]);
-
-        $grouped = $this->getJson("http://localhost/api/public/reservations/cars?model_id={$model->id}");
-
-        $grouped
-            ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.reservation_display.is_year_variant', false)
-            ->assertJsonPath('data.0.reservation_display.year_from', 2023)
-            ->assertJsonPath('data.0.reservation_display.year_to', 2025)
-            ->assertJsonPath('data.0.reservation_display.candidate_count', 2)
-            ->assertJsonPath('data.0.id', $newerCar->id);
-
-        $model->update(['show_year_variants_in_reservation' => true]);
+        $this->createCatalogVariant($model, 2023, 'TEST-MODEL-23');
+        $this->createCatalogVariant($model, 2025, 'TEST-MODEL-25');
 
         $separated = $this->getJson("http://localhost/api/public/reservations/cars?model_id={$model->id}");
         $cards = collect($separated->json('data'));
@@ -614,6 +606,72 @@ class PublicReservationApiTest extends TestCase
         $separated->assertOk()->assertJsonCount(2, 'data');
         $this->assertSame($newerCar->id, $cards->firstWhere('reservation_display.year', 2025)['id']);
         $this->assertSame($olderCar->id, $cards->firstWhere('reservation_display.year', 2023)['id']);
+    }
+
+    public function test_public_catalogue_groups_active_family_years_with_the_same_price_signature(): void
+    {
+        $model = CarModel::factory()->create(['brand' => ' Hyundai ', 'model' => ' Acceptance Creta ']);
+        $older = Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2024, 'price_per_day_short' => 95, 'price_per_day_mid' => 86, 'price_per_day_long' => 60]);
+        Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2024, 'price_per_day_short' => 95, 'price_per_day_mid' => 86, 'price_per_day_long' => 60]);
+        Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2025, 'price_per_day_short' => 95, 'price_per_day_mid' => 86, 'price_per_day_long' => 60]);
+        $this->createCatalogVariant($model, 2024, 'TEST-CRT-24');
+        $this->createCatalogVariant($model, 2025, 'TEST-CRT-25');
+
+        $response = $this->getJson('http://localhost/api/public/reservations/cars');
+
+        $response->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.reservation_display.year_from', 2024)
+            ->assertJsonPath('data.0.reservation_display.year_to', 2025)
+            ->assertJsonPath('data.0.reservation_display.candidate_count', 3)
+            ->assertJsonPath('data.0.catalog_variant_codes', ['TEST-CRT-24', 'TEST-CRT-25']);
+        $this->assertContains($older->id, $response->json('data.0.candidate_car_ids'));
+    }
+
+    public function test_public_catalogue_separates_price_cohorts_and_excludes_inactive_years(): void
+    {
+        $model = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Acceptance Creta']);
+        Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2024, 'price_per_day_short' => 95, 'price_per_day_mid' => 86, 'price_per_day_long' => 60]);
+        Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2025, 'price_per_day_short' => 115, 'price_per_day_mid' => 100, 'price_per_day_long' => 80]);
+        $this->createCatalogVariant($model, 2024, 'TEST-CRT-24');
+        $this->createCatalogVariant($model, 2025, 'TEST-CRT-25', false);
+
+        $response = $this->getJson('http://localhost/api/public/reservations/cars');
+        $response->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.catalog_variant_codes', ['TEST-CRT-24']);
+
+        VehicleCatalogItem::query()->where('code', 'TEST-CRT-25')->update(['is_active' => true]);
+        $response = $this->getJson('http://localhost/api/public/reservations/cars');
+        $response->assertOk()->assertJsonCount(2, 'data');
+    }
+
+    public function test_catalog_selection_keeps_an_exact_year_candidate_when_the_visible_card_is_grouped(): void
+    {
+        $model = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Acceptance Creta']);
+        $older = Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2024, 'price_per_day_short' => 95, 'price_per_day_mid' => 86, 'price_per_day_long' => 60]);
+        Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2025, 'price_per_day_short' => 95, 'price_per_day_mid' => 86, 'price_per_day_long' => 60]);
+        $this->createCatalogVariant($model, 2024, 'TEST-CRT-24');
+        $this->createCatalogVariant($model, 2025, 'TEST-CRT-25');
+
+        $all = $this->getJson('http://localhost/api/public/reservations/cars')->json('data.0');
+        $selection = $this->getJson('http://localhost/api/public/reservations/catalog-selection?vehicle_code=TEST-CRT-24');
+
+        $selection->assertOk()->assertJsonPath('data.selection_mode', 'exact_year')
+            ->assertJsonPath('data.cars.0.id', $older->id)
+            ->assertJsonPath('data.cars.0.reservation_group_key', $all['reservation_group_key']);
+    }
+
+    private function createCatalogVariant(CarModel $model, int $year, string $code, bool $active = true): VehicleCatalogItem
+    {
+        return VehicleCatalogItem::query()->create([
+            'code' => $code,
+            'website_slug' => strtolower($code),
+            'display_name' => trim($model->brand).' '.trim($model->model),
+            'brand' => trim($model->brand),
+            'model' => trim($model->model),
+            'match_brand' => trim($model->brand),
+            'match_model' => trim($model->model),
+            'manufacturing_year' => $year,
+            'is_active' => $active,
+        ]);
     }
 
     public function test_catalog_selection_falls_back_to_matching_model_when_requested_year_is_not_in_fleet(): void

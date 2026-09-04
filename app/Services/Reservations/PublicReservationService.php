@@ -137,7 +137,27 @@ class PublicReservationService
             $conflictsByCarId = $this->availabilityConflictsForCars($cars->pluck('id')->all(), $pickup, $return);
         }
 
-        $cards = $cars->map(function (Car $car) use ($conflictsByCarId): array {
+        $activeCatalogItems = $catalogItem
+            ? collect([$catalogItem])
+            : VehicleCatalogItem::query()->active()->orderBy('id')->get();
+
+        $cards = $cars->map(function (Car $car) use ($conflictsByCarId, $activeCatalogItems, $catalogItem, $matchCatalogYear): ?array {
+            $matchingCatalogItems = $activeCatalogItems->filter(function (VehicleCatalogItem $item) use ($car, $catalogItem, $matchCatalogYear): bool {
+                if (! $item->matchesCarModel($car)) {
+                    return false;
+                }
+
+                return $catalogItem && ! $matchCatalogYear
+                    ? true
+                    : $item->manufacturing_year === $car->manufacturing_year;
+            })->values();
+
+            // The normal public catalogue is catalogue-driven: fleet rows with
+            // no active year variant are deliberately invisible.
+            if ($matchingCatalogItems->isEmpty()) {
+                return null;
+            }
+
             $conflicts = $conflictsByCarId[$car->id] ?? [];
             $hasConflict = count($conflicts) > 0;
             $isAvailable = !$hasConflict && $car->isAvailable();
@@ -192,8 +212,9 @@ class PublicReservationService
                     'customer_name' => $activeContract->customer?->fullName(),
                 ] : null,
                 'conflicts' => $conflicts,
+                '_catalog_items' => $matchingCatalogItems,
             ];
-        });
+        })->filter();
 
         return $this->groupReservationCards($cards);
     }
@@ -230,13 +251,13 @@ class PublicReservationService
     {
         return $cards
             ->map(function (array $card): array {
-                $showYearVariants = (bool) ($card['car_model']['show_year_variants_in_reservation'] ?? false);
-                $card['_reservation_group_key'] = sprintf(
-                    '%s:%s',
-                    $card['car_model']['id'] ?? $card['id'],
-                    $showYearVariants ? 'year-'.($card['manufacturing_year'] ?? '') : 'model',
+                /** @var VehicleCatalogItem $catalogItem */
+                $catalogItem = $card['_catalog_items']->first();
+                $card['_reservation_family_key'] = $catalogItem->familyKey();
+                $card['_reservation_price_signature'] = $this->priceSignature($card['pricing']);
+                $card['_reservation_group_key'] = 'reservation-'.sha1(
+                    $card['_reservation_family_key'].'|'.$card['_reservation_price_signature']
                 );
-                $card['_reservation_show_year_variants'] = $showYearVariants;
 
                 return $card;
             })
@@ -248,20 +269,40 @@ class PublicReservationService
                     ['manufacturing_year', 'desc'],
                     ['id', 'asc'],
                 ])->first();
-                $years = $group->pluck('manufacturing_year')->filter()->sort()->values();
+                $years = $group->flatMap(static fn (array $card) => $card['_catalog_items']->pluck('manufacturing_year'))
+                    ->filter()->unique()->sort()->values();
+                $catalogItems = $group->flatMap(static fn (array $card) => $card['_catalog_items'])
+                    ->unique('id')->sortBy('manufacturing_year')->values();
                 $selected['reservation_display'] = [
-                    'is_year_variant' => (bool) $selected['_reservation_show_year_variants'],
-                    'year' => $selected['_reservation_show_year_variants'] ? (int) $selected['manufacturing_year'] : null,
+                    'is_year_variant' => $years->count() === 1,
+                    'year' => $years->count() === 1 ? (int) $years->first() : null,
                     'year_from' => $years->first() ? (int) $years->first() : null,
                     'year_to' => $years->last() ? (int) $years->last() : null,
                     'candidate_count' => $group->count(),
                 ];
-                unset($selected['_reservation_group_key'], $selected['_reservation_show_year_variants']);
+                $selected['reservation_group_key'] = $selected['_reservation_group_key'];
+                $selected['catalog_variant_codes'] = $catalogItems->pluck('code')->values()->all();
+                $selected['catalog_variant_years'] = $years->map(static fn ($year) => (int) $year)->all();
+                $selected['candidate_car_ids'] = $group->pluck('id')->map(static fn ($id) => (int) $id)->values()->all();
+                $selected['catalog_item'] = [
+                    'code' => $catalogItems->first()->code,
+                    'display_name' => $catalogItems->first()->display_name,
+                ];
+                unset($selected['_reservation_group_key'], $selected['_reservation_family_key'], $selected['_reservation_price_signature'], $selected['_catalog_items']);
 
                 return $selected;
             })
             ->values()
             ->all();
+    }
+
+    /** @param array{short: float, mid: float, long: float} $pricing */
+    private function priceSignature(array $pricing): string
+    {
+        return implode('|', array_map(
+            static fn ($price): string => number_format((float) $price, 2, '.', ''),
+            [$pricing['short'] ?? 0, $pricing['mid'] ?? 0, $pricing['long'] ?? 0],
+        ));
     }
 
     private function hasExactCatalogFleetCar(VehicleCatalogItem $catalogItem): bool
