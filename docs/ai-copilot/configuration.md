@@ -10,6 +10,6 @@ The parent image wrapper resolves Ajil's embedded provider modules during its bu
 
 `KARA_AI_ROUTING_STRATEGY=fallback_chain` is the production default: Ajil tries the next provider/key only when needed. Set `parallel_race` only after measuring a latency benefit and accepting that it intentionally starts concurrent provider attempts; Ajil selects the first valid response and cancels the race where supported.
 
-The default Groq candidates (`openai/gpt-oss-20b`, then `qwen/qwen3.6-27b`) were verified against the live Ajil catalog. They remain environment-overridable; review `ai:health` after changing providers or models because provider catalogs evolve.
+The default Groq candidates (`openai/gpt-oss-20b`, then `qwen/qwen3.6-27b`) and Gemini fallback (`gemini-3.5-flash`) were verified against the live Ajil catalog. They remain environment-overridable; review `ai:health` after changing providers or models because provider catalogs evolve.
 
 Run `php artisan ai:health` from the Laravel container after deployment. It makes no chat request; it checks Ajil health and its compact, cached model-catalog summary. `KARA_AI_CATALOG_TIMEOUT` defaults to 35 seconds only for this operational check, so a cold upstream catalog does not falsely report a healthy sidecar as unavailable.

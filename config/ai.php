@@ -33,7 +33,7 @@ return [
             // router owns retry, key rotation, cooldown and fallback.
             ['provider' => 'groq', 'model' => env('KARA_AI_GROQ_MODEL', 'openai/gpt-oss-20b'), 'priority' => 0],
             ['provider' => 'groq', 'model' => env('KARA_AI_GROQ_FALLBACK_MODEL', 'qwen/qwen3.6-27b'), 'priority' => 1],
-            ['provider' => 'gemini', 'model' => env('KARA_AI_GEMINI_MODEL', 'gemini-2.5-flash'), 'priority' => 2],
+            ['provider' => 'gemini', 'model' => env('KARA_AI_GEMINI_MODEL', 'gemini-3.5-flash'), 'priority' => 2],
         ],
     ],
 ];
