@@ -15,7 +15,13 @@ class InsightCard extends Component
     public array $meta = [];
     public bool $cached = false;
 
-    public function mount(string $feature, ?int $entityId = null): void { $this->feature = $feature; $this->entityId = $entityId; }
+    public function mount(string $feature, ?int $entityId = null): void
+    {
+        abort_unless(auth()->check(), 403);
+        abort_unless(array_key_exists($feature, config('ai.features', [])), 404);
+        $this->feature = $feature;
+        $this->entityId = $entityId;
+    }
 
     public function load(): void
     {
