@@ -12,10 +12,6 @@
 
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
-    <div class="my-4">
-        <livewire:ai.insight-card feature="contract_brief" :entity-id="$contract->id" :key="'ai-contract-'.$contract->id" />
-    </div>
-
     @if (session()->has('message'))
         <div class="alert alert-success my-4">
             {{ session('message') }}
