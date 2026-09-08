@@ -27,8 +27,8 @@ services:
 
   ajil:
     build:
-      context: ./ajil
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/ajil/Dockerfile
     working_dir: /app
     env_file:
       - ./ajil/.env

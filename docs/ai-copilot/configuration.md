@@ -6,4 +6,6 @@ Create `ajil/.env` from `ajil/.env.example`; it is ignored by Git. Put only Ajil
 
 Run the isolated sidecar with `docker compose -f docker-compose.local.yml -f docker-compose.ai.yml up -d --build`. The override injects only the Ajil client token and feature flags into Laravel; provider keys stay in Ajil. Ajil has no published host port and shares the application network only with Laravel and Redis.
 
+The parent image wrapper resolves Ajil's embedded provider modules during its build, because the upstream Ajil release references one historical nested-submodule revision that GitHub no longer serves. This keeps the top-level Ajil submodule pinned to its public upstream commit and makes a fresh Kara Plus clone buildable.
+
 `KARA_AI_ROUTING_STRATEGY=fallback_chain` is the production default: Ajil tries the next provider/key only when needed. Set `parallel_race` only after measuring a latency benefit and accepting that it intentionally starts concurrent provider attempts; Ajil selects the first valid response and cancels the race where supported.
