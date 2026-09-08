@@ -27,10 +27,17 @@ class GlobalRailTest extends TestCase
         $rail = app(GlobalRail::class);
         $rail->mount();
 
-        $html = trim(view('livewire.ai.global-rail', ['open' => $rail->open])->render());
+        $html = trim(view('livewire.ai.global-rail', [
+            'open' => $rail->open,
+            'contextTitle' => $rail->contextTitle,
+            'contextDescription' => $rail->contextDescription,
+            'presets' => $rail->presets,
+        ])->render());
 
         $this->assertStringStartsWith('<aside ', $html);
         $this->assertStringEndsWith('</aside>', $html);
         $this->assertStringContainsString('<style>', $html);
+        $this->assertStringContainsString('Ready for this page', $html);
+        $this->assertStringNotContainsString('<section id="kara-ai-context-panel"', $html);
     }
 }
