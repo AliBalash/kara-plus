@@ -13,6 +13,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;
 
@@ -418,6 +419,100 @@ class RentalRequestEditTest extends TestCase
         $this->assertFalse($component->apply_discount);
         $this->assertEqualsWithDelta(210.25, $component->dailyRate, 0.01);
         $this->assertEqualsWithDelta(210.25, (float) $component->custom_daily_rate, 0.01);
+    }
+
+    public function test_operational_contract_allows_safe_customer_notes_and_actual_pickup_corrections_without_repricing(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Camry']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $customer = Customer::factory()->create([
+            'phone' => '+971500000501',
+            'messenger_phone' => '+971500000502',
+            'nationality' => 'IR',
+            'passport_expiry_date' => '2027-09-08',
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 950,
+                'used_daily_rate' => 300,
+            ]);
+        $charge = ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'amount' => 900,
+        ]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->first_name = 'Updated';
+        $component->notes = 'Customer asked for a phone call before return.';
+        $component->actual_pickup_at = '2026-09-07T11:15';
+        $component->submit();
+
+        $contract->refresh();
+        $customer->refresh();
+
+        $this->assertSame('Updated', $customer->first_name);
+        $this->assertSame('Customer asked for a phone call before return.', $contract->notes);
+        $this->assertTrue($contract->actual_pickup_at->equalTo(Carbon::parse('2026-09-07 11:15:00')));
+        $this->assertSame('2026-09-10 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(950.0, (float) $contract->total_price);
+        $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
+        $this->assertSame(900.0, (float) $charge->fresh()->amount);
+    }
+
+    public function test_operational_contract_rejects_a_planned_return_change_and_keeps_financial_history_intact(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 950,
+                'used_daily_rate' => 300,
+            ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'base_rental', 'amount' => 900]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-12T10:00';
+
+        try {
+            $component->submit();
+            $this->fail('An operational contract return date must not be edited directly.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'The planned return date cannot be changed after delivery. Use Extend Contract to increase the rental period.',
+                $exception->errors()['return_date'][0]
+            );
+        }
+
+        $contract->refresh();
+        $this->assertSame('2026-09-10 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(950.0, (float) $contract->total_price);
+        $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
     }
 
     public function test_change_status_to_reserve_requires_same_user_and_updates_car(): void

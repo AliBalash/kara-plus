@@ -17,6 +17,7 @@ use App\Models\Payment;
 use App\Services\Reservations\ReviewReservationApprovalService;
 use App\Support\PhoneNumber;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -51,6 +52,8 @@ class RentalRequestEdit extends Component
     public $return_location;
 
     public $return_date;
+
+    public $actual_pickup_at;
 
     public $pickup_date;
 
@@ -338,6 +341,7 @@ class RentalRequestEdit extends Component
         $this->return_location = $this->contract->return_location;
         $this->pickup_date = \Carbon\Carbon::parse($this->contract->pickup_date)->format('Y-m-d\TH:i');
         $this->return_date = \Carbon\Carbon::parse($this->contract->return_date)->format('Y-m-d\TH:i');
+        $this->actual_pickup_at = $this->contract->actual_pickup_at?->format('Y-m-d\\TH:i');
         $this->notes = $this->contract->notes;
         $this->kardo_required = $this->contract->kardo_required;
         $this->payment_on_delivery = $this->contract->payment_on_delivery;
@@ -923,6 +927,12 @@ class RentalRequestEdit extends Component
 
     public function selectExistingCustomer(int $customerId): void
     {
+        if ($this->isOperationalContract() && $customerId !== (int) $this->contract->customer_id) {
+            throw ValidationException::withMessages([
+                'phone' => ['The customer linked to a delivered contract cannot be replaced. You can still update this customer’s contact information.'],
+            ]);
+        }
+
         $customer = $this->customerLookupQuery()->findOrFail($customerId);
 
         $this->selectedExistingCustomerId = $customer->id;
@@ -1204,10 +1214,8 @@ class RentalRequestEdit extends Component
 
         $this->normalizePhoneFields();
 
-        if (in_array($this->contract->current_status, Contract::FINANCIALLY_IMMUTABLE_STATUSES, true)) {
-            // This form rebuilds its charge rows, which would violate the
-            // immutable financial ledger once the vehicle is operational.
-            throw ValidationException::withMessages(['contract' => ['Operational contracts cannot be commercially edited. Use the Extend Contract workflow.']]);
+        if ($this->isOperationalContract()) {
+            return $this->persistOperationalEdits();
         }
         $this->normalizeCustomerIdentityFields();
         $this->syncExistingCustomerSuggestionsByPhone();
@@ -1236,6 +1244,160 @@ class RentalRequestEdit extends Component
 
             return [$oldTotal, (float) $this->final_total];
         });
+    }
+
+    /**
+     * Operational contracts have an immutable financial ledger. This separate
+     * save path allows safe corrections without rebuilding charge rows.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function persistOperationalEdits(): array
+    {
+        $this->normalizeCustomerIdentityFields();
+        $this->syncExistingCustomerSuggestionsByPhone();
+        $this->validateWithScroll($this->operationalRules());
+
+        return DB::transaction(function (): array {
+            $this->contract = Contract::query()->lockForUpdate()->findOrFail($this->contract->id);
+
+            if (! $this->isOperationalContract()) {
+                throw ValidationException::withMessages([
+                    'contract' => ['This contract status changed. Please reload the page before saving.'],
+                ]);
+            }
+
+            $this->assertOperationalEditOnlyChangesAllowedFields();
+
+            $oldTotal = (float) $this->contract->total_price;
+            $this->updateOperationalCustomer();
+            $this->updateOperationalContract();
+
+            return [$oldTotal, $oldTotal];
+        });
+    }
+
+    private function operationalRules(): array
+    {
+        $rules = Arr::only($this->rules(), [
+            'agent_id',
+            'communication_channel',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'messenger_phone',
+            'address',
+            'birth_date',
+            'national_code',
+            'passport_number',
+            'passport_expiry_date',
+            'nationality',
+            'license_number',
+            'licensed_driver_name',
+        ]);
+
+        $rules['notes'] = ['nullable', 'string', 'max:5000'];
+        $rules['actual_pickup_at'] = [
+            $this->contract?->actual_pickup_at === null ? 'nullable' : 'required',
+            'date',
+            'before_or_equal:now',
+            function ($attribute, $value, $fail) {
+                if (($value === null || $value === '') || $this->contract?->actual_return_at === null) {
+                    return;
+                }
+
+                $fail('The actual pickup time cannot be changed after the vehicle has been returned.');
+            },
+        ];
+
+        return $rules;
+    }
+
+    private function assertOperationalEditOnlyChangesAllowedFields(): void
+    {
+        $errors = [];
+
+        if ((int) $this->selectedCarId !== (int) $this->contract->car_id) {
+            $errors['selectedCarId'] = ['The vehicle cannot be changed after delivery.'];
+        }
+
+        if ($this->pickup_location !== $this->contract->pickup_location
+            || $this->return_location !== $this->contract->return_location) {
+            $errors['pickup_location'] = ['Pickup and return locations can only be changed before the vehicle is delivered.'];
+        }
+
+        if (! $this->sameDateTime($this->pickup_date, $this->contract->pickup_date)) {
+            $errors['pickup_date'] = ['The scheduled pickup time can only be changed before delivery. Update the actual pickup time instead.'];
+        }
+
+        if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
+            $errors['return_date'] = ['The planned return date cannot be changed after delivery. Use Extend Contract to increase the rental period.'];
+        }
+
+        if ((int) ($this->selectedExistingCustomerId ?? $this->contract->customer_id) !== (int) $this->contract->customer_id) {
+            $errors['phone'] = ['The customer linked to a delivered contract cannot be replaced. You can still update this customer’s contact information.'];
+        }
+
+        $matchingCustomer = $this->findCustomerByPhone();
+        if ($matchingCustomer && (int) $matchingCustomer->id !== (int) $this->contract->customer_id) {
+            $errors['phone'] = ['This phone number belongs to another saved customer. A delivered contract cannot be moved to a different customer.'];
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function sameDateTime($value, $other): bool
+    {
+        if ($value === null || $value === '' || $other === null) {
+            return ($value === null || $value === '') && $other === null;
+        }
+
+        return Carbon::parse($value)->equalTo(Carbon::parse($other));
+    }
+
+    private function updateOperationalCustomer(): void
+    {
+        $customer = Customer::query()->lockForUpdate()->findOrFail($this->contract->customer_id);
+        $customer->fill([
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'national_code' => $this->national_code,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'messenger_phone' => $this->messenger_phone,
+            'address' => $this->address,
+            'birth_date' => $this->birth_date,
+            'passport_number' => $this->passport_number,
+            'passport_expiry_date' => $this->passport_expiry_date,
+            'nationality' => $this->nationality,
+            'license_number' => $this->license_number,
+        ])->save();
+
+        $this->contract->setRelation('customer', $customer);
+    }
+
+    private function updateOperationalContract(): void
+    {
+        $data = [
+            'agent_id' => $this->agent_id,
+            'communication_channel' => $this->communication_channel,
+            'licensed_driver_name' => $this->licensed_driver_name,
+            'notes' => $this->notes,
+        ];
+
+        if ($this->contract->actual_return_at === null) {
+            $data['actual_pickup_at'] = $this->actual_pickup_at ?: null;
+        }
+
+        $this->contract->update($data);
+    }
+
+    public function isOperationalContract(): bool
+    {
+        return in_array($this->contract->current_status, Contract::FINANCIALLY_IMMUTABLE_STATUSES, true);
     }
 
     private function validateWithScroll(?array $rules = null): array
