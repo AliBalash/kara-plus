@@ -11,7 +11,7 @@ use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\LocationCost;
-use Carbon\Carbon;
+use App\Models\VehicleCatalogItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -71,6 +71,17 @@ class PublicReservationApiTest extends TestCase
             'car_model_id' => $carModel->id,
             'status' => 'available',
             'availability' => true,
+        ]);
+        VehicleCatalogItem::query()->create([
+            'code' => 'KIA-PEGAS-'.$car->manufacturing_year,
+            'website_slug' => 'kia-pegas-'.$car->manufacturing_year,
+            'display_name' => 'Kia Pegas',
+            'brand' => 'Kia',
+            'model' => 'Pegas',
+            'match_brand' => 'Kia',
+            'match_model' => 'Pegas',
+            'manufacturing_year' => $car->manufacturing_year,
+            'is_active' => true,
         ]);
 
         CarOption::query()->create([
