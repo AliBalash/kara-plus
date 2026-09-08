@@ -1260,6 +1260,7 @@ class RentalRequestEdit extends Component
 
         return DB::transaction(function (): array {
             $this->contract = Contract::query()->lockForUpdate()->findOrFail($this->contract->id);
+            $lockedCar = Car::query()->lockForUpdate()->findOrFail($this->contract->car_id);
 
             if (! $this->isOperationalContract()) {
                 throw ValidationException::withMessages([
@@ -1268,6 +1269,20 @@ class RentalRequestEdit extends Component
             }
 
             $this->assertOperationalEditOnlyChangesAllowedFields();
+
+            if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
+                $availabilityConflicts = app(\App\Services\VehicleAvailabilityService::class)->conflicts(
+                    $lockedCar,
+                    $this->contract->pickup_date,
+                    $this->return_date,
+                    $this->contract->id
+                );
+                if ($availabilityConflicts !== []) {
+                    throw ValidationException::withMessages([
+                        'return_date' => [$availabilityConflicts[0]['message']],
+                    ]);
+                }
+            }
 
             $oldTotal = (float) $this->contract->total_price;
             $this->updateOperationalCustomer();
@@ -1332,7 +1347,12 @@ class RentalRequestEdit extends Component
         }
 
         if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
-            $errors['return_date'] = ['The planned return date cannot be changed after delivery. Use Extend Contract to increase the rental period.'];
+            if (! in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)
+                || $this->contract->actual_return_at !== null) {
+                $errors['return_date'] = ['The planned return can only be corrected while the delivered vehicle has not been returned.'];
+            } elseif (! $this->isSameBillableRentalDayCount($this->return_date, $this->contract->return_date)) {
+                $errors['return_date'] = ['This change adds a billable rental day. Use Extend Contract to increase the rental period.'];
+            }
         }
 
         if ((int) ($this->selectedExistingCustomerId ?? $this->contract->customer_id) !== (int) $this->contract->customer_id) {
@@ -1358,6 +1378,19 @@ class RentalRequestEdit extends Component
         return Carbon::parse($value)->equalTo(Carbon::parse($other));
     }
 
+    private function isSameBillableRentalDayCount($candidateReturnAt, $currentReturnAt): bool
+    {
+        $pickupAt = Carbon::parse($this->contract->pickup_date);
+
+        return $this->billableRentalDays($pickupAt, Carbon::parse($candidateReturnAt))
+            === $this->billableRentalDays($pickupAt, Carbon::parse($currentReturnAt));
+    }
+
+    private function billableRentalDays(Carbon $pickupAt, Carbon $returnAt): int
+    {
+        return max(1, (int) ceil($pickupAt->diffInSeconds($returnAt, false) / 86400));
+    }
+
     private function updateOperationalCustomer(): void
     {
         $customer = Customer::query()->lockForUpdate()->findOrFail($this->contract->customer_id);
@@ -1381,6 +1414,10 @@ class RentalRequestEdit extends Component
 
     private function updateOperationalContract(): void
     {
+        if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
+            $this->contract->applyNonBillableReturnTimeCorrection($this->return_date);
+        }
+
         $data = [
             'agent_id' => $this->agent_id,
             'communication_channel' => $this->communication_channel,

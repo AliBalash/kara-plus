@@ -233,13 +233,16 @@
     <form wire:submit.prevent="submit" novalidate>
         @php
             $operationalEditLocked = $this->isOperationalContract();
+            $canCorrectReturnTime = $operationalEditLocked
+                && in_array($contract->current_status, \App\Models\Contract::AMENDABLE_STATUSES, true)
+                && $contract->actual_return_at === null;
         @endphp
         @if ($operationalEditLocked)
             <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
                 <div class="fw-semibold"><i class="bx bx-info-circle me-1"></i> Operational contract — safe edits remain available</div>
                 <div class="small mt-1">
                     Customer contact details, notes, agent, communication channel, licensed driver name and actual pickup time can be corrected here.
-                    Vehicle, locations, planned dates, price and services are locked after delivery. Use <strong>Extend Contract</strong> only to increase the planned return date.
+                    Vehicle, locations, pickup time, price and services are locked after delivery. The return time can only be adjusted when it does not add a billable rental day; otherwise use <strong>Extend Contract</strong>.
                 </div>
             </div>
         @endif
@@ -946,8 +949,11 @@
                                 <input id="editReturnDateInput" type="datetime-local"
                                     class="form-control @error('return_date') is-invalid @enderror"
                                     wire:model.live="return_date" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select return date and time" @disabled($operationalEditLocked)>
+                                    title="Select return date and time" @disabled($operationalEditLocked && ! $canCorrectReturnTime)>
                             </div>
+                            @if ($canCorrectReturnTime)
+                                <div class="form-text">You may correct the return time only when the billable rental days and total amount do not change. If the change adds a billable day, use Extend Contract.</div>
+                            @endif
                             @error('return_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
                                 </div>

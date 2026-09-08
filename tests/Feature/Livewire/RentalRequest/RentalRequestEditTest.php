@@ -504,7 +504,7 @@ class RentalRequestEditTest extends TestCase
             $this->fail('An operational contract return date must not be edited directly.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'The planned return date cannot be changed after delivery. Use Extend Contract to increase the rental period.',
+                'This change adds a billable rental day. Use Extend Contract to increase the rental period.',
                 $exception->errors()['return_date'][0]
             );
         }
@@ -512,6 +512,43 @@ class RentalRequestEditTest extends TestCase
         $contract->refresh();
         $this->assertSame('2026-09-10 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
         $this->assertSame(950.0, (float) $contract->total_price);
+        $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
+    }
+
+    public function test_operational_contract_allows_a_return_time_correction_when_billable_days_do_not_change(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                // Both the original and corrected periods are charged as three days.
+                'return_date' => '2026-09-10 09:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 950,
+                'used_daily_rate' => 300,
+            ]);
+        $charge = ContractCharges::factory()->for($contract)->create(['title' => 'base_rental', 'amount' => 900]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-10T09:30';
+        $component->submit();
+
+        $contract->refresh();
+
+        $this->assertSame('2026-09-10 09:30:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(950.0, (float) $contract->total_price);
+        $this->assertSame(900.0, (float) $charge->fresh()->amount);
         $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -403,6 +404,48 @@ class Contract extends Model
         } finally {
             $this->commercialMutationAuthorized = false;
         }
+    }
+
+    /**
+     * Correct a planned return time while the rental is still open, without
+     * changing the number of billable rental days or any financial record.
+     *
+     * This is deliberately separate from an amendment. An amendment is the
+     * only allowed route when the rental becomes billable for an additional
+     * day.
+     */
+    public function applyNonBillableReturnTimeCorrection($newReturnAt): void
+    {
+        $newReturnAt = Carbon::parse($newReturnAt);
+        $currentReturnAt = Carbon::parse($this->return_date);
+        $pickupAt = Carbon::parse($this->pickup_date);
+
+        if (! in_array($this->current_status, self::AMENDABLE_STATUSES, true)
+            || $this->actual_return_at !== null) {
+            throw new \DomainException('The planned return can only be corrected while the delivered vehicle has not been returned.');
+        }
+
+        if ($newReturnAt->lessThanOrEqualTo($pickupAt)) {
+            throw new \DomainException('The planned return must be after the pickup time.');
+        }
+
+        if ($this->billableRentalDays($pickupAt, $newReturnAt)
+            !== $this->billableRentalDays($pickupAt, $currentReturnAt)) {
+            throw new \DomainException('A return change that adds a billable rental day must be handled through an extension.');
+        }
+
+        $this->commercialMutationAuthorized = true;
+
+        try {
+            $this->update(['return_date' => $newReturnAt]);
+        } finally {
+            $this->commercialMutationAuthorized = false;
+        }
+    }
+
+    private function billableRentalDays(Carbon $pickupAt, Carbon $returnAt): int
+    {
+        return max(1, (int) ceil($pickupAt->diffInSeconds($returnAt, false) / 86400));
     }
 
     public function pickupDocument()
