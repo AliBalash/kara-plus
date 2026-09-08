@@ -39,6 +39,7 @@ use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCancelledList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestCreate;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestDetail;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestEdit;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestExtension;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestHistory;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestInspectionList;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestKardoApproval;
@@ -73,6 +74,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/website-review', RentalRequestWebsiteReview::class)->name('rental-requests.website-review');
     Route::get('/expert/rental-requests/create/', RentalRequestCreate::class)->name('rental-requests.creat');
     Route::get('/expert/rental-requests/edit/{contractId}/', RentalRequestEdit::class)->name('rental-requests.edit');
+    Route::get('/expert/rental-requests/extend/{contractId}', RentalRequestExtension::class)->name('rental-requests.extend');
 
     Route::get('/expert/rental-requests/me', RentalRequestMe::class)->name('rental-requests.me');
     Route::get('/expert/rental-requests/detail/{contractId}', RentalRequestDetail::class)->name('rental-requests.details');

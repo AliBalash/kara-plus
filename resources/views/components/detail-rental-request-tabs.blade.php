@@ -71,6 +71,17 @@
             'driver' => false,
         ],
         [
+            'key' => 'amendments',
+            'label' => 'Amendments',
+            'icon' => 'bx-calendar-edit',
+            'routes' => ['rental-requests.extend'],
+            'route' => 'rental-requests.extend',
+            'params' => $contractId ? [$contractId] : null,
+            'status' => null,
+            'staff' => true,
+            'driver' => false,
+        ],
+        [
             'key' => 'history',
             'label' => 'Status & History',
             'icon' => 'bx-history',
