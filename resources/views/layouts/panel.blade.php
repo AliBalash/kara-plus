@@ -71,6 +71,9 @@
                         {{ $slot }}
                     </div>
                     <x-panel.toast-manager :validation-errors="$errors" />
+                    @if (config('ai.enabled') && auth()->check())
+                        <livewire:ai.global-rail />
+                    @endif
                     <!-- / Content -->
 
                     <!-- Footer -->
