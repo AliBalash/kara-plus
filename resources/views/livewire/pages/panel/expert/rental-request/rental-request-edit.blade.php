@@ -233,7 +233,7 @@
     <form wire:submit.prevent="submit" novalidate>
         @php
             $operationalEditLocked = $this->isOperationalContract();
-            $canCorrectReturnTime = $operationalEditLocked
+            $canEditOperationalSchedule = $operationalEditLocked
                 && in_array($contract->current_status, \App\Models\Contract::AMENDABLE_STATUSES, true)
                 && $contract->actual_return_at === null;
         @endphp
@@ -242,7 +242,7 @@
                 <div class="fw-semibold"><i class="bx bx-info-circle me-1"></i> Operational contract — safe edits remain available</div>
                 <div class="small mt-1">
                     Customer contact details, notes, agent, communication channel, licensed driver name and actual pickup time can be corrected here.
-                    Vehicle, locations, pickup time, price and services are locked after delivery. The return time can only be adjusted when it does not add a billable rental day; otherwise use <strong>Extend Contract</strong>.
+                    Vehicle, price and services are locked after delivery. Locations and planned pickup details can still be corrected. A later return that adds a billable rental day must use <strong>Extend Contract</strong>.
                 </div>
             </div>
         @endif
@@ -575,7 +575,7 @@
                                 <span class="input-group-text"><i class="bx bx-chat"></i></span>
                                     <textarea class="form-control @error('driver_note') is-invalid @enderror" rows="2"
                                     wire:model="driver_note" placeholder="Driver Note for Pickup" data-bs-toggle="tooltip"
-                                    title="Note shown to the driver on pickup document" @disabled($operationalEditLocked)></textarea>
+                                    title="Note shown to the driver on pickup document"></textarea>
                                 @error('driver_note')
                                     <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                                 @enderror
@@ -588,7 +588,7 @@
                                 <span class="input-group-text"><i class="bx bx-category"></i></span>
                                 <select id="depositCategoryEdit"
                                     class="form-select @error('deposit_category') is-invalid @enderror"
-                                    wire:model.live="deposit_category" @disabled($operationalEditLocked)>
+                                    wire:model.live="deposit_category">
                                     <option value="">Select security hold category</option>
                                     <option value="cash_aed">Cash (based on AED)</option>
                                     <option value="cheque">Cheque</option>
@@ -604,7 +604,7 @@
                                     <span class="input-group-text"><i class="bx bx-money"></i></span>
                                     <input type="number" step="0.01" min="0"
                                         class="form-control @error('deposit') is-invalid @enderror" wire:model="deposit"
-                                        placeholder="Enter security hold amount (AED)" @disabled($operationalEditLocked)>
+                                        placeholder="Enter security hold amount (AED)">
                                     @error('deposit')
                                         <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                                     @enderror
@@ -613,7 +613,7 @@
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bx bx-chat"></i></span>
                                     <input type="text" class="form-control @error('deposit') is-invalid @enderror"
-                                        wire:model="deposit" placeholder="Add security hold details" @disabled($operationalEditLocked)>
+                                        wire:model="deposit" placeholder="Add security hold details">
                                     @error('deposit')
                                         <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
                                     @enderror
@@ -888,7 +888,7 @@
                                 <select id="editPickupLocationInput"
                                     class="form-control @error('pickup_location') is-invalid @enderror"
                                     wire:model.live="pickup_location" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select pickup location" @disabled($operationalEditLocked)>
+                                    title="Select pickup location" @disabled($operationalEditLocked && ! $canEditOperationalSchedule)>
                                     <option value="">Pickup Location</option>
                                     @foreach ($locationOptions as $location)
                                         <option value="{{ $location }}">{{ $location }}</option>
@@ -910,7 +910,7 @@
                                 <select id="editReturnLocationInput"
                                     class="form-control @error('return_location') is-invalid @enderror"
                                     wire:model.live="return_location" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select return location" @disabled($operationalEditLocked)>
+                                    title="Select return location" @disabled($operationalEditLocked && ! $canEditOperationalSchedule)>
                                     <option value="">Return Location</option>
                                     @foreach ($locationOptions as $location)
                                         <option value="{{ $location }}">{{ $location }}</option>
@@ -932,7 +932,7 @@
                                 <input id="editPickupDateInput" type="datetime-local"
                                     class="form-control @error('pickup_date') is-invalid @enderror"
                                     wire:model.live="pickup_date" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select pickup date and time" @disabled($operationalEditLocked)>
+                                    title="Select pickup date and time" @disabled($operationalEditLocked && ! $canEditOperationalSchedule)>
                             </div>
                             @error('pickup_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
@@ -949,10 +949,10 @@
                                 <input id="editReturnDateInput" type="datetime-local"
                                     class="form-control @error('return_date') is-invalid @enderror"
                                     wire:model.live="return_date" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select return date and time" @disabled($operationalEditLocked && ! $canCorrectReturnTime)>
+                                    title="Select return date and time" @disabled($operationalEditLocked && ! $canEditOperationalSchedule)>
                             </div>
-                            @if ($canCorrectReturnTime)
-                                <div class="form-text">You may correct the return time only when the billable rental days and total amount do not change. If the change adds a billable day, use Extend Contract.</div>
+                            @if ($canEditOperationalSchedule)
+                                <div class="form-text">You may correct the planned return here. If a later return adds a billable rental day, use Extend Contract.</div>
                             @endif
                             @error('return_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}

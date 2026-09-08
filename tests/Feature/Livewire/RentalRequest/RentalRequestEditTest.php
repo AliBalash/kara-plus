@@ -457,6 +457,9 @@ class RentalRequestEditTest extends TestCase
         $component->mount($contract->id);
         $component->first_name = 'Updated';
         $component->notes = 'Customer asked for a phone call before return.';
+        $component->driver_note = 'Call the customer before arriving.';
+        $component->deposit_category = 'cash_aed';
+        $component->deposit = '1500';
         $component->actual_pickup_at = '2026-09-07T11:15';
         $component->submit();
 
@@ -465,6 +468,9 @@ class RentalRequestEditTest extends TestCase
 
         $this->assertSame('Updated', $customer->first_name);
         $this->assertSame('Customer asked for a phone call before return.', $contract->notes);
+        $this->assertSame('Call the customer before arriving.', data_get($contract->meta, 'driver_note'));
+        $this->assertSame('cash_aed', $contract->deposit_category);
+        $this->assertSame('1500.00', $contract->deposit);
         $this->assertTrue($contract->actual_pickup_at->equalTo(Carbon::parse('2026-09-07 11:15:00')));
         $this->assertSame('2026-09-10 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
         $this->assertSame(950.0, (float) $contract->total_price);
@@ -504,7 +510,7 @@ class RentalRequestEditTest extends TestCase
             $this->fail('An operational contract return date must not be edited directly.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'This change adds a billable rental day. Use Extend Contract to increase the rental period.',
+                'This later return adds a billable rental day. Use Extend Contract to increase the rental period.',
                 $exception->errors()['return_date'][0]
             );
         }
@@ -550,6 +556,47 @@ class RentalRequestEditTest extends TestCase
         $this->assertSame(950.0, (float) $contract->total_price);
         $this->assertSame(900.0, (float) $charge->fresh()->amount);
         $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
+    }
+
+    public function test_operational_contract_allows_location_and_planned_pickup_corrections_without_repricing(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 09:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 950,
+                'used_daily_rate' => 300,
+            ]);
+        $charge = ContractCharges::factory()->for($contract)->create(['title' => 'base_rental', 'amount' => 900]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->pickup_location = 'UAE/Dubai/JBR';
+        $component->return_location = 'UAE/Dubai/JBR';
+        $component->pickup_date = '2026-09-07T09:00';
+        $component->submit();
+
+        $contract->refresh();
+
+        $this->assertSame('UAE/Dubai/JBR', $contract->pickup_location);
+        $this->assertSame('UAE/Dubai/JBR', $contract->return_location);
+        $this->assertSame('2026-09-07 09:00:00', $contract->pickup_date->format('Y-m-d H:i:s'));
+        $this->assertSame(950.0, (float) $contract->total_price);
+        $this->assertSame(900.0, (float) $charge->fresh()->amount);
     }
 
     public function test_change_status_to_reserve_requires_same_user_and_updates_car(): void

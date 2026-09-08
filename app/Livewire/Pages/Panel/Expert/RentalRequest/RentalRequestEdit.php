@@ -893,7 +893,8 @@ class RentalRequestEdit extends Component
             $this->validateOnly($propertyName);
         }
 
-        if ($this->isCostRelatedField($propertyName) || in_array($propertyName, ['apply_discount', 'custom_daily_rate'])) {
+        if (! $this->isOperationalContract()
+            && ($this->isCostRelatedField($propertyName) || in_array($propertyName, ['apply_discount', 'custom_daily_rate']))) {
             $this->calculateCosts();
         }
         if ($propertyName === 'selectedModelId') {
@@ -1313,6 +1314,9 @@ class RentalRequestEdit extends Component
         ]);
 
         $rules['notes'] = ['nullable', 'string', 'max:5000'];
+        $rules['driver_note'] = ['nullable', 'string', 'max:1000'];
+        $rules['deposit_category'] = ['nullable', 'in:cash_aed,cheque,transfer_cash_irr', 'required_with:deposit'];
+        $rules['deposit'] = $this->depositRules();
         $rules['actual_pickup_at'] = [
             $this->contract?->actual_pickup_at === null ? 'nullable' : 'required',
             'date',
@@ -1337,22 +1341,17 @@ class RentalRequestEdit extends Component
             $errors['selectedCarId'] = ['The vehicle cannot be changed after delivery.'];
         }
 
-        if ($this->pickup_location !== $this->contract->pickup_location
-            || $this->return_location !== $this->contract->return_location) {
-            $errors['pickup_location'] = ['Pickup and return locations can only be changed before the vehicle is delivered.'];
-        }
-
-        if (! $this->sameDateTime($this->pickup_date, $this->contract->pickup_date)) {
-            $errors['pickup_date'] = ['The scheduled pickup time can only be changed before delivery. Update the actual pickup time instead.'];
-        }
-
         if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
             if (! in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)
                 || $this->contract->actual_return_at !== null) {
                 $errors['return_date'] = ['The planned return can only be corrected while the delivered vehicle has not been returned.'];
-            } elseif (! $this->isSameBillableRentalDayCount($this->return_date, $this->contract->return_date)) {
-                $errors['return_date'] = ['This change adds a billable rental day. Use Extend Contract to increase the rental period.'];
+            } elseif ($this->returnChangeAddsBillableRentalDay()) {
+                $errors['return_date'] = ['This later return adds a billable rental day. Use Extend Contract to increase the rental period.'];
             }
+        }
+
+        if (Carbon::parse($this->return_date)->lessThanOrEqualTo(Carbon::parse($this->pickup_date))) {
+            $errors['return_date'] = ['The planned return must be after the pickup time.'];
         }
 
         if ((int) ($this->selectedExistingCustomerId ?? $this->contract->customer_id) !== (int) $this->contract->customer_id) {
@@ -1378,12 +1377,15 @@ class RentalRequestEdit extends Component
         return Carbon::parse($value)->equalTo(Carbon::parse($other));
     }
 
-    private function isSameBillableRentalDayCount($candidateReturnAt, $currentReturnAt): bool
+    private function returnChangeAddsBillableRentalDay(): bool
     {
         $pickupAt = Carbon::parse($this->contract->pickup_date);
+        $currentReturnAt = Carbon::parse($this->contract->return_date);
+        $candidateReturnAt = Carbon::parse($this->return_date);
 
-        return $this->billableRentalDays($pickupAt, Carbon::parse($candidateReturnAt))
-            === $this->billableRentalDays($pickupAt, Carbon::parse($currentReturnAt));
+        return $candidateReturnAt->greaterThan($currentReturnAt)
+            && $this->billableRentalDays($pickupAt, $candidateReturnAt)
+                > $this->billableRentalDays($pickupAt, $currentReturnAt);
     }
 
     private function billableRentalDays(Carbon $pickupAt, Carbon $returnAt): int
@@ -1414,8 +1416,26 @@ class RentalRequestEdit extends Component
 
     private function updateOperationalContract(): void
     {
-        if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
-            $this->contract->applyNonBillableReturnTimeCorrection($this->return_date);
+        if (! $this->sameDateTime($this->pickup_date, $this->contract->pickup_date)
+            || ! $this->sameDateTime($this->return_date, $this->contract->return_date)
+            || $this->pickup_location !== $this->contract->pickup_location
+            || $this->return_location !== $this->contract->return_location) {
+            $this->contract->applyOperationalScheduleAndLocationCorrections(
+                $this->pickup_date,
+                $this->return_date,
+                $this->pickup_location,
+                $this->return_location
+            );
+        }
+
+        $meta = $this->contract->meta ?? [];
+        $meta = is_array($meta) ? $meta : [];
+        $driverNote = trim((string) $this->driver_note);
+
+        if ($driverNote !== '') {
+            $meta['driver_note'] = $driverNote;
+        } else {
+            unset($meta['driver_note']);
         }
 
         $data = [
@@ -1423,6 +1443,9 @@ class RentalRequestEdit extends Component
             'communication_channel' => $this->communication_channel,
             'licensed_driver_name' => $this->licensed_driver_name,
             'notes' => $this->notes,
+            'deposit' => $this->normalizedDeposit(),
+            'deposit_category' => $this->deposit_category,
+            'meta' => $meta !== [] ? $meta : null,
         ];
 
         if ($this->contract->actual_return_at === null) {

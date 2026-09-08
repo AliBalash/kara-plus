@@ -407,16 +407,17 @@ class Contract extends Model
     }
 
     /**
-     * Correct a planned return time while the rental is still open, without
-     * changing the number of billable rental days or any financial record.
-     *
-     * This is deliberately separate from an amendment. An amendment is the
-     * only allowed route when the rental becomes billable for an additional
-     * day.
+     * Correct operational planning details without rewriting the financial
+     * ledger. A later return that adds a billable day remains an amendment.
      */
-    public function applyNonBillableReturnTimeCorrection($newReturnAt): void
-    {
+    public function applyOperationalScheduleAndLocationCorrections(
+        $newPickupAt,
+        $newReturnAt,
+        ?string $pickupLocation,
+        ?string $returnLocation
+    ): void {
         $newReturnAt = Carbon::parse($newReturnAt);
+        $newPickupAt = Carbon::parse($newPickupAt);
         $currentReturnAt = Carbon::parse($this->return_date);
         $pickupAt = Carbon::parse($this->pickup_date);
 
@@ -425,19 +426,25 @@ class Contract extends Model
             throw new \DomainException('The planned return can only be corrected while the delivered vehicle has not been returned.');
         }
 
-        if ($newReturnAt->lessThanOrEqualTo($pickupAt)) {
+        if ($newReturnAt->lessThanOrEqualTo($newPickupAt)) {
             throw new \DomainException('The planned return must be after the pickup time.');
         }
 
-        if ($this->billableRentalDays($pickupAt, $newReturnAt)
-            !== $this->billableRentalDays($pickupAt, $currentReturnAt)) {
-            throw new \DomainException('A return change that adds a billable rental day must be handled through an extension.');
+        if ($newReturnAt->greaterThan($currentReturnAt)
+            && $this->billableRentalDays($pickupAt, $newReturnAt)
+                > $this->billableRentalDays($pickupAt, $currentReturnAt)) {
+            throw new \DomainException('A later return that adds a billable rental day must be handled through an extension.');
         }
 
         $this->commercialMutationAuthorized = true;
 
         try {
-            $this->update(['return_date' => $newReturnAt]);
+            $this->update([
+                'pickup_date' => $newPickupAt,
+                'return_date' => $newReturnAt,
+                'pickup_location' => $pickupLocation,
+                'return_location' => $returnLocation,
+            ]);
         } finally {
             $this->commercialMutationAuthorized = false;
         }
