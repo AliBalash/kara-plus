@@ -35,6 +35,16 @@ class AjilGatewayClient
         if (!is_string($content)) throw new RuntimeException('Ajil response has no message content.');
         $decoded = json_decode($content, true);
         if (!is_array($decoded)) throw new RuntimeException('Ajil returned malformed JSON.');
-        return ['request_id' => $requestId, 'response' => $decoded, 'provider' => data_get($response->json(), 'provider'), 'model' => data_get($response->json(), 'model')];
+        return [
+            'request_id' => $requestId,
+            'response' => $decoded,
+            'provider' => data_get($response->json(), 'provider'),
+            'model' => data_get($response->json(), 'model'),
+            // Ajil follows the OpenAI usage envelope when an upstream reports
+            // it. These values are metadata only; no prompt or response body
+            // is persisted by Kara Plus.
+            'input_tokens' => data_get($response->json(), 'usage.prompt_tokens'),
+            'output_tokens' => data_get($response->json(), 'usage.completion_tokens'),
+        ];
     }
 }

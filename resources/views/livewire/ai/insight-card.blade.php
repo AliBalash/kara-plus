@@ -28,6 +28,15 @@
                     @endforeach</div>
                 @endif
             @endforeach
+            <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top">
+                <span class="small text-muted">Was this useful?</span>
+                @if($feedbackHelpful === null)
+                    <button class="btn btn-sm btn-text-secondary p-0" wire:click="feedback(true)" aria-label="Mark insight useful"><i class="bx bx-like"></i></button>
+                    <button class="btn btn-sm btn-text-secondary p-0" wire:click="feedback(false)" aria-label="Mark insight not useful"><i class="bx bx-dislike"></i></button>
+                @else
+                    <span class="small text-success">Thanks for the feedback.</span>
+                @endif
+            </div>
             <button class="btn btn-sm btn-outline-primary mt-2" wire:click="load" wire:loading.attr="disabled"><span wire:loading.remove wire:target="load">Refresh</span><span wire:loading wire:target="load">Refreshing…</span></button>
         @endif
     </div>

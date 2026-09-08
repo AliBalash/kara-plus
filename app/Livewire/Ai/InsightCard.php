@@ -3,6 +3,7 @@
 namespace App\Livewire\Ai;
 
 use App\AI\AiInsightService;
+use App\Models\AiFeedback;
 use Livewire\Component;
 
 class InsightCard extends Component
@@ -14,6 +15,9 @@ class InsightCard extends Component
     public array $facts = [];
     public array $meta = [];
     public bool $cached = false;
+    public ?bool $feedbackHelpful = null;
+    public ?int $insightId = null;
+    public ?string $insightEntityType = null;
 
     public function mount(string $feature, ?int $entityId = null): void
     {
@@ -27,7 +31,25 @@ class InsightCard extends Component
     {
         $this->state = 'loading';
         $result = app(AiInsightService::class)->generate($this->feature, $this->entityId);
-        $this->state = $result['state']; $this->insight = $result['data'] ?? []; $this->facts = $result['facts'] ?? []; $this->meta = $result['meta'] ?? []; $this->cached = (bool) ($result['cached'] ?? false);
+        $this->state = $result['state']; $this->insight = $result['data'] ?? []; $this->facts = $result['facts'] ?? []; $this->meta = $result['meta'] ?? []; $this->cached = (bool) ($result['cached'] ?? false); $this->insightId = $result['insight_id'] ?? null; $this->insightEntityType = $result['entity_type'] ?? null; $this->feedbackHelpful = null;
+    }
+
+    public function feedback(bool $helpful): void
+    {
+        if ($this->state !== 'ready' || $this->feedbackHelpful !== null) {
+            return;
+        }
+
+        AiFeedback::create([
+            'ai_insight_id' => $this->insightId,
+            'user_id' => auth()->id(),
+            'feature' => $this->feature,
+            'entity_type' => $this->insightEntityType,
+            'entity_id' => $this->entityId,
+            'helpful' => $helpful,
+        ]);
+
+        $this->feedbackHelpful = $helpful;
     }
 
     public function render() { return view('livewire.ai.insight-card'); }

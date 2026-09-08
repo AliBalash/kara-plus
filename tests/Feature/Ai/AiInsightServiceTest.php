@@ -4,6 +4,7 @@ namespace Tests\Feature\Ai;
 
 use App\AI\AiInsightService;
 use App\Models\AiInsight;
+use App\Models\AiRun;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Payment;
@@ -50,7 +51,7 @@ class AiInsightServiceTest extends TestCase
             'is_paid' => false,
             'approval_status' => 'pending',
         ]);
-        Http::fake(['ajil.test/v1/chat/completions' => Http::response(['model' => 'llama-3.3-70b-versatile', 'choices' => [['message' => ['content' => json_encode(['headline' => 'Review required', 'summary' => 'Verified risk.', 'critical_alerts' => [['fact_id' => 'OVERDUE_RETURN:contract:'.$contract->id, 'title' => 'Late return', 'reason' => 'Past planned return', 'check_now' => 'Open contract']], 'watchlist' => [], 'positive_signals' => [], 'data_quality_warnings' => [], 'insufficient_data' => []])]]]], 200)]);
+        Http::fake(['ajil.test/v1/chat/completions' => Http::response(['model' => 'llama-3.3-70b-versatile', 'usage' => ['prompt_tokens' => 101, 'completion_tokens' => 32], 'choices' => [['message' => ['content' => json_encode(['headline' => 'Review required', 'summary' => 'Verified risk.', 'critical_alerts' => [['fact_id' => 'OVERDUE_RETURN:contract:'.$contract->id, 'title' => 'Late return', 'reason' => 'Past planned return', 'check_now' => 'Open contract']], 'watchlist' => [], 'positive_signals' => [], 'data_quality_warnings' => [], 'insufficient_data' => []])]]]], 200)]);
 
         $first = app(AiInsightService::class)->generate('contract_brief', $contract->id);
         $second = app(AiInsightService::class)->generate('contract_brief', $contract->id);
@@ -59,6 +60,10 @@ class AiInsightServiceTest extends TestCase
         $this->assertFalse($first['cached']);
         $this->assertTrue($second['cached']);
         $this->assertDatabaseCount('ai_insights', 1);
+        $run = AiRun::where('status', 'success')->firstOrFail();
+        $this->assertSame(101, $run->input_tokens);
+        $this->assertSame(32, $run->output_tokens);
+        $this->assertSame('fallback_chain', $run->strategy);
         $ajilCalls = Http::recorded(fn ($request) => str_starts_with($request->url(), 'http://ajil.test/'));
         $this->assertCount(1, $ajilCalls);
         Http::assertSent(fn ($request) => str_starts_with($request->url(), 'http://ajil.test/') && !str_contains($request->body(), $contract->customer->phone));
@@ -67,13 +72,38 @@ class AiInsightServiceTest extends TestCase
     public function test_repeated_failures_open_a_short_circuit(): void
     {
         config()->set('ai.circuit.failure_threshold', 1);
-        Http::fake(['ajil.test/v1/chat/completions' => Http::response([], 503)]);
+        Http::fake(['ajil.test/v1/chat/completions' => Http::response([], 429)]);
         $first = app(AiInsightService::class)->generate('dashboard_operations');
         $second = app(AiInsightService::class)->generate('dashboard_operations');
         $this->assertSame('unavailable', $first['state']);
         $this->assertSame('unavailable', $second['state']);
         $ajilCalls = Http::recorded(fn ($request) => str_starts_with($request->url(), 'http://ajil.test/'));
         $this->assertCount(1, $ajilCalls);
+    }
+
+    public function test_disabled_feature_never_calls_ajil(): void
+    {
+        config()->set('ai.features.dashboard_operations', false);
+
+        $result = app(AiInsightService::class)->generate('dashboard_operations');
+
+        $this->assertSame('disabled', $result['state']);
+        Http::assertNothingSent();
+    }
+
+    public function test_malformed_ai_response_is_not_cached_or_displayed(): void
+    {
+        config()->set('ai.features.dashboard_operations', true);
+        Http::fake(['ajil.test/v1/chat/completions' => Http::response([
+            'model' => 'llama-3.3-70b-versatile',
+            'choices' => [['message' => ['content' => '{not-json}']]],
+        ], 200)]);
+
+        $result = app(AiInsightService::class)->generate('dashboard_operations');
+
+        $this->assertSame('unavailable', $result['state']);
+        $this->assertDatabaseCount('ai_insights', 0);
+        $this->assertDatabaseHas('ai_runs', ['feature' => 'dashboard_operations', 'status' => 'unavailable']);
     }
 
     public function test_dashboard_context_is_cacheable_when_the_verified_facts_are_unchanged(): void

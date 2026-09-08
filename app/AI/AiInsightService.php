@@ -24,7 +24,7 @@ class AiInsightService
         $cached = AiInsight::where('feature', $feature)->where('entity_id', $entityId)->where('input_hash', $hash)->where('expires_at', '>', now())->latest()->first();
         if ($cached) {
             $this->run((string) Str::uuid(), $feature, $entityType, $entityId, $hash, $promptVersion, 'cached', true);
-            return ['state' => 'ready', 'data' => $cached->response_json, 'cached' => true, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+            return ['state' => 'ready', 'data' => $cached->response_json, 'cached' => true, 'insight_id' => $cached->id, 'entity_type' => $entityType, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
         }
         $lock = Cache::lock('kara-ai:inflight:'.$hash, config('ai.ajil.timeout') + 5);
         if (! $lock->get()) {
@@ -37,14 +37,14 @@ class AiInsightService
             $cached = AiInsight::where('feature', $feature)->where('entity_id', $entityId)->where('input_hash', $hash)->where('expires_at', '>', now())->latest()->first();
             if ($cached) {
                 $this->run((string) Str::uuid(), $feature, $entityType, $entityId, $hash, $promptVersion, 'cached', true);
-                return ['state' => 'ready', 'data' => $cached->response_json, 'cached' => true, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+                return ['state' => 'ready', 'data' => $cached->response_json, 'cached' => true, 'insight_id' => $cached->id, 'entity_type' => $entityType, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
             }
             $gateway = app(AjilGatewayClient::class)->complete($feature, $facts, $context);
             $data = app(AiResponseValidator::class)->validate($gateway['response'], $facts);
-            AiInsight::create(['scope' => 'panel', 'entity_type' => $entityType, 'entity_id' => $entityId, 'feature' => $feature, 'prompt_version' => $promptVersion, 'input_hash' => $hash, 'response_json' => $data, 'generated_at' => now(), 'expires_at' => now()->addSeconds(config('ai.cache_ttl'))]);
+            $insight = AiInsight::create(['scope' => 'panel', 'entity_type' => $entityType, 'entity_id' => $entityId, 'feature' => $feature, 'prompt_version' => $promptVersion, 'input_hash' => $hash, 'response_json' => $data, 'generated_at' => now(), 'expires_at' => now()->addSeconds(config('ai.cache_ttl'))]);
             Cache::forget($this->circuitKey($feature));
             $this->run($requestId, $feature, $entityType, $entityId, $hash, $promptVersion, 'success', false, $gateway, (int) ((microtime(true) - $started) * 1000));
-            return ['state' => 'ready', 'data' => $data, 'cached' => false, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+            return ['state' => 'ready', 'data' => $data, 'cached' => false, 'insight_id' => $insight->id, 'entity_type' => $entityType, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
         } catch (Throwable $e) {
             report($e); $this->recordFailure($feature); $this->run($requestId, $feature, $entityType, $entityId, $hash, $promptVersion, 'unavailable', false, [], (int) ((microtime(true) - $started) * 1000), class_basename($e));
             return ['state' => 'unavailable'];
@@ -74,7 +74,24 @@ class AiInsightService
 
     private function run(string $requestId, string $feature, ?string $entityType, ?int $entityId, string $hash, string $promptVersion, string $status, bool $cached, array $gateway = [], ?int $latency = null, ?string $error = null): void
     {
-        AiRun::create(['request_id' => $requestId, 'user_id' => Auth::id(), 'feature' => $feature, 'entity_type' => $entityType, 'entity_id' => $entityId, 'prompt_version' => $promptVersion, 'input_hash' => $hash, 'provider' => $gateway['provider'] ?? null, 'model' => $gateway['model'] ?? null, 'status' => $status, 'latency_ms' => $latency, 'cached' => $cached, 'error_class' => $error]);
+        AiRun::create([
+            'request_id' => $requestId,
+            'user_id' => Auth::id(),
+            'feature' => $feature,
+            'entity_type' => $entityType,
+            'entity_id' => $entityId,
+            'prompt_version' => $promptVersion,
+            'input_hash' => $hash,
+            'provider' => $gateway['provider'] ?? null,
+            'model' => $gateway['model'] ?? null,
+            'strategy' => config('ai.routing_strategy'),
+            'status' => $status,
+            'latency_ms' => $latency,
+            'input_tokens' => is_numeric($gateway['input_tokens'] ?? null) ? (int) $gateway['input_tokens'] : null,
+            'output_tokens' => is_numeric($gateway['output_tokens'] ?? null) ? (int) $gateway['output_tokens'] : null,
+            'cached' => $cached,
+            'error_class' => $error,
+        ]);
     }
 
     private function circuitKey(string $feature): string { return 'kara-ai:circuit:'.$feature; }

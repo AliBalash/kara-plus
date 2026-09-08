@@ -3,6 +3,8 @@
 namespace Tests\Feature\Ai;
 
 use App\Livewire\Ai\InsightCard;
+use App\Models\AiFeedback;
+use App\Models\AiInsight;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -28,5 +30,37 @@ class InsightCardAuthorizationTest extends TestCase
         $component = app(InsightCard::class);
         $component->mount('dashboard_operations');
         $this->assertSame('dashboard_operations', $component->feature);
+    }
+
+    public function test_feedback_is_stored_as_ai_quality_metadata_only(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $insight = AiInsight::create([
+            'scope' => 'panel',
+            'entity_type' => 'dashboard',
+            'feature' => 'dashboard_operations',
+            'prompt_version' => 'dashboard_operations:v1',
+            'input_hash' => str_repeat('a', 64),
+            'response_json' => ['headline' => 'Test', 'summary' => 'Test'],
+            'generated_at' => now(),
+            'expires_at' => now()->addMinute(),
+        ]);
+
+        $component = app(InsightCard::class);
+        $component->mount('dashboard_operations');
+        $component->state = 'ready';
+        $component->insightId = $insight->id;
+        $component->insightEntityType = 'dashboard';
+        $component->feedback(true);
+        $this->assertTrue($component->feedbackHelpful);
+
+        $this->assertDatabaseHas('ai_feedback', [
+            'ai_insight_id' => $insight->id,
+            'user_id' => $user->id,
+            'feature' => 'dashboard_operations',
+            'helpful' => true,
+        ]);
+        $this->assertSame(1, AiFeedback::count());
     }
 }
