@@ -2,76 +2,118 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\LogsBusinessRead;
+use App\Livewire\Concerns\SearchesCustomerPhone;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\Concerns\HandlesServicePricing;
 use App\Models\Agent;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
+use App\Models\LocationCost;
 use App\Models\Payment;
 use App\Services\Reservations\ReviewReservationApprovalService;
-use App\Livewire\Concerns\LogsBusinessRead;
-use App\Models\LocationCost;
-use App\Livewire\Concerns\SearchesCustomerPhone;
+use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
-use Illuminate\Support\Str;
-use App\Livewire\Concerns\InteractsWithToasts;
-use App\Livewire\Pages\Panel\Expert\RentalRequest\Concerns\HandlesServicePricing;
-use App\Support\PhoneNumber;
 
 class RentalRequestEdit extends Component
 {
-    use InteractsWithToasts;
     use HandlesServicePricing;
-    use SearchesCustomerPhone;
+    use InteractsWithToasts;
     use LogsBusinessRead;
+    use SearchesCustomerPhone;
+
     public $cars;
+
     public $carModels;
+
     public $selectedBrand;
+
     public $selectedCarId;
+
     public $selectedCar;
+
     public $total_price;
+
     public $agent_id;
+
     public $communication_channel;
+
     public $pickup_location;
+
     public $return_location;
+
     public $return_date;
+
     public $pickup_date;
+
     public $notes;
+
     public $driver_note;
+
     public $first_name;
+
     public $last_name;
+
     public $email;
+
     public ?int $selectedExistingCustomerId = null;
+
     public ?array $selectedExistingCustomer = null;
+
     public array $customerPhoneSuggestions = [];
+
     public ?int $originalCustomerId = null;
+
     public $phone;
+
     public $messenger_phone;
+
     public $address;
+
     public $birth_date;
+
     public $national_code;
+
     public $passport_number;
+
     public $passport_expiry_date;
+
     public $nationality;
+
     public $license_number;
+
     public $licensed_driver_name;
+
     public $filteredCarModels = [];
+
     public $customerDocumentsCompleted = false;
+
     public $paymentsExist = false;
+
     public $selected_services = [];
+
     public array $service_quantities = [
         'child_seat' => 0,
     ];
+
     public $selected_insurance = 'basic_insurance';
+
     public $services_total = 0;
+
     public $insurance_total = 0;
+
     public ?string $driving_license_option = null;
+
     public float $driving_license_cost = 0;
+
     public array $driving_license_options = [
         'one_year' => [
             'label' => 'Driving License (1 Year)',
@@ -82,38 +124,69 @@ class RentalRequestEdit extends Component
             'amount' => 220,
         ],
     ];
+
     public $driver_hours = 0;
+
     public $driver_cost = 0;
+
     public $transfer_costs = ['pickup' => 0, 'return' => 0, 'total' => 0];
+
     public $tax_rate = 0.05;
+
     public $tax_amount = 0;
+
     public $subtotal = 0;
+
     public $final_total = 0;
+
     public $rental_days = 1;
+
     public $dailyRate;
+
     public $base_price;
+
     public $brands = [];
+
     public $models = [];
+
     public $selectedModelId;
+
     public $contract;
+
     public $contractId;
+
     public $kardo_required;
+
     public $payment_on_delivery;
+
     public $apply_discount = false;
+
     public $custom_daily_rate = null;
+
     public $standard_daily_rate = 0;
+
     public $carsForModel = [];
+
     public $ldw_daily_rate = 0;
+
     public $scdw_daily_rate = 0;
+
     public $originalCosts = [];
+
     public $originalSelections = [];
+
     public $carNameCache = [];
+
     public $deposit = null;
+
     public $deposit_category = null;
+
     public $salesAgents = [];
+
     public array $communicationChannelOptions = [];
 
     public array $locationCosts = [];
+
     public array $locationOptions = [];
 
     public $services = [];
@@ -130,7 +203,7 @@ class RentalRequestEdit extends Component
 
         $this->apply_discount = (bool) ($this->contract->custom_daily_rate_enabled ?? false);
 
-        if (!$this->apply_discount && $this->contract->discount_note) {
+        if (! $this->apply_discount && $this->contract->discount_note) {
             $this->apply_discount = true;
         }
 
@@ -170,7 +243,7 @@ class RentalRequestEdit extends Component
         $activeLocations = $locations->where('is_active', true)->pluck('location')->values()->all();
 
         foreach ([$this->pickup_location, $this->return_location] as $selectedLocation) {
-            if ($selectedLocation && !isset($this->locationCosts[$selectedLocation])) {
+            if ($selectedLocation && ! isset($this->locationCosts[$selectedLocation])) {
                 $this->locationCosts[$selectedLocation] = [
                     'under_3' => 0.0,
                     'over_3' => 0.0,
@@ -178,7 +251,7 @@ class RentalRequestEdit extends Component
                 ];
             }
 
-            if ($selectedLocation && !in_array($selectedLocation, $activeLocations, true)) {
+            if ($selectedLocation && ! in_array($selectedLocation, $activeLocations, true)) {
                 $activeLocations[] = $selectedLocation;
             }
         }
@@ -210,16 +283,17 @@ class RentalRequestEdit extends Component
                 }
             }
 
-            if (!in_array($charge->type, ['addon', 'insurance'], true)) {
+            if (! in_array($charge->type, ['addon', 'insurance'], true)) {
                 if ($charge->title === 'driver_service') {
                     $driverCharge = $charge;
                 }
+
                 continue;
             }
 
             $resolvedId = $this->resolveServiceId((string) $charge->title);
 
-            if (!$resolvedId) {
+            if (! $resolvedId) {
                 continue;
             }
 
@@ -227,6 +301,7 @@ class RentalRequestEdit extends Component
 
             if (in_array($resolvedId, ['ldw_insurance', 'scdw_insurance'], true)) {
                 $this->selected_insurance = $resolvedId;
+
                 continue;
             }
 
@@ -247,7 +322,7 @@ class RentalRequestEdit extends Component
         $this->service_quantities = $this->normalizedServiceQuantities(null, true);
 
         // If no insurance charge is found, set to null to reflect "No Additional Insurance"
-        if (!$this->selected_insurance) {
+        if (! $this->selected_insurance) {
             $this->selected_insurance = null;
         }
 
@@ -306,7 +381,7 @@ class RentalRequestEdit extends Component
         $this->carNameCache[$this->selectedCarId] = $this->contract->car->fullName();
 
         // Documents and payments
-        $this->customerDocumentsCompleted = (bool)$this->contract->customerDocument;
+        $this->customerDocumentsCompleted = (bool) $this->contract->customerDocument;
         $this->paymentsExist = $this->contract->payments()->exists();
     }
 
@@ -331,6 +406,7 @@ class RentalRequestEdit extends Component
             $return = Carbon::parse($this->return_date);
             if ($return->lte($pickup)) {
                 $this->rental_days = 1;
+
                 return;
             }
             $seconds = $return->getTimestamp() - $pickup->getTimestamp();
@@ -369,7 +445,7 @@ class RentalRequestEdit extends Component
 
     private function storedDailyRate(): ?float
     {
-        if (!$this->contract) {
+        if (! $this->contract) {
             return null;
         }
 
@@ -389,17 +465,27 @@ class RentalRequestEdit extends Component
 
     private function getCarDailyRate(Car $car, int $days): float
     {
-        if ($days >= 28) return $car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short;
-        if ($days >= 7) return $car->price_per_day_mid ?? $car->price_per_day_short;
+        if ($days >= 28) {
+            return $car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short;
+        }
+        if ($days >= 7) {
+            return $car->price_per_day_mid ?? $car->price_per_day_short;
+        }
+
         return $car->price_per_day_short;
     }
 
     private function getInsuranceDailyRate(Car $car, string $type, int $days): float
     {
-        $prefix = $type . '_price_';
-        if ($days >= 28) return $car->{$prefix . 'long'} ?? $car->{$prefix . 'mid'} ?? $car->{$prefix . 'short'} ?? 0;
-        if ($days >= 7) return $car->{$prefix . 'mid'} ?? $car->{$prefix . 'short'} ?? 0;
-        return $car->{$prefix . 'short'} ?? 0;
+        $prefix = $type.'_price_';
+        if ($days >= 28) {
+            return $car->{$prefix.'long'} ?? $car->{$prefix.'mid'} ?? $car->{$prefix.'short'} ?? 0;
+        }
+        if ($days >= 7) {
+            return $car->{$prefix.'mid'} ?? $car->{$prefix.'short'} ?? 0;
+        }
+
+        return $car->{$prefix.'short'} ?? 0;
     }
 
     private function calculateTransferCosts()
@@ -410,13 +496,14 @@ class RentalRequestEdit extends Component
         $this->transfer_costs = [
             'pickup' => $pickup,
             'return' => $return,
-            'total' => $this->roundCurrency($pickup + $return)
+            'total' => $this->roundCurrency($pickup + $return),
         ];
     }
 
     private function calculateLocationFee($location, $days)
     {
         $feeType = ($days < 3) ? 'under_3' : 'over_3';
+
         return (float) ($this->locationCosts[$location][$feeType] ?? 0);
     }
 
@@ -428,7 +515,7 @@ class RentalRequestEdit extends Component
 
         foreach ($this->selected_services as $serviceId) {
             $service = $this->resolveServiceDefinition($serviceId);
-            if (!$service) {
+            if (! $service) {
                 continue;
             }
 
@@ -461,6 +548,7 @@ class RentalRequestEdit extends Component
 
         if ($hours <= 0) {
             $this->driver_cost = $this->roundCurrency(0);
+
             return;
         }
 
@@ -468,6 +556,7 @@ class RentalRequestEdit extends Component
 
         if ($totalMinutes <= 0) {
             $this->driver_cost = $this->roundCurrency(0);
+
             return;
         }
 
@@ -476,6 +565,7 @@ class RentalRequestEdit extends Component
 
         if ($totalMinutes <= $includedMinutes) {
             $this->driver_cost = $this->roundCurrency($baseCost);
+
             return;
         }
 
@@ -490,9 +580,10 @@ class RentalRequestEdit extends Component
     {
         $selectedKey = $this->driving_license_option ?: null;
 
-        if (!$selectedKey || !isset($this->driving_license_options[$selectedKey])) {
+        if (! $selectedKey || ! isset($this->driving_license_options[$selectedKey])) {
             $this->driving_license_cost = $this->roundCurrency(0);
             $this->driving_license_option = $selectedKey ?: null;
+
             return;
         }
 
@@ -517,6 +608,7 @@ class RentalRequestEdit extends Component
     protected function rules()
     {
         $customerId = $this->validationCustomerId();
+
         return [
             'selectedBrand' => ['required', 'string'],
             'selectedModelId' => ['required', 'exists:car_models,id'],
@@ -564,7 +656,7 @@ class RentalRequestEdit extends Component
                         return;
                     }
 
-                    if (!$this->selectedCarId || !$this->return_date) {
+                    if (! $this->selectedCarId || ! $this->return_date) {
                         return;
                     }
 
@@ -586,7 +678,7 @@ class RentalRequestEdit extends Component
                         return;
                     }
 
-                    if (!$this->selectedCarId || !$this->pickup_date) {
+                    if (! $this->selectedCarId || ! $this->pickup_date) {
                         return;
                     }
 
@@ -641,7 +733,7 @@ class RentalRequestEdit extends Component
         $rules = ['nullable'];
 
         $rules[] = function ($attribute, $value, $fail) {
-            if (!$this->deposit_category && ($value !== null && $value !== '')) {
+            if (! $this->deposit_category && ($value !== null && $value !== '')) {
                 $fail('Please select a security hold category before entering details.');
             }
         };
@@ -816,11 +908,13 @@ class RentalRequestEdit extends Component
 
         if ($phone === '') {
             $this->validateOnly('phone');
+
             return;
         }
 
         if (preg_match('/^\+\d{8,15}$/', $phone) !== 1) {
             $this->resetValidation('phone');
+
             return;
         }
 
@@ -856,6 +950,7 @@ class RentalRequestEdit extends Component
 
         if ($this->selectedExistingCustomerId && $lookupPhone === $selectedPhone) {
             $this->customerPhoneSuggestions = [];
+
             return;
         }
 
@@ -866,6 +961,7 @@ class RentalRequestEdit extends Component
 
         if (! $this->shouldSearchCustomersByPhone($lookupPhone)) {
             $this->customerPhoneSuggestions = [];
+
             return;
         }
 
@@ -881,7 +977,7 @@ class RentalRequestEdit extends Component
     {
         return $this->customerLookupQuery()
             ->when($this->originalCustomerId, fn ($query) => $query->where('id', '!=', $this->originalCustomerId))
-            ->where('phone', 'like', $lookupPhone . '%')
+            ->where('phone', 'like', $lookupPhone.'%')
             ->orderByRaw('CASE WHEN phone = ? THEN 0 ELSE 1 END', [$lookupPhone])
             ->orderBy('phone')
             ->limit(5)
@@ -981,7 +1077,7 @@ class RentalRequestEdit extends Component
             return null;
         }
 
-        return str_starts_with($trimmed, '+') ? '+' . $digits : $digits;
+        return str_starts_with($trimmed, '+') ? '+'.$digits : $digits;
     }
 
     private function validationCustomerId(): ?int
@@ -1044,6 +1140,7 @@ class RentalRequestEdit extends Component
             'driver_hours',
             'driving_license_option',
         ];
+
         return in_array($propertyName, $costRelatedFields) ||
             Str::startsWith($propertyName, 'selected_services.') ||
             Str::startsWith($propertyName, 'service_quantities.');
@@ -1055,7 +1152,7 @@ class RentalRequestEdit extends Component
             [$oldTotal, $newTotal] = $this->persistEdits();
 
             if ($newTotal > $oldTotal) {
-                $this->toast('info', "Extension cost: " . ($newTotal - $oldTotal) . " AED", false);
+                $this->toast('info', 'Extension cost: '.($newTotal - $oldTotal).' AED', false);
             }
             $this->toast('success', $this->contract->isReviewPending()
                 ? 'Website request saved. Approve it when the vehicle and price are confirmed.'
@@ -1064,7 +1161,7 @@ class RentalRequestEdit extends Component
             $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
             throw $exception;
         } catch (\Throwable $e) {
-            $this->toast('error', 'An error occurred: ' . $e->getMessage(), false);
+            $this->toast('error', 'An error occurred: '.$e->getMessage(), false);
         }
     }
 
@@ -1087,7 +1184,7 @@ class RentalRequestEdit extends Component
             $this->dispatch('kara-scroll-to-error', field: $this->firstErrorField($exception));
             throw $exception;
         } catch (\Throwable $e) {
-            $this->toast('error', 'The request could not be approved: ' . $e->getMessage(), false);
+            $this->toast('error', 'The request could not be approved: '.$e->getMessage(), false);
         }
     }
 
@@ -1106,11 +1203,31 @@ class RentalRequestEdit extends Component
         }
 
         $this->normalizePhoneFields();
+
+        if (in_array($this->contract->current_status, Contract::FINANCIALLY_IMMUTABLE_STATUSES, true)) {
+            // This form rebuilds its charge rows, which would violate the
+            // immutable financial ledger once the vehicle is operational.
+            throw ValidationException::withMessages(['contract' => ['Operational contracts cannot be commercially edited. Use the Extend Contract workflow.']]);
+        }
         $this->normalizeCustomerIdentityFields();
         $this->syncExistingCustomerSuggestionsByPhone();
         $this->validateWithScroll();
 
         return DB::transaction(function (): array {
+            $this->contract = Contract::query()->lockForUpdate()->findOrFail($this->contract->id);
+            $lockedCar = Car::query()->lockForUpdate()->findOrFail($this->selectedCarId);
+            $availabilityConflicts = app(\App\Services\VehicleAvailabilityService::class)->conflicts(
+                $lockedCar,
+                $this->pickup_date,
+                $this->return_date,
+                $this->contract->id
+            );
+            if ($availabilityConflicts !== []) {
+                throw ValidationException::withMessages([
+                    'selectedCarId' => [$availabilityConflicts[0]['message']],
+                ]);
+            }
+
             $this->calculateCosts();
             $oldTotal = (float) $this->contract->total_price;
             $this->updateCustomer();
@@ -1136,7 +1253,7 @@ class RentalRequestEdit extends Component
         $errors = $exception->errors();
         $firstKey = array_key_first($errors);
 
-        if (!is_string($firstKey) || $firstKey === '') {
+        if (! is_string($firstKey) || $firstKey === '') {
             return '';
         }
 
@@ -1167,7 +1284,7 @@ class RentalRequestEdit extends Component
                 'title' => 'pickup_transfer',
                 'amount' => $this->roundCurrency($this->transfer_costs['pickup']),
                 'type' => 'location_fee',
-                'description' => $this->pickup_location
+                'description' => $this->pickup_location,
             ]);
         }
 
@@ -1177,7 +1294,7 @@ class RentalRequestEdit extends Component
                 'title' => 'return_transfer',
                 'amount' => $this->roundCurrency($this->transfer_costs['return']),
                 'type' => 'location_fee',
-                'description' => $this->return_location
+                'description' => $this->return_location,
             ]);
         }
 
@@ -1194,7 +1311,7 @@ class RentalRequestEdit extends Component
         if ($this->driving_license_cost > 0 && $this->driving_license_option) {
             ContractCharges::create([
                 'contract_id' => $contract->id,
-                'title' => 'driving_license_' . $this->driving_license_option,
+                'title' => 'driving_license_'.$this->driving_license_option,
                 'amount' => $this->roundCurrency($this->driving_license_cost),
                 'type' => 'service',
                 'description' => $this->buildDrivingLicenseDescription(),
@@ -1203,12 +1320,12 @@ class RentalRequestEdit extends Component
 
         foreach ($this->selected_services as $serviceId) {
             $resolvedId = $this->resolveServiceId($serviceId);
-            if (!$resolvedId) {
+            if (! $resolvedId) {
                 continue;
             }
 
             $service = $this->services[$resolvedId] ?? null;
-            if (!$service) {
+            if (! $service) {
                 continue;
             }
 
@@ -1223,7 +1340,7 @@ class RentalRequestEdit extends Component
                 'title' => $resolvedId,
                 'amount' => $this->roundCurrency($this->calculateServiceAmount($service, $this->rental_days, $quantity)),
                 'type' => 'addon',
-                'description' => $this->buildServiceDescription($service, $this->rental_days, $quantity)
+                'description' => $this->buildServiceDescription($service, $this->rental_days, $quantity),
             ]);
         }
 
@@ -1245,7 +1362,7 @@ class RentalRequestEdit extends Component
                         '%d %s',
                         (int) $this->rental_days,
                         (int) $this->rental_days === 1 ? 'day' : 'days'
-                    )
+                    ),
                 ]);
             }
         }
@@ -1256,7 +1373,7 @@ class RentalRequestEdit extends Component
                 'title' => 'tax',
                 'amount' => $this->roundCurrency($this->tax_amount),
                 'type' => 'tax',
-                'description' => '5% VAT'
+                'description' => '5% VAT',
             ]);
         }
     }
@@ -1337,7 +1454,7 @@ class RentalRequestEdit extends Component
     {
         $phone = $this->lookupPhoneValue($this->phone);
 
-        if ($phone === null || !str_starts_with($phone, '+')) {
+        if ($phone === null || ! str_starts_with($phone, '+')) {
             return null;
         }
 
@@ -1387,7 +1504,7 @@ class RentalRequestEdit extends Component
 
         $driverNote = $this->payment_on_delivery ? $this->driver_note : null;
 
-        if (!is_null($driverNote) && trim((string) $driverNote) !== '') {
+        if (! is_null($driverNote) && trim((string) $driverNote) !== '') {
             $meta['driver_note'] = $driverNote;
         } else {
             unset($meta['driver_note']);
@@ -1395,7 +1512,7 @@ class RentalRequestEdit extends Component
 
         $serviceQuantities = $this->normalizedServiceQuantities();
 
-        if (!empty($serviceQuantities)) {
+        if (! empty($serviceQuantities)) {
             $meta['service_quantities'] = $serviceQuantities;
         } else {
             unset($meta['service_quantities']);
@@ -1428,7 +1545,7 @@ class RentalRequestEdit extends Component
             'custom_daily_rate_enabled' => $this->apply_discount,
             'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
             'payment_on_delivery' => $this->payment_on_delivery ?? true,
-            'meta' => !empty($meta) ? $meta : null,
+            'meta' => ! empty($meta) ? $meta : null,
         ];
         $this->contract->update($contractData);
         $this->contract->meta = $contractData['meta'];
@@ -1505,7 +1622,7 @@ class RentalRequestEdit extends Component
 
     private function getCarReservations($carId)
     {
-        if (!$carId) {
+        if (! $carId) {
             return [];
         }
         $reservations = Contract::where('car_id', $carId)
@@ -1525,6 +1642,7 @@ class RentalRequestEdit extends Component
                 ];
             })
             ->toArray();
+
         return $reservations;
     }
 
@@ -1616,6 +1734,7 @@ class RentalRequestEdit extends Component
 
         $services = array_map(function ($service) {
             $service['label'] = $service['label_en'];
+
             return $service;
         }, $this->services);
 
@@ -1659,7 +1778,7 @@ class RentalRequestEdit extends Component
 
         $payments = $this->contract->payments ?? collect();
 
-        $sumPaymentAmount = fn(string $type): float => (float) $payments
+        $sumPaymentAmount = fn (string $type): float => (float) $payments
             ->where('payment_type', $type)
             ->sum('amount_in_aed');
         $insuranceTotal = (float) ($this->insurance_total ?? 0);
@@ -1682,34 +1801,34 @@ class RentalRequestEdit extends Component
                 return;
             }
 
-            $value = $this->formatCurrency($amount) . ' AED';
+            $value = $this->formatCurrency($amount).' AED';
 
             if ($extra) {
-                $value = $extra . ', ' . $value;
+                $value = $extra.', '.$value;
             }
 
-            $rentalCostLines[] = $label . ': ' . $value;
+            $rentalCostLines[] = $label.': '.$value;
         };
         if ($basePrice > 0) {
-            $rentalCostLines[] = 'Rate: ' . $this->rental_days . ' day(s) x ' . $this->formatDailyRate() . ' AED = ' . $this->formatCurrency($basePrice) . ' AED';
+            $rentalCostLines[] = 'Rate: '.$this->rental_days.' day(s) x '.$this->formatDailyRate().' AED = '.$this->formatCurrency($basePrice).' AED';
         }
 
         $appendRentalLine('Add-on total', $servicesTotal, 'Selected add-ons');
         if ($securityHoldInstructionAmount > 0) {
             $appendRentalLine('Security Hold Instructions (added)', $securityHoldInstructionAmount);
         }
-        $appendRentalLine('Driver service', $driverServiceCost, ($this->driver_hours ?? 0) > 0 ? number_format(max(0, (float) $this->driver_hours), 1) . ' hrs' : null);
+        $appendRentalLine('Driver service', $driverServiceCost, ($this->driver_hours ?? 0) > 0 ? number_format(max(0, (float) $this->driver_hours), 1).' hrs' : null);
         $appendRentalLine('Driving license', $drivingLicenseCost, $this->driving_license_option ? $this->formatDrivingLicenseLabel($this->driving_license_option) : null);
 
         if ($insuranceTotal > 0) {
             $dailyInsurance = $insuranceTotal / max(1, (int) $this->rental_days);
-            $appendRentalLine('Supplementary Insurance Package (Daily)', $insuranceTotal, 'Daily ' . $this->formatCurrency($dailyInsurance) . ' AED');
+            $appendRentalLine('Supplementary Insurance Package (Daily)', $insuranceTotal, 'Daily '.$this->formatCurrency($dailyInsurance).' AED');
         }
 
         $appendRentalLine('Pickup travel charge', $pickupCharge);
         $appendRentalLine('Return travel charge', $returnCharge);
 
-        $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
+        $customerName = trim($this->first_name.' '.$this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
         $seller = $this->contract->agent?->name
             ?: optional($this->contract->user)->fullName()
@@ -1742,24 +1861,24 @@ class RentalRequestEdit extends Component
         $totalRent = $this->formatCurrency($contractTotal);
         $vatAmount = $this->formatCurrency($this->tax_amount);
         $remainingBalanceFormatted = $this->formatCurrency($remainingBalanceForNote);
-        $dailyRate = $this->formatDailyRate() . ' AED plus vat';
+        $dailyRate = $this->formatDailyRate().' AED plus vat';
         $securityHoldSummary = '';
 
         if ($securityHold > 0) {
-            $securityHoldSummary = "\nSecurity Hold (paid): " . $this->formatCurrency($securityHold) . ' AED';
+            $securityHoldSummary = "\nSecurity Hold (paid): ".$this->formatCurrency($securityHold).' AED';
         }
 
         $indent = '';
         $formatListSection = function (string $title, array $items) use ($indent): string {
-            $items = array_values(array_filter($items, fn($item) => $item !== null && $item !== ''));
+            $items = array_values(array_filter($items, fn ($item) => $item !== null && $item !== ''));
 
             if (empty($items)) {
                 return '';
             }
 
-            $lines = array_map(fn($item) => $indent . '- ' . $item, $items);
+            $lines = array_map(fn ($item) => $indent.'- '.$item, $items);
 
-            return $indent . $title . ":\n" . implode("\n", $lines);
+            return $indent.$title.":\n".implode("\n", $lines);
         };
 
         $deliveryScheduleBlock = $formatListSection('Delivery schedule', [
@@ -1793,13 +1912,13 @@ class RentalRequestEdit extends Component
 
         $summaryBlock = '';
 
-        if (!empty($summaryLines)) {
+        if (! empty($summaryLines)) {
             $summaryLinesWithSpacing = array_merge(
                 [$summaryLines[0]],
                 ['', ...array_slice($summaryLines, 1)]
             );
-            $summaryBlock = "\n" . implode("\n", array_map(
-                fn($line) => $line === '' ? '' : $indent . '- ' . $line,
+            $summaryBlock = "\n".implode("\n", array_map(
+                fn ($line) => $line === '' ? '' : $indent.'- '.$line,
                 $summaryLinesWithSpacing
             ));
         }
@@ -1828,13 +1947,13 @@ TEXT);
 
         $payments = $this->contract->payments ?? collect();
 
-        $sumAmount = fn(string $type): float => (float) $payments->where('payment_type', $type)->sum('amount_in_aed');
-        $sumTrips = fn(string $type): int => $payments->where('payment_type', $type)->sum(fn($payment) => $payment->salikTripCount());
+        $sumAmount = fn (string $type): float => (float) $payments->where('payment_type', $type)->sum('amount_in_aed');
+        $sumTrips = fn (string $type): int => $payments->where('payment_type', $type)->sum(fn ($payment) => $payment->salikTripCount());
 
         $salikTripTypes = Payment::salikTripPaymentTypes();
         $otherRevenueTrips = $payments
             ->where('payment_type', 'salik_other_revenue')
-            ->sum(fn($payment) => $payment->salikTripCount() ?: (int) round((float) $payment->amount_in_aed));
+            ->sum(fn ($payment) => $payment->salikTripCount() ?: (int) round((float) $payment->amount_in_aed));
 
         $additionalChargeTypes = [
             ...array_keys($salikTripTypes),
@@ -1849,7 +1968,7 @@ TEXT);
 
         $additionalCharges = array_reduce(
             $additionalChargeTypes,
-            fn(float $carry, string $type) => $carry + $sumAmount($type),
+            fn (float $carry, string $type) => $carry + $sumAmount($type),
             0.0
         );
 
@@ -1875,7 +1994,7 @@ TEXT);
 
         $agreementNumber = $this->contract->pickupDocument?->agreement_number ?? '---';
         $depositLabel = $this->formattedDepositLabel();
-        $customerName = trim($this->first_name . ' ' . $this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
+        $customerName = trim($this->first_name.' '.$this->last_name) ?: ($this->contract->customer?->fullName() ?? '---');
         $phone = $this->phone ?: ($this->messenger_phone ?? '---');
         $carDescriptor = $this->formatCarDescriptor(
             $this->stripPlateFromLabel(
@@ -1891,7 +2010,7 @@ TEXT);
 
         $salikTotal = array_reduce(
             [...array_keys($salikTripTypes), 'salik_other_revenue'],
-            fn(float $carry, string $type): float => $carry + $sumAmount($type),
+            fn (float $carry, string $type): float => $carry + $sumAmount($type),
             0.0
         );
         $parkingTotal = $sumAmount('parking');
@@ -1902,8 +2021,8 @@ TEXT);
             + $sumAmount('damage');
         $feesPenaltiesTotal = $fineTotal + $parkingTotal + $otherChargesTotal;
 
-        $formatMoney = fn(float $amount): string => $this->formatCurrency($amount) . ' AED';
-        $hasValue = fn(float $amount): bool => abs($amount) >= 0.01;
+        $formatMoney = fn (float $amount): string => $this->formatCurrency($amount).' AED';
+        $hasValue = fn (float $amount): bool => abs($amount) >= 0.01;
 
         $formatList = function (string $title, array $items): string {
             $items = array_values(array_filter($items));
@@ -1912,9 +2031,9 @@ TEXT);
                 return '';
             }
 
-            $lines = array_map(fn($item) => '- ' . $item, $items);
+            $lines = array_map(fn ($item) => '- '.$item, $items);
 
-            return $title . ":\n" . implode("\n", $lines);
+            return $title.":\n".implode("\n", $lines);
         };
 
         $moneyLine = function (string $label, float $amount) use ($hasValue, $formatMoney): ?string {
@@ -1922,7 +2041,7 @@ TEXT);
                 return null;
             }
 
-            return $label . ': ' . $formatMoney($amount);
+            return $label.': '.$formatMoney($amount);
         };
 
         $tripLine = function (string $label, int $trips, float $amount) use ($hasValue, $formatMoney): ?string {
@@ -1930,28 +2049,28 @@ TEXT);
                 return null;
             }
 
-            $tripText = $trips > 0 ? $trips . ' trips' : '0 trips';
+            $tripText = $trips > 0 ? $trips.' trips' : '0 trips';
 
-            return $label . ': ' . $tripText . ' — ' . $formatMoney($amount);
+            return $label.': '.$tripText.' — '.$formatMoney($amount);
         };
 
         $childSeatLine = $childSeatQuantity > 0
-            ? 'Baby seat (' . $childSeatQuantity . ' pcs): ' . $formatMoney($childSeatAmount)
+            ? 'Baby seat ('.$childSeatQuantity.' pcs): '.$formatMoney($childSeatAmount)
             : null;
 
         $sections = array_filter([
             $formatList('Agreement summary', [
-                'AG number: ' . $agreementNumber,
-                'Customer: ' . $customerName,
-                'Mobile number: ' . $phone,
-                'Car: ' . $carDescriptor,
+                'AG number: '.$agreementNumber,
+                'Customer: '.$customerName,
+                'Mobile number: '.$phone,
+                'Car: '.$carDescriptor,
             ]),
             $formatList('Rental overview', [
-                'Rental days: ' . $this->rental_days,
-                'Daily rate: ' . $this->formatDailyRate() . ' AED',
+                'Rental days: '.$this->rental_days,
+                'Daily rate: '.$this->formatDailyRate().' AED',
             ]),
             $formatList('Tolls & trips', array_filter([
-                ...collect($salikTripTypes)->map(fn(float $unit, string $type): ?string => $tripLine(
+                ...collect($salikTripTypes)->map(fn (float $unit, string $type): ?string => $tripLine(
                     Payment::paymentTypeLabels()[$type] ?? ucwords(str_replace('_', ' ', $type)),
                     $sumTrips($type),
                     $sumAmount($type)
@@ -1985,16 +2104,16 @@ TEXT);
                 $moneyLine('Outstanding balance', $balanceForNote),
                 $moneyLine('Security hold', $securityHold),
                 $securityHoldInstructionAmount > 0
-                    ? 'Security hold instructions: ' . $formatMoney($securityHoldInstructionAmount)
+                    ? 'Security hold instructions: '.$formatMoney($securityHoldInstructionAmount)
                     : null,
             ])),
             $formatList('Security hold summary', array_filter([
                 ($hasValue($securityHold) || $hasValue($securityHoldInstructionAmount))
-                    ? 'Security hold (' . $depositLabel . '): '
-                        . implode(' + ', array_filter([
+                    ? 'Security hold ('.$depositLabel.'): '
+                        .implode(' + ', array_filter([
                             $hasValue($securityHold) ? $formatMoney($securityHold) : null,
                             $hasValue($securityHoldInstructionAmount)
-                                ? 'instructions ' . $formatMoney($securityHoldInstructionAmount)
+                                ? 'instructions '.$formatMoney($securityHoldInstructionAmount)
                                 : null,
                         ]))
                     : null,
@@ -2005,7 +2124,7 @@ TEXT);
 
         $footerBlock = implode("\n", [
             '----------------------------------------------------',
-            ($balanceForNote < -0.01 ? 'Must refund ' : 'Must get receive ') . $this->formatCurrency(abs($balanceForNote)) . ' AED',
+            ($balanceForNote < -0.01 ? 'Must refund ' : 'Must get receive ').$this->formatCurrency(abs($balanceForNote)).' AED',
             '----------------------------------------------------',
             'Other charges will be deducted from the security hold. The rest will be returned to the customer after 10 days.',
         ]);
@@ -2050,18 +2169,18 @@ TEXT);
     {
         $depositValue = $this->normalizedDeposit();
 
-        if (!$this->deposit_category && !$depositValue) {
+        if (! $this->deposit_category && ! $depositValue) {
             return 'No Security Hold';
         }
 
         $label = $this->depositCategoryLabel($this->deposit_category);
 
         if ($this->deposit_category === 'cash_aed' && is_numeric($depositValue)) {
-            return $label . ': ' . $this->formatCurrency($depositValue) . ' AED';
+            return $label.': '.$this->formatCurrency($depositValue).' AED';
         }
 
         if ($depositValue) {
-            return $label . ': ' . $depositValue;
+            return $label.': '.$depositValue;
         }
 
         return $label;
@@ -2183,11 +2302,11 @@ TEXT);
 
         return [
             'label' => $label,
-            'original' => $this->formatNumber($original, $precision) . $suffix,
-            'current' => $this->formatNumber($current, $precision) . $suffix,
+            'original' => $this->formatNumber($original, $precision).$suffix,
+            'current' => $this->formatNumber($current, $precision).$suffix,
             'change' => $changed ? [
                 'type' => $delta > 0 ? 'increase' : 'decrease',
-                'text' => ($delta > 0 ? '+' : '-') . $this->formatNumber(abs($delta), $precision) . $suffix,
+                'text' => ($delta > 0 ? '+' : '-').$this->formatNumber(abs($delta), $precision).$suffix,
             ] : null,
             'changed' => $changed,
         ];
@@ -2197,10 +2316,10 @@ TEXT);
     {
         $normalizedOriginal = trim((string) $original) !== '' ? $original : '—';
         $normalizedCurrent = trim((string) $current) !== '' ? $current : '—';
-        $changed = $normalizedOriginal !== $normalizedCurrent || !empty($note);
+        $changed = $normalizedOriginal !== $normalizedCurrent || ! empty($note);
         $change = null;
 
-        if (!empty($note)) {
+        if (! empty($note)) {
             $change = ['type' => 'note', 'text' => $note];
         } elseif ($changed) {
             $change = ['type' => 'changed', 'text' => 'Changed'];
@@ -2250,7 +2369,7 @@ TEXT);
 
         $data = $source ?? $this->service_quantities;
 
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return [];
         }
 
@@ -2300,12 +2419,12 @@ TEXT);
 
         $changes = [];
 
-        if (!empty($added)) {
-            $changes[] = 'Added: ' . implode(', ', array_values($added));
+        if (! empty($added)) {
+            $changes[] = 'Added: '.implode(', ', array_values($added));
         }
 
-        if (!empty($removed)) {
-            $changes[] = 'Removed: ' . implode(', ', array_values($removed));
+        if (! empty($removed)) {
+            $changes[] = 'Removed: '.implode(', ', array_values($removed));
         }
 
         return implode(' • ', $changes);
@@ -2330,7 +2449,7 @@ TEXT);
 
     private function formatInsuranceLabel($insuranceId): string
     {
-        if (!$insuranceId || $insuranceId === 'basic_insurance') {
+        if (! $insuranceId || $insuranceId === 'basic_insurance') {
             return 'Basic Insurance (Included)';
         }
 
@@ -2345,7 +2464,7 @@ TEXT);
 
     private function formatDrivingLicenseLabel($option): string
     {
-        if (!$option) {
+        if (! $option) {
             return 'None';
         }
 
@@ -2354,7 +2473,7 @@ TEXT);
 
     private function getCarLabel($carId): string
     {
-        if (!$carId) {
+        if (! $carId) {
             return '—';
         }
 
@@ -2393,7 +2512,7 @@ TEXT);
     {
         $cleanLabel = trim($label) !== '' ? $label : '---';
 
-        if (!$plate) {
+        if (! $plate) {
             return $cleanLabel;
         }
 
@@ -2402,7 +2521,7 @@ TEXT);
 
     private function formatDateTime(?string $value): string
     {
-        if (!$value) {
+        if (! $value) {
             return '—';
         }
 
@@ -2440,7 +2559,7 @@ TEXT);
 
     private function buildDrivingLicenseDescription(): string
     {
-        if (!$this->driving_license_option || !isset($this->driving_license_options[$this->driving_license_option])) {
+        if (! $this->driving_license_option || ! isset($this->driving_license_options[$this->driving_license_option])) {
             return 'Driving license fee';
         }
 
@@ -2473,7 +2592,7 @@ TEXT);
 
     private function normalizedDeposit(): ?string
     {
-        if (!$this->deposit_category) {
+        if (! $this->deposit_category) {
             return null;
         }
 
@@ -2494,7 +2613,7 @@ TEXT);
 
         $depositValue = $this->normalizedDeposit();
 
-        if (!is_numeric($depositValue)) {
+        if (! is_numeric($depositValue)) {
             return 0.0;
         }
 

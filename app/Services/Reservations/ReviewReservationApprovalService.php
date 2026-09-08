@@ -5,6 +5,7 @@ namespace App\Services\Reservations;
 use App\Models\Car;
 use App\Models\CarUnavailabilityPeriod;
 use App\Models\Contract;
+use App\Services\VehicleAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +18,8 @@ use Illuminate\Validation\ValidationException;
  */
 class ReviewReservationApprovalService
 {
+    public function __construct(private readonly VehicleAvailabilityService $availability) {}
+
     /**
      * Claim the review without creating a reservation.  This is intentionally
      * separate from approve(): a colleague can see that an expert is already
@@ -180,7 +183,7 @@ class ReviewReservationApprovalService
                         'Unavailable from %s to %s%s.',
                         optional($unavailability->start_date)->format('d M Y'),
                         optional($unavailability->end_date)->format('d M Y'),
-                        $reason ? ' (' . $reason . ')' : ''
+                        $reason ? ' ('.$reason.')' : ''
                     ),
                 ];
             }
@@ -191,59 +194,12 @@ class ReviewReservationApprovalService
 
     private function ensureReservable(Contract $contract, Car $car): void
     {
-        $blockReason = $car->reservationSelectionBlockReason();
-        if ($blockReason !== null) {
-            throw ValidationException::withMessages([
-                'selectedCarId' => [$blockReason],
-            ]);
-        }
-
         $pickup = Carbon::parse($contract->pickup_date);
         $return = Carbon::parse($contract->return_date);
-
-        $conflictingContract = Contract::query()
-            ->where('car_id', $car->id)
-            ->where('id', '!=', $contract->id)
-            ->whereIn('current_status', Car::reservingStatuses())
-            ->whereNotNull('pickup_date')
-            ->where('pickup_date', '<', $return)
-            ->where(function ($query) use ($pickup): void {
-                $query->whereNull('return_date')
-                    ->orWhere('return_date', '>', $pickup);
-            })
-            ->lockForUpdate()
-            ->orderBy('pickup_date')
-            ->first(['id', 'pickup_date', 'return_date']);
-
-        if ($conflictingContract) {
+        $conflicts = $this->availability->conflicts($car, $pickup, $return, $contract->id);
+        if ($conflicts !== []) {
             throw ValidationException::withMessages([
-                'selectedCarId' => [sprintf(
-                    'The selected car is already reserved from %s to %s.',
-                    optional($conflictingContract->pickup_date)->format('Y-m-d H:i'),
-                    optional($conflictingContract->return_date)->format('Y-m-d H:i')
-                )],
-            ]);
-        }
-
-        if (! Car::supportsScheduledUnavailabilityPeriods()) {
-            return;
-        }
-
-        $unavailability = CarUnavailabilityPeriod::query()
-            ->where('car_id', $car->id)
-            ->overlappingWindow($pickup, $return)
-            ->lockForUpdate()
-            ->orderBy('start_date')
-            ->first();
-
-        if ($unavailability) {
-            throw ValidationException::withMessages([
-                'selectedCarId' => [sprintf(
-                    'The selected car is unavailable from %s to %s%s.',
-                    optional($unavailability->start_date)->format('Y-m-d'),
-                    optional($unavailability->end_date)->format('Y-m-d'),
-                    $unavailability->reasonLabel() ? ' due to ' . $unavailability->reasonLabel() : ''
-                )],
+                'selectedCarId' => [$conflicts[0]['message']],
             ]);
         }
     }

@@ -1131,6 +1131,18 @@ class RentalRequestCreate extends Component
         try {
             $this->calculateCosts();
 
+            $lockedCar = Car::query()->lockForUpdate()->findOrFail($this->selectedCarId);
+            $availabilityConflicts = app(\App\Services\VehicleAvailabilityService::class)->conflicts(
+                $lockedCar,
+                $this->pickup_date,
+                $this->return_date
+            );
+            if ($availabilityConflicts !== []) {
+                throw ValidationException::withMessages([
+                    'selectedCarId' => [$availabilityConflicts[0]['message']],
+                ]);
+            }
+
             $customer = $this->resolveCustomerForSubmission();
             $customer->fill([
                 'first_name' => $this->first_name,
