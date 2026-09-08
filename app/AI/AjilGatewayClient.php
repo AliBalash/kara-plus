@@ -25,7 +25,7 @@ class AjilGatewayClient
                 ],
                 'temperature' => 0.1,
                 'response_format' => ['type' => 'json_object'],
-                'x_router' => ['strategy' => 'fallback_chain', 'mode' => 'latency_first'],
+                'x_router' => ['strategy' => config('ai.routing_strategy'), 'mode' => config('ai.routing_mode')],
             ]);
         if (!$response->successful()) throw new RuntimeException('Ajil request failed: '.$response->status());
         if (data_get($response->json(), 'model') === 'local/fallback') {

@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use App\AI\AiContextSanitizer;
 use App\AI\AiResponseValidator;
+use App\AI\AiTokenBudgeter;
+use App\AI\AiFactEngine;
 use Tests\TestCase;
 
 class AiCopilotTest extends TestCase
@@ -19,5 +21,22 @@ class AiCopilotTest extends TestCase
         $result = app(AiResponseValidator::class)->validate(['headline' => 'Review', 'summary' => 'One item', 'critical_alerts' => [['fact_id' => 'known', 'title' => 'Known', 'reason' => 'Reason', 'check_now' => 'Open'], ['fact_id' => 'invented', 'title' => 'Bad']], 'watchlist' => [], 'positive_signals' => [], 'data_quality_warnings' => [], 'insufficient_data' => []], [['fact_id' => 'known']]);
         $this->assertCount(1, $result['critical_alerts']);
         $this->assertSame('known', $result['critical_alerts'][0]['fact_id']);
+    }
+
+    public function test_budgeter_keeps_highest_severity_facts_inside_the_budget(): void
+    {
+        $facts = [
+            ['fact_id' => 'low', 'severity' => 10],
+            ['fact_id' => 'critical', 'severity' => 100],
+            ['fact_id' => 'high', 'severity' => 70],
+        ];
+        [$facts] = app(AiTokenBudgeter::class)->compact($facts, [], 2, 1024);
+        $this->assertSame(['critical', 'high'], array_column($facts, 'fact_id'));
+    }
+
+    public function test_contract_pulse_is_deterministic_and_not_model_calculated(): void
+    {
+        $pulse = app(AiFactEngine::class)->contractPulse([['severity' => 100], ['severity' => 70]]);
+        $this->assertSame(['score' => 55, 'label' => 'Needs attention', 'issues_count' => 2], $pulse);
     }
 }

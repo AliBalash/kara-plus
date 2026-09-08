@@ -30,4 +30,13 @@ class AjilGatewayClientTest extends TestCase
         $this->expectException(\RuntimeException::class);
         app(AjilGatewayClient::class)->complete('dashboard_operations', [], []);
     }
+
+    public function test_parallel_race_is_explicitly_configurable(): void
+    {
+        config()->set('ai.ajil.base_url', 'http://ajil.test');
+        config()->set('ai.routing_strategy', 'parallel_race');
+        Http::fake(['ajil.test/v1/chat/completions' => Http::response(['choices' => [['message' => ['content' => json_encode(['headline' => 'OK', 'summary' => 'OK'])]]]], 200)]);
+        app(AjilGatewayClient::class)->complete('dashboard_operations', [], []);
+        Http::assertSent(fn (Request $request) => $request['x_router']['strategy'] === 'parallel_race');
+    }
 }

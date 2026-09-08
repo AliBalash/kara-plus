@@ -2,6 +2,28 @@
 # docker compose -f docker-compose.local.yml -f docker-compose.ai.yml up -d --build
 # Ajil has no host port; Laravel reaches it over this compose project's private network.
 services:
+  app:
+    environment:
+      KARA_AI_ENABLED: ${KARA_AI_ENABLED:-false}
+      KARA_AI_DASHBOARD_BRIEF_ENABLED: ${KARA_AI_DASHBOARD_BRIEF_ENABLED:-true}
+      KARA_AI_CONTRACT_BRIEF_ENABLED: ${KARA_AI_CONTRACT_BRIEF_ENABLED:-true}
+      KARA_AI_PAYMENT_BRIEF_ENABLED: ${KARA_AI_PAYMENT_BRIEF_ENABLED:-true}
+      KARA_AI_CHANGES_ENABLED: ${KARA_AI_CHANGES_ENABLED:-true}
+      AJIL_BASE_URL: http://ajil:8080
+      AJIL_API_TOKEN: ${AJIL_API_TOKEN}
+      KARA_AI_TIMEOUT: ${KARA_AI_TIMEOUT:-20}
+      KARA_AI_CONNECT_TIMEOUT: ${KARA_AI_CONNECT_TIMEOUT:-3}
+      KARA_AI_CACHE_TTL: ${KARA_AI_CACHE_TTL:-600}
+      KARA_AI_MAX_FACTS: ${KARA_AI_MAX_FACTS:-25}
+      KARA_AI_MAX_CONTEXT_BYTES: ${KARA_AI_MAX_CONTEXT_BYTES:-12000}
+      KARA_AI_FAILURE_THRESHOLD: ${KARA_AI_FAILURE_THRESHOLD:-3}
+      KARA_AI_CIRCUIT_COOLDOWN: ${KARA_AI_CIRCUIT_COOLDOWN:-60}
+      KARA_AI_ROUTING_STRATEGY: ${KARA_AI_ROUTING_STRATEGY:-fallback_chain}
+      KARA_AI_ROUTING_MODE: ${KARA_AI_ROUTING_MODE:-latency_first}
+    depends_on:
+      ajil:
+        condition: service_healthy
+
   ajil:
     build:
       context: ./ajil

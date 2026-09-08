@@ -12,6 +12,9 @@
             <div class="text-muted small">Insights are temporarily unavailable. Core operations are unaffected.</div>
             <button class="btn btn-sm btn-outline-primary mt-3" wire:click="load">Try again</button>
         @else
+            @if($feature === 'contract_brief' && isset($meta['score']))
+                <div class="d-flex align-items-center gap-3 rounded-3 bg-light p-3 mb-3"><div class="fs-3 fw-bold text-primary">{{ $meta['score'] }}/100</div><div><div class="fw-semibold">Contract Pulse · {{ $meta['label'] }}</div><div class="small text-muted">{{ $meta['issues_count'] }} verified item(s) deserve review</div></div></div>
+            @endif
             <div class="fw-semibold mb-1">{{ $insight['headline'] }}</div><p class="text-muted small mb-3">{{ $insight['summary'] }}</p>
             @foreach(['critical_alerts' => 'Critical', 'watchlist' => 'Review today', 'positive_signals' => 'Positive'] as $field => $label)
                 @if(!empty($insight[$field]))

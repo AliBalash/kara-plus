@@ -24,6 +24,25 @@ class AiFactEngine
         return $facts;
     }
 
+    public function contractPulse(array $facts): array
+    {
+        $penalty = collect($facts)->sum(function (array $fact): int {
+            return match (true) {
+                ($fact['severity'] ?? 0) >= 100 => 30,
+                ($fact['severity'] ?? 0) >= 70 => 15,
+                default => 5,
+            };
+        });
+        $score = max(0, 100 - $penalty);
+        $label = match (true) {
+            $score >= 85 => 'Ready',
+            $score >= 60 => 'Needs review',
+            default => 'Needs attention',
+        };
+
+        return ['score' => $score, 'label' => $label, 'issues_count' => count($facts)];
+    }
+
     public function dashboard(): array
     {
         $facts = [];
@@ -50,12 +69,32 @@ class AiFactEngine
     public function changes(?int $userId): array
     {
         if (!$userId) return [];
-        $count = AuditEvent::where('actor_user_id', $userId)->where('occurred_at', '>=', now()->subDay())->count();
-        return $count ? [$this->fact('recent_changes', 40, 'Recent operations activity', ['event_count' => $count], route('reports.audit-center'))] : [];
+        $previousLogin = AuditEvent::where('actor_user_id', $userId)
+            ->where('action', 'auth_login_success')
+            ->orderByDesc('occurred_at')
+            ->skip(1)
+            ->value('occurred_at');
+        $from = $previousLogin ? Carbon::parse($previousLogin) : now()->subDay();
+        $rows = AuditEvent::where('occurred_at', '>', $from)
+            ->where('actor_user_id', '!=', $userId)
+            ->selectRaw('entity_type, action, COUNT(*) as event_count')
+            ->groupBy('entity_type', 'action')
+            ->orderByDesc('event_count')
+            ->limit(10)
+            ->get();
+
+        return $rows->map(fn ($row) => $this->fact(
+            'change:'.strtolower((string) $row->entity_type).':'.$row->action,
+            40,
+            'Operational changes since your previous login',
+            ['entity_type' => $row->entity_type, 'action' => $row->action, 'event_count' => (int) $row->event_count, 'since' => $from->toIso8601String()],
+            route('expert.dashboard'),
+            'changes'
+        ))->all();
     }
 
-    private function fact(string $type, int $severity, string $title, array $metrics, string $url): array
+    private function fact(string $type, int $severity, string $title, array $metrics, string $url, string $entityType = 'dashboard'): array
     {
-        return ['fact_id' => 'DASHBOARD:'.$type, 'type' => $type, 'severity' => $severity, 'entity_type' => 'dashboard', 'entity_id' => null, 'title' => $title, 'metrics' => $metrics, 'evidence_url' => $url];
+        return ['fact_id' => strtoupper($entityType).':'.$type, 'type' => $type, 'severity' => $severity, 'entity_type' => $entityType, 'entity_id' => null, 'title' => $title, 'metrics' => $metrics, 'evidence_url' => $url];
     }
 }
