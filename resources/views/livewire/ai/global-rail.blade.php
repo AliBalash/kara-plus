@@ -14,13 +14,13 @@
             </div>
         </div>
     @endif
-</aside>
 
-@once
-    <style>
-        .kara-ai-rail { position: fixed; right: 1.25rem; bottom: 1.5rem; z-index: 1080; }
-        .kara-ai-rail__trigger { border: 0; border-radius: 999px; background: #696cff; color: #fff; padding: .75rem 1rem; display: inline-flex; gap: .5rem; align-items: center; font-weight: 600; }
-        .kara-ai-rail__panel { width: min(27rem, calc(100vw - 2rem)); max-height: min(46rem, calc(100vh - 7rem)); overflow-y: auto; position: absolute; right: 0; bottom: 3.5rem; border-radius: 1rem; background: #fff; padding: 1rem; border: 1px solid rgba(105,108,255,.15); }
-        @media (max-width: 576px) { .kara-ai-rail { right: .75rem; bottom: .75rem; } .kara-ai-rail__trigger span { display: none; } }
-    </style>
-@endonce
+    @once
+        <style>
+            .kara-ai-rail { position: fixed; right: 1.25rem; bottom: 1.5rem; z-index: 1080; }
+            .kara-ai-rail__trigger { border: 0; border-radius: 999px; background: #696cff; color: #fff; padding: .75rem 1rem; display: inline-flex; gap: .5rem; align-items: center; font-weight: 600; }
+            .kara-ai-rail__panel { width: min(27rem, calc(100vw - 2rem)); max-height: min(46rem, calc(100vh - 7rem)); overflow-y: auto; position: absolute; right: 0; bottom: 3.5rem; border-radius: 1rem; background: #fff; padding: 1rem; border: 1px solid rgba(105,108,255,.15); }
+            @media (max-width: 576px) { .kara-ai-rail { right: .75rem; bottom: .75rem; } .kara-ai-rail__trigger span { display: none; } }
+        </style>
+    @endonce
+</aside>

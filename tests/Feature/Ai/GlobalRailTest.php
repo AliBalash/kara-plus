@@ -20,4 +20,17 @@ class GlobalRailTest extends TestCase
         $rail->toggle();
         $this->assertTrue($rail->open);
     }
+
+    public function test_rail_template_has_exactly_one_root_element(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $rail = app(GlobalRail::class);
+        $rail->mount();
+
+        $html = trim(view('livewire.ai.global-rail', ['open' => $rail->open])->render());
+
+        $this->assertStringStartsWith('<aside ', $html);
+        $this->assertStringEndsWith('</aside>', $html);
+        $this->assertStringContainsString('<style>', $html);
+    }
 }
