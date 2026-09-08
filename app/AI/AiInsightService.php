@@ -26,8 +26,19 @@ class AiInsightService
             $this->run((string) Str::uuid(), $feature, $entityType, $entityId, $hash, $promptVersion, 'cached', true);
             return ['state' => 'ready', 'data' => $cached->response_json, 'cached' => true, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
         }
+        $lock = Cache::lock('kara-ai:inflight:'.$hash, config('ai.ajil.timeout') + 5);
+        if (! $lock->get()) {
+            return ['state' => 'busy'];
+        }
         $started = microtime(true); $requestId = (string) Str::uuid();
         try {
+            // A request may have completed between the first cache lookup and
+            // acquiring the lock. Reuse it instead of calling Ajil again.
+            $cached = AiInsight::where('feature', $feature)->where('entity_id', $entityId)->where('input_hash', $hash)->where('expires_at', '>', now())->latest()->first();
+            if ($cached) {
+                $this->run((string) Str::uuid(), $feature, $entityType, $entityId, $hash, $promptVersion, 'cached', true);
+                return ['state' => 'ready', 'data' => $cached->response_json, 'cached' => true, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+            }
             $gateway = app(AjilGatewayClient::class)->complete($feature, $facts, $context);
             $data = app(AiResponseValidator::class)->validate($gateway['response'], $facts);
             AiInsight::create(['scope' => 'panel', 'entity_type' => $entityType, 'entity_id' => $entityId, 'feature' => $feature, 'prompt_version' => $promptVersion, 'input_hash' => $hash, 'response_json' => $data, 'generated_at' => now(), 'expires_at' => now()->addSeconds(config('ai.cache_ttl'))]);
@@ -37,6 +48,8 @@ class AiInsightService
         } catch (Throwable $e) {
             report($e); $this->recordFailure($feature); $this->run($requestId, $feature, $entityType, $entityId, $hash, $promptVersion, 'unavailable', false, [], (int) ((microtime(true) - $started) * 1000), class_basename($e));
             return ['state' => 'unavailable'];
+        } finally {
+            $lock->release();
         }
     }
 
@@ -45,8 +58,8 @@ class AiInsightService
         $engine = app(AiFactEngine::class);
         return match ($feature) {
             'contract_brief' => $this->contractPayload($engine, $entityId),
-            'dashboard_operations' => [$engine->dashboard(), ['generated_at' => now()->toIso8601String()], 'dashboard'],
-            'payment_queue' => [$engine->payments(), ['generated_at' => now()->toIso8601String()], 'payment_queue'],
+            'dashboard_operations' => [$engine->dashboard(), [], 'dashboard'],
+            'payment_queue' => [$engine->payments(), [], 'payment_queue'],
             'changes_since_login' => [$engine->changes(Auth::id()), ['period_hours' => 24], 'user'],
             default => [[], [], null],
         };

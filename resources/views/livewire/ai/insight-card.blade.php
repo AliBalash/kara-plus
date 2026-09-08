@@ -11,6 +11,9 @@
         @elseif($state === 'unavailable')
             <div class="text-muted small">Insights are temporarily unavailable. Core operations are unaffected.</div>
             <button class="btn btn-sm btn-outline-primary mt-3" wire:click="load">Try again</button>
+        @elseif($state === 'busy')
+            <div class="text-muted small">An identical insight is already being prepared. Try again in a moment.</div>
+            <button class="btn btn-sm btn-outline-primary mt-3" wire:click="load">Check again</button>
         @else
             @if($feature === 'contract_brief' && isset($meta['score']))
                 <div class="d-flex align-items-center gap-3 rounded-3 bg-light p-3 mb-3"><div class="fs-3 fw-bold text-primary">{{ $meta['score'] }}/100</div><div><div class="fw-semibold">Contract Pulse · {{ $meta['label'] }}</div><div class="small text-muted">{{ $meta['issues_count'] }} verified item(s) deserve review</div></div></div>
