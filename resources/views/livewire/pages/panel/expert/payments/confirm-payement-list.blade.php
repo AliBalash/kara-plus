@@ -1,4 +1,7 @@
 <div class="card">
+    <div class="p-3 pb-0">
+        <livewire:ai.insight-card feature="payment_queue" :key="'ai-payment-queue'" />
+    </div>
     <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
         <div>
             <h5 class="mb-1">Confirm Payments</h5>

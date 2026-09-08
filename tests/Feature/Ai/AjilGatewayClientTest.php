@@ -1,0 +1,33 @@
+<?php
+
+namespace Tests\Feature\Ai;
+
+use App\AI\AjilGatewayClient;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+class AjilGatewayClientTest extends TestCase
+{
+    public function test_client_sends_one_logical_fallback_chain_request(): void
+    {
+        config()->set('ai.ajil.base_url', 'http://ajil.test');
+        config()->set('ai.ajil.token', 'test-token');
+        Http::fake(['ajil.test/v1/chat/completions' => Http::response(['choices' => [['message' => ['content' => json_encode(['headline' => 'OK', 'summary' => 'OK'])]]]], 200)]);
+        $result = app(AjilGatewayClient::class)->complete('dashboard_operations', [], []);
+        $this->assertSame('OK', $result['response']['headline']);
+        Http::assertSent(function (Request $request): bool {
+            return $request->header('x-api-token')[0] === 'test-token'
+                && $request['x_router']['strategy'] === 'fallback_chain'
+                && count($request['model']) === 2;
+        });
+    }
+
+    public function test_client_rejects_an_ajil_local_fallback(): void
+    {
+        config()->set('ai.ajil.base_url', 'http://ajil.test');
+        Http::fake(['ajil.test/v1/chat/completions' => Http::response(['model' => 'local/fallback', 'choices' => [['message' => ['content' => '{}']]]], 200)]);
+        $this->expectException(\RuntimeException::class);
+        app(AjilGatewayClient::class)->complete('dashboard_operations', [], []);
+    }
+}

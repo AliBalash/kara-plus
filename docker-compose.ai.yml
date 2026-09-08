@@ -1,0 +1,23 @@
+# Optional AI sidecar. Start alongside either compose file with:
+# docker compose -f docker-compose.local.yml -f docker-compose.ai.yml up -d --build
+# Ajil has no host port; Laravel reaches it over this compose project's private network.
+services:
+  ajil:
+    build:
+      context: ./ajil
+      dockerfile: Dockerfile
+    working_dir: /app
+    env_file:
+      - ./ajil/.env
+    environment:
+      UAG_REDIS_URL: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
