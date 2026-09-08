@@ -43,10 +43,14 @@ class AiHealthCommand extends Command
                 ->acceptJson()
                 ->withHeaders(array_filter(['x-api-token' => config('ai.ajil.token')]))
                 ->timeout(config('ai.catalog_timeout'))
-                ->get('/v1/models');
+                // The compact catalog endpoint gathers providers concurrently
+                // and caches the result in Ajil. /v1/models is sequential and
+                // can make a healthy gateway look unavailable on a cold cache.
+                ->get('/v1/models/catalog/summary');
             if ($models->successful()) {
-                $count = count($models->json('data', $models->json('models', [])) ?: []);
-                $this->info("Ajil model catalog is reachable ({$count} entries).");
+                $count = (int) $models->json('summary.total', 0);
+                $cache = $models->json('from_cache') ? 'cached' : 'fresh';
+                $this->info("Ajil model catalog is reachable ({$count} entries; {$cache}).");
             } else {
                 $this->warn('Ajil is healthy, but model catalog returned HTTP '.$models->status().'.');
             }

@@ -3,7 +3,10 @@
 return [
     'enabled' => env('KARA_AI_ENABLED', false),
     'cache_ttl' => (int) env('KARA_AI_CACHE_TTL', 600),
-    'catalog_timeout' => (int) env('KARA_AI_CATALOG_TIMEOUT', 5),
+    // Ajil gathers provider catalogs concurrently and may need up to its
+    // provider timeout on a cold cache. This is only used by ai:health, never
+    // by page rendering or an end-user insight.
+    'catalog_timeout' => (int) env('KARA_AI_CATALOG_TIMEOUT', 35),
     'max_facts' => (int) env('KARA_AI_MAX_FACTS', 25),
     'max_context_bytes' => (int) env('KARA_AI_MAX_CONTEXT_BYTES', 12000),
     'circuit' => [
@@ -26,8 +29,11 @@ return [
     ],
     'models' => [
         'default' => [
-            ['provider' => 'groq', 'model' => env('KARA_AI_GROQ_MODEL', 'llama-3.3-70b-versatile'), 'priority' => 0],
-            ['provider' => 'gemini', 'model' => env('KARA_AI_GEMINI_MODEL', 'gemini-2.5-flash'), 'priority' => 1],
+            // Keep these defaults aligned with Ajil's live catalog. The
+            // router owns retry, key rotation, cooldown and fallback.
+            ['provider' => 'groq', 'model' => env('KARA_AI_GROQ_MODEL', 'openai/gpt-oss-20b'), 'priority' => 0],
+            ['provider' => 'groq', 'model' => env('KARA_AI_GROQ_FALLBACK_MODEL', 'qwen/qwen3.6-27b'), 'priority' => 1],
+            ['provider' => 'gemini', 'model' => env('KARA_AI_GEMINI_MODEL', 'gemini-2.5-flash'), 'priority' => 2],
         ],
     ],
 ];
