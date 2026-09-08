@@ -12,50 +12,77 @@ use Throwable;
 
 class AiInsightService
 {
-    public function generate(string $feature, ?int $entityId = null): array
+    public function generate(string $feature, ?int $entityId = null, bool $force = false): array
     {
-        if (!config('ai.enabled') || !config('ai.features.'.$feature, false)) return ['state' => 'disabled'];
-        if ($this->isCircuitOpen($feature)) return ['state' => 'unavailable'];
+        if (! config('ai.enabled') || ! config('ai.features.'.$feature, false)) {
+            return ['state' => 'disabled'];
+        }
+        if ($this->isCircuitOpen($feature)) {
+            return ['state' => 'unavailable'];
+        }
         [$facts, $context, $entityType] = $this->payload($feature, $entityId);
         $context = app(AiContextSanitizer::class)->sanitize($context);
         [$facts, $context] = app(AiTokenBudgeter::class)->compact($facts, $context, config('ai.max_facts'), config('ai.max_context_bytes'));
         $promptVersion = app(PromptRegistry::class)->version($feature);
         $hash = hash('sha256', json_encode([$facts, $context, $promptVersion]));
         $cached = AiInsight::where('feature', $feature)->where('entity_id', $entityId)->where('input_hash', $hash)->where('expires_at', '>', now())->latest()->first();
-        if ($cached) {
+        if ($cached && ! $force) {
             $this->run((string) Str::uuid(), $feature, $entityType, $entityId, $hash, $promptVersion, 'cached', true);
-            return ['state' => 'ready', 'data' => $cached->response_json, 'cached' => true, 'insight_id' => $cached->id, 'entity_type' => $entityType, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+
+            return $this->readyPayload($cached, $facts, $context, $entityType, true);
         }
         $lock = Cache::lock('kara-ai:inflight:'.$hash, config('ai.ajil.timeout') + 5);
         if (! $lock->get()) {
             return ['state' => 'busy'];
         }
-        $started = microtime(true); $requestId = (string) Str::uuid();
+        $started = microtime(true);
+        $requestId = (string) Str::uuid();
         try {
             // A request may have completed between the first cache lookup and
             // acquiring the lock. Reuse it instead of calling Ajil again.
             $cached = AiInsight::where('feature', $feature)->where('entity_id', $entityId)->where('input_hash', $hash)->where('expires_at', '>', now())->latest()->first();
-            if ($cached) {
+            if ($cached && ! $force) {
                 $this->run((string) Str::uuid(), $feature, $entityType, $entityId, $hash, $promptVersion, 'cached', true);
-                return ['state' => 'ready', 'data' => $cached->response_json, 'cached' => true, 'insight_id' => $cached->id, 'entity_type' => $entityType, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+
+                return $this->readyPayload($cached, $facts, $context, $entityType, true);
             }
             $gateway = app(AjilGatewayClient::class)->complete($feature, $facts, $context);
             $data = app(AiResponseValidator::class)->validate($gateway['response'], $facts);
             $insight = AiInsight::create(['scope' => 'panel', 'entity_type' => $entityType, 'entity_id' => $entityId, 'feature' => $feature, 'prompt_version' => $promptVersion, 'input_hash' => $hash, 'response_json' => $data, 'generated_at' => now(), 'expires_at' => now()->addSeconds(config('ai.cache_ttl'))]);
             Cache::forget($this->circuitKey($feature));
             $this->run($requestId, $feature, $entityType, $entityId, $hash, $promptVersion, 'success', false, $gateway, (int) ((microtime(true) - $started) * 1000));
-            return ['state' => 'ready', 'data' => $data, 'cached' => false, 'insight_id' => $insight->id, 'entity_type' => $entityType, 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+
+            return $this->readyPayload($insight, $facts, $context, $entityType, false);
         } catch (Throwable $e) {
-            report($e); $this->recordFailure($feature); $this->run($requestId, $feature, $entityType, $entityId, $hash, $promptVersion, 'unavailable', false, [], (int) ((microtime(true) - $started) * 1000), class_basename($e));
+            report($e);
+            $this->recordFailure($feature);
+            $this->run($requestId, $feature, $entityType, $entityId, $hash, $promptVersion, 'unavailable', false, [], (int) ((microtime(true) - $started) * 1000), class_basename($e));
+
             return ['state' => 'unavailable'];
         } finally {
             $lock->release();
         }
     }
 
+    private function readyPayload(AiInsight $insight, array $facts, array $context, ?string $entityType, bool $cached): array
+    {
+        return [
+            'state' => 'ready',
+            'data' => $insight->response_json,
+            'cached' => $cached,
+            'insight_id' => $insight->id,
+            'entity_type' => $entityType,
+            'generated_at' => $insight->generated_at?->toIso8601String(),
+            'expires_at' => $insight->expires_at?->toIso8601String(),
+            'facts' => $facts,
+            'meta' => $context['pulse'] ?? [],
+        ];
+    }
+
     private function payload(string $feature, ?int $entityId): array
     {
         $engine = app(AiFactEngine::class);
+
         return match ($feature) {
             'contract_brief' => $this->contractPayload($engine, $entityId),
             'dashboard_operations' => [$engine->dashboard(), [], 'dashboard'],
@@ -71,6 +98,12 @@ class AiInsightService
         $facts = $engine->contract($contract);
         $payments = $contract->payments;
         $statusAt = $contract->latestStatus?->created_at ?? $contract->updated_at;
+        $customerContracts = Contract::query()
+            ->where('customer_id', $contract->customer_id)
+            ->select(['id', 'current_status', 'pickup_date', 'return_date', 'created_at'])
+            ->latest('id')
+            ->get();
+        $previousContracts = $customerContracts->where('id', '!=', $contract->id);
 
         return [$facts, [
             'contract_id' => $contract->id,
@@ -82,7 +115,20 @@ class AiInsightService
             'actual_return_at' => $contract->actual_return_at?->toIso8601String(),
             'duration_days' => $contract->pickup_date && $contract->return_date ? $contract->pickup_date->diffInDays($contract->return_date) : null,
             'total_price_aed' => (float) $contract->total_price,
-            'previous_contracts' => Contract::where('customer_id', $contract->customer_id)->count(),
+            'customer_operational_profile' => [
+                'status' => $contract->customer?->status,
+                'total_contracts' => $customerContracts->count(),
+                'previous_contracts' => $previousContracts->count(),
+                'active_contracts' => $customerContracts->whereIn('current_status', ['assigned', 'under_review', 'delivery', 'inspection', 'agreement_inspection', 'awaiting_return'])->count(),
+                'completed_contracts' => $customerContracts->where('current_status', 'complete')->count(),
+                'cancelled_or_rejected_contracts' => $customerContracts->whereIn('current_status', ['cancelled', 'rejected'])->count(),
+                'recent_contracts' => $previousContracts->take(3)->map(fn (Contract $previous) => [
+                    'contract_id' => $previous->id,
+                    'status' => $previous->current_status,
+                    'pickup_at' => $previous->pickup_date?->toIso8601String(),
+                    'return_at' => $previous->return_date?->toIso8601String(),
+                ])->values()->all(),
+            ],
             'vehicle' => [
                 'id' => $contract->car_id,
                 'operational_status' => $contract->car?->status,
@@ -102,12 +148,26 @@ class AiInsightService
                 'effective_at' => $amendment->effective_at?->toIso8601String(),
                 'total_amount_aed' => (float) $amendment->total_amount,
             ])->values()->all(),
+            'status_timeline' => $contract->statuses
+                ->sortByDesc('created_at')
+                ->take(6)
+                ->map(fn ($status) => [
+                    'status' => $status->status,
+                    'occurred_at' => $status->created_at?->toIso8601String(),
+                ])->values()->all(),
             'pulse' => $engine->contractPulse($facts),
             'payment_summary' => [
                 'transaction_count' => $payments->count(),
                 'pending_count' => $payments->where('approval_status', 'pending')->count(),
                 'pending_amount_aed' => (float) $payments->where('approval_status', 'pending')->sum('amount_in_aed'),
+                'approved_amount_aed' => (float) $payments->where('approval_status', 'approved')->sum('amount_in_aed'),
+                'paid_amount_aed' => (float) $payments->where('is_paid', true)->sum('amount_in_aed'),
+                'charge_amount_aed' => (float) $payments->whereIn('payment_type', \App\Models\Payment::CHARGE_PAYMENT_TYPES)->sum('amount_in_aed'),
                 'operational_balance_aed' => $contract->calculateRemainingBalance($payments),
+                'by_type' => $payments->groupBy('payment_type')->map(fn ($group) => [
+                    'count' => $group->count(),
+                    'amount_aed' => (float) $group->sum('amount_in_aed'),
+                ])->all(),
             ],
         ], 'contract'];
     }
@@ -134,7 +194,10 @@ class AiInsightService
         ]);
     }
 
-    private function circuitKey(string $feature): string { return 'kara-ai:circuit:'.$feature; }
+    private function circuitKey(string $feature): string
+    {
+        return 'kara-ai:circuit:'.$feature;
+    }
 
     private function isCircuitOpen(string $feature): bool
     {
