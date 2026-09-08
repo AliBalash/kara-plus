@@ -9,9 +9,9 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class LeadListTest extends TestCase
@@ -306,15 +306,14 @@ class LeadListTest extends TestCase
             $this->createLead(['request_date' => sprintf('2026-06-%02d', $day)]);
         }
 
-        Livewire::test(LeadList::class)
-            ->set('dateFrom', '2026-06-02')
-            ->set('sortField', 'request_date')
-            ->set('sortDirection', 'asc')
-            ->call('setPage', 2)
-            ->assertViewHas('leads', function ($leads) {
-                return $leads->total() === 11
-                    && $leads->pluck('request_date')->map->format('Y-m-d')->all() === ['2026-06-12'];
-            });
+        $component = $this->leadList();
+        $component->dateFrom = '2026-06-02';
+        $component->sortDirection = 'asc';
+        Paginator::currentPageResolver(fn (): int => 2);
+        $leads = $component->render()->getData()['leads'];
+
+        $this->assertSame(11, $leads->total());
+        $this->assertSame(['2026-06-12'], $leads->pluck('request_date')->map->format('Y-m-d')->all());
     }
 
     private function leadList(): LeadList
