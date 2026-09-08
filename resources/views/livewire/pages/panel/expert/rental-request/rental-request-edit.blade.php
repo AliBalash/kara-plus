@@ -1292,6 +1292,22 @@
             @endif
         </div>
     </form>
+
+    <section class="mt-5 mb-5 pb-5" aria-labelledby="kara-ai-contract-heading">
+        <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+            <div>
+                <div class="text-danger small fw-bold text-uppercase mb-1"><i class="bx bx-sparkles me-1"></i>Page-aware assistant</div>
+                <h5 id="kara-ai-contract-heading" class="mb-1">Kara AI · Contract workspace</h5>
+                <p class="text-muted small mb-0">A saved-data brief for this request, customer history, lifecycle, vehicle, documents and payments.</p>
+            </div>
+            <span class="badge bg-label-secondary"><i class="bx bx-lock-open-alt me-1"></i>Read-only analysis</span>
+        </div>
+        <div class="alert alert-secondary d-flex align-items-start gap-2 py-2 px-3 small" role="note">
+            <i class="bx bx-info-circle mt-1"></i>
+            <span>Unsaved form edits are not sent to Kara AI. Save the contract first, then use <strong>Check latest data</strong> below.</span>
+        </div>
+        <livewire:ai.insight-card feature="contract_brief" :entity-id="$contract->id" :key="'ai-contract-edit-'.$contract->id" />
+    </section>
 </div>
 
 @once
