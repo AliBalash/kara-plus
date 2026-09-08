@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\ContractAmendmentService;
 use App\Services\Reports\OperationsReportService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,7 +47,7 @@ class OperationsReportServiceTest extends TestCase
                 'created_at' => Carbon::parse('2025-02-10 09:00:00'),
                 'pickup_date' => Carbon::parse('2025-02-15 10:00:00'),
                 'return_date' => Carbon::parse('2025-02-18 10:00:00'),
-                'current_status' => 'payment',
+                'current_status' => 'assigned',
                 'total_price' => 1000,
                 'used_daily_rate' => 250,
                 'kardo_required' => true,
@@ -60,6 +61,7 @@ class OperationsReportServiceTest extends TestCase
             'amount' => 120,
             'description' => '3 day(s)',
         ]);
+        $matchingContract->update(['current_status' => 'payment']);
 
         Payment::factory()->for($matchingContract)->for($customer)->for($car)->paid()->create([
             'payment_type' => 'rental_fee',
@@ -122,6 +124,41 @@ class OperationsReportServiceTest extends TestCase
         $this->assertSame(160.0, $report['rows'][0]['remaining_balance']);
         $this->assertContains('Rental Rate AED/Day', $report['export_headings']);
         $this->assertSame(250.0, $report['export_rows'][0][5]);
+    }
+
+    public function test_customer_requests_report_counts_extensions_as_revenue_not_new_rentals(): void
+    {
+        $customer = Customer::factory()->create(['gender' => 'male']);
+        $car = Car::factory()->available()->create([
+            'price_per_day_short' => 200,
+            'price_per_day_mid' => 200,
+            'price_per_day_long' => 200,
+        ]);
+        $actor = User::factory()->create();
+        $contract = Contract::factory()->for($customer)->for($car)->create([
+            'current_status' => 'assigned',
+            'pickup_date' => Carbon::parse('2026-09-01 10:00:00'),
+            'return_date' => Carbon::parse('2026-09-05 10:00:00'),
+            'total_price' => 1000,
+        ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1000,
+            'source_type' => 'original',
+        ]);
+        $contract->update(['current_status' => 'awaiting_return']);
+        $amendments = app(ContractAmendmentService::class);
+        $amendment = $amendments->requestExtension($contract, $contract->return_date->copy()->addDays(2), $actor->id);
+        $approved = $amendments->approve($amendment, $actor->id);
+
+        $report = $this->service->customerRequests();
+
+        $this->assertSame(1, $report['summary']['matching_contracts']);
+        $this->assertSame(1, $report['summary']['unique_customers']);
+        $this->assertEqualsWithDelta((float) $approved->total_amount, $report['summary']['extension_revenue'], 0.01);
+        $this->assertEqualsWithDelta(1000, $report['summary']['rental_revenue'], 0.01);
+        $this->assertEqualsWithDelta(1000 + (float) $approved->total_amount, $report['summary']['gross_contract_value'], 0.01);
     }
 
     public function test_customer_balance_report_groups_contracts_and_marks_overdue_accounts(): void

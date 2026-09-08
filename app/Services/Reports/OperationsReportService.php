@@ -94,6 +94,7 @@ class OperationsReportService
                 $filters['date_from'],
                 $filters['date_to']
             ))
+            ->withSum(['amendments as extension_revenue' => fn (Builder $query) => $query->where('type', 'extension')->where('status', 'approved')], 'total_amount')
             ->get()
             ->sortByDesc(fn (Contract $contract) => $this->timestampValue($contract->{$filters['date_field']} ?? $contract->created_at))
             ->values();
@@ -108,6 +109,8 @@ class OperationsReportService
             'matching_contracts' => $rows->count(),
             'unique_customers' => $rows->pluck('customer_id')->filter()->unique()->count(),
             'gross_contract_value' => round((float) $rows->sum('total_price'), 2),
+            'extension_revenue' => round((float) $contracts->sum('extension_revenue'), 2),
+            'rental_revenue' => round((float) $contracts->sum(fn (Contract $contract) => (float) $contract->total_price - (float) $contract->extension_revenue), 2),
             'recorded_payments' => round((float) $rows->sum('net_payments'), 2),
             'outstanding_balance' => round((float) $rows->sum('remaining_balance_positive'), 2),
             'average_rental_days' => round((float) $rows->avg('duration_days'), 1),
@@ -135,6 +138,8 @@ class OperationsReportService
                     'Matching Contracts' => $summary['matching_contracts'],
                     'Unique Customers' => $summary['unique_customers'],
                     'Gross Contract Value (AED)' => $summary['gross_contract_value'],
+                    'Rental Revenue (AED)' => $summary['rental_revenue'],
+                    'Extension Revenue (AED)' => $summary['extension_revenue'],
                     'Recorded Payments (AED)' => $summary['recorded_payments'],
                     'Outstanding Balance (AED)' => $summary['outstanding_balance'],
                     'Average Rental Days' => $summary['average_rental_days'],
