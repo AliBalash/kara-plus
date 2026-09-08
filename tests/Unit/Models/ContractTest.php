@@ -108,7 +108,7 @@ class ContractTest extends TestCase
             ->firstOrFail();
 
         $byId = Contract::query()
-            ->whereReferenceLike('%' . $contract->id . '%')
+            ->whereReferenceLike('%'.$contract->id.'%')
             ->firstOrFail();
 
         $this->assertSame($contract->id, $byAgreement->id);
@@ -130,6 +130,7 @@ class ContractTest extends TestCase
         Carbon::setTestNow('2025-01-01 10:00:00');
         $contract = $this->createBaselineContract(['current_status' => 'pending']);
         $userId = $contract->user_id;
+        $plannedReturn = $contract->return_date->copy();
 
         Carbon::setTestNow('2025-01-03 14:30:00');
         $contract->changeStatus('complete', $userId, 'Finished successfully');
@@ -137,7 +138,8 @@ class ContractTest extends TestCase
         $contract->refresh();
 
         $this->assertEquals('complete', $contract->current_status);
-        $this->assertEquals('2025-01-03 14:30:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertTrue($contract->return_date->equalTo($plannedReturn));
+        $this->assertNotNull($contract->actual_return_at);
 
         $latestStatus = $contract->statuses()->latest('id')->first();
         $this->assertNotNull($latestStatus);

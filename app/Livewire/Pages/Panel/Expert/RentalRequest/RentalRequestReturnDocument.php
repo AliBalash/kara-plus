@@ -2,49 +2,62 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\InteractsWithToasts;
+use App\Livewire\Concerns\LogsBusinessRead;
+use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Models\Contract;
 use App\Models\ReturnDocument;
 use App\Services\Media\DeferredImageUploadService;
-use App\Livewire\Concerns\LogsBusinessRead;
-use App\Livewire\Concerns\InteractsWithToasts;
-use App\Livewire\Concerns\RefreshesFileInputs;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
-use Livewire\Component;
 
 class RentalRequestReturnDocument extends Component
 {
-
-    use WithFileUploads;
     use InteractsWithToasts;
-    use RefreshesFileInputs;
     use LogsBusinessRead;
+    use RefreshesFileInputs;
+    use WithFileUploads;
 
     public $contractId;
+
     public $factorContract;
+
     public $carDashboard;
+
     public array $carInsidePhotos = [];
+
     public array $carOutsidePhotos = [];
+
     public array $existingGalleries = [
         'inside' => [],
         'outside' => [],
     ];
-    public $fuelLevel  = 50;
+
+    public $fuelLevel = 50;
+
     public $mileage;
+
     public $note;
+
     public $driverNote;
+
     public $existingFiles = [];
 
     public $remainingBalance;
+
     public $contract;
+
     public $agreementNumber;
 
     protected DeferredImageUploadService $deferredUploader;
+
     public array $pendingInsideUploads = [];
+
     public array $pendingOutsideUploads = [];
 
     protected array $messages = [
@@ -86,7 +99,6 @@ class RentalRequestReturnDocument extends Component
         $this->deferredUploader = $deferredUploader;
     }
 
-
     public function mount($contractId)
     {
         $this->contractId = $contractId;
@@ -98,7 +110,7 @@ class RentalRequestReturnDocument extends Component
 
         $this->contractId = $contractId;
         $return = ReturnDocument::where('contract_id', $contractId)->first();
-        if (!empty($return)) {
+        if (! empty($return)) {
             $this->fuelLevel = $return->fuelLevel;
             $this->mileage = $return->mileage;
             $this->note = $return->note;
@@ -142,15 +154,12 @@ class RentalRequestReturnDocument extends Component
             $validationRules['factorContract'] = 'image|max:8048';
         }
 
-
-
         // Car Dashboard  Validation
         if ($this->carDashboard) {
             $validationRules['carDashboard'] = 'required|image|max:8048';
-        } elseif (!$this->carDashboard && empty($this->existingFiles['carDashboard'])) {
+        } elseif (! $this->carDashboard && empty($this->existingFiles['carDashboard'])) {
             $validationRules['carDashboard'] = 'required|image|max:8048';
         }
-
 
         $insideHasExisting = ! empty($this->existingGalleries['inside']);
         $outsideHasExisting = ! empty($this->existingGalleries['outside']);
@@ -166,9 +175,9 @@ class RentalRequestReturnDocument extends Component
         }
 
         if (! $insideHasExisting && $insideUploadCount === 0) {
-            $validationRules['carInsidePhotos'] = 'required|array|min:1|max:' . $maxGalleryItems;
+            $validationRules['carInsidePhotos'] = 'required|array|min:1|max:'.$maxGalleryItems;
         } elseif ($insideUploadCount > 0) {
-            $validationRules['carInsidePhotos'] = 'array|min:1|max:' . $insideRemainingSlots;
+            $validationRules['carInsidePhotos'] = 'array|min:1|max:'.$insideRemainingSlots;
         }
 
         if (array_key_exists('carInsidePhotos', $validationRules)) {
@@ -184,16 +193,14 @@ class RentalRequestReturnDocument extends Component
         }
 
         if (! $outsideHasExisting && $outsideUploadCount === 0) {
-            $validationRules['carOutsidePhotos'] = 'required|array|min:1|max:' . $maxGalleryItems;
+            $validationRules['carOutsidePhotos'] = 'required|array|min:1|max:'.$maxGalleryItems;
         } elseif ($outsideUploadCount > 0) {
-            $validationRules['carOutsidePhotos'] = 'array|min:1|max:' . $outsideRemainingSlots;
+            $validationRules['carOutsidePhotos'] = 'array|min:1|max:'.$outsideRemainingSlots;
         }
 
         if (array_key_exists('carOutsidePhotos', $validationRules)) {
             $validationRules['carOutsidePhotos.*'] = 'image|mimes:jpeg,jpg,png,webp|max:8048';
         }
-
-
 
         if ($validationRules) {
             $this->validateWithScroll($validationRules);
@@ -201,7 +208,6 @@ class RentalRequestReturnDocument extends Component
 
         $this->carInsidePhotos = array_values($this->carInsidePhotos);
         $this->carOutsidePhotos = array_values($this->carOutsidePhotos);
-
 
         // Start Database Transaction
         DB::beginTransaction();
@@ -229,7 +235,6 @@ class RentalRequestReturnDocument extends Component
                 $uploadedPaths[] = $factorPath;
                 $this->queueReplacedPathForDeletion($pathsToDelete, $previousPath, $factorPath);
             }
-
 
             // Car Dashboard  Upload
             if ($this->carDashboard) {
@@ -279,8 +284,6 @@ class RentalRequestReturnDocument extends Component
             $returnDocument->user_id = auth()->id();
             $returnDocument->save();
 
-
-
             DB::commit();
             $this->deleteStoredFiles($pathsToDelete);
 
@@ -293,10 +296,9 @@ class RentalRequestReturnDocument extends Component
             // حذف فایل‌های آپلود شده در صورت خطا
             $this->deleteStoredFiles($uploadedPaths);
 
-            $this->toast('error', 'Error uploading documents: ' . $e->getMessage(), false);
+            $this->toast('error', 'Error uploading documents: '.$e->getMessage(), false);
         }
     }
-
 
     public function removeFile($fileType)
     {
@@ -306,7 +308,8 @@ class RentalRequestReturnDocument extends Component
         ];
 
         if (! array_key_exists($fileType, $mapping)) {
-            $this->toast('error', 'The file type "' . $fileType . '" is not valid.', false);
+            $this->toast('error', 'The file type "'.$fileType.'" is not valid.', false);
+
             return;
         }
 
@@ -327,13 +330,12 @@ class RentalRequestReturnDocument extends Component
 
         $this->existingFiles[$viewKey] = null;
 
-        $this->toast('success', ucfirst($fileType) . ' successfully removed.');
+        $this->toast('success', ucfirst($fileType).' successfully removed.');
 
         // بارگذاری مجدد
         $this->mount($this->contractId);
         $this->refreshFileInputs();
     }
-
 
     public function render()
     {
@@ -344,6 +346,7 @@ class RentalRequestReturnDocument extends Component
     {
         if (! in_array($section, ['inside', 'outside'], true)) {
             $this->toast('error', 'The requested gallery section is not valid.', false);
+
             return;
         }
 
@@ -352,6 +355,7 @@ class RentalRequestReturnDocument extends Component
         $returnDocument = ReturnDocument::where('contract_id', $this->contractId)->first();
         if (! $returnDocument) {
             $this->toast('error', 'Return document not found.', false);
+
             return;
         }
 
@@ -361,6 +365,7 @@ class RentalRequestReturnDocument extends Component
 
         if (! is_array($gallery) || empty($gallery)) {
             $this->toast('error', 'No photos available to remove.', false);
+
             return;
         }
 
@@ -368,6 +373,7 @@ class RentalRequestReturnDocument extends Component
 
         if (count($filteredGallery) === count($gallery)) {
             $this->toast('error', 'The selected photo was not found.', false);
+
             return;
         }
 
@@ -461,20 +467,20 @@ class RentalRequestReturnDocument extends Component
         return null;
     }
 
-
     public function changeStatusToPayment($contractId)
     {
         $contract = Contract::findOrFail($contractId);
 
         if ($contract->current_status === 'payment') {
             $this->toast('success', 'Contract is already in payment status.');
+
             return;
         }
 
         DB::beginTransaction();
         try {
-            if ($contract->return_date === null) {
-                $contract->update(['return_date' => now()]);
+            if ($contract->actual_return_at === null) {
+                $contract->update(['actual_return_at' => now()]);
             }
 
             $contract->changeStatus('returned', auth()->id());
@@ -485,7 +491,7 @@ class RentalRequestReturnDocument extends Component
             $this->toast('success', 'Status changed to Returned then Payment successfully.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->toast('error', 'Error changing status: ' . $e->getMessage(), false);
+            $this->toast('error', 'Error changing status: '.$e->getMessage(), false);
         }
     }
 
@@ -508,7 +514,7 @@ class RentalRequestReturnDocument extends Component
     {
         return $this->deferredUploader->store(
             $file,
-            'ReturnDocument/' . $type . '/' . $this->contractId . '/' . $type . '-' . Str::uuid() . '.webp',
+            'ReturnDocument/'.$type.'/'.$this->contractId.'/'.$type.'-'.Str::uuid().'.webp',
             'myimage'
         );
     }

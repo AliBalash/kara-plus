@@ -12,34 +12,53 @@ class Car extends Model
     use HasFactory;
 
     public const STATUS_AVAILABLE = 'available';
+
     public const STATUS_PRE_RESERVED = 'pre_reserved';
+
     public const STATUS_RESERVED = 'reserved';
+
     public const STATUS_UNAVAILABLE = 'unavailable';
+
     public const STATUS_SOLD = 'sold';
+
     public const LEGACY_STATUS_UNDER_MAINTENANCE = 'under_maintenance';
 
     public const MANUAL_STATUS_AVAILABLE = 'available';
+
     public const MANUAL_STATUS_UNAVAILABLE = 'unavailable';
+
     public const MANUAL_STATUS_SOLD = 'sold';
 
     public const UNAVAILABILITY_REASON_MAINTENANCE = 'maintenance';
+
     public const UNAVAILABILITY_REASON_SERVICE_OIL = 'service_oil';
+
     public const UNAVAILABILITY_REASON_AC_PROBLEM = 'ac_problem';
+
     public const UNAVAILABILITY_REASON_ACCIDENT = 'accident';
+
     public const UNAVAILABILITY_REASON_INSURANCE = 'insurance';
+
     public const UNAVAILABILITY_REASON_MANAGEMENT_DECISION = 'management_decision';
+
     public const UNAVAILABILITY_REASON_FOR_SALE = 'for_sale';
+
     public const UNAVAILABILITY_REASON_REGISTRATION = 'registration';
+
     public const UNAVAILABILITY_REASON_CHANGE_PLATE = 'change_plate';
+
     public const UNAVAILABILITY_REASON_NEED_ACTION = 'need_action';
 
     private const RENTABLE_STATUSES = [self::STATUS_AVAILABLE, self::STATUS_PRE_RESERVED];
+
     private const RESERVATION_SELECTION_BLOCKED_STATUSES = [self::STATUS_SOLD, self::STATUS_UNAVAILABLE];
+
     private const MANUAL_STATUSES = [
         self::MANUAL_STATUS_AVAILABLE,
         self::MANUAL_STATUS_UNAVAILABLE,
         self::MANUAL_STATUS_SOLD,
     ];
+
     private const MANUAL_UNAVAILABILITY_REASONS = [
         self::UNAVAILABILITY_REASON_MAINTENANCE,
         self::UNAVAILABILITY_REASON_SERVICE_OIL,
@@ -51,6 +70,7 @@ class Car extends Model
         self::UNAVAILABILITY_REASON_REGISTRATION,
         self::UNAVAILABILITY_REASON_CHANGE_PLATE,
     ];
+
     private const UNAVAILABILITY_REASON_LABELS = [
         self::UNAVAILABILITY_REASON_MAINTENANCE => 'Maintenance',
         self::UNAVAILABILITY_REASON_SERVICE_OIL => 'Service Oil',
@@ -68,7 +88,9 @@ class Car extends Model
      * @var array<string, array<int, string>>
      */
     private static array $imageDirectoryCache = [];
+
     private static array $columnExistenceCache = [];
+
     private static array $tableExistenceCache = [];
 
     /**
@@ -250,15 +272,15 @@ class Car extends Model
             && $this->unavailability_reason === self::UNAVAILABILITY_REASON_NEED_ACTION
         ) {
             if ($expiredHold) {
-                $notes[] = 'Expired hold awaiting review: ' . ($expiredHold->reasonLabel() ?? 'Unavailable') . ' ' . $expiredHold->dateWindowLabel() . '.';
+                $notes[] = 'Expired hold awaiting review: '.($expiredHold->reasonLabel() ?? 'Unavailable').' '.$expiredHold->dateWindowLabel().'.';
             }
 
             if ($activeHold) {
-                $notes[] = 'Active hold also exists: ' . ($activeHold->reasonLabel() ?? 'Unavailable') . ' ' . $activeHold->dateWindowLabel() . '.';
+                $notes[] = 'Active hold also exists: '.($activeHold->reasonLabel() ?? 'Unavailable').' '.$activeHold->dateWindowLabel().'.';
             }
 
             if ($upcomingHold) {
-                $notes[] = 'Upcoming hold also exists: ' . ($upcomingHold->reasonLabel() ?? 'Unavailable') . ' ' . $upcomingHold->dateWindowLabel() . '.';
+                $notes[] = 'Upcoming hold also exists: '.($upcomingHold->reasonLabel() ?? 'Unavailable').' '.$upcomingHold->dateWindowLabel().'.';
             }
 
             if ($hasUpcomingReservation) {
@@ -273,7 +295,7 @@ class Car extends Model
         }
 
         if (! $activeHold && $upcomingHold) {
-            $notes[] = 'Upcoming hold exists: ' . ($upcomingHold->reasonLabel() ?? 'Unavailable') . ' ' . $upcomingHold->dateWindowLabel() . '.';
+            $notes[] = 'Upcoming hold exists: '.($upcomingHold->reasonLabel() ?? 'Unavailable').' '.$upcomingHold->dateWindowLabel().'.';
         }
 
         if ($hasUpcomingReservation && ! $activeHold) {
@@ -488,8 +510,7 @@ class Car extends Model
         ?string $note = null,
         ?string $triggerType = null,
         ?int $triggerId = null
-    ): bool
-    {
+    ): bool {
         $now ??= Carbon::now();
         $attributes = $this->synchronizedOperationalState($now);
         $currentAvailability = (bool) $this->availability;
@@ -866,7 +887,7 @@ class Car extends Model
     /**
      * متد برای خودروهایی که نیاز به سرویس دارند.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeNeedsService($query)
@@ -1146,7 +1167,7 @@ class Car extends Model
     /**
      * متد برای دریافت خودروهای با وضعیت خاص.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      */
     public function scopeByStatus($query, string $status)
     {
@@ -1204,11 +1225,11 @@ class Car extends Model
         }
 
         if (! str_starts_with($path, 'assets/')) {
-            $path = 'assets/' . $path;
+            $path = 'assets/'.$path;
         }
 
         $path = rtrim($path, '/');
-        $relativePath = $path . '/' . $fileName;
+        $relativePath = $path.'/'.$fileName;
 
         if (! is_file(public_path($relativePath))) {
             $matchedPath = $this->resolveClosestImagePath($path, $fileName);
@@ -1283,7 +1304,7 @@ class Car extends Model
             }
 
             if ($candidateKey === $targetKey) {
-                return $basePath . '/' . $candidateFileName;
+                return $basePath.'/'.$candidateFileName;
             }
 
             if (! str_contains($candidateKey, $targetKey) && ! str_contains($targetKey, $candidateKey)) {
@@ -1304,7 +1325,7 @@ class Car extends Model
             return null;
         }
 
-        return $basePath . '/' . $bestMatch;
+        return $basePath.'/'.$bestMatch;
     }
 
     /**
@@ -1337,7 +1358,7 @@ class Car extends Model
                 continue;
             }
 
-            $absolutePath = $absoluteDirectory . DIRECTORY_SEPARATOR . $entry;
+            $absolutePath = $absoluteDirectory.DIRECTORY_SEPARATOR.$entry;
             if (! is_file($absolutePath)) {
                 continue;
             }
@@ -1396,5 +1417,14 @@ class Car extends Model
         }
 
         return 'The selected car is marked unavailable and cannot be used for reservations until it is reactivated.';
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Car $car): void {
+            if ($car->contracts()->exists()) {
+                throw new \DomainException('Vehicles with contract history cannot be deleted. Mark the vehicle as sold instead.');
+            }
+        });
     }
 }

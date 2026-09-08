@@ -54,18 +54,14 @@ class Customer extends Model
 
     /**
      * متد Full Name برای ترکیب نام و نام خانوادگی.
-     *
-     * @return string
      */
     public function fullName(): string
     {
-        return $this->first_name . ' ' . $this->last_name;
+        return $this->first_name.' '.$this->last_name;
     }
 
     /**
      * متد بررسی وضعیت فعال بودن مشتری.
-     *
-     * @return bool
      */
     public function isActive(): bool
     {
@@ -74,21 +70,20 @@ class Customer extends Model
 
     /**
      * متد بررسی اعتبار پاسپورت (آیا تاریخ انقضا گذشته؟).
-     *
-     * @return bool
      */
     public function isPassportValid(): bool
     {
         if ($this->passport_expiry_date) {
             return $this->passport_expiry_date->isFuture();
         }
+
         return false;
     }
 
     /**
      * متد برای دریافت مشتریان فعال.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeActive($query)
@@ -122,13 +117,11 @@ class Customer extends Model
         return $this->hasMany(CustomerDocument::class);
     }
 
-
     // Relationship with Payment model
     public function payments()
     {
         return $this->hasMany(Payment::class);
     }
-
 
     protected static function boot()
     {
@@ -139,12 +132,12 @@ class Customer extends Model
             if (empty($customer->gender)) { // If gender is not set
                 try {
                     // Create a Guzzle Client instance
-                    $client = new Client();
+                    $client = new Client;
                     // Call the Genderize API
-                    $response = $client->get("https://api.genderize.io", [
+                    $response = $client->get('https://api.genderize.io', [
                         'query' => [
                             'name' => $customer->first_name, // Send first name to detect gender
-                        ]
+                        ],
                     ]);
                     // Extract data from API response
                     $data = json_decode($response->getBody()->getContents(), true);
@@ -155,8 +148,14 @@ class Customer extends Model
                     }
                 } catch (\Exception $e) {
                     // Handle errors (e.g., log the error)
-                    Log::error('Error in gender detection: ' . $e->getMessage());
+                    Log::error('Error in gender detection: '.$e->getMessage());
                 }
+            }
+        });
+
+        static::deleting(function (Customer $customer): void {
+            if ($customer->contracts()->exists() || $customer->payments()->exists()) {
+                throw new \DomainException('Customers with contract or payment history cannot be deleted. Deactivate the customer instead.');
             }
         });
     }

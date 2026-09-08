@@ -2,22 +2,30 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
-use App\Models\Car;
-use App\Models\ContractBalanceTransfer;
 
 class Contract extends Model
 {
     use HasFactory;
 
+    public const AMENDABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return'];
+
+    public const FINANCIALLY_IMMUTABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return', 'returned', 'payment', 'complete'];
+
+    private bool $commercialMutationAuthorized = false;
+
     public const STATUS_REVIEW_PENDING = 'review_pending';
+
     public const INTAKE_SOURCE_PANEL = 'panel';
+
     public const INTAKE_SOURCE_WEBSITE = 'website';
+
     public const CUSTOMER_BALANCE_EXCLUDED_STATUSES = ['cancelled', 'rejected', self::STATUS_REVIEW_PENDING];
+
     public const COMMUNICATION_CHANNELS = [
         'google_ads',
         'meta_ads',
@@ -33,9 +41,11 @@ class Contract extends Model
         'google_search',
         'invygo',
     ];
+
     public const COMMUNICATION_CHANNEL_ALIASES = [
         'invigo' => 'invygo',
     ];
+
     public const COMMUNICATION_CHANNEL_LABELS = [
         'google_ads' => 'Google Ads',
         'meta_ads' => 'Meta Ads',
@@ -71,6 +81,9 @@ class Contract extends Model
         'pickup_location',
         'return_location',
         'return_date',
+        'original_return_date',
+        'actual_pickup_at',
+        'actual_return_at',
         'total_price',
         'kardo_required',
         'current_status',
@@ -95,6 +108,9 @@ class Contract extends Model
     protected $casts = [
         'pickup_date' => 'datetime',
         'return_date' => 'datetime',
+        'original_return_date' => 'datetime',
+        'actual_pickup_at' => 'datetime',
+        'actual_return_at' => 'datetime',
         'total_price' => 'decimal:2',
         'kardo_required' => 'boolean',
         'payment_on_delivery' => 'boolean',
@@ -133,8 +149,6 @@ class Contract extends Model
 
     /**
      * متد برای دریافت وضعیت قرارداد.
-     *
-     * @return string
      */
     public function statusLabel(): string
     {
@@ -143,8 +157,6 @@ class Contract extends Model
 
     /**
      * متد برای بررسی وضعیت قرارداد (فعال یا تکمیل شده).
-     *
-     * @return bool
      */
     public function isActive(): bool
     {
@@ -153,8 +165,6 @@ class Contract extends Model
 
     /**
      * متد برای بررسی اینکه قرارداد کامل شده است یا خیر.
-     *
-     * @return bool
      */
     public function isCompleted(): bool
     {
@@ -236,7 +246,6 @@ class Contract extends Model
         return $this->intake_source === self::INTAKE_SOURCE_WEBSITE;
     }
 
-
     public function calculateRemainingBalance($payments = null)
     {
         if (is_null($payments)) {
@@ -282,18 +291,20 @@ class Contract extends Model
         return round($balance, 2);
     }
 
-
-
     // همه‌ی آیتم‌های قیمت
     public function charges()
     {
         return $this->hasMany(ContractCharges::class);
     }
 
+    /** Commercial changes are durable children of the operational contract. */
+    public function amendments()
+    {
+        return $this->hasMany(ContractAmendment::class)->orderBy('sequence_no');
+    }
+
     /**
      * متد برای محاسبه قیمت نهایی قرارداد با توجه به روزهای اجاره.
-     *
-     * @return float
      */
     public function calculateTotalPrice(): float
     {
@@ -342,6 +353,10 @@ class Contract extends Model
 
         $this->update(['current_status' => $newStatus]);
 
+        if ($newStatus === 'delivery' && $this->actual_pickup_at === null) {
+            $this->update(['actual_pickup_at' => now()]);
+        }
+
         // اگر وضعیت به pending تغییر کرد
         if ($newStatus === 'pending') {
             $this->initializeContract();
@@ -356,7 +371,7 @@ class Contract extends Model
     // متد جدید برای ثبت تاریخ شروع قرارداد
     public function initializeContract()
     {
-        if (!$this->pickup_date) {
+        if (! $this->pickup_date) {
             $this->update([
                 'pickup_date' => now(),  // ثبت تاریخ شروع قرارداد
             ]);
@@ -366,9 +381,28 @@ class Contract extends Model
     // متد برای نهایی‌سازی درخواست
     public function finalizeContract()
     {
-        $this->update([
-            'return_date' => now(),  // ثبت تاریخ پایان قرارداد
-        ]);
+        if ($this->actual_return_at === null) {
+            $this->update([
+                // return_date remains the current planned return. The actual
+                // timestamp is written once and never moved by settlement.
+                'actual_return_at' => now(),
+            ]);
+        }
+    }
+
+    /** Apply an approved commercial extension while keeping normal edits locked. */
+    public function applyApprovedExtension($newReturnAt, float $newTotalPrice): void
+    {
+        $this->commercialMutationAuthorized = true;
+
+        try {
+            $this->update([
+                'return_date' => $newReturnAt,
+                'total_price' => round($newTotalPrice, 2),
+            ]);
+        } finally {
+            $this->commercialMutationAuthorized = false;
+        }
     }
 
     public function pickupDocument()
@@ -408,6 +442,9 @@ class Contract extends Model
     protected static function booted(): void
     {
         static::created(function (Contract $contract) {
+            if ($contract->return_date && $contract->original_return_date === null) {
+                $contract->updateQuietly(['original_return_date' => $contract->return_date]);
+            }
             $contract->syncCarAvailabilityForCar($contract->car_id);
         });
 
@@ -417,6 +454,38 @@ class Contract extends Model
             }
 
             $contract->syncCarAvailabilityForCar($contract->car_id);
+        });
+
+        static::updating(function (Contract $contract): void {
+            if ($contract->isDirty('original_return_date')
+                && $contract->getOriginal('original_return_date') !== null) {
+                throw new \DomainException('The original contract return date is immutable.');
+            }
+
+            $commercialFields = [
+                'customer_id',
+                'car_id',
+                'pickup_date',
+                'return_date',
+                'total_price',
+                'used_daily_rate',
+                'custom_daily_rate_enabled',
+                'discount_note',
+            ];
+
+            if (! $contract->commercialMutationAuthorized
+                && in_array($contract->getOriginal('current_status'), self::FINANCIALLY_IMMUTABLE_STATUSES, true)
+                && $contract->isDirty($commercialFields)) {
+                throw new \DomainException('Operational contract commercial terms are immutable. Use an amendment.');
+            }
+        });
+
+        static::deleting(function (Contract $contract): void {
+            if (in_array($contract->current_status, self::FINANCIALLY_IMMUTABLE_STATUSES, true)
+                || $contract->amendments()->exists()
+                || $contract->payments()->exists()) {
+                throw new \DomainException('Operational or financial contracts cannot be deleted. Cancel or archive the contract instead.');
+            }
         });
 
         static::deleted(function (Contract $contract) {
