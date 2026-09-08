@@ -3,6 +3,7 @@
 return [
     'enabled' => env('KARA_AI_ENABLED', false),
     'cache_ttl' => (int) env('KARA_AI_CACHE_TTL', 600),
+    'catalog_timeout' => (int) env('KARA_AI_CATALOG_TIMEOUT', 5),
     'max_facts' => (int) env('KARA_AI_MAX_FACTS', 25),
     'max_context_bytes' => (int) env('KARA_AI_MAX_CONTEXT_BYTES', 12000),
     'circuit' => [
