@@ -67,6 +67,16 @@ class AiInsightServiceTest extends TestCase
         $ajilCalls = Http::recorded(fn ($request) => str_starts_with($request->url(), 'http://ajil.test/'));
         $this->assertCount(1, $ajilCalls);
         Http::assertSent(fn ($request) => str_starts_with($request->url(), 'http://ajil.test/') && !str_contains($request->body(), $contract->customer->phone));
+        Http::assertSent(function ($request) use ($contract): bool {
+            $requestBody = json_decode($request->body(), true);
+            $context = json_decode($requestBody['messages'][1]['content'] ?? '', true)['context'] ?? [];
+
+            return ($context['vehicle']['id'] ?? null) === $contract->car_id
+                && array_key_exists('pickup_document_present', $context['documents'] ?? [])
+                && ($context['payment_summary']['pending_count'] ?? null) === 1
+                && ! array_key_exists('notes', $context)
+                && ! array_key_exists('phone', $context);
+        });
     }
 
     public function test_repeated_failures_open_a_short_circuit(): void

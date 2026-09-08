@@ -11,7 +11,7 @@ class AiFactEngine
 {
     public function contract(Contract $contract): array
     {
-        $contract->loadMissing(['payments', 'pickupDocument', 'returnDocument', 'customerDocument', 'amendments', 'car']);
+        $contract->loadMissing(['payments', 'pickupDocument', 'returnDocument', 'customerDocument', 'amendments', 'car', 'latestStatus']);
         $facts = [];
         $add = function (string $type, int $severity, string $title, array $metrics = [], ?string $url = null) use (&$facts, $contract): void {
             $facts[] = ['fact_id' => strtoupper($type).':contract:'.$contract->id, 'type' => $type, 'severity' => $severity, 'entity_type' => 'contract', 'entity_id' => $contract->id, 'title' => $title, 'metrics' => $metrics, 'evidence_url' => $url];

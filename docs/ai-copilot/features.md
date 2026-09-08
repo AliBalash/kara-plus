@@ -2,7 +2,7 @@
 
 ## Available MVP
 
-* **Contract Brief and Pulse** — a deterministic readiness score, verified missing-document, overdue-return and pending-payment facts, then an optional AI explanation.
+* **Contract Brief and Pulse** — a deterministic readiness score, verified missing-document, overdue-return and pending-payment facts, then an optional AI explanation. Its compact Contract 360 context includes safe lifecycle timing, non-identifying vehicle state, document presence, payment aggregates, amendment summaries and repeat-rental count; it excludes customer identity, contact fields and note text.
 * **Operations Brief** — compact dashboard facts for overdue returns, pending-payment exposure and upcoming pickups.
 * **Payment Queue Brief** — grouped pending-payment age batches; it preserves the distinction between pending transactions and operational balance.
 * **Changes Since Last Login** — aggregated audit-event groups from the previous successful login, never raw audit entries.
