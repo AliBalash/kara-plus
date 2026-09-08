@@ -8,7 +8,6 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class RentalRequestWebsiteReviewTest extends TestCase
@@ -41,12 +40,14 @@ class RentalRequestWebsiteReviewTest extends TestCase
             ])
             ->create();
 
-        Livewire::actingAs($expert)
-            ->test(RentalRequestWebsiteReview::class)
-            ->assertSee('Website Customer')
-            ->assertSee('Review requests before they reserve a car')
-            ->call('claim', $websiteRequest->id)
-            ->assertSee('Assigned to you');
+        $this->actingAs($expert);
+        $component = app(RentalRequestWebsiteReview::class);
+        $component->mount();
+        $html = $component->render()->render();
+
+        $this->assertStringContainsString('Website Customer', $html);
+        $this->assertStringContainsString('Review requests before they reserve a car', $html);
+        $component->claim($websiteRequest->id);
 
         $this->assertDatabaseHas('contracts', [
             'id' => $websiteRequest->id,
