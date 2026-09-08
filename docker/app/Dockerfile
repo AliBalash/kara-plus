@@ -15,6 +15,7 @@ RUN apt-get update \
         libxml2-dev \
         libzip-dev \
         libicu-dev \
+        libsqlite3-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
@@ -23,6 +24,7 @@ RUN apt-get update \
         intl \
         mbstring \
         pdo_mysql \
+        pdo_sqlite \
         zip \
         opcache \
     && curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors \

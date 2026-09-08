@@ -1,0 +1,95 @@
+name: kara-panel-local
+
+# Local counterpart of docker-compose.yml. It keeps the familiar app + Nginx
+# + MySQL + Redis + phpMyAdmin layout, but omits production-only services.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: base64:0C4L1Ie2bTW/MeobHp2/Y2L2Ce95oPrDDZaBEuNtebQ=
+      APP_URL: http://localhost:${KARA_LOCAL_HTTP_PORT:-18000}
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: debug
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: kara_panel_local
+      DB_USERNAME: kara
+      DB_PASSWORD: kara_local_only
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      SESSION_SECURE_COOKIE: "false"
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
+      BROADCAST_CONNECTION: log
+      AUDIT_EXPORT_ENABLED: "false"
+      ELASTICSEARCH_ENABLED: "false"
+      FILESYSTEM_DISK: local
+    command: >-
+      sh -lc 'composer install --no-interaction --prefer-dist
+      && php artisan config:clear
+      && php artisan migrate --force
+      && php-fpm'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    ports:
+      - "127.0.0.1:${KARA_LOCAL_HTTP_PORT:-18000}:80"
+      - "127.0.0.1:${KARA_LOCAL_HTTPS_PORT:-18001}:443"
+    volumes:
+      - ./:/var/www:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/certs:/etc/nginx/certs
+    depends_on:
+      - app
+
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password --mysqlx=0
+    environment:
+      MYSQL_DATABASE: kara_panel_local
+      MYSQL_USER: kara
+      MYSQL_PASSWORD: kara_local_only
+      MYSQL_ROOT_PASSWORD: root_local_only
+    volumes:
+      - kara_panel_local_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:alpine
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    ports:
+      - "127.0.0.1:${KARA_LOCAL_PMA_PORT:-18002}:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_AUTH_TYPE: cookie
+      UPLOAD_LIMIT: 256M
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  kara_panel_local_mysql:
