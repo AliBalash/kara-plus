@@ -231,7 +231,9 @@
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
     <form wire:submit.prevent="submit" novalidate>
-        @php($operationalEditLocked = $this->isOperationalContract())
+        @php
+            $operationalEditLocked = $this->isOperationalContract();
+        @endphp
         @if ($operationalEditLocked)
             <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
                 <div class="fw-semibold"><i class="bx bx-info-circle me-1"></i> Operational contract — safe edits remain available</div>
