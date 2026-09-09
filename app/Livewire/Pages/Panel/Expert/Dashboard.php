@@ -15,7 +15,7 @@ use Livewire\Component;
 class Dashboard extends Component
 {
     protected $queryString = [
-        'availableReadiness' => ['except' => 'available'],
+        'availableReadiness' => ['except' => 'available_pre_reserved'],
         'availableReason' => ['except' => 'all'],
     ];
 
@@ -68,7 +68,7 @@ class Dashboard extends Component
     public $availableBrand = 'all';
     public array $availableBrands = [];
     public string $availableFleetScope = 'our';
-    public string $availableReadiness = 'available';
+    public string $availableReadiness = 'available_pre_reserved';
     public string $availableReason = 'all';
     public string $availableSort = 'returned_oldest';
     public string $availableSearch = '';
@@ -614,7 +614,7 @@ class Dashboard extends Component
     {
         $this->availableBrand = 'all';
         $this->availableFleetScope = 'our';
-        $this->availableReadiness = 'available';
+        $this->availableReadiness = 'available_pre_reserved';
         $this->availableReason = 'all';
         $this->availableSort = 'returned_oldest';
         $this->availableSearch = '';
@@ -850,7 +850,7 @@ class Dashboard extends Component
         }
 
         if (! in_array($this->availableReadiness, self::AVAILABLE_READINESS_FILTERS, true)) {
-            $this->availableReadiness = 'available';
+            $this->availableReadiness = 'available_pre_reserved';
         }
 
         $validReasons = array_keys(Car::operationalUnavailabilityReasonLabels());

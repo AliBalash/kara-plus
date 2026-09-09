@@ -138,7 +138,7 @@ class DashboardAvailableFleetTest extends TestCase
         $this->assertSame([$ourOldest->id, $partner->id, $ourLatest->id], $cars->pluck('id')->all());
     }
 
-    public function test_pre_reserved_cars_are_included_only_when_readiness_filter_allows_it(): void
+    public function test_pre_reserved_cars_are_included_by_default_and_can_be_excluded(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -174,12 +174,12 @@ class DashboardAvailableFleetTest extends TestCase
         $component->mount();
 
         $defaultCars = $component->getAvailableCarsProperty();
-        $this->assertSame([$availableCar->id], $defaultCars->pluck('id')->all());
+        $this->assertSame([$preReservedCar->id, $availableCar->id], $defaultCars->pluck('id')->all());
 
-        $component->availableReadiness = 'available_pre_reserved';
-        $carsWithPreReserved = $component->getAvailableCarsProperty();
+        $component->availableReadiness = 'available';
+        $carsWithoutPreReserved = $component->getAvailableCarsProperty();
 
-        $this->assertSame([$preReservedCar->id, $availableCar->id], $carsWithPreReserved->pluck('id')->all());
+        $this->assertSame([$availableCar->id], $carsWithoutPreReserved->pluck('id')->all());
     }
 
     public function test_fleet_status_summary_stays_locked_to_our_fleet_when_inventory_scope_changes(): void

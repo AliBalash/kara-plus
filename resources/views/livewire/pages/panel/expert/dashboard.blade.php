@@ -528,8 +528,8 @@
                             </select>
 
                             <select class="form-select form-select-sm" wire:model.defer="availableReadiness">
-                                <option value="available">Available Now</option>
-                                <option value="available_pre_reserved">Dispatchable (Available + Upcoming)</option>
+                                <option value="available_pre_reserved">Available Now (incl. Upcoming Booking)</option>
+                                <option value="available">Available Now (No Upcoming Booking)</option>
                                 <option value="pre_reserved">Upcoming Booking</option>
                                 <option value="reserved">Active Booking</option>
                                 <option value="unavailable">Unavailable</option>
