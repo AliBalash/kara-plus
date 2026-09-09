@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
 use App\Livewire\Concerns\LogsBusinessRead;
 use App\Models\Contract;
+use App\Models\ContractAmendment;
 use App\Models\ContractBalanceTransfer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
@@ -191,7 +192,7 @@ class RentalRequestPayment extends Component
 
     public function loadData()
     {
-        $this->contract = Contract::with(['payments', 'customer', 'car', 'pickupDocument'])->findOrFail($this->contractId);
+        $this->contract = Contract::with(['payments', 'customer', 'car', 'pickupDocument', 'amendments'])->findOrFail($this->contractId);
         $this->contractMeta = $this->contract->meta ?? [];
         $this->totalPrice = $this->roundCurrency($this->contract->total_price ?? 0);
 

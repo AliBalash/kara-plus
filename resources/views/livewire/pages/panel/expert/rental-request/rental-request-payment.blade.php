@@ -45,6 +45,78 @@
     </div>
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
+    @php
+        $extensionAmendments = $contract->amendments
+            ->where('type', \App\Models\ContractAmendment::TYPE_EXTENSION)
+            ->values();
+        $approvedExtensions = $extensionAmendments->where('status', 'approved');
+        $approvedExtensionTotal = (float) $approvedExtensions->sum('total_amount');
+    @endphp
+
+    @if ($extensionAmendments->isNotEmpty())
+        <div class="card border-info shadow-sm mb-4">
+            <div class="card-header bg-info-subtle d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar-plus"></i>
+                    <span class="fw-semibold">Extension charges</span>
+                    <span class="badge bg-info text-white">{{ $extensionAmendments->count() }} request{{ $extensionAmendments->count() === 1 ? '' : 's' }}</span>
+                </div>
+                @if ($approvedExtensions->isNotEmpty())
+                    <span class="badge bg-success fs-6">Included in contract total: {{ number_format($approvedExtensionTotal, 2) }} AED</span>
+                @endif
+            </div>
+            <div class="card-body">
+                @if ($approvedExtensions->isNotEmpty())
+                    <div class="alert alert-success py-2 mb-3">
+                        <i class="bi bi-check-circle me-1"></i>
+                        {{ number_format($approvedExtensionTotal, 2) }} AED has been added to this contract because of approved extension{{ $approvedExtensions->count() === 1 ? '' : 's' }}.
+                    </div>
+                @endif
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Extension</th>
+                                <th>Period</th>
+                                <th>Billing policy</th>
+                                <th>Status</th>
+                                <th class="text-end">Extension amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($extensionAmendments as $extension)
+                                @php
+                                    $isApproved = $extension->status === 'approved';
+                                    $isPending = $extension->status === 'pending_approval';
+                                @endphp
+                                <tr>
+                                    <td class="fw-semibold">#{{ $extension->sequence_no }}</td>
+                                    <td>
+                                        {{ $extension->extension_start_at?->format('Y-m-d H:i') }}
+                                        <span class="text-muted mx-1">→</span>
+                                        {{ $extension->extension_end_at?->format('Y-m-d H:i') }}
+                                    </td>
+                                    <td>{{ \Illuminate\Support\Str::headline($extension->pricing_policy ?: 'daily_ceiling') }}</td>
+                                    <td>
+                                        @if ($isApproved)
+                                            <span class="badge bg-success">Approved · added to total</span>
+                                        @elseif ($isPending)
+                                            <span class="badge bg-warning text-dark">Pending · not added yet</span>
+                                        @else
+                                            <span class="badge bg-secondary">{{ \Illuminate\Support\Str::headline($extension->status) }} · not added</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-end fw-semibold">{{ number_format((float) $extension->total_amount, 2) }} {{ $extension->currency }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @include('livewire.components.waiting-overlay', [
         'target' => 'submitPayment,submitDeposit',
         'title' => 'Processing payment updates',
