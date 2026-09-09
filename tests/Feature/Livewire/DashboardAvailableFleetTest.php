@@ -280,10 +280,10 @@ class DashboardAvailableFleetTest extends TestCase
         $this->assertSame($ourFleetSummary, $component->fleetStatusSummary);
 
         $this->assertSame(
-            [$partnerReturned->id, $ourReturned->id, $ourBooked->id, $ourNeverReturned->id],
+            [$partnerReturned->id, $ourReturned->id, $partnerBooked->id, $ourBooked->id, $ourNeverReturned->id],
             $component->getAvailableCarsProperty()->pluck('id')->all()
         );
-        $this->assertSame(4, $component->getAvailableCarsTotalProperty());
+        $this->assertSame(5, $component->getAvailableCarsTotalProperty());
         $this->assertNotSame($component->fleetStatusSummary['available'], $component->getAvailableCarsTotalProperty());
     }
 
