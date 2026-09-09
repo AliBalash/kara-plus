@@ -1274,7 +1274,7 @@ class RentalRequestEdit extends Component
             if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
                 $availabilityConflicts = app(\App\Services\VehicleAvailabilityService::class)->conflicts(
                     $lockedCar,
-                    $this->contract->pickup_date,
+                    $this->pickup_date,
                     $this->return_date,
                     $this->contract->id
                 );
@@ -1342,11 +1342,8 @@ class RentalRequestEdit extends Component
         }
 
         if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
-            if (! in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)
-                || $this->contract->actual_return_at !== null) {
-                $errors['return_date'] = ['The planned return can only be corrected while the delivered vehicle has not been returned.'];
-            } elseif ($this->returnChangeAddsBillableRentalDay()) {
-                $errors['return_date'] = ['This later return adds a billable rental day. Use Extend Contract to increase the rental period.'];
+            if ($this->returnIncreaseExceedsOneDay()) {
+                $errors['return_date'] = ['This return increase is more than one day. Use Extend Contract to extend the rental period.'];
             }
         }
 
@@ -1377,20 +1374,13 @@ class RentalRequestEdit extends Component
         return Carbon::parse($value)->equalTo(Carbon::parse($other));
     }
 
-    private function returnChangeAddsBillableRentalDay(): bool
+    private function returnIncreaseExceedsOneDay(): bool
     {
-        $pickupAt = Carbon::parse($this->contract->pickup_date);
         $currentReturnAt = Carbon::parse($this->contract->return_date);
         $candidateReturnAt = Carbon::parse($this->return_date);
 
         return $candidateReturnAt->greaterThan($currentReturnAt)
-            && $this->billableRentalDays($pickupAt, $candidateReturnAt)
-                > $this->billableRentalDays($pickupAt, $currentReturnAt);
-    }
-
-    private function billableRentalDays(Carbon $pickupAt, Carbon $returnAt): int
-    {
-        return max(1, (int) ceil($pickupAt->diffInSeconds($returnAt, false) / 86400));
+            && $currentReturnAt->diffInMinutes($candidateReturnAt) > 1440;
     }
 
     private function updateOperationalCustomer(): void

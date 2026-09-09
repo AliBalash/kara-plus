@@ -408,7 +408,7 @@ class Contract extends Model
 
     /**
      * Correct operational planning details without rewriting the financial
-     * ledger. A later return that adds a billable day remains an amendment.
+     * ledger. Only a return increase greater than one full day is an amendment.
      */
     public function applyOperationalScheduleAndLocationCorrections(
         $newPickupAt,
@@ -419,21 +419,13 @@ class Contract extends Model
         $newReturnAt = Carbon::parse($newReturnAt);
         $newPickupAt = Carbon::parse($newPickupAt);
         $currentReturnAt = Carbon::parse($this->return_date);
-        $pickupAt = Carbon::parse($this->pickup_date);
-
-        if (! in_array($this->current_status, self::AMENDABLE_STATUSES, true)
-            || $this->actual_return_at !== null) {
-            throw new \DomainException('The planned return can only be corrected while the delivered vehicle has not been returned.');
-        }
-
         if ($newReturnAt->lessThanOrEqualTo($newPickupAt)) {
             throw new \DomainException('The planned return must be after the pickup time.');
         }
 
         if ($newReturnAt->greaterThan($currentReturnAt)
-            && $this->billableRentalDays($pickupAt, $newReturnAt)
-                > $this->billableRentalDays($pickupAt, $currentReturnAt)) {
-            throw new \DomainException('A later return that adds a billable rental day must be handled through an extension.');
+            && $currentReturnAt->diffInMinutes($newReturnAt) > 1440) {
+            throw new \DomainException('A return increase greater than one day must be handled through an extension.');
         }
 
         $this->commercialMutationAuthorized = true;
@@ -448,11 +440,6 @@ class Contract extends Model
         } finally {
             $this->commercialMutationAuthorized = false;
         }
-    }
-
-    private function billableRentalDays(Carbon $pickupAt, Carbon $returnAt): int
-    {
-        return max(1, (int) ceil($pickupAt->diffInSeconds($returnAt, false) / 86400));
     }
 
     public function pickupDocument()

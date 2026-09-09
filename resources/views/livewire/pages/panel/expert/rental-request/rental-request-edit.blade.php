@@ -233,16 +233,13 @@
     <form wire:submit.prevent="submit" novalidate>
         @php
             $operationalEditLocked = $this->isOperationalContract();
-            $canEditOperationalSchedule = $operationalEditLocked
-                && in_array($contract->current_status, \App\Models\Contract::AMENDABLE_STATUSES, true)
-                && $contract->actual_return_at === null;
         @endphp
         @if ($operationalEditLocked)
             <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
                 <div class="fw-semibold"><i class="bx bx-info-circle me-1"></i> Operational contract — safe edits remain available</div>
                 <div class="small mt-1">
                     Customer contact details, notes, agent, communication channel, licensed driver name and actual pickup time can be corrected here.
-                    Vehicle, price and services are locked after delivery. Locations and planned pickup details can still be corrected. A later return that adds a billable rental day must use <strong>Extend Contract</strong>.
+                    Locations and planned pickup details can be corrected here. A return increase greater than one day must use <strong>Extend Contract</strong>.
                 </div>
             </div>
         @endif
@@ -888,7 +885,7 @@
                                 <select id="editPickupLocationInput"
                                     class="form-control @error('pickup_location') is-invalid @enderror"
                                     wire:model.live="pickup_location" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select pickup location" @disabled($operationalEditLocked && ! $canEditOperationalSchedule)>
+                                    title="Select pickup location">
                                     <option value="">Pickup Location</option>
                                     @foreach ($locationOptions as $location)
                                         <option value="{{ $location }}">{{ $location }}</option>
@@ -910,7 +907,7 @@
                                 <select id="editReturnLocationInput"
                                     class="form-control @error('return_location') is-invalid @enderror"
                                     wire:model.live="return_location" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select return location" @disabled($operationalEditLocked && ! $canEditOperationalSchedule)>
+                                    title="Select return location">
                                     <option value="">Return Location</option>
                                     @foreach ($locationOptions as $location)
                                         <option value="{{ $location }}">{{ $location }}</option>
@@ -932,7 +929,7 @@
                                 <input id="editPickupDateInput" type="datetime-local"
                                     class="form-control @error('pickup_date') is-invalid @enderror"
                                     wire:model.live="pickup_date" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select pickup date and time" @disabled($operationalEditLocked && ! $canEditOperationalSchedule)>
+                                    title="Select pickup date and time">
                             </div>
                             @error('pickup_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
@@ -949,10 +946,10 @@
                                 <input id="editReturnDateInput" type="datetime-local"
                                     class="form-control @error('return_date') is-invalid @enderror"
                                     wire:model.live="return_date" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select return date and time" @disabled($operationalEditLocked && ! $canEditOperationalSchedule)>
+                                    title="Select return date and time">
                             </div>
-                            @if ($canEditOperationalSchedule)
-                                <div class="form-text">You may correct the planned return here. If a later return adds a billable rental day, use Extend Contract.</div>
+                            @if ($operationalEditLocked)
+                                <div class="form-text">You may increase the planned return by up to one day here. For more than one day, use Extend Contract.</div>
                             @endif
                             @error('return_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
