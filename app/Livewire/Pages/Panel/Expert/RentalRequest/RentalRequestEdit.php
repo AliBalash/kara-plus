@@ -14,6 +14,7 @@ use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\LocationCost;
 use App\Models\Payment;
+use App\Services\ContractCommercialCorrectionService;
 use App\Services\Reservations\ReviewReservationApprovalService;
 use App\Support\PhoneNumber;
 use Carbon\Carbon;
@@ -194,6 +195,10 @@ class RentalRequestEdit extends Component
 
     public $services = [];
 
+    public float $extension_charges_total = 0.0;
+
+    public float $commercial_base_days = 0.0;
+
     public function mount($contractId)
     {
         $this->services = config('carservices');
@@ -220,6 +225,7 @@ class RentalRequestEdit extends Component
         $this->loadLocationCosts();
         $this->loadChargesFromDatabase($contractId);
         $this->calculateCosts();
+        $this->applyStoredFinancialSnapshotForOperationalContract();
         $this->originalSelections = $this->captureSelectionSnapshot();
         $this->originalCosts = $this->captureCurrentCostSnapshot();
         $this->auditBusinessRead([
@@ -329,6 +335,17 @@ class RentalRequestEdit extends Component
             $this->selected_insurance = null;
         }
 
+        $meta = is_array($this->contract?->meta) ? $this->contract->meta : [];
+        if (array_key_exists('selected_services', $meta)) {
+            $this->selected_services = (array) $meta['selected_services'];
+            $this->canonicalizeSelectedServices();
+        }
+        if (array_key_exists('selected_insurance', $meta)) {
+            $this->selected_insurance = in_array($meta['selected_insurance'], ['ldw_insurance', 'scdw_insurance'], true)
+                ? $meta['selected_insurance']
+                : null;
+        }
+
         $this->calculateCosts();
     }
 
@@ -401,10 +418,21 @@ class RentalRequestEdit extends Component
         $this->calculateDriverServiceCost();
         $this->calculateDrivingLicenseCost();
         $this->calculateTaxAndTotal();
+
+        if ($this->isOperationalContract() && $this->canEditOperationalCommercialTerms() && $this->originalCosts !== []) {
+            $current = $this->storedFinancialSummary();
+            $this->correctedOperationalBreakdown($current);
+        }
     }
 
     private function calculateRentalDays()
     {
+        if ($this->isOperationalContract() && $this->canEditOperationalCommercialTerms() && $this->originalCosts !== []) {
+            $this->rental_days = (float) ($this->originalCosts['rental_days'] ?? $this->rental_days);
+
+            return;
+        }
+
         if ($this->pickup_date && $this->return_date) {
             $pickup = Carbon::parse($this->pickup_date);
             $return = Carbon::parse($this->return_date);
@@ -425,19 +453,22 @@ class RentalRequestEdit extends Component
     {
         if ($this->selectedCarId && $this->rental_days) {
             $car = Car::find($this->selectedCarId);
-            $standardRate = $this->roundCurrency($this->getCarDailyRate($car, $this->rental_days));
+            $pricingDays = $this->pricingRentalDays();
+            $standardRate = $this->roundCurrency($this->getCarDailyRate($car, $pricingDays));
             $this->standard_daily_rate = $standardRate;
             $storedRate = $this->storedDailyRate();
             if ($this->apply_discount && $this->custom_daily_rate !== null && $this->custom_daily_rate !== '') {
                 $this->dailyRate = $this->roundCurrency((float) $this->custom_daily_rate);
+            } elseif ($this->shouldUseCurrentStandardRateForCorrection()) {
+                $this->dailyRate = $standardRate;
             } elseif ($storedRate !== null) {
                 $this->dailyRate = $storedRate;
             } else {
                 $this->dailyRate = $standardRate;
             }
-            $this->base_price = $this->roundCurrency($this->dailyRate * $this->rental_days);
-            $this->ldw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'ldw', $this->rental_days));
-            $this->scdw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'scdw', $this->rental_days));
+            $this->base_price = $this->roundCurrency($this->dailyRate * $pricingDays);
+            $this->ldw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'ldw', $pricingDays));
+            $this->scdw_daily_rate = $this->roundCurrency($this->getInsuranceDailyRate($car, 'scdw', $pricingDays));
         } else {
             $this->dailyRate = $this->roundCurrency(0);
             $this->base_price = $this->roundCurrency(0);
@@ -460,6 +491,25 @@ class RentalRequestEdit extends Component
         }
 
         return $this->roundCurrency((float) $rate);
+    }
+
+    private function shouldUseCurrentStandardRateForCorrection(): bool
+    {
+        if (! $this->canEditOperationalCommercialTerms() || $this->originalSelections === []) {
+            return false;
+        }
+
+        return (int) ($this->originalSelections['car_id'] ?? 0) !== (int) $this->selectedCarId
+            || ((bool) ($this->originalSelections['apply_discount'] ?? false) && ! $this->apply_discount);
+    }
+
+    private function pricingRentalDays(): int
+    {
+        if ($this->isOperationalContract() && $this->canEditOperationalCommercialTerms() && $this->commercial_base_days > 0) {
+            return max(1, (int) round($this->commercial_base_days));
+        }
+
+        return max(1, (int) $this->rental_days);
     }
 
     private function getSelectedCar()
@@ -515,7 +565,7 @@ class RentalRequestEdit extends Component
     {
         $servicesTotal = 0;
         $insuranceTotal = 0;
-        $days = max(1, (int) $this->rental_days);
+        $days = $this->pricingRentalDays();
 
         foreach ($this->selected_services as $serviceId) {
             $service = $this->resolveServiceDefinition($serviceId);
@@ -893,7 +943,7 @@ class RentalRequestEdit extends Component
             $this->validateOnly($propertyName);
         }
 
-        if (! $this->isOperationalContract()
+        if ((! $this->isOperationalContract() || $this->canEditOperationalCommercialTerms())
             && ($this->isCostRelatedField($propertyName) || in_array($propertyName, ['apply_discount', 'custom_daily_rate']))) {
             $this->calculateCosts();
         }
@@ -1116,6 +1166,9 @@ class RentalRequestEdit extends Component
             'service_quantities' => $this->service_quantities,
             'driver_hours' => $this->driver_hours,
             'driving_license_option' => $this->driving_license_option,
+            'apply_discount' => (bool) $this->apply_discount,
+            'kardo_required' => (bool) $this->kardo_required,
+            'payment_on_delivery' => (bool) $this->payment_on_delivery,
         ];
     }
 
@@ -1257,11 +1310,14 @@ class RentalRequestEdit extends Component
     {
         $this->normalizeCustomerIdentityFields();
         $this->syncExistingCustomerSuggestionsByPhone();
-        $this->validateWithScroll($this->operationalRules());
+        $commercialAccess = $this->canEditOperationalCommercialTerms();
+        $this->validateWithScroll($commercialAccess ? $this->rules() : $this->operationalRules());
 
-        return DB::transaction(function (): array {
+        return DB::transaction(function () use ($commercialAccess): array {
             $this->contract = Contract::query()->lockForUpdate()->findOrFail($this->contract->id);
-            $lockedCar = Car::query()->lockForUpdate()->findOrFail($this->contract->car_id);
+            $lockedCar = Car::query()->lockForUpdate()->findOrFail(
+                $commercialAccess ? $this->selectedCarId : $this->contract->car_id
+            );
 
             if (! $this->isOperationalContract()) {
                 throw ValidationException::withMessages([
@@ -1271,7 +1327,7 @@ class RentalRequestEdit extends Component
 
             $this->assertOperationalEditOnlyChangesAllowedFields();
 
-            if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
+            if ($commercialAccess || ! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
                 $availabilityConflicts = app(\App\Services\VehicleAvailabilityService::class)->conflicts(
                     $lockedCar,
                     $this->pickup_date,
@@ -1287,9 +1343,28 @@ class RentalRequestEdit extends Component
 
             $oldTotal = (float) $this->contract->total_price;
             $this->updateOperationalCustomer();
-            $this->updateOperationalContract();
 
-            return [$oldTotal, $oldTotal];
+            if ($commercialAccess && $this->commercialCorrectionRequested()) {
+                $current = $this->storedFinancialSummary();
+                $this->calculateCosts();
+                $corrected = $this->correctedOperationalBreakdown($current);
+                app(ContractCommercialCorrectionService::class)->apply(
+                    $this->contract,
+                    (int) auth()->id(),
+                    $this->commercialCorrectionContractAttributes($corrected),
+                    $this->ledgerBreakdown($current),
+                    $corrected,
+                );
+                $this->contract = $this->contract->fresh(['charges', 'amendments']);
+            }
+
+            $this->updateOperationalContract();
+            $this->contract = $this->contract->fresh(['customer', 'car.carModel', 'payments', 'charges', 'amendments']);
+            $this->applyStoredFinancialSnapshotForOperationalContract();
+            $this->originalSelections = $this->captureSelectionSnapshot();
+            $this->originalCosts = $this->captureCurrentCostSnapshot();
+
+            return [$oldTotal, (float) $this->contract->total_price];
         });
     }
 
@@ -1337,13 +1412,14 @@ class RentalRequestEdit extends Component
     {
         $errors = [];
 
-        if ((int) $this->selectedCarId !== (int) $this->contract->car_id) {
+        if (! $this->canEditOperationalCommercialTerms()
+            && (int) $this->selectedCarId !== (int) $this->contract->car_id) {
             $errors['selectedCarId'] = ['The vehicle cannot be changed after delivery.'];
         }
 
         if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
-            if ($this->returnIncreaseExceedsOneDay()) {
-                $errors['return_date'] = ['This return increase is more than one day. Use Extend Contract to extend the rental period.'];
+            if ($this->returnIncreaseExceedsTolerance()) {
+                $errors['return_date'] = ['This return increase is beyond the two-hour tolerance. Use Extend Contract to extend the rental period.'];
             }
         }
 
@@ -1374,13 +1450,181 @@ class RentalRequestEdit extends Component
         return Carbon::parse($value)->equalTo(Carbon::parse($other));
     }
 
-    private function returnIncreaseExceedsOneDay(): bool
+    private function returnIncreaseExceedsTolerance(): bool
     {
         $currentReturnAt = Carbon::parse($this->contract->return_date);
         $candidateReturnAt = Carbon::parse($this->return_date);
 
         return $candidateReturnAt->greaterThan($currentReturnAt)
-            && $currentReturnAt->diffInMinutes($candidateReturnAt) > 1440;
+            && $currentReturnAt->diffInMinutes($candidateReturnAt) > Contract::RETURN_TIME_TOLERANCE_MINUTES;
+    }
+
+    /**
+     * Operational contracts have a frozen commercial ledger. Do not let a
+     * harmless schedule correction re-price their read-only cost summary.
+     */
+    private function applyStoredFinancialSnapshotForOperationalContract(): void
+    {
+        if (! $this->isOperationalContract()) {
+            return;
+        }
+
+        $summary = $this->storedFinancialSummary();
+
+        if (! $summary['has_ledger']) {
+            $this->final_total = $this->roundCurrency((float) $this->contract->total_price);
+
+            return;
+        }
+
+        $this->rental_days = $summary['rental_days'];
+        $this->commercial_base_days = (float) $summary['base_rental_days'];
+        $this->base_price = $summary['base_rental'];
+        $this->transfer_costs = [
+            'pickup' => $summary['pickup_transfer'],
+            'return' => $summary['return_transfer'],
+            'total' => $this->roundCurrency($summary['pickup_transfer'] + $summary['return_transfer']),
+        ];
+        $this->services_total = $summary['services'];
+        $this->insurance_total = $summary['insurance'];
+        $this->driver_cost = $summary['driver_service'];
+        $this->driving_license_cost = $summary['driving_license'];
+        $this->extension_charges_total = $summary['extension_subtotal'];
+        $this->subtotal = $summary['subtotal'];
+        $this->tax_amount = $summary['vat'];
+        $this->final_total = $summary['contract_total'];
+    }
+
+    private function commercialCorrectionRequested(): bool
+    {
+        $selection = $this->captureSelectionSnapshot();
+
+        foreach (['car_id', 'selected_insurance', 'selected_services', 'service_quantities', 'driver_hours', 'driving_license_option', 'apply_discount', 'kardo_required', 'payment_on_delivery'] as $key) {
+            if (($selection[$key] ?? null) != ($this->originalSelections[$key] ?? null)) {
+                return true;
+            }
+        }
+
+        if ($this->apply_discount) {
+            return abs((float) $this->custom_daily_rate - (float) ($this->originalCosts['daily_rate'] ?? 0)) > 0.005;
+        }
+
+        return false;
+    }
+
+    /** @return array<string, float> */
+    private function correctedOperationalBreakdown(array $current): array
+    {
+        $other = (float) ($current['other'] ?? 0);
+        $baseSubtotal = $this->roundCurrency(
+            (float) $this->base_price
+            + (float) ($current['pickup_transfer'] ?? 0)
+            + (float) ($current['return_transfer'] ?? 0)
+            + (float) $this->services_total
+            + (float) $this->insurance_total
+            + (float) $this->driver_cost
+            + (float) $this->driving_license_cost
+            + $other
+        );
+        $baseVat = $this->roundCurrency($baseSubtotal * $this->tax_rate);
+        $extensionSubtotal = (float) ($current['extension_subtotal'] ?? 0);
+        $extensionVat = $this->roundCurrency((float) ($current['extension_total'] ?? 0) - $extensionSubtotal);
+
+        $this->transfer_costs = [
+            'pickup' => (float) ($current['pickup_transfer'] ?? 0),
+            'return' => (float) ($current['return_transfer'] ?? 0),
+            'total' => $this->roundCurrency((float) ($current['pickup_transfer'] ?? 0) + (float) ($current['return_transfer'] ?? 0)),
+        ];
+        $this->subtotal = $this->roundCurrency($baseSubtotal + $extensionSubtotal);
+        $this->tax_amount = $this->roundCurrency($baseVat + $extensionVat);
+        $this->final_total = $this->roundCurrency($this->subtotal + $this->tax_amount);
+
+        return [
+            'rental_days' => (float) ($this->commercial_base_days > 0 ? $this->commercial_base_days : $this->rental_days),
+            'daily_rate' => (float) $this->dailyRate,
+            'base_rental' => (float) $this->base_price,
+            'pickup_transfer' => (float) $this->transfer_costs['pickup'],
+            'return_transfer' => (float) $this->transfer_costs['return'],
+            'services' => (float) $this->services_total,
+            'insurance' => (float) $this->insurance_total,
+            'driver_service' => (float) $this->driver_cost,
+            'driving_license' => (float) $this->driving_license_cost,
+            'other' => $other,
+            'vat' => $baseVat,
+            'subtotal' => $baseSubtotal,
+            'contract_total' => (float) $this->final_total,
+        ];
+    }
+
+    /** @return array<string, float> */
+    private function ledgerBreakdown(array $summary): array
+    {
+        return [
+            'rental_days' => (float) $summary['base_rental_days'],
+            'daily_rate' => (float) $summary['daily_rate'],
+            'base_rental' => (float) $summary['base_rental'],
+            'pickup_transfer' => (float) $summary['pickup_transfer'],
+            'return_transfer' => (float) $summary['return_transfer'],
+            'services' => (float) $summary['services'],
+            'insurance' => (float) $summary['insurance'],
+            'driver_service' => (float) $summary['driver_service'],
+            'driving_license' => (float) $summary['driving_license'],
+            'other' => (float) $summary['other'],
+            'vat' => (float) $summary['base_vat'],
+            'subtotal' => (float) $summary['base_subtotal'],
+        ];
+    }
+
+    private function commercialCorrectionMeta(): array
+    {
+        $meta = is_array($this->contract->meta) ? $this->contract->meta : [];
+        $meta['selected_services'] = array_values($this->selected_services);
+        $meta['selected_insurance'] = in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance'], true)
+            ? $this->selected_insurance
+            : null;
+
+        $quantities = $this->normalizedServiceQuantities();
+        if ($quantities !== []) {
+            $meta['service_quantities'] = $quantities;
+        } else {
+            unset($meta['service_quantities']);
+        }
+
+        if ((float) ($this->driver_hours ?? 0) > 0) {
+            $meta['driver_hours'] = (float) $this->driver_hours;
+            $meta['driver_service_cost'] = $this->roundCurrency($this->driver_cost);
+        } else {
+            unset($meta['driver_hours'], $meta['driver_service_cost']);
+        }
+
+        if ($this->driving_license_option && isset($this->driving_license_options[$this->driving_license_option])) {
+            $meta['driving_license_option'] = $this->driving_license_option;
+            $meta['driving_license_cost'] = $this->roundCurrency($this->driving_license_cost);
+        } else {
+            unset($meta['driving_license_option'], $meta['driving_license_cost']);
+        }
+
+        return $meta;
+    }
+
+    private function commercialCorrectionContractAttributes(array $corrected): array
+    {
+        $meta = $this->commercialCorrectionMeta();
+
+        return [
+            'car_id' => (int) $this->selectedCarId,
+            'pickup_date' => $this->pickup_date,
+            'return_date' => $this->return_date,
+            'pickup_location' => $this->pickup_location,
+            'return_location' => $this->return_location,
+            'total_price' => $this->roundCurrency((float) $corrected['contract_total']),
+            'used_daily_rate' => $this->roundCurrency($this->dailyRate),
+            'custom_daily_rate_enabled' => (bool) $this->apply_discount,
+            'discount_note' => $this->apply_discount ? "Discount applied: {$this->custom_daily_rate} AED instead of standard rate" : null,
+            'kardo_required' => (bool) $this->kardo_required,
+            'payment_on_delivery' => (bool) $this->payment_on_delivery,
+            'meta' => $meta,
+        ];
     }
 
     private function updateOperationalCustomer(): void
@@ -1450,6 +1694,12 @@ class RentalRequestEdit extends Component
         return in_array($this->contract->current_status, Contract::FINANCIALLY_IMMUTABLE_STATUSES, true);
     }
 
+    public function canEditOperationalCommercialTerms(): bool
+    {
+        return $this->isOperationalContract()
+            && ContractCommercialCorrectionService::userIsAuthorized(auth()->id());
+    }
+
     private function validateWithScroll(?array $rules = null): array
     {
         try {
@@ -1481,6 +1731,9 @@ class RentalRequestEdit extends Component
             'title' => 'base_rental',
             'amount' => $this->roundCurrency($this->base_price),
             'type' => 'base',
+            'quantity' => (int) $this->rental_days,
+            'unit' => 'day',
+            'unit_price' => $this->roundCurrency($this->dailyRate),
             'description' => sprintf(
                 '%d %s × %s AED%s',
                 (int) $this->rental_days,
@@ -1724,6 +1977,11 @@ class RentalRequestEdit extends Component
 
         $serviceQuantities = $this->normalizedServiceQuantities();
 
+        $meta['selected_services'] = array_values($this->selected_services);
+        $meta['selected_insurance'] = in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance'], true)
+            ? $this->selected_insurance
+            : null;
+
         if (! empty($serviceQuantities)) {
             $meta['service_quantities'] = $serviceQuantities;
         } else {
@@ -1746,8 +2004,6 @@ class RentalRequestEdit extends Component
             'return_location' => $this->return_location,
             'pickup_date' => $this->pickup_date,
             'return_date' => $this->return_date,
-            'selected_services' => $this->selected_services,
-            'selected_insurance' => $this->selected_insurance,
             'licensed_driver_name' => $this->licensed_driver_name,
             'notes' => $this->notes,
             'deposit' => $this->normalizedDeposit(),
@@ -2155,7 +2411,7 @@ TEXT);
 
     public function getReturnInformationTextProperty(): string
     {
-        $this->contract->loadMissing(['payments', 'customer', 'car.carModel', 'pickupDocument']);
+        $this->contract->loadMissing(['payments', 'customer', 'car.carModel', 'pickupDocument', 'charges']);
 
         $payments = $this->contract->payments ?? collect();
 
@@ -2184,18 +2440,6 @@ TEXT);
             0.0
         );
 
-        $insuranceLabel = 'Supplementary Insurance Package (Daily)';
-        $insuranceDaily = 0.0;
-
-        if ($this->selected_insurance === 'ldw_insurance' && $this->ldw_daily_rate > 0) {
-            $insuranceDaily = (float) $this->ldw_daily_rate;
-        } elseif ($this->selected_insurance === 'scdw_insurance' && $this->scdw_daily_rate > 0) {
-            $insuranceDaily = (float) $this->scdw_daily_rate;
-        }
-
-        $childSeatQuantity = $this->getServiceQuantity('child_seat');
-        $childSeatAmount = $childSeatQuantity * ($this->services['child_seat']['amount'] ?? 0);
-
         $securityHold = $sumAmount('security_deposit');
         $customerPayments = (float) $payments
             ->whereNotIn('payment_type', ['parking', 'salik', ...array_keys($salikTripTypes), 'salik_other_revenue', 'fine', 'fuel', 'carwash', 'damage'])
@@ -2203,6 +2447,7 @@ TEXT);
         $balance = $this->contract->calculateRemainingBalance($payments);
         $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
         $balanceForNote = $balance;
+        $financial = $this->storedFinancialSummary();
 
         $agreementNumber = $this->contract->pickupDocument?->agreement_number ?? '---';
         $depositLabel = $this->formattedDepositLabel();
@@ -2216,7 +2461,7 @@ TEXT);
         );
 
         $chargesReferenceTotal = $this->roundCurrency(
-            $this->subtotal + $additionalCharges + $securityHoldInstructionAmount
+            $financial['contract_total'] + $additionalCharges + $securityHoldInstructionAmount
         );
         $subTotalForNote = $chargesReferenceTotal;
 
@@ -2266,10 +2511,6 @@ TEXT);
             return $label.': '.$tripText.' — '.$formatMoney($amount);
         };
 
-        $childSeatLine = $childSeatQuantity > 0
-            ? 'Baby seat ('.$childSeatQuantity.' pcs): '.$formatMoney($childSeatAmount)
-            : null;
-
         $sections = array_filter([
             $formatList('Agreement summary', [
                 'AG number: '.$agreementNumber,
@@ -2278,8 +2519,8 @@ TEXT);
                 'Car: '.$carDescriptor,
             ]),
             $formatList('Rental overview', [
-                'Rental days: '.$this->rental_days,
-                'Daily rate: '.$this->formatDailyRate().' AED',
+                'Rental days: '.$this->formatRentalDays($financial['rental_days']),
+                'Daily rate: '.$this->formatCurrency($financial['daily_rate']).' AED',
             ]),
             $formatList('Tolls & trips', array_filter([
                 ...collect($salikTripTypes)->map(fn (float $unit, string $type): ?string => $tripLine(
@@ -2291,10 +2532,13 @@ TEXT);
                 $moneyLine('Salik total', $salikTotal),
             ])),
             $formatList('Services & logistics', array_filter([
-                $moneyLine($insuranceLabel, $insuranceDaily),
-                $childSeatLine,
-                $moneyLine('Pickup travel charge', (float) ($this->transfer_costs['pickup'] ?? 0)),
-                $moneyLine('Return travel charge', (float) ($this->transfer_costs['return'] ?? 0)),
+                $moneyLine('Additional services total', $financial['services']),
+                $moneyLine('Supplementary insurance total', $financial['insurance']),
+                $moneyLine('Driver service', $financial['driver_service']),
+                $moneyLine('Driving license', $financial['driving_license']),
+                $moneyLine('Pickup travel charge', $financial['pickup_transfer']),
+                $moneyLine('Return travel charge', $financial['return_transfer']),
+                $moneyLine('Approved extension charges (before VAT)', $financial['extension_subtotal']),
             ])),
             $formatList('Fees & penalties', array_filter([
                 $moneyLine('Fine', $sumAmount('fine')),
@@ -2306,8 +2550,10 @@ TEXT);
                 $moneyLine('Fees & penalties total', $feesPenaltiesTotal),
             ])),
             $formatList('Financial summary', array_filter([
-                $moneyLine('Rental amount', $this->subtotal),
-                $moneyLine('VAT', $this->tax_amount),
+                $moneyLine('Rental amount', $financial['rental_amount']),
+                $moneyLine('Services & logistics', $financial['services_and_logistics']),
+                $moneyLine('VAT', $financial['vat']),
+                $moneyLine('Contract total', $financial['contract_total']),
                 $moneyLine('Customer payments recorded', $customerPayments),
                 $moneyLine('Salik total', $salikTotal),
                 $moneyLine('Parking total', $parkingTotal),
@@ -2356,6 +2602,172 @@ TEXT);
             : (float) ($this->dailyRate ?? 0);
 
         return number_format($rate, 2);
+    }
+
+    /**
+     * Read the frozen commercial values from contract_charges. Older rows did
+     * not store quantity/unit, so their day count is recovered from the saved
+     * description or base amount and saved daily rate.
+     *
+     * @return array<string, float|bool>
+     */
+    private function storedFinancialSummary(): array
+    {
+        $charges = $this->contract->relationLoaded('charges')
+            ? $this->contract->charges
+            : $this->contract->charges()->get();
+        $hasLedger = $charges->isNotEmpty();
+
+        if (! $hasLedger || ! $this->isOperationalContract()) {
+            return [
+                'has_ledger' => $hasLedger,
+                'rental_days' => (float) $this->rental_days,
+                'base_rental_days' => (float) $this->rental_days,
+                'daily_rate' => (float) ($this->dailyRate ?? 0),
+                'base_rental' => (float) $this->base_price,
+                'rental_amount' => (float) $this->base_price,
+                'pickup_transfer' => (float) ($this->transfer_costs['pickup'] ?? 0),
+                'return_transfer' => (float) ($this->transfer_costs['return'] ?? 0),
+                'services' => (float) $this->services_total,
+                'insurance' => (float) $this->insurance_total,
+                'driver_service' => (float) $this->driver_cost,
+                'driving_license' => (float) $this->driving_license_cost,
+                'other' => 0.0,
+                'extension_subtotal' => 0.0,
+                'extension_total' => 0.0,
+                'base_vat' => (float) $this->tax_amount,
+                'base_subtotal' => (float) $this->subtotal,
+                'services_and_logistics' => $this->roundCurrency(
+                    (float) $this->services_total
+                    + (float) $this->insurance_total
+                    + (float) ($this->transfer_costs['total'] ?? 0)
+                    + (float) $this->driver_cost
+                    + (float) $this->driving_license_cost
+                ),
+                'subtotal' => (float) $this->subtotal,
+                'vat' => (float) $this->tax_amount,
+                'contract_total' => (float) $this->final_total,
+            ];
+        }
+
+        $original = $charges->where('source_type', 'original');
+        $amendment = $charges->where('source_type', 'amendment');
+        $corrections = $amendment->filter(
+            fn ($charge) => data_get($charge->metadata, 'policy') === 'authorized_correction'
+        );
+        $extensions = $amendment->reject(
+            fn ($charge) => data_get($charge->metadata, 'policy') === 'authorized_correction'
+        );
+        $correctionFor = fn (string $category): float => (float) $corrections
+            ->filter(fn ($charge) => data_get($charge->metadata, 'category') === $category)
+            ->sum('amount');
+        $baseCharges = $original->filter(fn ($charge) => $charge->title === 'base_rental' || $charge->type === 'base');
+        $extensionRental = $extensions->where('type', 'extension_rental');
+        $baseRental = (float) $baseCharges->sum('amount') + $correctionFor('base_rental');
+        $vat = (float) $charges->where('type', 'tax')->sum('amount');
+        $contractTotal = (float) $this->contract->total_price;
+        $pickupCharges = $original->where('title', 'pickup_transfer');
+        $returnCharges = $original->where('title', 'return_transfer');
+        $insuranceCharges = $original->where('type', 'insurance');
+        $serviceCharges = $original
+            ->whereIn('type', ['addon', 'service'])
+            ->reject(fn ($charge) => $charge->title === 'driver_service'
+                || str_starts_with((string) $charge->title, 'driving_license_'));
+        $driverCharges = $original->where('title', 'driver_service');
+        $licenseCharges = $original->filter(fn ($charge) => str_starts_with((string) $charge->title, 'driving_license_'));
+        $knownIds = $baseCharges
+            ->merge($pickupCharges)
+            ->merge($returnCharges)
+            ->merge($insuranceCharges)
+            ->merge($serviceCharges)
+            ->merge($driverCharges)
+            ->merge($licenseCharges)
+            ->pluck('id');
+        $originalOther = (float) $original
+            ->reject(fn ($charge) => $charge->type === 'tax' || $knownIds->contains($charge->id))
+            ->sum('amount');
+
+        $pickupTransfer = (float) $pickupCharges->sum('amount') + $correctionFor('pickup_transfer');
+        $returnTransfer = (float) $returnCharges->sum('amount') + $correctionFor('return_transfer');
+        $insurance = (float) $insuranceCharges->sum('amount') + $correctionFor('insurance');
+        $services = (float) $serviceCharges->sum('amount') + $correctionFor('services');
+        $driverService = (float) $driverCharges->sum('amount') + $correctionFor('driver_service');
+        $drivingLicense = (float) $licenseCharges->sum('amount') + $correctionFor('driving_license');
+        $other = $originalOther + $correctionFor('other');
+        $extensionSubtotal = (float) $extensions->reject(fn ($charge) => $charge->type === 'tax')->sum('amount');
+        $extensionVat = (float) $extensions->where('type', 'tax')->sum('amount');
+        $extensionTotal = $extensionSubtotal + $extensionVat;
+        $baseVat = $vat - $extensionVat;
+        $baseSubtotal = $baseRental + $pickupTransfer + $returnTransfer + $services
+            + $insurance + $driverService + $drivingLicense + $other;
+
+        $latestCorrection = $this->contract->amendments()
+            ->where('type', 'adjustment')
+            ->where('status', 'approved')
+            ->where('pricing_policy', 'authorized_correction')
+            ->latest('sequence_no')
+            ->first();
+        $correctedSnapshot = (array) data_get($latestCorrection?->pricing_snapshot, 'corrected_breakdown', []);
+        $baseDays = isset($correctedSnapshot['rental_days'])
+            ? (float) $correctedSnapshot['rental_days']
+            : (float) $baseCharges->sum(fn ($charge) => $this->storedChargeDays($charge));
+        $extensionDays = (float) $extensionRental->sum(function ($charge): float {
+            $quantity = (float) ($charge->quantity ?? 0);
+
+            return match ($charge->unit) {
+                'hour' => $quantity / 24,
+                'day' => $quantity,
+                default => 0.0,
+            };
+        });
+
+        return [
+            'has_ledger' => true,
+            'rental_days' => $baseDays > 0 ? $baseDays + $extensionDays : (float) $this->rental_days,
+            'base_rental_days' => $baseDays > 0 ? $baseDays : (float) $this->rental_days,
+            'daily_rate' => (float) ($correctedSnapshot['daily_rate'] ?? $this->contract->used_daily_rate ?? $this->dailyRate ?? 0),
+            'base_rental' => $baseRental,
+            'rental_amount' => $baseRental,
+            'pickup_transfer' => $pickupTransfer,
+            'return_transfer' => $returnTransfer,
+            'services' => $services,
+            'insurance' => $insurance,
+            'driver_service' => $driverService,
+            'driving_license' => $drivingLicense,
+            'other' => $other,
+            'extension_subtotal' => $extensionSubtotal,
+            'extension_total' => $extensionTotal,
+            'base_vat' => $this->roundCurrency($baseVat),
+            'base_subtotal' => $this->roundCurrency($baseSubtotal),
+            'services_and_logistics' => $this->roundCurrency(
+                $pickupTransfer + $returnTransfer + $services + $insurance + $driverService + $drivingLicense + $other
+            ),
+            'subtotal' => $this->roundCurrency($contractTotal - $vat),
+            'vat' => $this->roundCurrency($vat),
+            'contract_total' => $this->roundCurrency($contractTotal),
+        ];
+    }
+
+    private function storedChargeDays($charge): float
+    {
+        if ($charge->unit === 'day' && (float) $charge->quantity > 0) {
+            return (float) $charge->quantity;
+        }
+
+        if (preg_match('/(\d+(?:\.\d+)?)\s+days?/i', (string) $charge->description, $matches)) {
+            return (float) $matches[1];
+        }
+
+        $dailyRate = (float) ($this->contract->used_daily_rate ?? 0);
+
+        return $dailyRate > 0 ? round((float) $charge->amount / $dailyRate, 3) : 0.0;
+    }
+
+    private function formatRentalDays(float $days): string
+    {
+        return abs($days - round($days)) < 0.001
+            ? (string) (int) round($days)
+            : rtrim(rtrim(number_format($days, 3), '0'), '.');
     }
 
     private function formatCurrency($value): string

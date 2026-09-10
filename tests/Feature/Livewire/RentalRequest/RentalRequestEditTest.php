@@ -10,6 +10,7 @@ use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\ContractAmendmentService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -510,7 +511,7 @@ class RentalRequestEditTest extends TestCase
             $this->fail('An operational contract return date must not be edited directly.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'This return increase is more than one day. Use Extend Contract to extend the rental period.',
+                'This return increase is beyond the two-hour tolerance. Use Extend Contract to extend the rental period.',
                 $exception->errors()['return_date'][0]
             );
         }
@@ -558,6 +559,41 @@ class RentalRequestEditTest extends TestCase
         $this->assertSame(950.0, (float) $contract->total_price);
         $this->assertSame(900.0, (float) $charge->fresh()->amount);
         $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
+    }
+
+    public function test_operational_contract_rejects_a_return_correction_beyond_tolerance(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-03 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'total_price' => 1050,
+                'used_daily_rate' => 142.86,
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1000.02,
+            'description' => '7 days × 142.86 AED',
+        ]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-10T12:01';
+
+        $this->expectException(ValidationException::class);
+        $component->submit();
     }
 
     public function test_operational_contract_allows_location_and_planned_pickup_corrections_without_repricing(): void
@@ -790,6 +826,177 @@ class RentalRequestEditTest extends TestCase
         $this->assertStringNotContainsString('Customer payments recorded: 340.00 AED', $returnInformation);
         $this->assertStringNotContainsString('Customer payments recorded: 380.00 AED', $returnInformation);
         $this->assertStringNotContainsString('Customer payments recorded: 440.00 AED', $returnInformation);
+    }
+
+    public function test_operational_return_summary_uses_frozen_ledger_when_schedule_has_tolerance_minutes(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Sonata']);
+        $car = Car::factory()->create([
+            'car_model_id' => $model->id,
+            'price_per_day_short' => 200,
+            'price_per_day_mid' => 180,
+            'price_per_day_long' => 150,
+        ]);
+        $customer = Customer::factory()->create([
+            'first_name' => 'Naveed',
+            'last_name' => 'Ahmed',
+            'phone' => '+971559465666',
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-03 10:18:00',
+                'return_date' => '2026-09-10 10:21:00',
+                'total_price' => 1155.02,
+                'used_daily_rate' => 142.86,
+                'custom_daily_rate_enabled' => true,
+            ]);
+        foreach ([
+            ['title' => 'base_rental', 'type' => 'base', 'amount' => 1000.02, 'description' => '7 days × 142.86 AED'],
+            ['title' => 'pickup_transfer', 'type' => 'location_fee', 'amount' => 50, 'description' => 'Business Bay'],
+            ['title' => 'return_transfer', 'type' => 'location_fee', 'amount' => 50, 'description' => 'Business Bay'],
+            ['title' => 'tax', 'type' => 'tax', 'amount' => 55, 'description' => '5% VAT'],
+        ] as $charge) {
+            ContractCharges::factory()->for($contract)->create($charge);
+        }
+        $contract->changeStatus('delivery', $user->id);
+        $contract->update(['current_status' => 'payment']);
+        Payment::factory()->for($contract)->for($customer)->for($car)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 1155,
+            'amount_in_aed' => 1155,
+        ]);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $returnInformation = $component->returnInformationText;
+
+        $this->assertEqualsWithDelta(7, (float) $component->rental_days, 0.001);
+        $this->assertEqualsWithDelta(1000.02, (float) $component->base_price, 0.01);
+        $this->assertEqualsWithDelta(55, (float) $component->tax_amount, 0.01);
+        $this->assertEqualsWithDelta(1155.02, (float) $component->final_total, 0.01);
+        $this->assertStringContainsString('Rental days: 7', $returnInformation);
+        $this->assertStringContainsString('Rental amount: 1,000.02 AED', $returnInformation);
+        $this->assertStringContainsString('Services & logistics: 100.00 AED', $returnInformation);
+        $this->assertStringContainsString('VAT: 55.00 AED', $returnInformation);
+        $this->assertStringContainsString('Contract total: 1,155.02 AED', $returnInformation);
+        $this->assertStringContainsString('Outstanding balance: 0.02 AED', $returnInformation);
+        $this->assertStringNotContainsString('Rental days: 8', $returnInformation);
+        $this->assertStringNotContainsString('Rental amount: 1,242.88 AED', $returnInformation);
+    }
+
+    public function test_user_11_can_correct_locked_commercial_terms_with_an_audited_balanced_adjustment(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create(['id' => 11]);
+        $this->actingAs($user);
+        $currentModel = CarModel::factory()->create(['brand' => 'Kia', 'model' => 'Pegas']);
+        $newModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Sonata']);
+        $currentCar = Car::factory()->available()->create([
+            'car_model_id' => $currentModel->id,
+            'price_per_day_mid' => 142.86,
+        ]);
+        $newCar = Car::factory()->available()->create([
+            'car_model_id' => $newModel->id,
+            'price_per_day_short' => 220,
+            'price_per_day_mid' => 200,
+            'price_per_day_long' => 180,
+        ]);
+        $customer = Customer::factory()->create(['passport_expiry_date' => '2027-09-08']);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($currentCar)
+            ->status('reserved')
+            ->create([
+                'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'pickup_date' => '2026-09-03 10:00:00',
+                'return_date' => '2026-09-10 10:03:00',
+                'total_price' => 1050.02,
+                'used_daily_rate' => 142.86,
+                'custom_daily_rate_enabled' => true,
+            ]);
+        $baseCharge = ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1000.02,
+            'description' => '7 days × 142.86 AED',
+        ]);
+        $taxCharge = ContractCharges::factory()->for($contract)->create([
+            'title' => 'tax',
+            'type' => 'tax',
+            'amount' => 50,
+        ]);
+        $contract->changeStatus('delivery', $user->id);
+        $payment = Payment::factory()->for($contract)->for($customer)->for($currentCar)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 1050.02,
+            'amount_in_aed' => 1050.02,
+        ]);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $this->assertTrue($component->canEditOperationalCommercialTerms());
+        $component->selectedBrand = $newModel->brand;
+        $component->selectedModelId = $newModel->id;
+        $component->selectedCarId = $newCar->id;
+        $component->apply_discount = true;
+        $component->custom_daily_rate = 200;
+        $component->submit();
+
+        $contract->refresh();
+        $this->assertSame($newCar->id, $contract->car_id);
+        $this->assertEqualsWithDelta(1470, (float) $contract->total_price, 0.01);
+        $this->assertEqualsWithDelta(1000.02, (float) $baseCharge->fresh()->amount, 0.01);
+        $this->assertEqualsWithDelta(50, (float) $taxCharge->fresh()->amount, 0.01);
+        $this->assertSame(1, $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->count());
+        $this->assertEqualsWithDelta((float) $contract->total_price, (float) $contract->charges()->sum('amount'), 0.01);
+        $this->assertSame($newCar->id, $payment->fresh()->car_id);
+        $this->assertEqualsWithDelta(419.98, $contract->calculateRemainingBalance(), 0.01);
+        $this->assertSame(7.0, (float) $component->rental_days);
+        $this->assertSame('reserved', $newCar->fresh()->status);
+        $this->assertSame('available', $currentCar->fresh()->status);
+
+        $extensionService = app(ContractAmendmentService::class);
+        $extension = $extensionService->requestExtension(
+            $contract,
+            $contract->return_date->copy()->addDay(),
+            $user->id,
+        );
+        $extensionService->approve($extension, $user->id);
+
+        $this->assertSame(2, $contract->amendments()->count());
+        $this->assertEqualsWithDelta(231, (float) $extension->fresh()->total_amount, 0.01);
+        $this->assertEqualsWithDelta(
+            (float) $contract->fresh()->total_price,
+            (float) $contract->charges()->sum('amount'),
+            0.01,
+        );
+
+        $afterExtension = app(RentalRequestEdit::class);
+        $afterExtension->mount($contract->id);
+        $this->assertSame(8.0, (float) $afterExtension->rental_days);
+        $this->assertSame(7.0, (float) $afterExtension->commercial_base_days);
+        $afterExtension->custom_daily_rate = 210;
+        $afterExtension->submit();
+
+        $contract->refresh();
+        $this->assertSame(3, $contract->amendments()->count());
+        $this->assertEqualsWithDelta(1774.50, (float) $contract->total_price, 0.01);
+        $this->assertEqualsWithDelta(
+            (float) $contract->total_price,
+            (float) $contract->charges()->sum('amount'),
+            0.01,
+        );
     }
 
     protected function tearDown(): void

@@ -73,8 +73,39 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertEqualsWithDelta(500.5, (float) $payment->amount, 0.01);
         $this->assertEquals('AED', $payment->currency);
         $this->assertEquals($user->id, $payment->user_id);
+        $this->assertEquals($contract->customer_id, $payment->customer_id);
+        $this->assertEquals($contract->car_id, $payment->car_id);
         $this->assertEquals('pending', $payment->approval_status);
         $this->assertEquals('Payment was successfully added!', session('message'));
+    }
+
+    public function test_payment_ignores_a_mismatched_route_customer_and_uses_the_contract_relations(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $contractCustomer = Customer::factory()->create();
+        $unrelatedCustomer = Customer::factory()->create();
+        $car = Car::factory()->create();
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($contractCustomer)
+            ->for($car)
+            ->status('payment')
+            ->create(['total_price' => 100]);
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $unrelatedCustomer->id);
+        $this->assertSame($contractCustomer->id, $component->customerId);
+        $component->amount = 100;
+        $component->currency = 'AED';
+        $component->payment_type = 'rental_fee';
+        $component->payment_date = now()->toDateString();
+        $component->payment_method = 'cash';
+        $component->submitPayment();
+
+        $payment = Payment::query()->where('contract_id', $contract->id)->sole();
+        $this->assertSame($contractCustomer->id, $payment->customer_id);
+        $this->assertSame($car->id, $payment->car_id);
     }
 
     public function test_submit_deposit_stores_security_note_in_meta(): void
@@ -338,8 +369,8 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertStringContainsString('Deducted from balance: 51.60 AED', $normalizedHtml);
         $this->assertStringContainsString('520.00', $normalizedHtml);
         $this->assertStringContainsString('Charge in balance: 520.00 AED', $normalizedHtml);
-        $this->assertStringContainsString('Registered: ' . now()->setTime(10, 15, 0)->format('Y-m-d H:i'), $normalizedHtml);
-        $this->assertStringContainsString('Registered: ' . now()->setTime(12, 45, 0)->format('Y-m-d H:i'), $normalizedHtml);
+        $this->assertStringContainsString('Registered: '.now()->setTime(10, 15, 0)->format('Y-m-d H:i'), $normalizedHtml);
+        $this->assertStringContainsString('Registered: '.now()->setTime(12, 45, 0)->format('Y-m-d H:i'), $normalizedHtml);
     }
 
     public function test_zero_remaining_balance_is_not_serialized_as_negative_zero(): void

@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\ContractAmendmentService;
+use App\Services\ContractCommercialCorrectionService;
 use App\Services\RentalPricingService;
 use Carbon\Carbon;
 use DomainException;
@@ -246,6 +247,28 @@ class ContractAmendmentServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         app(ContractAmendmentService::class)->requestExtension($contract, $contract->return_date->copy()->addDay(), $actor->id);
+    }
+
+    public function test_commercial_correction_rejects_every_user_except_the_explicitly_authorized_user(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+
+        try {
+            app(ContractCommercialCorrectionService::class)->apply(
+                $contract,
+                $actor->id,
+                ['total_price' => 1100],
+                ['base_rental' => 1000, 'vat' => 0],
+                ['base_rental' => 1100, 'vat' => 0],
+            );
+            $this->fail('An unauthorized user must not be able to correct locked commercial terms.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('contract', $exception->errors());
+        }
+
+        $this->assertSame(0, $contract->amendments()->count());
+        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
+        $this->assertSame(1000.0, (float) $contract->charges()->sum('amount'));
     }
 
     public function test_contract_customer_and_vehicle_history_cannot_be_hard_deleted(): void

@@ -127,9 +127,11 @@ class RentalPricingService
 
     private function selectedInsuranceCode(Contract $contract): ?string
     {
-        $selected = data_get($contract->meta, 'selected_insurance');
-        if (in_array($selected, ['ldw_insurance', 'scdw_insurance'], true)) {
-            return $selected;
+        $meta = is_array($contract->meta) ? $contract->meta : [];
+        if (array_key_exists('selected_insurance', $meta)) {
+            $selected = $meta['selected_insurance'];
+
+            return in_array($selected, ['ldw_insurance', 'scdw_insurance'], true) ? $selected : null;
         }
 
         $title = $contract->charges()
@@ -161,8 +163,11 @@ class RentalPricingService
     private function selectedPerDayAddOns(Contract $contract): array
     {
         $definitions = config('carservices', []);
-        $selected = collect((array) data_get($contract->meta, 'selected_services', []))
-            ->merge($contract->charges()->where('type', 'addon')->pluck('title'))
+        $meta = is_array($contract->meta) ? $contract->meta : [];
+        $selectedCodes = array_key_exists('selected_services', $meta)
+            ? (array) $meta['selected_services']
+            : $contract->charges()->where('type', 'addon')->pluck('title')->all();
+        $selected = collect($selectedCodes)
             ->map(fn ($code) => (string) $code)
             ->unique();
         $quantities = (array) data_get($contract->meta, 'service_quantities', []);

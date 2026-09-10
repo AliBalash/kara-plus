@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class Contract extends Model
@@ -14,6 +15,9 @@ class Contract extends Model
     use HasFactory;
 
     public const AMENDABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return'];
+
+    /** Small operational time corrections do not change the commercial ledger. */
+    public const RETURN_TIME_TOLERANCE_MINUTES = 120;
 
     public const FINANCIALLY_IMMUTABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return', 'returned', 'payment', 'complete'];
 
@@ -406,9 +410,36 @@ class Contract extends Model
         }
     }
 
+    /** Apply an audited commercial correction without mutating charge history. */
+    public function applyApprovedCommercialCorrection(array $attributes): void
+    {
+        $allowed = Arr::only($attributes, [
+            'car_id',
+            'pickup_date',
+            'return_date',
+            'pickup_location',
+            'return_location',
+            'total_price',
+            'used_daily_rate',
+            'custom_daily_rate_enabled',
+            'discount_note',
+            'kardo_required',
+            'payment_on_delivery',
+            'meta',
+        ]);
+
+        $this->commercialMutationAuthorized = true;
+
+        try {
+            $this->update($allowed);
+        } finally {
+            $this->commercialMutationAuthorized = false;
+        }
+    }
+
     /**
      * Correct operational planning details without rewriting the financial
-     * ledger. Only a return increase greater than one full day is an amendment.
+     * ledger. A return increase beyond the time tolerance is an amendment.
      */
     public function applyOperationalScheduleAndLocationCorrections(
         $newPickupAt,
@@ -424,8 +455,8 @@ class Contract extends Model
         }
 
         if ($newReturnAt->greaterThan($currentReturnAt)
-            && $currentReturnAt->diffInMinutes($newReturnAt) > 1440) {
-            throw new \DomainException('A return increase greater than one day must be handled through an extension.');
+            && $currentReturnAt->diffInMinutes($newReturnAt) > self::RETURN_TIME_TOLERANCE_MINUTES) {
+            throw new \DomainException('A return increase beyond the two-hour tolerance must be handled through an extension.');
         }
 
         $this->commercialMutationAuthorized = true;

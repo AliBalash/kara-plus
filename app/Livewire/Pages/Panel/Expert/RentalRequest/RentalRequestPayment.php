@@ -2,15 +2,14 @@
 
 namespace App\Livewire\Pages\Panel\Expert\RentalRequest;
 
+use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Concerns\LogsBusinessRead;
+use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Models\Contract;
-use App\Models\ContractAmendment;
 use App\Models\ContractBalanceTransfer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Services\Media\DeferredImageUploadService;
-use App\Livewire\Concerns\InteractsWithToasts;
-use App\Livewire\Concerns\RefreshesFileInputs;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,63 +22,104 @@ use Livewire\WithFileUploads;
 
 class RentalRequestPayment extends Component
 {
-
-    use WithFileUploads;
     use InteractsWithToasts;
-    use RefreshesFileInputs;
     use LogsBusinessRead;
+    use RefreshesFileInputs;
+    use WithFileUploads;
+
     public $contractId;
+
     public $customerId;
+
     public $amount;
+
     public $currency = 'AED';
+
     public $payment_type;
+
     public $payment_date;
+
     public $is_refundable = false;
 
     public $existingPayments;
+
     public $totalPrice;
+
     public $rentalPaid;
+
     public $remainingBalance;
 
     public $hasCustomerDocument;
+
     public $hasPayments;
 
     public $receipt;
+
     public array $damageReceipts = [];
+
     public $note;
+
     public $finePaid;
+
     public $parkingPaid;
+
     public $damagePaid;
+
     public $salik;
+
     public $salik_trip_count = '';
+
     public $salikFourTripsTotal = 0;
+
     public $salikSixTripsTotal = 0;
+
     public $salikTripChargesTotal = 0;
+
     public $salikOtherRevenueTotal = 0;
+
     public $salikOtherTripsTotal = 0;
+
     public $legacySalikTotal = 0;
+
     public $salik_other_revenue_preview = 0;
+
     public $discounts;
+
     public $security_deposit;
+
     public $payment_back;
+
     public $carwash;
+
     public $fuel;
+
     public $no_deposit_fee;
+
     public $effectivePaid;
+
     public $rate;
+
     public $security_note = '';
+
     public $security_deposit_image;
+
     public $contract;
+
     public $contractMeta = [];
+
     public $payment_method = 'cash';
+
     public array $transferSummary = [
         'incoming' => 0.0,
         'outgoing' => 0.0,
         'net' => 0.0,
         'count' => 0,
     ];
+
     public array $recentTransfers = [];
+
     protected ?DeferredImageUploadService $deferredUploader = null;
+
     protected int $currentSalikTripCount = 0;
 
     protected array $messages = [
@@ -130,9 +170,6 @@ class RentalRequestPayment extends Component
         'security_deposit_image' => 'security deposit attachment',
     ];
 
-
-
-
     public function boot(DeferredImageUploadService $deferredUploader): void
     {
         $this->deferredUploader = $deferredUploader;
@@ -148,6 +185,7 @@ class RentalRequestPayment extends Component
     }
 
     private const PAYMENT_METHODS = ['cash', 'transfer', 'ticket'];
+
     protected function rules(): array
     {
         $manualAmountSalikTypes = array_merge(['salik'], Payment::salikTripPaymentTypeKeys());
@@ -171,14 +209,15 @@ class RentalRequestPayment extends Component
             'damageReceipts' => ['nullable', 'array', 'max:5'],
             'damageReceipts.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:8048'],
             'note' => ['nullable', 'string', 'max:2000'],
-            'salik_trip_count' => ['required_if:payment_type,' . implode(',', Payment::salikTripPaymentTypeKeys()), 'integer', 'min:0'],
+            'salik_trip_count' => ['required_if:payment_type,'.implode(',', Payment::salikTripPaymentTypeKeys()), 'integer', 'min:0'],
         ];
     }
 
     public function mount($contractId, $customerId)
     {
         $this->contractId = $contractId;
-        $this->customerId = $customerId;
+        $contract = Contract::query()->findOrFail($this->contractId);
+        $this->customerId = $contract->customer_id;
         $this->hasCustomerDocument = CustomerDocument::where('customer_id', $this->customerId)
             ->where('contract_id', $this->contractId)
             ->exists();
@@ -227,15 +266,15 @@ class RentalRequestPayment extends Component
 
         $this->salikFourTripsTotal = $this->existingPayments
             ->where('payment_type', 'salik_4_aed')
-            ->sum(fn($payment) => $payment->salikTripCount());
+            ->sum(fn ($payment) => $payment->salikTripCount());
         $this->salikSixTripsTotal = $this->existingPayments
             ->where('payment_type', 'salik_6_aed')
-            ->sum(fn($payment) => $payment->salikTripCount());
+            ->sum(fn ($payment) => $payment->salikTripCount());
         $this->salikTripChargesTotal = $this->roundCurrency(
             (float) $salikTripPayments->sum('amount_in_aed')
         );
         $this->salikOtherRevenueTotal = $this->roundCurrency((float) $salikOtherPayments->sum('amount_in_aed'));
-        $this->salikOtherTripsTotal = $salikOtherPayments->sum(fn($payment) => $payment->salikTripCount());
+        $this->salikOtherTripsTotal = $salikOtherPayments->sum(fn ($payment) => $payment->salikTripCount());
         $this->legacySalikTotal = $this->roundCurrency((float) $legacySalikPayments->sum('amount_in_aed'));
         $this->salik = $this->roundCurrency(
             $this->salikTripChargesTotal + $this->salikOtherRevenueTotal + $this->legacySalikTotal
@@ -330,8 +369,6 @@ class RentalRequestPayment extends Component
         return Payment::paymentTypeLabels();
     }
 
-
-
     public function submitPayment()
     {
         if (is_string($this->payment_method)) {
@@ -352,12 +389,14 @@ class RentalRequestPayment extends Component
         if ($this->currency !== 'AED' && empty($this->rate)) {
             $this->addError('rate', 'Exchange rate is required for non-AED currencies.');
             $this->dispatch('kara-scroll-to-error', field: 'rate');
+
             return;
         }
 
-        if (in_array($this->payment_type, ['fine', 'parking'], true) && !$this->receipt) {
+        if (in_array($this->payment_type, ['fine', 'parking'], true) && ! $this->receipt) {
             $this->addError('receipt', 'Receipt is required for fines and parking charges.');
             $this->dispatch('kara-scroll-to-error', field: 'receipt');
+
             return;
         }
 
@@ -382,7 +421,6 @@ class RentalRequestPayment extends Component
         }
         $aedAmount = $this->roundCurrency($aedAmount);
 
-
         $receiptPath = null;
         $damageImagePaths = [];
         $uploadedPaths = [];
@@ -390,7 +428,7 @@ class RentalRequestPayment extends Component
         try {
             if ($this->payment_type === 'damage') {
                 foreach ($this->normalizedDamageReceipts() as $index => $damageReceipt) {
-                    $storedPath = $this->storePaymentImage($damageReceipt, 'damage-' . ($index + 1));
+                    $storedPath = $this->storePaymentImage($damageReceipt, 'damage-'.($index + 1));
                     $damageImagePaths[] = $storedPath;
                     $uploadedPaths[] = $storedPath;
                 }
@@ -402,10 +440,12 @@ class RentalRequestPayment extends Component
             }
 
             DB::transaction(function () use ($aedAmount, $receiptPath, $damageImagePaths, $salikTrips) {
+                $contract = Contract::query()->lockForUpdate()->findOrFail($this->contractId);
                 $payment = Payment::create([
-                    'contract_id' => $this->contractId,
-                    'customer_id' => $this->customerId,
+                    'contract_id' => $contract->id,
+                    'customer_id' => $contract->customer_id,
                     'user_id' => Auth::id(),
+                    'car_id' => $contract->car_id,
                     'amount' => $this->amount === null || $this->amount === '' ? null : $this->roundCurrency($this->amount),
                     'currency' => $this->currency,
                     'rate' => $this->currency !== 'AED' ? $this->rate : null,
@@ -434,7 +474,7 @@ class RentalRequestPayment extends Component
         } catch (\Throwable $exception) {
             $this->deleteStoredPaths($uploadedPaths);
 
-            $this->toast('error', 'Error adding payment: ' . $exception->getMessage(), false);
+            $this->toast('error', 'Error adding payment: '.$exception->getMessage(), false);
         }
     }
 
@@ -449,22 +489,24 @@ class RentalRequestPayment extends Component
             $this->validationAttributes
         );
 
-        if (empty($this->security_note) && !$this->security_deposit_image) {
+        if (empty($this->security_note) && ! $this->security_deposit_image) {
             $this->addError('security_note', 'Please enter a note or upload an image for the security deposit.');
             $this->dispatch('kara-scroll-to-error', field: 'security_note');
+
             return;
         }
 
         $contract = Contract::find($this->contractId);
-        if (!$contract) {
+        if (! $contract) {
             $this->toast('error', 'Contract not found.', false);
+
             return;
         }
 
         $meta = $contract->meta ?? [];
         $existingImagePath = $meta['security_deposit_image'] ?? null;
 
-        if (!empty($this->security_note)) {
+        if (! empty($this->security_note)) {
             $meta['security_deposit_note'] = $this->security_note;
         }
 
@@ -474,7 +516,7 @@ class RentalRequestPayment extends Component
             if ($this->security_deposit_image) {
                 $newImagePath = $this->deferredUploader()->store(
                     $this->security_deposit_image,
-                    'security_deposits/security-deposit-' . $this->contractId . '-' . Str::uuid() . '.webp',
+                    'security_deposits/security-deposit-'.$this->contractId.'-'.Str::uuid().'.webp',
                     'myimage',
                     ['quality' => 40, 'max_width' => 2000, 'max_height' => 2000]
                 );
@@ -489,7 +531,7 @@ class RentalRequestPayment extends Component
                 Storage::disk('myimage')->delete($newImagePath);
             }
 
-            $this->toast('error', 'Unable to save security deposit details: ' . $exception->getMessage(), false);
+            $this->toast('error', 'Unable to save security deposit details: '.$exception->getMessage(), false);
 
             return;
         }
@@ -522,7 +564,7 @@ class RentalRequestPayment extends Component
         $errors = $exception->errors();
         $firstKey = array_key_first($errors);
 
-        if (!is_string($firstKey) || $firstKey === '') {
+        if (! is_string($firstKey) || $firstKey === '') {
             return '';
         }
 
@@ -596,6 +638,7 @@ class RentalRequestPayment extends Component
     {
         if ($this->payment_type === 'salik') {
             $this->currentSalikTripCount = 0;
+
             return (float) $this->amount;
         }
 
@@ -646,6 +689,7 @@ class RentalRequestPayment extends Component
 
         if (! $contract) {
             $this->toast('error', 'Contract not found.', false);
+
             return;
         }
 
@@ -717,7 +761,7 @@ class RentalRequestPayment extends Component
     {
         return $this->deferredUploader()->store(
             $file,
-            'payment_receipts/payment-' . $this->contractId . '-' . $suffix . '-' . Str::uuid() . '.webp',
+            'payment_receipts/payment-'.$this->contractId.'-'.$suffix.'-'.Str::uuid().'.webp',
             'myimage',
             ['quality' => 30, 'max_width' => 1600, 'max_height' => 1600]
         );
