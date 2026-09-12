@@ -235,7 +235,8 @@
             $operationalEditLocked = $this->isOperationalContract();
             $commercialEditUnlocked = $this->canEditOperationalCommercialTerms();
             $lockCommercialInputs = $operationalEditLocked && !$commercialEditUnlocked;
-            $commercialPricingDays = $commercialEditUnlocked && $commercial_base_days > 0 ? $commercial_base_days : $rental_days;
+            $commercialPricingDays = $operationalEditLocked && $commercial_base_days > 0 ? $commercial_base_days : $rental_days;
+            $baseRentalDisplayDays = $operationalEditLocked && $commercial_base_days > 0 ? $commercial_base_days : $rental_days;
         @endphp
         @if ($operationalEditLocked)
             <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
@@ -1224,7 +1225,11 @@
                                         <td class="text-end">{{ number_format($dailyRate, 2) }} AED</td>
                                     </tr>
                                     <tr>
-                                        <th>Base Rental Cost <span class="text-muted fw-normal">({{ $rental_days }} days)</span></th>
+                                        <th>Rental Duration <span class="text-muted fw-normal">(pickup to return)</span></th>
+                                        <td class="text-end">{{ $rental_days }} days</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Base Rental Cost <span class="text-muted fw-normal">({{ $baseRentalDisplayDays }} billed days)</span></th>
                                         <td class="text-end">{{ number_format($base_price, 2) }} AED</td>
                                     </tr>
                                     <tr>

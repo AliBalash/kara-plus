@@ -828,7 +828,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertStringNotContainsString('Customer payments recorded: 440.00 AED', $returnInformation);
     }
 
-    public function test_operational_return_summary_uses_frozen_ledger_when_schedule_has_tolerance_minutes(): void
+    public function test_operational_return_summary_keeps_date_duration_and_frozen_ledger_separate(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -877,17 +877,19 @@ class RentalRequestEditTest extends TestCase
         $component->mount($contract->id);
         $returnInformation = $component->returnInformationText;
 
-        $this->assertEqualsWithDelta(7, (float) $component->rental_days, 0.001);
+        $this->assertEqualsWithDelta(8, (float) $component->rental_days, 0.001);
+        $this->assertEqualsWithDelta(7, (float) $component->billed_rental_days, 0.001);
+        $this->assertEqualsWithDelta(7, (float) $component->commercial_base_days, 0.001);
         $this->assertEqualsWithDelta(1000.02, (float) $component->base_price, 0.01);
         $this->assertEqualsWithDelta(55, (float) $component->tax_amount, 0.01);
         $this->assertEqualsWithDelta(1155.02, (float) $component->final_total, 0.01);
-        $this->assertStringContainsString('Rental days: 7', $returnInformation);
+        $this->assertStringContainsString('Rental days: 8', $returnInformation);
+        $this->assertStringContainsString('Billed ledger days: 7', $returnInformation);
         $this->assertStringContainsString('Rental amount: 1,000.02 AED', $returnInformation);
         $this->assertStringContainsString('Services & logistics: 100.00 AED', $returnInformation);
         $this->assertStringContainsString('VAT: 55.00 AED', $returnInformation);
         $this->assertStringContainsString('Contract total: 1,155.02 AED', $returnInformation);
         $this->assertStringContainsString('Outstanding balance: 0.02 AED', $returnInformation);
-        $this->assertStringNotContainsString('Rental days: 8', $returnInformation);
         $this->assertStringNotContainsString('Rental amount: 1,242.88 AED', $returnInformation);
     }
 
@@ -962,7 +964,8 @@ class RentalRequestEditTest extends TestCase
         $this->assertEqualsWithDelta((float) $contract->total_price, (float) $contract->charges()->sum('amount'), 0.01);
         $this->assertSame($newCar->id, $payment->fresh()->car_id);
         $this->assertEqualsWithDelta(419.98, $contract->calculateRemainingBalance(), 0.01);
-        $this->assertSame(7.0, (float) $component->rental_days);
+        $this->assertSame(8.0, (float) $component->rental_days);
+        $this->assertSame(7.0, (float) $component->billed_rental_days);
         $this->assertSame('reserved', $newCar->fresh()->status);
         $this->assertSame('available', $currentCar->fresh()->status);
 
@@ -984,7 +987,8 @@ class RentalRequestEditTest extends TestCase
 
         $afterExtension = app(RentalRequestEdit::class);
         $afterExtension->mount($contract->id);
-        $this->assertSame(8.0, (float) $afterExtension->rental_days);
+        $this->assertSame(9.0, (float) $afterExtension->rental_days);
+        $this->assertSame(8.0, (float) $afterExtension->billed_rental_days);
         $this->assertSame(7.0, (float) $afterExtension->commercial_base_days);
         $afterExtension->custom_daily_rate = 210;
         $afterExtension->submit();

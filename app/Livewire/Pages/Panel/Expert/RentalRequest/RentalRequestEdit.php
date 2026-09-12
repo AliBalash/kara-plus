@@ -199,6 +199,9 @@ class RentalRequestEdit extends Component
 
     public float $commercial_base_days = 0.0;
 
+    /** Days represented by the immutable financial ledger, including approved extensions. */
+    public float $billed_rental_days = 0.0;
+
     public function mount($contractId)
     {
         $this->services = config('carservices');
@@ -427,12 +430,6 @@ class RentalRequestEdit extends Component
 
     private function calculateRentalDays()
     {
-        if ($this->isOperationalContract() && $this->canEditOperationalCommercialTerms() && $this->originalCosts !== []) {
-            $this->rental_days = (float) ($this->originalCosts['rental_days'] ?? $this->rental_days);
-
-            return;
-        }
-
         if ($this->pickup_date && $this->return_date) {
             $pickup = Carbon::parse($this->pickup_date);
             $return = Carbon::parse($this->return_date);
@@ -1469,15 +1466,21 @@ class RentalRequestEdit extends Component
             return;
         }
 
+        // The operational duration remains date-driven, exactly like the
+        // original rental calculator. Financial amounts are restored from the
+        // immutable ledger separately below.
+        $this->calculateRentalDays();
         $summary = $this->storedFinancialSummary();
 
         if (! $summary['has_ledger']) {
+            $this->billed_rental_days = (float) $summary['billed_rental_days'];
+            $this->commercial_base_days = (float) $summary['base_rental_days'];
             $this->final_total = $this->roundCurrency((float) $this->contract->total_price);
 
             return;
         }
 
-        $this->rental_days = $summary['rental_days'];
+        $this->billed_rental_days = (float) $summary['billed_rental_days'];
         $this->commercial_base_days = (float) $summary['base_rental_days'];
         $this->base_price = $summary['base_rental'];
         $this->transfer_costs = [
@@ -2520,6 +2523,9 @@ TEXT);
             ]),
             $formatList('Rental overview', [
                 'Rental days: '.$this->formatRentalDays($financial['rental_days']),
+                abs((float) $financial['billed_rental_days'] - (float) $financial['rental_days']) > 0.001
+                    ? 'Billed ledger days: '.$this->formatRentalDays($financial['billed_rental_days'])
+                    : null,
                 'Daily rate: '.$this->formatCurrency($financial['daily_rate']).' AED',
             ]),
             $formatList('Tolls & trips', array_filter([
@@ -2622,6 +2628,7 @@ TEXT);
             return [
                 'has_ledger' => $hasLedger,
                 'rental_days' => (float) $this->rental_days,
+                'billed_rental_days' => (float) $this->rental_days,
                 'base_rental_days' => (float) $this->rental_days,
                 'daily_rate' => (float) ($this->dailyRate ?? 0),
                 'base_rental' => (float) $this->base_price,
@@ -2723,7 +2730,11 @@ TEXT);
 
         return [
             'has_ledger' => true,
-            'rental_days' => $baseDays > 0 ? $baseDays + $extensionDays : (float) $this->rental_days,
+            // Keep the operational duration derived from pickup/return. The
+            // billed duration is intentionally separate because legacy
+            // corrections may change the schedule without rewriting history.
+            'rental_days' => (float) $this->rental_days,
+            'billed_rental_days' => $baseDays > 0 ? $baseDays + $extensionDays : (float) $this->rental_days,
             'base_rental_days' => $baseDays > 0 ? $baseDays : (float) $this->rental_days,
             'daily_rate' => (float) ($correctedSnapshot['daily_rate'] ?? $this->contract->used_daily_rate ?? $this->dailyRate ?? 0),
             'base_rental' => $baseRental,
