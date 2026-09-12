@@ -18,6 +18,8 @@ class RentalRequestExtension extends Component
 
     public string $pricingPolicy = RentalPricingService::DEFAULT_POLICY;
 
+    public string $rateSource = RentalPricingService::DEFAULT_RATE_SOURCE;
+
     public ?string $reason = null;
 
     public ?string $notes = null;
@@ -30,6 +32,9 @@ class RentalRequestExtension extends Component
     {
         $this->contract = Contract::with(['car', 'amendments.charges'])->findOrFail($contractId);
         $this->newReturnAt = optional($this->contract->return_date)->format('Y-m-d\\TH:i') ?? '';
+        if (! is_numeric($this->contract->used_daily_rate) || (float) $this->contract->used_daily_rate <= 0) {
+            $this->rateSource = RentalPricingService::RATE_SOURCE_CURRENT;
+        }
         $this->idempotencyKey = (string) Str::uuid();
     }
 
@@ -39,19 +44,52 @@ class RentalRequestExtension extends Component
         $this->validateInput();
 
         try {
-            $this->quote = $pricing->quoteExtension($this->contract->fresh('car'), $this->newReturnAt, $this->pricingPolicy);
+            $this->quote = $pricing->quoteExtension(
+                $this->contract->fresh('car'),
+                $this->newReturnAt,
+                $this->pricingPolicy,
+                $this->rateSource
+            );
         } catch (ValidationException $exception) {
             $this->captureValidationErrors($exception);
         }
     }
 
-    public function request(ContractAmendmentService $service): void
+    public function request(ContractAmendmentService $service, RentalPricingService $pricing): void
     {
         $this->resetErrorBag();
         $this->validateInput();
 
         try {
-            $service->requestExtension($this->contract, $this->newReturnAt, auth()->id(), $this->idempotencyKey, $this->pricingPolicy, $this->reason, $this->notes);
+            if ($this->quote === []) {
+                $this->addError('quote', 'Preview and review the complete extension calculation before submitting the request.');
+
+                return;
+            }
+
+            $latestQuote = $pricing->quoteExtension(
+                $this->contract->fresh('car'),
+                $this->newReturnAt,
+                $this->pricingPolicy,
+                $this->rateSource
+            );
+            if ($this->quoteFingerprint($latestQuote) !== $this->quoteFingerprint($this->quote)) {
+                $this->quote = $latestQuote;
+                $this->addError('quote', 'The price changed after the previous preview. Review the refreshed calculation before submitting.');
+
+                return;
+            }
+
+            $service->requestExtension(
+                $this->contract,
+                $this->newReturnAt,
+                auth()->id(),
+                $this->idempotencyKey,
+                $this->pricingPolicy,
+                $this->reason,
+                $this->notes,
+                $this->rateSource
+            );
             $this->reloadContract();
             $this->idempotencyKey = (string) Str::uuid();
             $this->quote = [];
@@ -90,6 +128,21 @@ class RentalRequestExtension extends Component
             && ! $this->contract->amendments->contains(fn (ContractAmendment $amendment) => $amendment->isPending());
     }
 
+    public function updatedNewReturnAt(): void
+    {
+        $this->quote = [];
+    }
+
+    public function updatedPricingPolicy(): void
+    {
+        $this->quote = [];
+    }
+
+    public function updatedRateSource(): void
+    {
+        $this->quote = [];
+    }
+
     private function closeAmendment(int $amendmentId, string $action, ContractAmendmentService $service): void
     {
         try {
@@ -112,6 +165,7 @@ class RentalRequestExtension extends Component
         $this->validate([
             'newReturnAt' => ['required', 'date'],
             'pricingPolicy' => ['required', 'in:daily_ceiling,hourly,prorated_daily,grace_then_daily'],
+            'rateSource' => ['required', 'in:contract_rate,current_tariff'],
             'reason' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'idempotencyKey' => ['required', 'uuid'],
@@ -124,6 +178,7 @@ class RentalRequestExtension extends Component
             $componentField = match ($field) {
                 'new_return_at' => 'newReturnAt',
                 'pricing_policy' => 'pricingPolicy',
+                'rate_source' => 'rateSource',
                 'idempotency_key' => 'idempotencyKey',
                 default => $field,
             };
@@ -131,6 +186,20 @@ class RentalRequestExtension extends Component
                 $this->addError($componentField, $message);
             }
         }
+    }
+
+    private function quoteFingerprint(array $quote): string
+    {
+        return hash('sha256', json_encode([
+            'duration_minutes' => (int) ($quote['duration_minutes'] ?? 0),
+            'billable_days' => (float) ($quote['billable_days'] ?? 0),
+            'pricing_policy' => (string) ($quote['pricing_policy'] ?? ''),
+            'rate_source' => (string) ($quote['rate_source'] ?? ''),
+            'items' => (array) ($quote['items'] ?? []),
+            'subtotal' => (float) ($quote['subtotal'] ?? 0),
+            'tax' => (float) ($quote['tax'] ?? 0),
+            'total' => (float) ($quote['total'] ?? 0),
+        ], JSON_THROW_ON_ERROR));
     }
 
     public function render()

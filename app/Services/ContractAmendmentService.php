@@ -16,7 +16,16 @@ class ContractAmendmentService
 {
     public function __construct(private readonly RentalPricingService $pricing, private readonly VehicleAvailabilityService $availability, private readonly AuditWriterContract $audit) {}
 
-    public function requestExtension(Contract|int $contract, Carbon|string $newReturnAt, ?int $requestedBy, ?string $idempotencyKey = null, string $pricingPolicy = RentalPricingService::DEFAULT_POLICY, ?string $reason = null, ?string $notes = null): ContractAmendment
+    public function requestExtension(
+        Contract|int $contract,
+        Carbon|string $newReturnAt,
+        ?int $requestedBy,
+        ?string $idempotencyKey = null,
+        string $pricingPolicy = RentalPricingService::DEFAULT_POLICY,
+        ?string $reason = null,
+        ?string $notes = null,
+        string $rateSource = RentalPricingService::DEFAULT_RATE_SOURCE
+    ): ContractAmendment
     {
         $contractId = $contract instanceof Contract ? $contract->id : $contract;
         $idempotencyKey ??= (string) Str::uuid();
@@ -25,14 +34,19 @@ class ContractAmendmentService
             throw ValidationException::withMessages(['idempotency_key' => 'The idempotency key must be a valid UUID.']);
         }
 
-        return DB::transaction(function () use ($contractId, $newReturnAt, $requestedBy, $idempotencyKey, $pricingPolicy, $reason, $notes) {
+        return DB::transaction(function () use ($contractId, $newReturnAt, $requestedBy, $idempotencyKey, $pricingPolicy, $reason, $notes, $rateSource) {
             $contract = Contract::query()->lockForUpdate()->findOrFail($contractId);
 
             if ($existing = ContractAmendment::where('idempotency_key', $idempotencyKey)->first()) {
                 $sameRequest = (int) $existing->contract_id === (int) $contract->id
                     && $existing->type === ContractAmendment::TYPE_EXTENSION
                     && Carbon::parse($existing->new_return_at)->equalTo(Carbon::parse($newReturnAt))
-                    && $existing->pricing_policy === $pricingPolicy;
+                    && $existing->pricing_policy === $pricingPolicy
+                    && data_get(
+                        $existing->pricing_snapshot,
+                        'requested_rate_source',
+                        data_get($existing->pricing_snapshot, 'rate_source', RentalPricingService::RATE_SOURCE_CURRENT)
+                    ) === $rateSource;
 
                 if (! $sameRequest) {
                     throw ValidationException::withMessages(['idempotency_key' => 'This idempotency key belongs to a different amendment request.']);
@@ -51,7 +65,7 @@ class ContractAmendmentService
                 throw ValidationException::withMessages(['amendment' => 'Resolve the existing pending extension before requesting another one.']);
             }
 
-            $quote = $this->pricing->quoteExtension($contract, $newReturnAt, $pricingPolicy);
+            $quote = $this->pricing->quoteExtension($contract, $newReturnAt, $pricingPolicy, $rateSource);
             $amendment = ContractAmendment::create([
                 'contract_id' => $contract->id, 'sequence_no' => ((int) $contract->amendments()->max('sequence_no')) + 1,
                 'type' => ContractAmendment::TYPE_EXTENSION, 'status' => 'pending_approval', 'requested_by' => $requestedBy,
@@ -92,7 +106,22 @@ class ContractAmendmentService
                     $conflictContext = compact('contract', 'amendment', 'conflicts');
                     throw ValidationException::withMessages(['new_return_at' => $conflicts[0]['message']]);
                 }
-                $quote = $this->pricing->quoteExtension($contract, $amendment->new_return_at, $amendment->pricing_policy ?: RentalPricingService::DEFAULT_POLICY);
+                $rateSource = (string) data_get(
+                    $amendment->pricing_snapshot,
+                    'rate_source',
+                    RentalPricingService::RATE_SOURCE_CURRENT
+                );
+                $quote = $this->pricing->quoteExtension(
+                    $contract,
+                    $amendment->new_return_at,
+                    $amendment->pricing_policy ?: RentalPricingService::DEFAULT_POLICY,
+                    $rateSource
+                );
+                if (! $this->pricingStillMatches($amendment, $quote)) {
+                    throw ValidationException::withMessages([
+                        'pricing' => 'The selected rental rate or extension price changed after this request. Cancel it, review a fresh quote, and submit a new extension.',
+                    ]);
+                }
                 $amendment->fill(['status' => 'approved', 'approved_by' => $approvedBy, 'approved_at' => now(), 'effective_at' => now(), 'subtotal' => $quote['subtotal'], 'tax_amount' => $quote['tax'], 'total_amount' => $quote['total'], 'pricing_snapshot' => $quote['snapshot']]);
                 $this->createCharges($contract, $amendment, $quote);
                 $contract->applyApprovedExtension(
@@ -183,6 +212,29 @@ class ContractAmendmentService
                 'metadata' => ['pricing_snapshot' => $quote['snapshot']],
             ]);
         }
+    }
+
+    private function pricingStillMatches(ContractAmendment $amendment, array $quote): bool
+    {
+        foreach (['subtotal' => 'subtotal', 'tax_amount' => 'tax', 'total_amount' => 'total'] as $stored => $quoted) {
+            if (abs((float) $amendment->{$stored} - (float) $quote[$quoted]) > 0.005) {
+                return false;
+            }
+        }
+
+        $normalizeItems = fn (array $items): array => collect($items)
+            ->map(fn (array $item): array => [
+                'code' => (string) ($item['code'] ?? ''),
+                'quantity' => round((float) ($item['quantity'] ?? 0), 3),
+                'unit' => (string) ($item['unit'] ?? ''),
+                'unit_price' => round((float) ($item['unit_price'] ?? 0), 2),
+                'amount' => round((float) ($item['amount'] ?? 0), 2),
+            ])
+            ->values()
+            ->all();
+
+        return $normalizeItems((array) data_get($amendment->pricing_snapshot, 'items', []))
+            === $normalizeItems((array) ($quote['items'] ?? []));
     }
 
     private function contractSnapshot(Contract $contract): array

@@ -159,11 +159,11 @@ class ContractAmendmentServiceTest extends TestCase
         ]);
         $pricing = app(RentalPricingService::class);
 
-        $daily = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(90), RentalPricingService::POLICY_DAILY_CEILING);
-        $hourly = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(90), RentalPricingService::POLICY_HOURLY);
-        $prorated = $pricing->quoteExtension($contract, $contract->return_date->copy()->addHours(12), RentalPricingService::POLICY_PRORATED_DAILY);
-        $grace = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(120), RentalPricingService::POLICY_GRACE_THEN_DAILY);
-        $long = $pricing->quoteExtension($contract, $contract->return_date->copy()->addDays(28));
+        $daily = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(90), RentalPricingService::POLICY_DAILY_CEILING, RentalPricingService::RATE_SOURCE_CURRENT);
+        $hourly = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(90), RentalPricingService::POLICY_HOURLY, RentalPricingService::RATE_SOURCE_CURRENT);
+        $prorated = $pricing->quoteExtension($contract, $contract->return_date->copy()->addHours(12), RentalPricingService::POLICY_PRORATED_DAILY, RentalPricingService::RATE_SOURCE_CURRENT);
+        $grace = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(120), RentalPricingService::POLICY_GRACE_THEN_DAILY, RentalPricingService::RATE_SOURCE_CURRENT);
+        $long = $pricing->quoteExtension($contract, $contract->return_date->copy()->addDays(28), RentalPricingService::POLICY_DAILY_CEILING, RentalPricingService::RATE_SOURCE_CURRENT);
 
         $this->assertSame(1.0, $daily['billable_days']);
         $this->assertSame(2.0, $hourly['billable_days']);
@@ -173,17 +173,56 @@ class ContractAmendmentServiceTest extends TestCase
         $this->assertSame(RentalPricingService::POLICY_PRORATED_DAILY, $prorated['snapshot']['policy']);
     }
 
-    public function test_approval_uses_current_tariff_and_then_freezes_that_snapshot(): void
+    public function test_contract_rate_is_default_and_rate_comparison_is_explicit(): void
+    {
+        [$contract] = $this->operationalContract([
+            'price_per_day_short' => 100,
+            'price_per_day_mid' => 95,
+            'price_per_day_long' => 67,
+        ]);
+        $contract->applyApprovedCommercialCorrection(['used_daily_rate' => 120]);
+        $pricing = app(RentalPricingService::class);
+
+        $contractQuote = $pricing->quoteExtension($contract, $contract->return_date->copy()->addDays(2));
+        $currentQuote = $pricing->quoteExtension(
+            $contract,
+            $contract->return_date->copy()->addDays(2),
+            RentalPricingService::POLICY_DAILY_CEILING,
+            RentalPricingService::RATE_SOURCE_CURRENT
+        );
+
+        $this->assertSame(RentalPricingService::RATE_SOURCE_CONTRACT, $contractQuote['rate_source']);
+        $this->assertSame(120.0, $contractQuote['effective_daily_rate']);
+        $this->assertSame(100.0, $contractQuote['current_daily_rate']);
+        $this->assertTrue($contractQuote['rate_changed']);
+        $this->assertSame(252.0, $contractQuote['total']);
+        $this->assertSame(RentalPricingService::RATE_SOURCE_CURRENT, $currentQuote['rate_source']);
+        $this->assertSame(210.0, $currentQuote['total']);
+    }
+
+    public function test_approval_rejects_an_unseen_current_tariff_change(): void
     {
         [$contract, $actor] = $this->operationalContract();
         $service = app(ContractAmendmentService::class);
-        $amendment = $service->requestExtension($contract, $contract->return_date->copy()->addDay(), $actor->id);
+        $amendment = $service->requestExtension(
+            $contract,
+            $contract->return_date->copy()->addDay(),
+            $actor->id,
+            pricingPolicy: RentalPricingService::POLICY_DAILY_CEILING,
+            rateSource: RentalPricingService::RATE_SOURCE_CURRENT
+        );
         $contract->car->update(['price_per_day_short' => 300]);
 
-        $approved = $service->approve($amendment, $actor->id);
+        try {
+            $service->approve($amendment, $actor->id);
+            $this->fail('Approval must not silently replace the rate reviewed at request time.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('pricing', $exception->errors());
+        }
 
-        $this->assertEqualsWithDelta(315, (float) $approved->total_amount, 0.01);
-        $this->assertEqualsWithDelta(300, (float) $approved->pricing_snapshot['items'][0]['unit_price'], 0.01);
+        $this->assertSame('pending_approval', $amendment->fresh()->status);
+        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
+        $this->assertSame(0, $contract->charges()->where('source_type', 'amendment')->count());
     }
 
     public function test_rejected_extension_changes_neither_contract_nor_charges(): void
@@ -303,6 +342,7 @@ class ContractAmendmentServiceTest extends TestCase
             'pickup_date' => Carbon::parse('2026-09-01 10:00:00'),
             'return_date' => Carbon::parse('2026-09-10 10:00:00'),
             'total_price' => 1000,
+            'used_daily_rate' => 230,
             'meta' => $meta,
         ])->create();
         $original = $createOriginalCharge ? ContractCharges::factory()->for($contract)->create([

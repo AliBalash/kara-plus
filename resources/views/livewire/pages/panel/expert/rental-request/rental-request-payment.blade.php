@@ -79,7 +79,7 @@
                             <tr>
                                 <th>Extension</th>
                                 <th>Period</th>
-                                <th>Billing policy</th>
+                                <th>Policy / rate calculation</th>
                                 <th>Status</th>
                                 <th class="text-end">Extension amount</th>
                             </tr>
@@ -89,6 +89,15 @@
                                 @php
                                     $isApproved = $extension->status === 'approved';
                                     $isPending = $extension->status === 'pending_approval';
+                                    $extensionSnapshot = (array) $extension->pricing_snapshot;
+                                    $extensionRentalItem = collect((array) ($extensionSnapshot['items'] ?? []))->firstWhere('code', 'extension_rental');
+                                    $extensionLegacyDailyRate = (float) ($extensionRentalItem['unit_price'] ?? 0) * (($extensionRentalItem['unit'] ?? null) === 'hour' ? 24 : 1);
+                                    $extensionDailyRate = (float) ($extensionSnapshot['effective_daily_rate'] ?? $extensionLegacyDailyRate);
+                                    $extensionContractRate = $extensionSnapshot['contract_daily_rate'] ?? $contract->used_daily_rate;
+                                    $extensionRateSource = $extensionSnapshot['rate_source'] ?? null;
+                                    $extensionUsesContractRate = $extensionRateSource === \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT
+                                        || ($extensionRateSource === null && is_numeric($extensionContractRate) && abs($extensionDailyRate - (float) $extensionContractRate) < 0.005);
+                                    $extensionRateDiffers = is_numeric($extensionContractRate) && abs($extensionDailyRate - (float) $extensionContractRate) > 0.005;
                                 @endphp
                                 <tr>
                                     <td class="fw-semibold">#{{ $extension->sequence_no }}</td>
@@ -97,7 +106,23 @@
                                         <span class="text-muted mx-1">→</span>
                                         {{ $extension->extension_end_at?->format('Y-m-d H:i') }}
                                     </td>
-                                    <td>{{ \Illuminate\Support\Str::headline($extension->pricing_policy ?: 'daily_ceiling') }}</td>
+                                    <td>
+                                        <div>{{ \Illuminate\Support\Str::headline($extension->pricing_policy ?: 'daily_ceiling') }}</div>
+                                        @if ($extensionRentalItem)
+                                            <div class="fw-semibold mt-1">
+                                                {{ number_format((float) $extensionRentalItem['quantity'], 3) }} {{ \Illuminate\Support\Str::headline($extensionRentalItem['unit']) }}
+                                                × {{ number_format((float) $extensionRentalItem['unit_price'], 2) }} AED
+                                                = {{ number_format((float) $extensionRentalItem['amount'], 2) }} AED
+                                            </div>
+                                            <small class="text-muted">+ VAT {{ number_format((float) $extension->tax_amount, 2) }} AED</small>
+                                            <span class="badge d-block mt-1 {{ $extensionUsesContractRate ? 'bg-label-primary' : 'bg-label-warning' }}" style="width: fit-content">
+                                                {{ $extensionUsesContractRate ? 'Contract rate' : ($extensionRateSource ? 'Current tariff' : 'Current tariff · legacy') }}
+                                            </span>
+                                            @if ($extensionRateDiffers)
+                                                <small class="text-warning d-block">Contract rate: {{ number_format((float) $extensionContractRate, 2) }} AED/day</small>
+                                            @endif
+                                        @endif
+                                    </td>
                                     <td>
                                         @if ($isApproved)
                                             <span class="badge bg-success">Approved · added to total</span>

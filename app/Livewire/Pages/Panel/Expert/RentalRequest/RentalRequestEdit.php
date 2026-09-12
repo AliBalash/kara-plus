@@ -2451,6 +2451,41 @@ TEXT);
         $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
         $balanceForNote = $balance;
         $financial = $this->storedFinancialSummary();
+        $approvedExtensionLines = $this->contract->amendments()
+            ->where('type', 'extension')
+            ->where('status', 'approved')
+            ->orderBy('sequence_no')
+            ->get()
+            ->map(function ($extension): ?string {
+                $snapshot = (array) $extension->pricing_snapshot;
+                $rentalItem = collect((array) ($snapshot['items'] ?? []))->firstWhere('code', 'extension_rental');
+                if (! is_array($rentalItem)) {
+                    return null;
+                }
+
+                $legacyDailyRate = (float) ($rentalItem['unit_price'] ?? 0)
+                    * (($rentalItem['unit'] ?? null) === 'hour' ? 24 : 1);
+                $effectiveRate = (float) ($snapshot['effective_daily_rate'] ?? $legacyDailyRate);
+                $contractRate = $snapshot['contract_daily_rate'] ?? $this->contract->used_daily_rate;
+                $rateSource = $snapshot['rate_source'] ?? null;
+                $usesContractRate = $rateSource === \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT
+                    || ($rateSource === null && is_numeric($contractRate) && abs($effectiveRate - (float) $contractRate) < 0.005);
+                $sourceLabel = $usesContractRate ? 'contract rate' : ($rateSource ? 'current tariff' : 'current tariff, legacy');
+                $comparison = is_numeric($contractRate) && abs($effectiveRate - (float) $contractRate) > 0.005
+                    ? '; contract rate '.$this->formatCurrency($contractRate).' AED/day'
+                    : '';
+
+                return 'Extension #'.$extension->sequence_no.': '
+                    .$this->formatRentalDays((float) $rentalItem['quantity']).' '.str_replace('_', ' ', (string) $rentalItem['unit'])
+                    .' × '.$this->formatCurrency($rentalItem['unit_price']).' AED'
+                    .' = '.$this->formatCurrency($rentalItem['amount']).' AED'
+                    .' + VAT '.$this->formatCurrency($extension->tax_amount).' AED'
+                    .' = '.$this->formatCurrency($extension->total_amount).' AED total'
+                    .' ('.$sourceLabel.$comparison.')';
+            })
+            ->filter()
+            ->values()
+            ->all();
 
         $agreementNumber = $this->contract->pickupDocument?->agreement_number ?? '---';
         $depositLabel = $this->formattedDepositLabel();
@@ -2544,6 +2579,7 @@ TEXT);
                 $moneyLine('Driving license', $financial['driving_license']),
                 $moneyLine('Pickup travel charge', $financial['pickup_transfer']),
                 $moneyLine('Return travel charge', $financial['return_transfer']),
+                ...$approvedExtensionLines,
                 $moneyLine('Approved extension charges (before VAT)', $financial['extension_subtotal']),
             ])),
             $formatList('Fees & penalties', array_filter([

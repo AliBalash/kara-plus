@@ -20,9 +20,20 @@ class RentalPricingService
 
     public const DEFAULT_POLICY = self::POLICY_DAILY_CEILING;
 
+    public const RATE_SOURCE_CONTRACT = 'contract_rate';
+
+    public const RATE_SOURCE_CURRENT = 'current_tariff';
+
+    public const DEFAULT_RATE_SOURCE = self::RATE_SOURCE_CONTRACT;
+
     private const TAX_RATE = 0.05;
 
-    public function quoteExtension(Contract $contract, Carbon|string $newReturnAt, string $policy = self::DEFAULT_POLICY): array
+    public function quoteExtension(
+        Contract $contract,
+        Carbon|string $newReturnAt,
+        string $policy = self::DEFAULT_POLICY,
+        string $rateSource = self::DEFAULT_RATE_SOURCE
+    ): array
     {
         $start = Carbon::parse($contract->return_date);
         $end = Carbon::parse($newReturnAt);
@@ -32,13 +43,26 @@ class RentalPricingService
         if (! in_array($policy, [self::POLICY_DAILY_CEILING, self::POLICY_HOURLY, self::POLICY_PRORATED_DAILY, self::POLICY_GRACE_THEN_DAILY], true)) {
             throw ValidationException::withMessages(['pricing_policy' => 'Unsupported billing policy.']);
         }
+        if (! in_array($rateSource, [self::RATE_SOURCE_CONTRACT, self::RATE_SOURCE_CURRENT], true)) {
+            throw ValidationException::withMessages(['rate_source' => 'Unsupported extension rate source.']);
+        }
 
         $minutes = $start->diffInMinutes($end);
         $quantity = $this->billableQuantity($minutes, $policy);
         $car = $contract->car()->firstOrFail();
-        $dailyRate = $this->dailyRate($car, $minutes);
+        $currentDailyRate = $this->dailyRate($car, $minutes);
+        $contractDailyRate = is_numeric($contract->used_daily_rate) && (float) $contract->used_daily_rate > 0
+            ? (float) $contract->used_daily_rate
+            : null;
+        $effectiveRateSource = $rateSource;
+        if ($rateSource === self::RATE_SOURCE_CONTRACT && $contractDailyRate === null) {
+            $effectiveRateSource = self::RATE_SOURCE_CURRENT;
+        }
+        $dailyRate = $effectiveRateSource === self::RATE_SOURCE_CONTRACT
+            ? $contractDailyRate
+            : $currentDailyRate;
         if ($dailyRate <= 0) {
-            throw ValidationException::withMessages(['pricing' => 'No valid current rental tariff is configured for this vehicle.']);
+            throw ValidationException::withMessages(['pricing' => 'No valid rental rate is available for this extension.']);
         }
         $rentalUnitPrice = $policy === self::POLICY_HOURLY ? round($dailyRate / 24, 2) : $dailyRate;
         $items = [[
@@ -81,6 +105,12 @@ class RentalPricingService
             'duration_minutes' => $minutes, 'billable_days' => $quantity, 'pricing_policy' => $policy,
             'currency' => 'AED', 'items' => $items, 'subtotal' => $subtotal, 'tax' => $tax,
             'total' => round($subtotal + $tax, 2),
+            'rate_source' => $effectiveRateSource,
+            'requested_rate_source' => $rateSource,
+            'contract_daily_rate' => $contractDailyRate,
+            'current_daily_rate' => $currentDailyRate,
+            'effective_daily_rate' => (float) $dailyRate,
+            'rate_changed' => $contractDailyRate !== null && abs($contractDailyRate - $currentDailyRate) > 0.005,
         ];
         $quote['snapshot'] = [
             'quoted_at' => now()->toIso8601String(),
@@ -92,6 +122,12 @@ class RentalPricingService
             'end_at' => $end->toIso8601String(),
             'duration_minutes' => $minutes,
             'billable_quantity' => $quantity,
+            'rate_source' => $effectiveRateSource,
+            'requested_rate_source' => $rateSource,
+            'contract_daily_rate' => $contractDailyRate,
+            'current_daily_rate' => $currentDailyRate,
+            'effective_daily_rate' => (float) $dailyRate,
+            'rate_changed' => $quote['rate_changed'],
             'items' => $items,
             'subtotal' => $subtotal,
             'tax_amount' => $tax,
