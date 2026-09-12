@@ -34,6 +34,7 @@ class Lead extends Model
         'requested_vehicle',
         'requested_brand',
         'requested_model_id',
+        'requested_manufacturing_year',
         'request_date',
         'pickup_date',
         'return_date',
@@ -56,6 +57,7 @@ class Lead extends Model
         'next_follow_up_at' => 'datetime',
         'last_contacted_at' => 'datetime',
         'converted_at' => 'datetime',
+        'requested_manufacturing_year' => 'integer',
     ];
 
     public static function statuses(): array
@@ -127,7 +129,8 @@ class Lead extends Model
     public function requestedVehicleLabel(): string
     {
         if ($this->requestedModel) {
-            return trim($this->requestedModel->brand . ' ' . $this->requestedModel->model);
+            return trim($this->requestedModel->brand.' '.$this->requestedModel->model)
+                .($this->requested_manufacturing_year ? ' ('.$this->requested_manufacturing_year.')' : '');
         }
 
         if ($this->requested_vehicle) {
