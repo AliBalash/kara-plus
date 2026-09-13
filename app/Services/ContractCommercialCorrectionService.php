@@ -217,10 +217,13 @@ class ContractCommercialCorrectionService
             ]);
         }
 
-        if (($attributes['pickup_location'] ?? $contract->pickup_location) === $contract->pickup_location
-            && ($attributes['return_location'] ?? $contract->return_location) === $contract->return_location) {
+        $locationChanged = ($attributes['pickup_location'] ?? $contract->pickup_location) !== $contract->pickup_location
+            || ($attributes['return_location'] ?? $contract->return_location) !== $contract->return_location;
+        $transferPriceChanged = abs((float) ($corrected['pickup_transfer'] ?? 0) - (float) ($current['pickup_transfer'] ?? 0)) > 0.005
+            || abs((float) ($corrected['return_transfer'] ?? 0) - (float) ($current['return_transfer'] ?? 0)) > 0.005;
+        if (! $locationChanged && ! $transferPriceChanged) {
             throw ValidationException::withMessages([
-                'contract' => 'No pickup or return location change was detected.',
+                'contract' => 'No pickup or return location price correction was detected.',
             ]);
         }
 

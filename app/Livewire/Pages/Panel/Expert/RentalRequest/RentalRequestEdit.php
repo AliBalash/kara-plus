@@ -231,6 +231,9 @@ class RentalRequestEdit extends Component
         $this->applyStoredFinancialSnapshotForOperationalContract();
         $this->originalSelections = $this->captureSelectionSnapshot();
         $this->originalCosts = $this->captureCurrentCostSnapshot();
+        if ($this->isOperationalContract()) {
+            $this->previewOperationalLocationCorrection();
+        }
         $this->auditBusinessRead([
             'contract_id' => $this->contract->id,
             'customer_id' => $this->contract->customer_id,
@@ -1343,20 +1346,21 @@ class RentalRequestEdit extends Component
             $oldTotal = (float) $this->contract->total_price;
             $this->updateOperationalCustomer();
 
-            $locationChanged = $this->operationalLocationChanged();
-            if (($commercialAccess && $this->commercialCorrectionRequested()) || $locationChanged) {
-                $current = $this->storedFinancialSummary();
-                if ($commercialAccess) {
+            $current = $this->storedFinancialSummary();
+            $authorizedCommercialCorrection = $commercialAccess && $this->commercialCorrectionRequested();
+            $locationCorrectionNeeded = $this->operationalLocationCorrectionNeeded($current);
+            if ($authorizedCommercialCorrection || $locationCorrectionNeeded) {
+                if ($authorizedCommercialCorrection) {
                     $this->calculateCosts();
                 }
                 $corrected = $this->correctedOperationalBreakdown($current);
-                $scope = $commercialAccess
+                $scope = $authorizedCommercialCorrection
                     ? ContractCommercialCorrectionService::SCOPE_AUTHORIZED
                     : ContractCommercialCorrectionService::SCOPE_OPERATIONAL_LOCATION;
                 app(ContractCommercialCorrectionService::class)->apply(
                     $this->contract,
                     (int) auth()->id(),
-                    $commercialAccess
+                    $authorizedCommercialCorrection
                         ? $this->commercialCorrectionContractAttributes($corrected)
                         : $this->operationalLocationCorrectionContractAttributes($corrected),
                     $this->ledgerBreakdown($current),
@@ -1531,12 +1535,8 @@ class RentalRequestEdit extends Component
     /** @return array<string, float> */
     private function correctedOperationalBreakdown(array $current): array
     {
-        $pickupTransfer = $this->pickup_location !== $this->contract->pickup_location
-            ? $this->roundCurrency($this->calculateLocationFee($this->pickup_location, $this->rental_days))
-            : (float) ($current['pickup_transfer'] ?? 0);
-        $returnTransfer = $this->return_location !== $this->contract->return_location
-            ? $this->roundCurrency($this->calculateLocationFee($this->return_location, $this->rental_days))
-            : (float) ($current['return_transfer'] ?? 0);
+        $pickupTransfer = $this->roundCurrency($this->calculateLocationFee($this->pickup_location, $this->rental_days));
+        $returnTransfer = $this->roundCurrency($this->calculateLocationFee($this->return_location, $this->rental_days));
         $other = (float) ($current['other'] ?? 0);
         $baseSubtotal = $this->roundCurrency(
             (float) $this->base_price
@@ -1660,10 +1660,12 @@ class RentalRequestEdit extends Component
         ];
     }
 
-    private function operationalLocationChanged(): bool
+    private function operationalLocationCorrectionNeeded(array $current): bool
     {
         return $this->pickup_location !== $this->contract->pickup_location
-            || $this->return_location !== $this->contract->return_location;
+            || $this->return_location !== $this->contract->return_location
+            || abs($this->calculateLocationFee($this->pickup_location, $this->rental_days) - (float) ($current['pickup_transfer'] ?? 0)) > 0.005
+            || abs($this->calculateLocationFee($this->return_location, $this->rental_days) - (float) ($current['return_transfer'] ?? 0)) > 0.005;
     }
 
     private function previewOperationalLocationCorrection(): void

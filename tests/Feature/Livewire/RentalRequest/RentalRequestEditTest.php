@@ -663,6 +663,70 @@ class RentalRequestEditTest extends TestCase
         $this->assertEqualsWithDelta(1050, (float) $contract->charges()->sum('amount'), 0.01);
     }
 
+    public function test_operational_edit_repairs_a_saved_location_whose_fee_is_missing_from_the_ledger(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Clock Tower/Main Branch',
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Downtown',
+            'under_3_fee' => 50,
+            'over_3_fee' => 50,
+            'is_active' => true,
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'return_location' => 'UAE/Dubai/Downtown',
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 945,
+                'used_daily_rate' => 300,
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 45]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+
+        $this->assertSame(50.0, (float) $component->transfer_costs['return']);
+        $this->assertSame(997.5, (float) $component->final_total);
+
+        $component->notes = 'Confirm Downtown return.';
+        $component->submit();
+
+        $contract->refresh();
+        $this->assertSame('UAE/Dubai/Downtown', $contract->return_location);
+        $this->assertSame(997.5, (float) $contract->total_price);
+        $adjustment = $contract->amendments()->where('pricing_policy', \App\Services\ContractCommercialCorrectionService::SCOPE_OPERATIONAL_LOCATION)->sole();
+        $correctionCharges = $adjustment->charges->keyBy(fn ($charge) => data_get($charge->metadata, 'category'));
+        $this->assertEqualsWithDelta(50, (float) $correctionCharges['return_transfer']->amount, 0.01);
+        $this->assertEqualsWithDelta(2.5, (float) $correctionCharges['vat']->amount, 0.01);
+        $this->assertEqualsWithDelta(997.5, (float) $contract->charges()->sum('amount'), 0.01);
+    }
+
     public function test_change_status_to_reserve_requires_same_user_and_updates_car(): void
     {
         $user = User::factory()->create();
