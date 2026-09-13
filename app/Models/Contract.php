@@ -17,7 +17,7 @@ class Contract extends Model
     public const AMENDABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return'];
 
     /** Small operational time corrections do not change the commercial ledger. */
-    public const RETURN_TIME_TOLERANCE_MINUTES = 120;
+    public const RETURN_TIME_TOLERANCE_MINUTES = 720;
 
     public const FINANCIALLY_IMMUTABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return', 'returned', 'payment', 'complete'];
 
@@ -456,7 +456,7 @@ class Contract extends Model
 
         if ($newReturnAt->greaterThan($currentReturnAt)
             && $currentReturnAt->diffInMinutes($newReturnAt) > self::RETURN_TIME_TOLERANCE_MINUTES) {
-            throw new \DomainException('A return increase beyond the two-hour tolerance must be handled through an extension.');
+            throw new \DomainException('A return increase beyond the twelve-hour tolerance must be handled through an extension.');
         }
 
         $this->commercialMutationAuthorized = true;

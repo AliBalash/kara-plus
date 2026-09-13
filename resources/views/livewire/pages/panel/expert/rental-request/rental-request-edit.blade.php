@@ -248,7 +248,7 @@
                         Customer contact details, notes, agent, communication channel, licensed driver name and actual pickup time can be corrected here.
                         Locations and planned pickup details can be corrected here.
                     @endif
-                    A return increase beyond the two-hour tolerance must use <strong>Extend Contract</strong>.
+                    A return increase beyond the twelve-hour tolerance must use <strong>Extend Contract</strong>.
                 </div>
             </div>
         @endif
@@ -958,7 +958,7 @@
                                     title="Select return date and time">
                             </div>
                             @if ($operationalEditLocked)
-                                <div class="form-text">You may correct the planned return within the two-hour tolerance. For a later return, use Extend Contract.</div>
+                                <div class="form-text">You may correct the planned return within the twelve-hour tolerance. For a later return, use Extend Contract.</div>
                             @endif
                             @error('return_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}

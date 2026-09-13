@@ -1416,7 +1416,7 @@ class RentalRequestEdit extends Component
 
         if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
             if ($this->returnIncreaseExceedsTolerance()) {
-                $errors['return_date'] = ['This return increase is beyond the two-hour tolerance. Use Extend Contract to extend the rental period.'];
+                $errors['return_date'] = ['This return increase is beyond the twelve-hour tolerance. Use Extend Contract to extend the rental period.'];
             }
         }
 

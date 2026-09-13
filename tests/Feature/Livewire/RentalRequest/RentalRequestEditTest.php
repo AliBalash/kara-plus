@@ -511,7 +511,7 @@ class RentalRequestEditTest extends TestCase
             $this->fail('An operational contract return date must not be edited directly.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'This return increase is beyond the two-hour tolerance. Use Extend Contract to extend the rental period.',
+                'This return increase is beyond the twelve-hour tolerance. Use Extend Contract to extend the rental period.',
                 $exception->errors()['return_date'][0]
             );
         }
@@ -550,12 +550,12 @@ class RentalRequestEditTest extends TestCase
         $component->mount($contract->id);
         // A small correction must be accepted even though ceil(duration/days)
         // would otherwise turn this from three days into four.
-        $component->return_date = '2026-09-10T11:30';
+        $component->return_date = '2026-09-10T22:00';
         $component->submit();
 
         $contract->refresh();
 
-        $this->assertSame('2026-09-10 11:30:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-09-10 22:00:00', $contract->return_date->format('Y-m-d H:i:s'));
         $this->assertSame(950.0, (float) $contract->total_price);
         $this->assertSame(900.0, (float) $charge->fresh()->amount);
         $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
@@ -590,7 +590,7 @@ class RentalRequestEditTest extends TestCase
 
         $component = app(RentalRequestEdit::class);
         $component->mount($contract->id);
-        $component->return_date = '2026-09-10T12:01';
+        $component->return_date = '2026-09-10T22:01';
 
         $this->expectException(ValidationException::class);
         $component->submit();
