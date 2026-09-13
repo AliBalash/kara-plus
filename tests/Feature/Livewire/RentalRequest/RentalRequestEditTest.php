@@ -8,6 +8,7 @@ use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
+use App\Models\LocationCost;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\ContractAmendmentService;
@@ -596,7 +597,7 @@ class RentalRequestEditTest extends TestCase
         $component->submit();
     }
 
-    public function test_operational_contract_allows_location_and_planned_pickup_corrections_without_repricing(): void
+    public function test_operational_location_change_updates_price_with_an_append_only_adjustment(): void
     {
         Carbon::setTestNow('2026-09-08 12:00:00');
 
@@ -604,6 +605,18 @@ class RentalRequestEditTest extends TestCase
         $this->actingAs($user);
         $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
         $car = Car::factory()->create(['car_model_id' => $model->id]);
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Clock Tower/Main Branch',
+            'under_3_fee' => 25,
+            'over_3_fee' => 25,
+            'is_active' => true,
+        ]);
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/JBR',
+            'under_3_fee' => 50,
+            'over_3_fee' => 50,
+            'is_active' => true,
+        ]);
         $contract = Contract::factory()
             ->for($user)
             ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
@@ -615,10 +628,13 @@ class RentalRequestEditTest extends TestCase
                 'pickup_date' => '2026-09-07 10:00:00',
                 'return_date' => '2026-09-10 09:00:00',
                 'actual_pickup_at' => '2026-09-07 10:00:00',
-                'total_price' => 950,
+                'total_price' => 997.50,
                 'used_daily_rate' => 300,
             ]);
-        $charge = ContractCharges::factory()->for($contract)->create(['title' => 'base_rental', 'amount' => 900]);
+        $baseCharge = ContractCharges::factory()->for($contract)->create(['title' => 'base_rental', 'type' => 'base', 'amount' => 900]);
+        $pickupCharge = ContractCharges::factory()->for($contract)->create(['title' => 'pickup_transfer', 'type' => 'location_fee', 'amount' => 25]);
+        $returnCharge = ContractCharges::factory()->for($contract)->create(['title' => 'return_transfer', 'type' => 'location_fee', 'amount' => 25]);
+        $taxCharge = ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 47.50]);
         $contract->changeStatus('delivery', $user->id);
 
         $component = app(RentalRequestEdit::class);
@@ -633,8 +649,18 @@ class RentalRequestEditTest extends TestCase
         $this->assertSame('UAE/Dubai/JBR', $contract->pickup_location);
         $this->assertSame('UAE/Dubai/JBR', $contract->return_location);
         $this->assertSame('2026-09-07 09:00:00', $contract->pickup_date->format('Y-m-d H:i:s'));
-        $this->assertSame(950.0, (float) $contract->total_price);
-        $this->assertSame(900.0, (float) $charge->fresh()->amount);
+        $this->assertSame(1050.0, (float) $contract->total_price);
+        $this->assertSame(900.0, (float) $baseCharge->fresh()->amount);
+        $this->assertSame(25.0, (float) $pickupCharge->fresh()->amount);
+        $this->assertSame(25.0, (float) $returnCharge->fresh()->amount);
+        $this->assertSame(47.5, (float) $taxCharge->fresh()->amount);
+        $adjustment = $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->sole();
+        $this->assertSame(\App\Services\ContractCommercialCorrectionService::SCOPE_OPERATIONAL_LOCATION, $adjustment->pricing_policy);
+        $correctionCharges = $adjustment->charges->keyBy(fn ($charge) => data_get($charge->metadata, 'category'));
+        $this->assertEqualsWithDelta(25, (float) $correctionCharges['pickup_transfer']->amount, 0.01);
+        $this->assertEqualsWithDelta(25, (float) $correctionCharges['return_transfer']->amount, 0.01);
+        $this->assertEqualsWithDelta(2.5, (float) $correctionCharges['vat']->amount, 0.01);
+        $this->assertEqualsWithDelta(1050, (float) $contract->charges()->sum('amount'), 0.01);
     }
 
     public function test_change_status_to_reserve_requires_same_user_and_updates_car(): void

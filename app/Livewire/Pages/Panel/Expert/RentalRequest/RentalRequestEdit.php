@@ -943,6 +943,8 @@ class RentalRequestEdit extends Component
         if ((! $this->isOperationalContract() || $this->canEditOperationalCommercialTerms())
             && ($this->isCostRelatedField($propertyName) || in_array($propertyName, ['apply_discount', 'custom_daily_rate']))) {
             $this->calculateCosts();
+        } elseif ($this->isOperationalContract() && in_array($propertyName, ['pickup_location', 'return_location'], true)) {
+            $this->previewOperationalLocationCorrection();
         }
         if ($propertyName === 'selectedModelId') {
             $this->loadCars();
@@ -1341,16 +1343,25 @@ class RentalRequestEdit extends Component
             $oldTotal = (float) $this->contract->total_price;
             $this->updateOperationalCustomer();
 
-            if ($commercialAccess && $this->commercialCorrectionRequested()) {
+            $locationChanged = $this->operationalLocationChanged();
+            if (($commercialAccess && $this->commercialCorrectionRequested()) || $locationChanged) {
                 $current = $this->storedFinancialSummary();
-                $this->calculateCosts();
+                if ($commercialAccess) {
+                    $this->calculateCosts();
+                }
                 $corrected = $this->correctedOperationalBreakdown($current);
+                $scope = $commercialAccess
+                    ? ContractCommercialCorrectionService::SCOPE_AUTHORIZED
+                    : ContractCommercialCorrectionService::SCOPE_OPERATIONAL_LOCATION;
                 app(ContractCommercialCorrectionService::class)->apply(
                     $this->contract,
                     (int) auth()->id(),
-                    $this->commercialCorrectionContractAttributes($corrected),
+                    $commercialAccess
+                        ? $this->commercialCorrectionContractAttributes($corrected)
+                        : $this->operationalLocationCorrectionContractAttributes($corrected),
                     $this->ledgerBreakdown($current),
                     $corrected,
+                    $scope,
                 );
                 $this->contract = $this->contract->fresh(['charges', 'amendments']);
             }
@@ -1386,6 +1397,8 @@ class RentalRequestEdit extends Component
         ]);
 
         $rules['notes'] = ['nullable', 'string', 'max:5000'];
+        $rules['pickup_location'] = ['required', Rule::in(array_keys($this->locationCosts))];
+        $rules['return_location'] = ['required', Rule::in(array_keys($this->locationCosts))];
         $rules['driver_note'] = ['nullable', 'string', 'max:1000'];
         $rules['deposit_category'] = ['nullable', 'in:cash_aed,cheque,transfer_cash_irr', 'required_with:deposit'];
         $rules['deposit'] = $this->depositRules();
@@ -1518,11 +1531,17 @@ class RentalRequestEdit extends Component
     /** @return array<string, float> */
     private function correctedOperationalBreakdown(array $current): array
     {
+        $pickupTransfer = $this->pickup_location !== $this->contract->pickup_location
+            ? $this->roundCurrency($this->calculateLocationFee($this->pickup_location, $this->rental_days))
+            : (float) ($current['pickup_transfer'] ?? 0);
+        $returnTransfer = $this->return_location !== $this->contract->return_location
+            ? $this->roundCurrency($this->calculateLocationFee($this->return_location, $this->rental_days))
+            : (float) ($current['return_transfer'] ?? 0);
         $other = (float) ($current['other'] ?? 0);
         $baseSubtotal = $this->roundCurrency(
             (float) $this->base_price
-            + (float) ($current['pickup_transfer'] ?? 0)
-            + (float) ($current['return_transfer'] ?? 0)
+            + $pickupTransfer
+            + $returnTransfer
             + (float) $this->services_total
             + (float) $this->insurance_total
             + (float) $this->driver_cost
@@ -1534,9 +1553,9 @@ class RentalRequestEdit extends Component
         $extensionVat = $this->roundCurrency((float) ($current['extension_total'] ?? 0) - $extensionSubtotal);
 
         $this->transfer_costs = [
-            'pickup' => (float) ($current['pickup_transfer'] ?? 0),
-            'return' => (float) ($current['return_transfer'] ?? 0),
-            'total' => $this->roundCurrency((float) ($current['pickup_transfer'] ?? 0) + (float) ($current['return_transfer'] ?? 0)),
+            'pickup' => $pickupTransfer,
+            'return' => $returnTransfer,
+            'total' => $this->roundCurrency($pickupTransfer + $returnTransfer),
         ];
         $this->subtotal = $this->roundCurrency($baseSubtotal + $extensionSubtotal);
         $this->tax_amount = $this->roundCurrency($baseVat + $extensionVat);
@@ -1628,6 +1647,29 @@ class RentalRequestEdit extends Component
             'payment_on_delivery' => (bool) $this->payment_on_delivery,
             'meta' => $meta,
         ];
+    }
+
+    private function operationalLocationCorrectionContractAttributes(array $corrected): array
+    {
+        return [
+            'pickup_date' => $this->pickup_date,
+            'return_date' => $this->return_date,
+            'pickup_location' => $this->pickup_location,
+            'return_location' => $this->return_location,
+            'total_price' => $this->roundCurrency((float) $corrected['contract_total']),
+        ];
+    }
+
+    private function operationalLocationChanged(): bool
+    {
+        return $this->pickup_location !== $this->contract->pickup_location
+            || $this->return_location !== $this->contract->return_location;
+    }
+
+    private function previewOperationalLocationCorrection(): void
+    {
+        $this->calculateRentalDays();
+        $this->correctedOperationalBreakdown($this->storedFinancialSummary());
     }
 
     private function updateOperationalCustomer(): void
@@ -2695,11 +2737,15 @@ TEXT);
 
         $original = $charges->where('source_type', 'original');
         $amendment = $charges->where('source_type', 'amendment');
+        $correctionPolicies = [
+            ContractCommercialCorrectionService::SCOPE_AUTHORIZED,
+            ContractCommercialCorrectionService::SCOPE_OPERATIONAL_LOCATION,
+        ];
         $corrections = $amendment->filter(
-            fn ($charge) => data_get($charge->metadata, 'policy') === 'authorized_correction'
+            fn ($charge) => in_array(data_get($charge->metadata, 'policy'), $correctionPolicies, true)
         );
         $extensions = $amendment->reject(
-            fn ($charge) => data_get($charge->metadata, 'policy') === 'authorized_correction'
+            fn ($charge) => in_array(data_get($charge->metadata, 'policy'), $correctionPolicies, true)
         );
         $correctionFor = fn (string $category): float => (float) $corrections
             ->filter(fn ($charge) => data_get($charge->metadata, 'category') === $category)
@@ -2747,7 +2793,7 @@ TEXT);
         $latestCorrection = $this->contract->amendments()
             ->where('type', 'adjustment')
             ->where('status', 'approved')
-            ->where('pricing_policy', 'authorized_correction')
+            ->whereIn('pricing_policy', $correctionPolicies)
             ->latest('sequence_no')
             ->first();
         $correctedSnapshot = (array) data_get($latestCorrection?->pricing_snapshot, 'corrected_breakdown', []);

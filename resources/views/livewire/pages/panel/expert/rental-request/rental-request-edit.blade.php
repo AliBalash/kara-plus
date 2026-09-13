@@ -885,6 +885,10 @@
                     <div class="card-body">
                         <!-- Location & Dates -->
                         <h6 class="text-primary mb-3">Location & Dates</h6>
+                        @php
+                            $locationFeeTier = (float) $rental_days < 3 ? 'under_3' : 'over_3';
+                            $locationFeeTierLabel = (float) $rental_days < 3 ? 'under 3 days' : '3+ days';
+                        @endphp
                         <div class="mb-3" data-validation-field="pickup_location">
                             <label class="form-label fw-semibold mb-1" for="editPickupLocationInput">
                                 Pickup Location <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
@@ -897,10 +901,11 @@
                                     title="Select pickup location">
                                     <option value="">Pickup Location</option>
                                     @foreach ($locationOptions as $location)
-                                        <option value="{{ $location }}">{{ $location }}</option>
+                                        <option value="{{ $location }}">{{ $location }} — {{ number_format((float) ($locationCosts[$location][$locationFeeTier] ?? 0), 2) }} AED</option>
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="form-text">Pickup fee for the {{ $locationFeeTierLabel }} tier: <strong>{{ number_format((float) ($transfer_costs['pickup'] ?? 0), 2) }} AED</strong></div>
                             @error('pickup_location')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
                                 </div>
@@ -919,10 +924,11 @@
                                     title="Select return location">
                                     <option value="">Return Location</option>
                                     @foreach ($locationOptions as $location)
-                                        <option value="{{ $location }}">{{ $location }}</option>
+                                        <option value="{{ $location }}">{{ $location }} — {{ number_format((float) ($locationCosts[$location][$locationFeeTier] ?? 0), 2) }} AED</option>
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="form-text">Return fee for the {{ $locationFeeTierLabel }} tier: <strong>{{ number_format((float) ($transfer_costs['return'] ?? 0), 2) }} AED</strong></div>
                             @error('return_location')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
                                 </div>
