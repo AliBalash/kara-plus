@@ -235,19 +235,15 @@
             $operationalEditLocked = $this->isOperationalContract();
             $commercialEditUnlocked = $this->canEditOperationalCommercialTerms();
             $lockCommercialInputs = $operationalEditLocked && !$commercialEditUnlocked;
-            $commercialPricingDays = $operationalEditLocked && $commercial_base_days > 0 ? $commercial_base_days : $rental_days;
-            $baseRentalDisplayDays = $operationalEditLocked && $commercial_base_days > 0 ? $commercial_base_days : $rental_days;
+            $commercialPricingDays = $operationalEditLocked ? $pricing_rental_days : $rental_days;
+            $baseRentalDisplayDays = $operationalEditLocked ? $pricing_rental_days : $rental_days;
         @endphp
         @if ($operationalEditLocked)
             <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
-                <div class="fw-semibold"><i class="bx bx-info-circle me-1"></i> Operational contract — {{ $commercialEditUnlocked ? 'authorized correction mode' : 'safe edits remain available' }}</div>
+                <div class="fw-semibold"><i class="bx bx-info-circle me-1"></i> Operational contract — contract tariff edit mode</div>
                 <div class="small mt-1">
-                    @if ($commercialEditUnlocked)
-                        Vehicle and commercial selections may be corrected. Financial changes are saved as an audited adjustment; original charges and payments remain intact.
-                    @else
-                        Customer contact details, notes, agent, communication channel, licensed driver name and actual pickup time can be corrected here.
-                        Locations and planned pickup details can be corrected here.
-                    @endif
+                    Vehicle, schedule and commercial selections may be corrected by every signed-in panel user.
+                    All totals use this contract's saved tariffs. Financial changes are saved as an audited adjustment; original charges and payments remain intact.
                     A return increase beyond the twelve-hour tolerance must use <strong>Extend Contract</strong>.
                 </div>
             </div>
@@ -772,14 +768,19 @@
                                 @endif
                                 <div class="row mt-2">
                                     <div class="col-md-12">
-                                        <strong>Price Tiers:</strong>
+                                        <strong>{{ $operationalEditLocked ? 'Contract Tariff:' : 'Price Tiers:' }}</strong>
                                         <div class="d-flex flex-wrap">
-                                            <span class="badge bg-secondary m-1">1-6 days:
-                                                {{ number_format((float) $selectedCar->price_per_day_short, 2) }} AED</span>
-                                            <span class="badge bg-secondary m-1">7-28 days:
-                                                {{ number_format((float) $selectedCar->price_per_day_mid, 2) }} AED</span>
-                                            <span class="badge bg-secondary m-1">28+ days:
-                                                {{ number_format((float) $selectedCar->price_per_day_long, 2) }} AED</span>
+                                            @if ($operationalEditLocked)
+                                                <span class="badge bg-primary m-1">Saved daily rate:
+                                                    {{ number_format((float) $dailyRate, 2) }} AED/day</span>
+                                            @else
+                                                <span class="badge bg-secondary m-1">1-6 days:
+                                                    {{ number_format((float) $selectedCar->price_per_day_short, 2) }} AED</span>
+                                                <span class="badge bg-secondary m-1">7-28 days:
+                                                    {{ number_format((float) $selectedCar->price_per_day_mid, 2) }} AED</span>
+                                                <span class="badge bg-secondary m-1">28+ days:
+                                                    {{ number_format((float) $selectedCar->price_per_day_long, 2) }} AED</span>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -787,9 +788,9 @@
                                 <div class="mt-3">
                                     <div class="d-flex flex-column gap-2">
                                         <div class="d-flex align-items-center justify-content-between">
-                                            <span class="text-muted small">Standard daily rate</span>
+                                            <span class="text-muted small">{{ $operationalEditLocked ? 'Contract daily rate' : 'Standard daily rate' }}</span>
                                             <span class="fw-semibold">
-                                                {{ number_format((float) $standard_daily_rate, 2) }} AED/day
+                                                {{ number_format((float) ($operationalEditLocked ? $dailyRate : $standard_daily_rate), 2) }} AED/day
                                             </span>
                                         </div>
                                         <div class="form-check form-switch">
@@ -813,7 +814,9 @@
                                             @enderror
                                         </div>
                                         <small class="text-muted">
-                                            When custom rate is off, pricing auto-resets to the car's standard rate.
+                                            {{ $operationalEditLocked
+                                                ? "Edits retain this contract's saved rate unless a new custom daily rate is entered explicitly."
+                                                : "When custom rate is off, pricing auto-resets to the car's standard rate." }}
                                         </small>
                                     </div>
                                 </div>
@@ -886,8 +889,11 @@
                         <!-- Location & Dates -->
                         <h6 class="text-primary mb-3">Location & Dates</h6>
                         @php
-                            $locationFeeTier = (float) $rental_days < 3 ? 'under_3' : 'over_3';
-                            $locationFeeTierLabel = (float) $rental_days < 3 ? 'under 3 days' : '3+ days';
+                            $locationFeeTier = (float) $commercialPricingDays < 3 ? 'under_3' : 'over_3';
+                            $locationFeeTierLabel = (float) $commercialPricingDays < 3 ? 'under 3 days' : '3+ days';
+                            $displayLocationCosts = $operationalEditLocked
+                                ? ($contractPricingTariffs['locations'] ?? $locationCosts)
+                                : $locationCosts;
                         @endphp
                         <div class="mb-3" data-validation-field="pickup_location">
                             <label class="form-label fw-semibold mb-1" for="editPickupLocationInput">
@@ -901,7 +907,7 @@
                                     title="Select pickup location">
                                     <option value="">Pickup Location</option>
                                     @foreach ($locationOptions as $location)
-                                        <option value="{{ $location }}">{{ $location }} — {{ number_format((float) ($locationCosts[$location][$locationFeeTier] ?? 0), 2) }} AED</option>
+                                        <option value="{{ $location }}">{{ $location }} — {{ number_format((float) ($displayLocationCosts[$location][$locationFeeTier] ?? 0), 2) }} AED</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -924,7 +930,7 @@
                                     title="Select return location">
                                     <option value="">Return Location</option>
                                     @foreach ($locationOptions as $location)
-                                        <option value="{{ $location }}">{{ $location }} — {{ number_format((float) ($locationCosts[$location][$locationFeeTier] ?? 0), 2) }} AED</option>
+                                        <option value="{{ $location }}">{{ $location }} — {{ number_format((float) ($displayLocationCosts[$location][$locationFeeTier] ?? 0), 2) }} AED</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -1220,8 +1226,8 @@
                 <div class="col-lg-6">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-header border-0 bg-transparent pb-0">
-                            <h6 class="fw-semibold text-primary mb-0">{{ $commercialEditUnlocked ? 'Authorized Correction Preview' : ($operationalEditLocked ? 'Contract Amounts' : 'Updated Amounts') }}</h6>
-                            <span class="text-muted small">{{ $commercialEditUnlocked ? 'Saved changes will be recorded as an audited adjustment.' : ($operationalEditLocked ? 'Read from the frozen contract ledger.' : 'Calculated from the current selections.') }}</span>
+                            <h6 class="fw-semibold text-primary mb-0">{{ $operationalEditLocked ? 'Contract Tariff Preview' : 'Updated Amounts' }}</h6>
+                            <span class="text-muted small">{{ $operationalEditLocked ? "Calculated from this contract's saved tariffs; saving records an audited ledger adjustment." : 'Calculated from the current selections.' }}</span>
                         </div>
                         <div class="card-body pb-0">
                             <div class="table-responsive">

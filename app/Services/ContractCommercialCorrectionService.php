@@ -21,8 +21,6 @@ use LogicException;
  */
 class ContractCommercialCorrectionService
 {
-    public const AUTHORIZED_USER_IDS = [11];
-
     public const SCOPE_AUTHORIZED = 'authorized_correction';
 
     public const SCOPE_OPERATIONAL_LOCATION = 'operational_location_correction';
@@ -34,7 +32,10 @@ class ContractCommercialCorrectionService
 
     public static function userIsAuthorized(?int $userId): bool
     {
-        return $userId !== null && in_array($userId, self::AUTHORIZED_USER_IDS, true);
+        // The expert panel is already authentication-protected. Commercial
+        // corrections are available to every signed-in panel user and remain
+        // fully attributable through the amendment/audit actor id.
+        return $userId !== null;
     }
 
     /**
@@ -142,7 +143,7 @@ class ContractCommercialCorrectionService
                 ],
                 'reason' => $scope === self::SCOPE_OPERATIONAL_LOCATION
                     ? 'Location fee correction from contract edit page'
-                    : 'Authorized correction from contract edit page',
+                    : 'Contract tariff correction from contract edit page',
                 'idempotency_key' => (string) Str::uuid(),
             ]);
 
