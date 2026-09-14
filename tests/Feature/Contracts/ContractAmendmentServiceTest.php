@@ -150,6 +150,51 @@ class ContractAmendmentServiceTest extends TestCase
         $this->assertEqualsWithDelta((float) $approved->total_amount, (float) $approved->charges()->sum('amount'), 0.01);
     }
 
+    public function test_extension_uses_insurance_and_addon_tariffs_saved_on_the_contract(): void
+    {
+        [$contract] = $this->operationalContract([
+            'ldw_price_short' => 99,
+            'ldw_price_mid' => 88,
+            'ldw_price_long' => 77,
+        ], [
+            'selected_insurance' => 'ldw_insurance',
+            'selected_services' => ['child_seat'],
+            'service_quantities' => ['child_seat' => 2],
+            'pricing_tariffs' => [
+                'source' => 'contract_creation',
+                'tax_rate' => 0.05,
+                'base_days' => 9,
+                'insurance' => ['ldw_insurance' => 7],
+                'services' => ['child_seat' => ['unit_rate' => 3, 'per_day' => true]],
+            ],
+        ], false);
+        foreach ([
+            ['title' => 'base_rental', 'type' => 'base', 'amount' => 1000],
+            ['title' => 'ldw_insurance', 'type' => 'insurance', 'amount' => 63],
+            ['title' => 'child_seat', 'type' => 'addon', 'amount' => 54],
+        ] as $charge) {
+            ContractCharges::query()->create([
+                'contract_id' => $contract->id,
+                'source_type' => 'original',
+                ...$charge,
+            ]);
+        }
+        $contract->update(['current_status' => 'awaiting_return']);
+
+        $quote = app(RentalPricingService::class)->quoteExtension(
+            $contract->fresh('car'),
+            $contract->return_date->copy()->addDays(2)
+        );
+        $items = collect($quote['items'])->keyBy('code');
+
+        $this->assertSame(RentalPricingService::RATE_SOURCE_CONTRACT, $quote['rate_source']);
+        $this->assertEqualsWithDelta(460, (float) $items['extension_rental']['amount'], 0.01);
+        $this->assertEqualsWithDelta(14, (float) $items['ldw_insurance']['amount'], 0.01);
+        $this->assertEqualsWithDelta(12, (float) $items['child_seat']['amount'], 0.01);
+        $this->assertEqualsWithDelta(24.30, (float) $quote['tax'], 0.01);
+        $this->assertEqualsWithDelta(510.30, (float) $quote['total'], 0.01);
+    }
+
     public function test_all_billing_policies_and_the_28_day_tariff_boundary_are_explicit(): void
     {
         [$contract] = $this->operationalContract([
@@ -288,26 +333,23 @@ class ContractAmendmentServiceTest extends TestCase
         app(ContractAmendmentService::class)->requestExtension($contract, $contract->return_date->copy()->addDay(), $actor->id);
     }
 
-    public function test_commercial_correction_rejects_every_user_except_the_explicitly_authorized_user(): void
+    public function test_commercial_correction_accepts_any_signed_in_panel_user_and_audits_the_actor(): void
     {
         [$contract, $actor] = $this->operationalContract();
 
-        try {
-            app(ContractCommercialCorrectionService::class)->apply(
-                $contract,
-                $actor->id,
-                ['total_price' => 1100],
-                ['base_rental' => 1000, 'vat' => 0],
-                ['base_rental' => 1100, 'vat' => 0],
-            );
-            $this->fail('An unauthorized user must not be able to correct locked commercial terms.');
-        } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('contract', $exception->errors());
-        }
+        $amendment = app(ContractCommercialCorrectionService::class)->apply(
+            $contract,
+            $actor->id,
+            ['total_price' => 1100],
+            ['base_rental' => 1000, 'vat' => 0],
+            ['base_rental' => 1100, 'vat' => 0],
+        );
 
-        $this->assertSame(0, $contract->amendments()->count());
-        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
-        $this->assertSame(1000.0, (float) $contract->charges()->sum('amount'));
+        $this->assertTrue($amendment->isApproved());
+        $this->assertSame($actor->id, $amendment->approved_by);
+        $this->assertSame(1, $contract->amendments()->count());
+        $this->assertSame(1100.0, (float) $contract->fresh()->total_price);
+        $this->assertSame(1100.0, (float) $contract->charges()->sum('amount'));
     }
 
     public function test_contract_customer_and_vehicle_history_cannot_be_hard_deleted(): void

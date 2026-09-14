@@ -451,7 +451,16 @@ class RentalRequestEditTest extends TestCase
             ]);
         $charge = ContractCharges::factory()->for($contract)->create([
             'title' => 'base_rental',
+            'type' => 'base',
             'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'tax',
+            'type' => 'tax',
+            'amount' => 50,
         ]);
         $contract->changeStatus('delivery', $user->id);
 
@@ -476,7 +485,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertTrue($contract->actual_pickup_at->equalTo(Carbon::parse('2026-09-07 11:15:00')));
         $this->assertSame('2026-09-10 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
         $this->assertSame(950.0, (float) $contract->total_price);
-        $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
+        $this->assertSame(2, ContractCharges::where('contract_id', $contract->id)->count());
         $this->assertSame(900.0, (float) $charge->fresh()->amount);
     }
 
@@ -523,7 +532,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
     }
 
-    public function test_operational_contract_allows_a_return_time_correction_when_billable_days_do_not_change(): void
+    public function test_operational_return_time_correction_reprices_when_billable_days_change(): void
     {
         Carbon::setTestNow('2026-09-08 12:00:00');
 
@@ -541,25 +550,38 @@ class RentalRequestEditTest extends TestCase
                 // The original rental ends exactly on a day boundary.
                 'return_date' => '2026-09-10 10:00:00',
                 'actual_pickup_at' => '2026-09-07 10:00:00',
-                'total_price' => 950,
+                'total_price' => 945,
                 'used_daily_rate' => 300,
             ]);
-        $charge = ContractCharges::factory()->for($contract)->create(['title' => 'base_rental', 'amount' => 900]);
+        $charge = ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 45]);
         $contract->changeStatus('delivery', $user->id);
 
         $component = app(RentalRequestEdit::class);
         $component->mount($contract->id);
-        // A small correction must be accepted even though ceil(duration/days)
-        // would otherwise turn this from three days into four.
+        // A small schedule correction is accepted and its billable-day change
+        // is immediately reflected at this contract's saved daily rate.
         $component->return_date = '2026-09-10T22:00';
         $component->submit();
 
         $contract->refresh();
 
         $this->assertSame('2026-09-10 22:00:00', $contract->return_date->format('Y-m-d H:i:s'));
-        $this->assertSame(950.0, (float) $contract->total_price);
+        $this->assertSame(1260.0, (float) $contract->total_price);
         $this->assertSame(900.0, (float) $charge->fresh()->amount);
-        $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
+        $this->assertEqualsWithDelta(1260, (float) $contract->charges()->sum('amount'), 0.01);
+        $adjustment = $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->sole();
+        $this->assertSame(
+            \App\Services\ContractCommercialCorrectionService::SCOPE_AUTHORIZED,
+            $adjustment->pricing_policy
+        );
     }
 
     public function test_operational_contract_rejects_a_return_correction_beyond_tolerance(): void
@@ -655,7 +677,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertSame(25.0, (float) $returnCharge->fresh()->amount);
         $this->assertSame(47.5, (float) $taxCharge->fresh()->amount);
         $adjustment = $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->sole();
-        $this->assertSame(\App\Services\ContractCommercialCorrectionService::SCOPE_OPERATIONAL_LOCATION, $adjustment->pricing_policy);
+        $this->assertSame(\App\Services\ContractCommercialCorrectionService::SCOPE_AUTHORIZED, $adjustment->pricing_policy);
         $correctionCharges = $adjustment->charges->keyBy(fn ($charge) => data_get($charge->metadata, 'category'));
         $this->assertEqualsWithDelta(25, (float) $correctionCharges['pickup_transfer']->amount, 0.01);
         $this->assertEqualsWithDelta(25, (float) $correctionCharges['return_transfer']->amount, 0.01);
@@ -720,7 +742,7 @@ class RentalRequestEditTest extends TestCase
         $contract->refresh();
         $this->assertSame('UAE/Dubai/Downtown', $contract->return_location);
         $this->assertSame(997.5, (float) $contract->total_price);
-        $adjustment = $contract->amendments()->where('pricing_policy', \App\Services\ContractCommercialCorrectionService::SCOPE_OPERATIONAL_LOCATION)->sole();
+        $adjustment = $contract->amendments()->where('pricing_policy', \App\Services\ContractCommercialCorrectionService::SCOPE_AUTHORIZED)->sole();
         $correctionCharges = $adjustment->charges->keyBy(fn ($charge) => data_get($charge->metadata, 'category'));
         $this->assertEqualsWithDelta(50, (float) $correctionCharges['return_transfer']->amount, 0.01);
         $this->assertEqualsWithDelta(2.5, (float) $correctionCharges['vat']->amount, 0.01);
@@ -918,7 +940,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertStringNotContainsString('Customer payments recorded: 440.00 AED', $returnInformation);
     }
 
-    public function test_operational_return_summary_keeps_date_duration_and_frozen_ledger_separate(): void
+    public function test_operational_return_summary_uses_the_same_live_contract_tariff_breakdown(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -968,26 +990,25 @@ class RentalRequestEditTest extends TestCase
         $returnInformation = $component->returnInformationText;
 
         $this->assertEqualsWithDelta(8, (float) $component->rental_days, 0.001);
-        $this->assertEqualsWithDelta(7, (float) $component->billed_rental_days, 0.001);
+        $this->assertEqualsWithDelta(8, (float) $component->billed_rental_days, 0.001);
         $this->assertEqualsWithDelta(7, (float) $component->commercial_base_days, 0.001);
-        $this->assertEqualsWithDelta(1000.02, (float) $component->base_price, 0.01);
-        $this->assertEqualsWithDelta(55, (float) $component->tax_amount, 0.01);
-        $this->assertEqualsWithDelta(1155.02, (float) $component->final_total, 0.01);
+        $this->assertEqualsWithDelta(1142.88, (float) $component->base_price, 0.01);
+        $this->assertEqualsWithDelta(62.14, (float) $component->tax_amount, 0.01);
+        $this->assertEqualsWithDelta(1305.02, (float) $component->final_total, 0.01);
         $this->assertStringContainsString('Rental days: 8', $returnInformation);
-        $this->assertStringContainsString('Billed ledger days: 7', $returnInformation);
-        $this->assertStringContainsString('Rental amount: 1,000.02 AED', $returnInformation);
+        $this->assertStringNotContainsString('Billed ledger days:', $returnInformation);
+        $this->assertStringContainsString('Rental amount: 1,142.88 AED', $returnInformation);
         $this->assertStringContainsString('Services & logistics: 100.00 AED', $returnInformation);
-        $this->assertStringContainsString('VAT: 55.00 AED', $returnInformation);
-        $this->assertStringContainsString('Contract total: 1,155.02 AED', $returnInformation);
-        $this->assertStringContainsString('Outstanding balance: 0.02 AED', $returnInformation);
-        $this->assertStringNotContainsString('Rental amount: 1,242.88 AED', $returnInformation);
+        $this->assertStringContainsString('VAT: 62.14 AED', $returnInformation);
+        $this->assertStringContainsString('Contract total: 1,305.02 AED', $returnInformation);
+        $this->assertStringContainsString('Outstanding balance: 150.02 AED', $returnInformation);
     }
 
-    public function test_user_11_can_correct_locked_commercial_terms_with_an_audited_balanced_adjustment(): void
+    public function test_any_signed_in_user_can_correct_commercial_terms_with_an_audited_balanced_adjustment(): void
     {
         Carbon::setTestNow('2026-09-08 12:00:00');
 
-        $user = User::factory()->create(['id' => 11]);
+        $user = User::factory()->create();
         $this->actingAs($user);
         $currentModel = CarModel::factory()->create(['brand' => 'Kia', 'model' => 'Pegas']);
         $newModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Sonata']);
@@ -1047,15 +1068,15 @@ class RentalRequestEditTest extends TestCase
 
         $contract->refresh();
         $this->assertSame($newCar->id, $contract->car_id);
-        $this->assertEqualsWithDelta(1470, (float) $contract->total_price, 0.01);
+        $this->assertEqualsWithDelta(1680, (float) $contract->total_price, 0.01);
         $this->assertEqualsWithDelta(1000.02, (float) $baseCharge->fresh()->amount, 0.01);
         $this->assertEqualsWithDelta(50, (float) $taxCharge->fresh()->amount, 0.01);
         $this->assertSame(1, $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->count());
         $this->assertEqualsWithDelta((float) $contract->total_price, (float) $contract->charges()->sum('amount'), 0.01);
         $this->assertSame($newCar->id, $payment->fresh()->car_id);
-        $this->assertEqualsWithDelta(419.98, $contract->calculateRemainingBalance(), 0.01);
+        $this->assertEqualsWithDelta(629.98, $contract->calculateRemainingBalance(), 0.01);
         $this->assertSame(8.0, (float) $component->rental_days);
-        $this->assertSame(7.0, (float) $component->billed_rental_days);
+        $this->assertSame(8.0, (float) $component->billed_rental_days);
         $this->assertSame('reserved', $newCar->fresh()->status);
         $this->assertSame('available', $currentCar->fresh()->status);
 
@@ -1068,7 +1089,7 @@ class RentalRequestEditTest extends TestCase
         $extensionService->approve($extension, $user->id);
 
         $this->assertSame(2, $contract->amendments()->count());
-        $this->assertEqualsWithDelta(231, (float) $extension->fresh()->total_amount, 0.01);
+        $this->assertEqualsWithDelta(210, (float) $extension->fresh()->total_amount, 0.01);
         $this->assertEqualsWithDelta(
             (float) $contract->fresh()->total_price,
             (float) $contract->charges()->sum('amount'),
@@ -1078,14 +1099,14 @@ class RentalRequestEditTest extends TestCase
         $afterExtension = app(RentalRequestEdit::class);
         $afterExtension->mount($contract->id);
         $this->assertSame(9.0, (float) $afterExtension->rental_days);
-        $this->assertSame(8.0, (float) $afterExtension->billed_rental_days);
-        $this->assertSame(7.0, (float) $afterExtension->commercial_base_days);
+        $this->assertSame(9.0, (float) $afterExtension->billed_rental_days);
+        $this->assertSame(8.0, (float) $afterExtension->commercial_base_days);
         $afterExtension->custom_daily_rate = 210;
         $afterExtension->submit();
 
         $contract->refresh();
         $this->assertSame(3, $contract->amendments()->count());
-        $this->assertEqualsWithDelta(1774.50, (float) $contract->total_price, 0.01);
+        $this->assertEqualsWithDelta(1974.00, (float) $contract->total_price, 0.01);
         $this->assertEqualsWithDelta(
             (float) $contract->total_price,
             (float) $contract->charges()->sum('amount'),
