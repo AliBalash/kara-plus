@@ -408,6 +408,7 @@ class PublicReservationService
                     'selected_insurance' => $quote['selected_insurance'],
                     'service_quantities' => $quote['service_quantities'],
                     'quote_snapshot' => Arr::except($quote, ['availability']),
+                    'pricing_tariffs' => $this->pricingTariffSnapshot($quote),
                     'availability_at_submission' => $quote['availability'],
                 ];
 
@@ -747,6 +748,57 @@ class PublicReservationService
                 'description' => '5% VAT',
             ]);
         }
+    }
+
+    /** Capture the quote catalogue so future edits never drift to newer rates. */
+    private function pricingTariffSnapshot(array $quote): array
+    {
+        $services = collect($this->serviceDefinitions())
+            ->except(['ldw_insurance', 'scdw_insurance'])
+            ->map(fn (array $service): array => [
+                'unit_rate' => $this->roundCurrency($service['amount'] ?? 0),
+                'per_day' => (bool) ($service['per_day'] ?? false),
+            ])->all();
+        $locations = collect($this->locationCostMap())->map(fn (array $rates): array => [
+            'under_3' => (float) ($rates['under_3'] ?? 0),
+            'over_3' => (float) ($rates['over_3'] ?? 0),
+        ])->all();
+        $days = (int) ($quote['rental_days'] ?? 1);
+
+        return [
+            'source' => 'contract_creation',
+            'daily_rate' => $this->roundCurrency($quote['daily_rate'] ?? 0),
+            'tax_rate' => (float) ($quote['tax_rate'] ?? self::TAX_RATE),
+            'base_days' => (float) $days,
+            'extension_days' => 0.0,
+            'extension_duration_minutes' => 0,
+            'services' => $services,
+            'insurance' => [
+                'ldw_insurance' => $this->roundCurrency($quote['ldw_daily_rate'] ?? 0),
+                'scdw_insurance' => $this->roundCurrency($quote['scdw_daily_rate'] ?? 0),
+            ],
+            'locations' => $locations,
+            'priced_locations' => [
+                'pickup' => [
+                    'location' => $quote['pickup_location'] ?? null,
+                    'tier' => $days < 3 ? 'under_3' : 'over_3',
+                    'amount' => $this->roundCurrency(data_get($quote, 'transfer_costs.pickup', 0)),
+                ],
+                'return' => [
+                    'location' => $quote['return_location'] ?? null,
+                    'tier' => $days < 3 ? 'under_3' : 'over_3',
+                    'amount' => $this->roundCurrency(data_get($quote, 'transfer_costs.return', 0)),
+                ],
+            ],
+            'driver_service' => [
+                'base_amount' => 250.0,
+                'included_hours' => 8.0,
+                'extra_hour_amount' => 40.0,
+            ],
+            'driving_license' => collect($this->drivingLicenseOptions())
+                ->mapWithKeys(fn (array $option, string $key): array => [$key => (float) ($option['amount'] ?? 0)])
+                ->all(),
+        ];
     }
 
     private function lineItemsFromQuote(

@@ -8,6 +8,7 @@ use App\Services\ContractAmendmentService;
 use App\Services\RentalPricingService;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class RentalRequestExtension extends Component
@@ -18,6 +19,7 @@ class RentalRequestExtension extends Component
 
     public string $pricingPolicy = RentalPricingService::DEFAULT_POLICY;
 
+    #[Locked]
     public string $rateSource = RentalPricingService::DEFAULT_RATE_SOURCE;
 
     public ?string $reason = null;
@@ -32,9 +34,6 @@ class RentalRequestExtension extends Component
     {
         $this->contract = Contract::with(['car', 'amendments.charges'])->findOrFail($contractId);
         $this->newReturnAt = optional($this->contract->return_date)->format('Y-m-d\\TH:i') ?? '';
-        if (! is_numeric($this->contract->used_daily_rate) || (float) $this->contract->used_daily_rate <= 0) {
-            $this->rateSource = RentalPricingService::RATE_SOURCE_CURRENT;
-        }
         $this->idempotencyKey = (string) Str::uuid();
     }
 
@@ -48,7 +47,7 @@ class RentalRequestExtension extends Component
                 $this->contract->fresh('car'),
                 $this->newReturnAt,
                 $this->pricingPolicy,
-                $this->rateSource
+                RentalPricingService::RATE_SOURCE_CONTRACT
             );
         } catch (ValidationException $exception) {
             $this->captureValidationErrors($exception);
@@ -71,7 +70,7 @@ class RentalRequestExtension extends Component
                 $this->contract->fresh('car'),
                 $this->newReturnAt,
                 $this->pricingPolicy,
-                $this->rateSource
+                RentalPricingService::RATE_SOURCE_CONTRACT
             );
             if ($this->quoteFingerprint($latestQuote) !== $this->quoteFingerprint($this->quote)) {
                 $this->quote = $latestQuote;
@@ -88,7 +87,7 @@ class RentalRequestExtension extends Component
                 $this->pricingPolicy,
                 $this->reason,
                 $this->notes,
-                $this->rateSource
+                RentalPricingService::RATE_SOURCE_CONTRACT
             );
             $this->reloadContract();
             $this->idempotencyKey = (string) Str::uuid();
@@ -165,7 +164,7 @@ class RentalRequestExtension extends Component
         $this->validate([
             'newReturnAt' => ['required', 'date'],
             'pricingPolicy' => ['required', 'in:daily_ceiling,hourly,prorated_daily,grace_then_daily'],
-            'rateSource' => ['required', 'in:contract_rate,current_tariff'],
+            'rateSource' => ['required', 'in:contract_rate'],
             'reason' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'idempotencyKey' => ['required', 'uuid'],

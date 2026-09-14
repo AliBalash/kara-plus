@@ -3,7 +3,7 @@
         <div>
             <div class="text-muted small">Contract #{{ $contract->id }}</div>
             <h4 class="mb-0">Extend Contract</h4>
-            <div class="text-muted mt-1">Review the rate source and full calculation before requesting approval.</div>
+            <div class="text-muted mt-1">Review the contract-tariff calculation before requesting approval.</div>
         </div>
         <a class="btn btn-outline-secondary" href="{{ route('rental-requests.details', $contract->id) }}">Back to contract</a>
     </div>
@@ -24,12 +24,7 @@
                 <div class="col-md-3"><small class="text-muted d-block">Actual return</small><span>{{ $contract->actual_return_at?->format('Y-m-d H:i') ?? 'Not returned' }}</span></div>
             </div>
             <hr class="my-4">
-            <div class="small text-muted mb-2">Current vehicle tariff</div>
-            <div class="d-flex flex-wrap gap-2">
-                <span class="badge bg-label-secondary">1–6 days: {{ number_format((float) $contract->car->price_per_day_short, 2) }} AED/day</span>
-                <span class="badge bg-label-secondary">7–27 days: {{ number_format((float) ($contract->car->price_per_day_mid ?? $contract->car->price_per_day_short), 2) }} AED/day</span>
-                <span class="badge bg-label-secondary">28+ days: {{ number_format((float) ($contract->car->price_per_day_long ?? $contract->car->price_per_day_mid ?? $contract->car->price_per_day_short), 2) }} AED/day</span>
-            </div>
+            <div class="small text-muted">Extensions use the tariff saved on this contract. Later vehicle catalogue changes are not applied.</div>
         </div>
     </div>
 
@@ -59,13 +54,8 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Rental rate source</label>
-                        <select wire:model="rateSource" class="form-select">
-                            @if (is_numeric($contract->used_daily_rate) && (float) $contract->used_daily_rate > 0)
-                                <option value="contract_rate">Contract rate — {{ number_format((float) $contract->used_daily_rate, 2) }} AED/day</option>
-                            @endif
-                            <option value="current_tariff">Current vehicle tariff — based on extension length</option>
-                        </select>
-                        <small class="text-muted">Contract rate is the safe default. Current tariff uses today's configured vehicle price.</small>
+                        <div class="form-control bg-light">Contract rate — {{ is_numeric($contract->used_daily_rate) ? number_format((float) $contract->used_daily_rate, 2).' AED/day' : 'legacy fallback' }}</div>
+                        <small class="text-muted">Locked to the tariff recorded on this contract.</small>
                         @error('rateSource')<small class="text-danger d-block">{{ $message }}</small>@enderror
                     </div>
                     <div class="col-md-5"><label class="form-label">Reason</label><input wire:model="reason" class="form-control"></div>

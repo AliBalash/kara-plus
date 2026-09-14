@@ -65,24 +65,39 @@ class RentalPricingService
             throw ValidationException::withMessages(['pricing' => 'No valid rental rate is available for this extension.']);
         }
         $rentalUnitPrice = $policy === self::POLICY_HOURLY ? round($dailyRate / 24, 2) : $dailyRate;
+        $contractTariffs = (array) data_get($contract->meta, 'pricing_tariffs', []);
+        $taxRate = $effectiveRateSource === self::RATE_SOURCE_CONTRACT
+            ? (float) ($contractTariffs['tax_rate'] ?? self::TAX_RATE)
+            : self::TAX_RATE;
         $items = [[
             'code' => 'extension_rental', 'title' => 'Rental extension', 'quantity' => $quantity,
             'unit' => $policy === self::POLICY_HOURLY ? 'hour' : 'day', 'unit_price' => $rentalUnitPrice,
-            'amount' => round($quantity * $rentalUnitPrice, 2), 'tax_rate' => self::TAX_RATE,
+            'amount' => round($quantity * $rentalUnitPrice, 2), 'tax_rate' => $taxRate,
         ]];
 
-        // Preserve the selected insurance product, but price only the added period
-        // using its tariff at approval time.
+        // Preserve the selected insurance product and the tariff captured on
+        // this contract. Legacy contracts without a snapshot fall back to the
+        // current vehicle value because no historical alternative exists.
         $insuranceCode = $this->selectedInsuranceCode($contract);
         if ($insuranceCode !== null) {
-            $price = $this->insuranceDailyRate($car, $insuranceCode, $minutes);
+            $contractInsuranceTariffs = (array) ($contractTariffs['insurance'] ?? []);
+            $hasContractInsuranceTariff = $effectiveRateSource === self::RATE_SOURCE_CONTRACT
+                && array_key_exists($insuranceCode, $contractInsuranceTariffs);
+            $price = $hasContractInsuranceTariff
+                ? (float) $contractInsuranceTariffs[$insuranceCode]
+                : ($effectiveRateSource === self::RATE_SOURCE_CONTRACT
+                    ? $this->storedInsuranceDailyRate($contract, $insuranceCode)
+                    : $this->insuranceDailyRate($car, $insuranceCode, $minutes));
+            if ($price === null) {
+                $price = $this->insuranceDailyRate($car, $insuranceCode, $minutes);
+            }
             if ($price > 0) {
                 $unitPrice = $policy === self::POLICY_HOURLY ? round($price / 24, 2) : $price;
-                $items[] = ['code' => $insuranceCode, 'title' => strtoupper(str_replace('_', ' ', $insuranceCode)), 'quantity' => $quantity, 'unit' => $policy === self::POLICY_HOURLY ? 'hour' : 'day', 'unit_price' => $unitPrice, 'amount' => round($quantity * $unitPrice, 2), 'tax_rate' => self::TAX_RATE];
+                $items[] = ['code' => $insuranceCode, 'title' => strtoupper(str_replace('_', ' ', $insuranceCode)), 'quantity' => $quantity, 'unit' => $policy === self::POLICY_HOURLY ? 'hour' : 'day', 'unit_price' => $unitPrice, 'amount' => round($quantity * $unitPrice, 2), 'tax_rate' => $taxRate];
             }
         }
 
-        foreach ($this->selectedPerDayAddOns($contract) as $addOn) {
+        foreach ($this->selectedPerDayAddOns($contract, $effectiveRateSource === self::RATE_SOURCE_CONTRACT) as $addOn) {
             $unitPrice = $policy === self::POLICY_HOURLY
                 ? round($addOn['daily_price'] / 24, 2)
                 : $addOn['daily_price'];
@@ -94,13 +109,13 @@ class RentalPricingService
                 'unit' => $policy === self::POLICY_HOURLY ? 'item_hour' : 'item_day',
                 'unit_price' => $unitPrice,
                 'amount' => round($itemQuantity * $unitPrice, 2),
-                'tax_rate' => self::TAX_RATE,
+                'tax_rate' => $taxRate,
                 'metadata' => ['selected_quantity' => $addOn['selected_quantity']],
             ];
         }
 
         $subtotal = round(collect($items)->sum('amount'), 2);
-        $tax = round($subtotal * self::TAX_RATE, 2);
+        $tax = round($subtotal * $taxRate, 2);
         $quote = [
             'duration_minutes' => $minutes, 'billable_days' => $quantity, 'pricing_policy' => $policy,
             'currency' => 'AED', 'items' => $items, 'subtotal' => $subtotal, 'tax' => $tax,
@@ -115,7 +130,7 @@ class RentalPricingService
         $quote['snapshot'] = [
             'quoted_at' => now()->toIso8601String(),
             'policy' => $policy,
-            'tax_rate' => self::TAX_RATE,
+            'tax_rate' => $taxRate,
             'currency' => $quote['currency'],
             'vehicle_id' => $car->id,
             'start_at' => $start->toIso8601String(),
@@ -196,7 +211,7 @@ class RentalPricingService
     }
 
     /** @return array<int, array{code:string,title:string,daily_price:float,selected_quantity:int}> */
-    private function selectedPerDayAddOns(Contract $contract): array
+    private function selectedPerDayAddOns(Contract $contract, bool $useContractTariffs = true): array
     {
         $definitions = config('carservices', []);
         $meta = is_array($contract->meta) ? $contract->meta : [];
@@ -207,16 +222,98 @@ class RentalPricingService
             ->map(fn ($code) => (string) $code)
             ->unique();
         $quantities = (array) data_get($contract->meta, 'service_quantities', []);
+        $contractServices = (array) data_get($contract->meta, 'pricing_tariffs.services', []);
 
         return $selected
-            ->filter(fn (string $code) => ! empty($definitions[$code]['per_day']) && is_numeric($definitions[$code]['amount'] ?? null))
-            ->map(fn (string $code) => [
-                'code' => $code,
-                'title' => (string) ($definitions[$code]['label_en'] ?? $code),
-                'daily_price' => (float) $definitions[$code]['amount'],
-                'selected_quantity' => max(1, (int) ($quantities[$code] ?? 1)),
-            ])
+            ->filter(function (string $code) use ($definitions, $contractServices, $useContractTariffs): bool {
+                $definition = $useContractTariffs && isset($contractServices[$code])
+                    ? $contractServices[$code]
+                    : ($definitions[$code] ?? []);
+
+                return ! empty($definition['per_day'])
+                    && is_numeric($definition[$useContractTariffs && isset($contractServices[$code]) ? 'unit_rate' : 'amount'] ?? null);
+            })
+            ->map(function (string $code) use ($contract, $definitions, $contractServices, $quantities, $useContractTariffs): array {
+                $selectedQuantity = max(1, (int) ($quantities[$code] ?? 1));
+                $dailyPrice = $useContractTariffs && isset($contractServices[$code])
+                    ? (float) ($contractServices[$code]['unit_rate'] ?? 0)
+                    : null;
+                if ($useContractTariffs && $dailyPrice === null) {
+                    $dailyPrice = $this->storedAddOnDailyRate($contract, $code, $selectedQuantity);
+                }
+
+                return [
+                    'code' => $code,
+                    'title' => (string) ($definitions[$code]['label_en'] ?? $code),
+                    'daily_price' => (float) ($dailyPrice ?? ($definitions[$code]['amount'] ?? 0)),
+                    'selected_quantity' => $selectedQuantity,
+                ];
+            })
             ->values()
             ->all();
+    }
+
+    private function storedInsuranceDailyRate(Contract $contract, string $code): ?float
+    {
+        $amount = $contract->charges()
+            ->where('source_type', 'original')
+            ->where('type', 'insurance')
+            ->where('title', $code)
+            ->sum('amount');
+        $days = $this->contractBaseRentalDays($contract);
+
+        return $amount > 0 && $days > 0 ? round((float) $amount / $days, 2) : null;
+    }
+
+    private function storedAddOnDailyRate(Contract $contract, string $code, int $selectedQuantity): ?float
+    {
+        $amount = $contract->charges()
+            ->where('source_type', 'original')
+            ->where('type', 'addon')
+            ->where('title', $code)
+            ->sum('amount');
+        $days = $this->contractBaseRentalDays($contract);
+
+        return $amount > 0 && $days > 0
+            ? round((float) $amount / ($days * max(1, $selectedQuantity)), 2)
+            : null;
+    }
+
+    private function contractBaseRentalDays(Contract $contract): float
+    {
+        $snapshotDays = (float) data_get($contract->meta, 'pricing_tariffs.base_days', 0);
+        if ($snapshotDays > 0) {
+            return $snapshotDays;
+        }
+
+        $charge = $contract->charges()
+            ->where('source_type', 'original')
+            ->where(fn ($query) => $query->where('title', 'base_rental')->orWhere('type', 'base'))
+            ->first();
+        if ($charge === null) {
+            return 0.0;
+        }
+        if ($charge->unit === 'day' && (float) $charge->quantity > 0) {
+            return (float) $charge->quantity;
+        }
+        if (preg_match('/(\d+(?:\.\d+)?)\s+days?/i', (string) $charge->description, $matches)) {
+            return (float) $matches[1];
+        }
+
+        $dailyRate = (float) ($contract->used_daily_rate ?? 0);
+        $amountDays = $dailyRate > 0 ? (float) $charge->amount / $dailyRate : 0.0;
+        if ($amountDays > 0 && abs($amountDays - round($amountDays)) < 0.01) {
+            return (float) round($amountDays);
+        }
+
+        $start = $contract->pickup_date;
+        $end = $contract->original_return_date ?? $contract->return_date;
+        if ($start !== null && $end !== null && Carbon::parse($end)->greaterThan(Carbon::parse($start))) {
+            return (float) max(1, (int) ceil(
+                (Carbon::parse($end)->getTimestamp() - Carbon::parse($start)->getTimestamp()) / 86400
+            ));
+        }
+
+        return $amountDays > 0 ? round($amountDays, 3) : 0.0;
     }
 }
