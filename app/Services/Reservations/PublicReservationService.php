@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\LocationCost;
 use App\Models\VehicleCatalogItem;
 use App\Support\PhoneNumber;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Database\QueryException;
@@ -33,6 +34,8 @@ class PublicReservationService
         return [
             'currency' => 'AED',
             'tax_rate' => self::TAX_RATE,
+            'rental_duration_policy' => RentalDuration::CURRENT_POLICY,
+            'rental_duration_grace_minutes' => RentalDuration::GRACE_MINUTES,
             'min_pickup_at' => $this->minimumPickupAt()->format('Y-m-d H:i:s'),
             'services' => array_values(array_map(function (string $id, array $service): array {
                 return [
@@ -511,7 +514,7 @@ class PublicReservationService
     {
         $pickup = $normalized['pickup'];
         $return = $normalized['return'];
-        $rentalDays = max(1, (int) ceil(($return->getTimestamp() - $pickup->getTimestamp()) / 86400));
+        $rentalDays = RentalDuration::billableDays($pickup, $return);
 
         $standardDailyRate = $this->roundCurrency($this->getCarDailyRate($car, $rentalDays));
         $dailyRate = ($normalized['apply_discount'] && $normalized['custom_daily_rate'])
@@ -617,6 +620,8 @@ class PublicReservationService
 
         return [
             'currency' => 'AED',
+            'rental_duration_policy' => RentalDuration::CURRENT_POLICY,
+            'rental_duration_grace_minutes' => RentalDuration::GRACE_MINUTES,
             'pickup_date' => $pickup->toIso8601String(),
             'return_date' => $return->toIso8601String(),
             'pickup_location' => $normalized['pickup_location'],
@@ -767,6 +772,7 @@ class PublicReservationService
 
         return [
             'source' => 'contract_creation',
+            ...RentalDuration::currentPolicySnapshot(),
             'daily_rate' => $this->roundCurrency($quote['daily_rate'] ?? 0),
             'tax_rate' => (float) ($quote['tax_rate'] ?? self::TAX_RATE),
             'base_days' => (float) $days,

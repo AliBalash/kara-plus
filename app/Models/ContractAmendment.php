@@ -4,14 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Arr;
 
 class ContractAmendment extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     public const TYPE_EXTENSION = 'extension';
 
-    public const STATUSES = ['draft', 'pending_approval', 'approved', 'rejected', 'cancelled'];
+    public const STATUSES = ['draft', 'pending_approval', 'approved', 'rejected', 'cancelled', 'superseded', 'voided'];
 
     public const TYPES = ['extension', 'early_return', 'rate_change', 'insurance_change', 'vehicle_change', 'adjustment'];
 
@@ -23,6 +25,8 @@ class ContractAmendment extends Model
         'subtotal' => 'decimal:2', 'tax_amount' => 'decimal:2', 'total_amount' => 'decimal:2',
         'before_snapshot' => 'array', 'after_snapshot' => 'array', 'pricing_snapshot' => 'array',
     ];
+
+    private bool $managedLifecycleMutation = false;
 
     public function contract()
     {
@@ -54,16 +58,43 @@ class ContractAmendment extends Model
         return $this->status === 'approved';
     }
 
+    /** Only amendment services may replace or void approved financial history. */
+    public function applyManagedLifecycleChange(array $attributes): void
+    {
+        $allowed = Arr::only($attributes, ['status', 'after_snapshot', 'notes']);
+        $this->managedLifecycleMutation = true;
+
+        try {
+            $this->update($allowed);
+        } finally {
+            $this->managedLifecycleMutation = false;
+        }
+    }
+
+    /** Pending/inactive requests may be hidden while remaining recoverable. */
+    public function softDeleteManaged(): void
+    {
+        $this->managedLifecycleMutation = true;
+
+        try {
+            $this->delete();
+        } finally {
+            $this->managedLifecycleMutation = false;
+        }
+    }
+
     protected static function booted(): void
     {
         static::updating(function (ContractAmendment $amendment): void {
-            if ($amendment->getOriginal('status') === 'approved') {
+            if ($amendment->getOriginal('status') === 'approved' && ! $amendment->managedLifecycleMutation) {
                 throw new \DomainException('Approved amendments are immutable.');
             }
         });
 
-        static::deleting(function (): void {
-            throw new \DomainException('Amendments are business history and cannot be deleted.');
+        static::deleting(function (ContractAmendment $amendment): void {
+            if (! $amendment->managedLifecycleMutation) {
+                throw new \DomainException('Amendments are business history and cannot be deleted directly.');
+            }
         });
     }
 }

@@ -12,6 +12,7 @@ use App\Models\LocationCost;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\ContractAmendmentService;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,42 @@ class RentalRequestEditTest extends TestCase
         DB::reconnect('sqlite');
 
         Artisan::call('migrate:fresh', ['--force' => true]);
+    }
+
+    public function test_saved_duration_policy_keeps_old_requests_legacy_and_gives_new_requests_one_hour_grace(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $carModel = CarModel::factory()->create();
+        $car = Car::factory()->for($carModel)->create();
+        $schedule = [
+            'pickup_date' => '2026-09-15 10:00:00',
+            'return_date' => '2026-09-16 10:01:00',
+            'current_status' => 'pending',
+        ];
+
+        $legacyContract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for($car)
+            ->create([...$schedule, 'meta' => []]);
+        $currentContract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for($car)
+            ->create([
+                ...$schedule,
+                'meta' => ['pricing_tariffs' => RentalDuration::currentPolicySnapshot()],
+            ]);
+
+        $legacyEdit = app(RentalRequestEdit::class);
+        $legacyEdit->mount($legacyContract->id);
+        $currentEdit = app(RentalRequestEdit::class);
+        $currentEdit->mount($currentContract->id);
+
+        $this->assertSame(2, $legacyEdit->rental_days);
+        $this->assertSame(1, $currentEdit->rental_days);
+        $this->assertSame([], $legacyContract->fresh()->meta);
     }
 
     public function test_submit_updates_contract_customer_and_charges(): void
@@ -521,7 +558,7 @@ class RentalRequestEditTest extends TestCase
             $this->fail('An operational contract return date must not be edited directly.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'This return increase is beyond the twelve-hour tolerance. Use Extend Contract to extend the rental period.',
+                'This return increase is beyond the one-hour tolerance. Use Extend Contract to extend the rental period.',
                 $exception->errors()['return_date'][0]
             );
         }
@@ -532,7 +569,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
     }
 
-    public function test_operational_return_time_correction_reprices_when_billable_days_change(): void
+    public function test_operational_return_time_correction_accepts_the_exact_grace_boundary_without_repricing(): void
     {
         Carbon::setTestNow('2026-09-08 12:00:00');
 
@@ -552,6 +589,13 @@ class RentalRequestEditTest extends TestCase
                 'actual_pickup_at' => '2026-09-07 10:00:00',
                 'total_price' => 945,
                 'used_daily_rate' => 300,
+                'meta' => ['pricing_tariffs' => [
+                    ...RentalDuration::currentPolicySnapshot(),
+                    'base_days' => 3,
+                    'daily_rate' => 300,
+                    'tax_rate' => 0.05,
+                    'extension_duration_minutes' => 0,
+                ]],
             ]);
         $charge = ContractCharges::factory()->for($contract)->create([
             'title' => 'base_rental',
@@ -566,22 +610,21 @@ class RentalRequestEditTest extends TestCase
 
         $component = app(RentalRequestEdit::class);
         $component->mount($contract->id);
-        // A small schedule correction is accepted and its billable-day change
-        // is immediately reflected at this contract's saved daily rate.
-        $component->return_date = '2026-09-10T22:00';
+        $component->return_date = '2026-09-10T11:00';
         $component->submit();
 
         $contract->refresh();
 
-        $this->assertSame('2026-09-10 22:00:00', $contract->return_date->format('Y-m-d H:i:s'));
-        $this->assertSame(1260.0, (float) $contract->total_price);
+        $this->assertSame('2026-09-10 11:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(945.0, (float) $contract->total_price);
         $this->assertSame(900.0, (float) $charge->fresh()->amount);
-        $this->assertEqualsWithDelta(1260, (float) $contract->charges()->sum('amount'), 0.01);
-        $adjustment = $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->sole();
+        $this->assertEqualsWithDelta(945, (float) $contract->charges()->sum('amount'), 0.01);
+        $adjustment = $contract->amendments()->where('type', 'adjustment')->sole();
         $this->assertSame(
             \App\Services\ContractCommercialCorrectionService::SCOPE_AUTHORIZED,
             $adjustment->pricing_policy
         );
+        $this->assertEqualsWithDelta(0, (float) $adjustment->total_amount, 0.01);
     }
 
     public function test_operational_contract_rejects_a_return_correction_beyond_tolerance(): void
@@ -602,6 +645,7 @@ class RentalRequestEditTest extends TestCase
                 'return_date' => '2026-09-10 10:00:00',
                 'total_price' => 1050,
                 'used_daily_rate' => 142.86,
+                'meta' => ['pricing_tariffs' => RentalDuration::currentPolicySnapshot()],
             ]);
         ContractCharges::factory()->for($contract)->create([
             'title' => 'base_rental',
@@ -613,7 +657,7 @@ class RentalRequestEditTest extends TestCase
 
         $component = app(RentalRequestEdit::class);
         $component->mount($contract->id);
-        $component->return_date = '2026-09-10T22:01';
+        $component->return_date = '2026-09-10T11:01';
 
         $this->expectException(ValidationException::class);
         $component->submit();

@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Image;
 use App\Models\LocationCost;
 use App\Models\VehicleCatalogItem;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -152,6 +153,42 @@ class PublicReservationApiTest extends TestCase
             ->assertJsonPath('data.availability.has_conflict', true);
     }
 
+    public function test_quote_applies_the_60_minute_day_boundary_to_every_day_based_charge(): void
+    {
+        $car = $this->seedCarWithKnownPricing();
+
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Main',
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+
+        $payload = [
+            'selected_car_id' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Main',
+            'return_location' => 'UAE/Dubai/Main',
+            'pickup_date' => '2026-04-10 10:00:00',
+            'return_date' => '2026-04-11 11:00:00',
+            'selected_insurance' => 'ldw_insurance',
+        ];
+
+        $withinGrace = $this->postJson('http://localhost/api/public/reservations/quote', $payload);
+        $withinGrace
+            ->assertOk()
+            ->assertJsonPath('data.rental_days', 1)
+            ->assertJsonPath('data.rental_duration_policy', RentalDuration::CURRENT_POLICY)
+            ->assertJsonPath('data.rental_duration_grace_minutes', 60);
+        $this->assertEquals(100.0, (float) $withinGrace->json('data.base_price'));
+        $this->assertEquals(10.0, (float) $withinGrace->json('data.insurance_total'));
+
+        $payload['return_date'] = '2026-04-11 11:01:00';
+        $outsideGrace = $this->postJson('http://localhost/api/public/reservations/quote', $payload);
+        $outsideGrace->assertOk()->assertJsonPath('data.rental_days', 2);
+        $this->assertEquals(200.0, (float) $outsideGrace->json('data.base_price'));
+        $this->assertEquals(20.0, (float) $outsideGrace->json('data.insurance_total'));
+    }
+
     public function test_store_endpoint_creates_contract_and_charges(): void
     {
         $car = $this->seedCarWithKnownPricing();
@@ -210,6 +247,11 @@ class PublicReservationApiTest extends TestCase
             'title' => 'tax',
             'amount' => 10.00,
         ]);
+        $contract = Contract::query()->sole();
+        $this->assertSame(
+            RentalDuration::CURRENT_POLICY,
+            data_get($contract->meta, 'pricing_tariffs.rental_duration_policy')
+        );
     }
 
     public function test_store_accepts_a_conflicting_vehicle_as_a_review_request_and_does_not_duplicate_retries(): void

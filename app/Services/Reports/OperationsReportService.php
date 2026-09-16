@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Payment;
 use App\Support\ContractStatus;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -1368,7 +1369,7 @@ class OperationsReportService
             ->get();
 
         $monthlyContracts = $contracts
-            ->filter(fn (Contract $contract) => $this->durationDays($contract->pickup_date, $contract->return_date) >= 28)
+            ->filter(fn (Contract $contract) => $this->durationDays($contract->pickup_date, $contract->return_date, $contract->meta) >= 28)
             ->values();
 
         $monthStart = Carbon::now()->startOfMonth();
@@ -1533,7 +1534,7 @@ class OperationsReportService
             'request_date' => $this->formatDateTime($contract->created_at),
             'pickup_date' => $this->formatDateTime($contract->pickup_date),
             'return_date' => $this->formatDateTime($contract->return_date),
-            'duration_days' => $this->durationDays($contract->pickup_date, $contract->return_date),
+            'duration_days' => $this->durationDays($contract->pickup_date, $contract->return_date, $contract->meta),
             'rental_rate' => $rentalRate,
             'status' => $contract->current_status,
             'status_label' => ContractStatus::label($contract->current_status),
@@ -1946,7 +1947,7 @@ class OperationsReportService
         $createdAt = $contract->created_at instanceof Carbon ? $contract->created_at : Carbon::parse($contract->created_at);
         $returnAt = $contract->return_date instanceof Carbon ? $contract->return_date : Carbon::parse($contract->return_date);
 
-        $durationDays = max(1, (int) ceil($pickupAt->diffInMinutes($returnAt, false) / 1440));
+        $durationDays = $this->durationDays($pickupAt, $returnAt, $contract->meta);
         $leadTimeDays = max(0, (int) $createdAt->copy()->startOfDay()->diffInDays($pickupAt->copy()->startOfDay(), false));
         $daysUntilEndSigned = (int) Carbon::now()->startOfDay()->diffInDays($returnAt->copy()->startOfDay(), false);
         $isEndingSoon = $returnAt->betweenIncluded($endingSoonStart, $endingSoonEnd);
@@ -2351,7 +2352,7 @@ class OperationsReportService
         return $this->formatDateTime($value);
     }
 
-    private function durationDays(mixed $start, mixed $end): int
+    private function durationDays(mixed $start, mixed $end, ?array $contractMeta = null): int
     {
         if (! $start || ! $end) {
             return 0;
@@ -2360,7 +2361,11 @@ class OperationsReportService
         $startAt = $start instanceof Carbon ? $start : Carbon::parse($start);
         $endAt = $end instanceof Carbon ? $end : Carbon::parse($end);
 
-        return max(1, (int) ceil($startAt->diffInMinutes($endAt, false) / 1440));
+        return RentalDuration::billableDays(
+            $startAt,
+            $endAt,
+            RentalDuration::policyFromContractMeta($contractMeta)
+        );
     }
 
     private function formatDepositDetails(?string $category, mixed $detail): string

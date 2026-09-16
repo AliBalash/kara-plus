@@ -14,6 +14,7 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\LocationCost;
 use App\Support\PhoneNumber;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -631,9 +632,7 @@ class RentalRequestCreate extends Component
 
                 return;
             }
-            $seconds = $return->getTimestamp() - $pickup->getTimestamp();
-            $days = (int) ceil($seconds / 86400);
-            $this->rental_days = max(1, $days);
+            $this->rental_days = RentalDuration::billableDays($pickup, $return);
         } else {
             $this->rental_days = 1;
         }
@@ -1367,6 +1366,7 @@ class RentalRequestCreate extends Component
 
         return [
             'source' => 'contract_creation',
+            ...RentalDuration::currentPolicySnapshot(),
             'daily_rate' => $this->roundCurrency($this->dailyRate),
             'tax_rate' => (float) $this->tax_rate,
             'base_days' => (float) $this->rental_days,

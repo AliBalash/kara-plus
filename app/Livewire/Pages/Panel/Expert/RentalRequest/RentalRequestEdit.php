@@ -17,6 +17,7 @@ use App\Models\Payment;
 use App\Services\ContractCommercialCorrectionService;
 use App\Services\Reservations\ReviewReservationApprovalService;
 use App\Support\PhoneNumber;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -478,9 +479,8 @@ class RentalRequestEdit extends Component
 
                 return;
             }
-            $seconds = $return->getTimestamp() - $pickup->getTimestamp();
-            $days = (int) ceil($seconds / 86400);
-            $this->rental_days = max(1, $days);
+            $policy = RentalDuration::policyFromContractMeta($this->contract?->meta);
+            $this->rental_days = RentalDuration::billableDays($pickup, $return, $policy);
         } else {
             $this->rental_days = 1;
         }
@@ -552,7 +552,10 @@ class RentalRequestEdit extends Component
                 $durationMinutes = max(1, (int) ceil(($return->getTimestamp() - $pickup->getTimestamp()) / 60));
                 $baseMinutes = max(1, $durationMinutes - (int) $this->contractPricingTariffs['extension_duration_minutes']);
 
-                return max(1, (int) ceil($baseMinutes / 1440));
+                return RentalDuration::billableDaysFromSeconds(
+                    $baseMinutes * 60,
+                    RentalDuration::policyFromContractMeta($this->contract?->meta)
+                );
             }
 
             $extensionDays = max(0, (float) ($this->contractPricingTariffs['extension_days']
@@ -1484,7 +1487,7 @@ class RentalRequestEdit extends Component
 
         if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
             if ($this->returnIncreaseExceedsTolerance()) {
-                $errors['return_date'] = ['This return increase is beyond the twelve-hour tolerance. Use Extend Contract to extend the rental period.'];
+                $errors['return_date'] = ['This return increase is beyond the one-hour tolerance. Use Extend Contract to extend the rental period.'];
             }
         }
 
@@ -1680,6 +1683,10 @@ class RentalRequestEdit extends Component
             'source' => (string) ($storedTariffs['source'] ?? ($storedTariffs !== []
                 ? 'contract_snapshot'
                 : 'ledger_recovered_with_catalog_fallback')),
+            ...Arr::only($storedTariffs, [
+                'rental_duration_policy',
+                'rental_duration_grace_minutes',
+            ]),
             'daily_rate' => $this->roundCurrency($dailyRate),
             'tax_rate' => (float) ($storedTariffs['tax_rate'] ?? $this->tax_rate),
             'base_days' => $baseDays,
@@ -2884,7 +2891,12 @@ TEXT);
                 $rateSource = $snapshot['rate_source'] ?? null;
                 $usesContractRate = $rateSource === \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT
                     || ($rateSource === null && is_numeric($contractRate) && abs($effectiveRate - (float) $contractRate) < 0.005);
-                $sourceLabel = $usesContractRate ? 'contract rate' : ($rateSource ? 'current tariff' : 'current tariff, legacy');
+                $sourceLabel = match ($rateSource) {
+                    \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT => 'saved contract rate',
+                    \App\Services\RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION => 'current tariff based on resulting total duration',
+                    \App\Services\RentalPricingService::RATE_SOURCE_CURRENT => 'current tariff based on extension length',
+                    default => $usesContractRate ? 'saved contract rate, legacy' : 'current tariff, legacy',
+                };
                 $comparison = is_numeric($contractRate) && abs($effectiveRate - (float) $contractRate) > 0.005
                     ? '; contract rate '.$this->formatCurrency($contractRate).' AED/day'
                     : '';

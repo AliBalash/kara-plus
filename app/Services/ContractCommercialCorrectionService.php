@@ -9,6 +9,7 @@ use App\Models\ContractCharges;
 use App\Models\LocationCost;
 use App\Models\Payment;
 use App\Services\Audit\Contracts\AuditWriterContract;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -120,7 +121,7 @@ class ContractCommercialCorrectionService
             $before = $this->snapshot($contract, $currentBreakdown);
             $amendment = ContractAmendment::create([
                 'contract_id' => $contract->id,
-                'sequence_no' => ((int) $contract->amendments()->max('sequence_no')) + 1,
+                'sequence_no' => ((int) ContractAmendment::withTrashed()->where('contract_id', $contract->id)->max('sequence_no')) + 1,
                 'type' => 'adjustment',
                 'status' => 'pending_approval',
                 'requested_by' => $actorId,
@@ -236,9 +237,11 @@ class ContractCommercialCorrectionService
             }
         }
 
-        $durationSeconds = Carbon::parse($attributes['return_date'] ?? $contract->return_date)->getTimestamp()
-            - Carbon::parse($attributes['pickup_date'] ?? $contract->pickup_date)->getTimestamp();
-        $rentalDays = max(1, (int) ceil($durationSeconds / 86400));
+        $rentalDays = RentalDuration::billableDays(
+            Carbon::parse($attributes['pickup_date'] ?? $contract->pickup_date),
+            Carbon::parse($attributes['return_date'] ?? $contract->return_date),
+            RentalDuration::policyFromContractMeta($contract->meta)
+        );
         $feeColumn = $rentalDays < 3 ? 'under_3_fee' : 'over_3_fee';
 
         foreach (['pickup' => 'pickup_location', 'return' => 'return_location'] as $category => $attribute) {

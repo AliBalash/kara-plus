@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -17,7 +18,7 @@ class Contract extends Model
     public const AMENDABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return'];
 
     /** Small operational time corrections do not change the commercial ledger. */
-    public const RETURN_TIME_TOLERANCE_MINUTES = 720;
+    public const RETURN_TIME_TOLERANCE_MINUTES = 60;
 
     public const FINANCIALLY_IMMUTABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return', 'returned', 'payment', 'complete'];
 
@@ -313,7 +314,11 @@ class Contract extends Model
      */
     public function calculateTotalPrice(): float
     {
-        $days = $this->pickup_date->diffInDays($this->return_date ?? now());
+        $returnAt = $this->return_date ?? now();
+        $policy = RentalDuration::policyFromContractMeta($this->meta);
+        $days = $policy === RentalDuration::POLICY_LEGACY_DAILY_CEILING
+            ? $this->pickup_date->diffInDays($returnAt)
+            : RentalDuration::billableDays($this->pickup_date, $returnAt, $policy);
         $dailyRate = (float) ($this->car->price_per_day ?? 0);
 
         return round($days * $dailyRate, 2);
@@ -456,7 +461,7 @@ class Contract extends Model
 
         if ($newReturnAt->greaterThan($currentReturnAt)
             && $currentReturnAt->diffInMinutes($newReturnAt) > self::RETURN_TIME_TOLERANCE_MINUTES) {
-            throw new \DomainException('A return increase beyond the twelve-hour tolerance must be handled through an extension.');
+            throw new \DomainException('A return increase beyond the one-hour tolerance must be handled through an extension.');
         }
 
         $this->commercialMutationAuthorized = true;

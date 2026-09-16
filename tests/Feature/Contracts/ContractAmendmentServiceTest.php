@@ -4,6 +4,7 @@ namespace Tests\Feature\Contracts;
 
 use App\Models\Car;
 use App\Models\Contract;
+use App\Models\ContractAmendment;
 use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\Payment;
@@ -207,13 +208,15 @@ class ContractAmendmentServiceTest extends TestCase
         $daily = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(90), RentalPricingService::POLICY_DAILY_CEILING, RentalPricingService::RATE_SOURCE_CURRENT);
         $hourly = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(90), RentalPricingService::POLICY_HOURLY, RentalPricingService::RATE_SOURCE_CURRENT);
         $prorated = $pricing->quoteExtension($contract, $contract->return_date->copy()->addHours(12), RentalPricingService::POLICY_PRORATED_DAILY, RentalPricingService::RATE_SOURCE_CURRENT);
-        $grace = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(120), RentalPricingService::POLICY_GRACE_THEN_DAILY, RentalPricingService::RATE_SOURCE_CURRENT);
+        $grace = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(60), RentalPricingService::POLICY_GRACE_THEN_DAILY, RentalPricingService::RATE_SOURCE_CURRENT);
+        $graceExceeded = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes(61), RentalPricingService::POLICY_GRACE_THEN_DAILY, RentalPricingService::RATE_SOURCE_CURRENT);
         $long = $pricing->quoteExtension($contract, $contract->return_date->copy()->addDays(28), RentalPricingService::POLICY_DAILY_CEILING, RentalPricingService::RATE_SOURCE_CURRENT);
 
         $this->assertSame(1.0, $daily['billable_days']);
         $this->assertSame(2.0, $hourly['billable_days']);
         $this->assertSame(0.5, $prorated['billable_days']);
         $this->assertSame(0.0, $grace['billable_days']);
+        $this->assertSame(1.0, $graceExceeded['billable_days']);
         $this->assertSame(120.0, (float) $long['items'][0]['unit_price']);
         $this->assertSame(RentalPricingService::POLICY_PRORATED_DAILY, $prorated['snapshot']['policy']);
     }
@@ -243,6 +246,149 @@ class ContractAmendmentServiceTest extends TestCase
         $this->assertSame(252.0, $contractQuote['total']);
         $this->assertSame(RentalPricingService::RATE_SOURCE_CURRENT, $currentQuote['rate_source']);
         $this->assertSame(210.0, $currentQuote['total']);
+    }
+
+    public function test_current_total_duration_tariff_uses_resulting_daily_weekly_or_monthly_tier(): void
+    {
+        [$contract] = $this->operationalContract([
+            'price_per_day_short' => 240,
+            'price_per_day_mid' => 180,
+            'price_per_day_long' => 120,
+        ]);
+        $pricing = app(RentalPricingService::class);
+
+        $extensionLength = $pricing->quoteExtension(
+            $contract,
+            $contract->return_date->copy()->addDays(2),
+            RentalPricingService::POLICY_DAILY_CEILING,
+            RentalPricingService::RATE_SOURCE_CURRENT,
+        );
+        $resultingTotal = $pricing->quoteExtension(
+            $contract,
+            $contract->return_date->copy()->addDays(2),
+            RentalPricingService::POLICY_DAILY_CEILING,
+            RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION,
+        );
+
+        $this->assertSame(240.0, $extensionLength['effective_daily_rate']);
+        $this->assertSame('daily_1_to_6', $extensionLength['rate_tier']);
+        $this->assertSame(180.0, $resultingTotal['effective_daily_rate']);
+        $this->assertSame('weekly_7_to_27', $resultingTotal['rate_tier']);
+        $this->assertSame(11, $resultingTotal['resulting_rental_days']);
+        $this->assertSame(RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION, $resultingTotal['snapshot']['rate_source']);
+    }
+
+    public function test_pending_extension_can_be_requoted_and_updated_without_changing_contract(): void
+    {
+        [$contract, $actor] = $this->operationalContract([
+            'price_per_day_short' => 240,
+            'price_per_day_mid' => 180,
+        ]);
+        $service = app(ContractAmendmentService::class);
+        $amendment = $service->requestExtension($contract, $contract->return_date->copy()->addDays(2), $actor->id);
+
+        $updated = $service->updatePendingExtension(
+            $amendment,
+            $contract->return_date->copy()->addDays(3),
+            $actor->id,
+            RentalPricingService::POLICY_DAILY_CEILING,
+            RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION,
+            'Customer requested one more day',
+            'Reviewed with customer',
+        );
+
+        $this->assertSame('pending_approval', $updated->status);
+        $this->assertSame('2026-09-13 10:00:00', $updated->new_return_at->format('Y-m-d H:i:s'));
+        $this->assertSame(RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION, $updated->pricing_snapshot['rate_source']);
+        $this->assertEqualsWithDelta(567.0, (float) $updated->total_amount, 0.01);
+        $this->assertSame('2026-09-10 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
+        $this->assertSame(0, $updated->charges()->count());
+    }
+
+    public function test_unapproved_extension_delete_is_soft_and_has_no_financial_effect(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $service = app(ContractAmendmentService::class);
+        $amendment = $service->requestExtension($contract, $contract->return_date->copy()->addDay(), $actor->id);
+
+        $service->deleteExtension($amendment, $actor->id, 'Duplicate request');
+
+        $this->assertSame(0, $contract->amendments()->count());
+        $this->assertSame(1, ContractAmendment::withTrashed()->whereKey($amendment->id)->count());
+        $this->assertNotNull(ContractAmendment::withTrashed()->findOrFail($amendment->id)->deleted_at);
+        $this->assertSame('2026-09-10 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
+    }
+
+    public function test_latest_approved_extension_can_be_voided_with_balancing_reversal(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $service = app(ContractAmendmentService::class);
+        $approved = $service->approve($service->requestExtension($contract, $contract->return_date->copy()->addDays(2), $actor->id), $actor->id);
+
+        $service->deleteExtension($approved, $actor->id, 'Entered by mistake');
+
+        $this->assertSame('voided', $approved->fresh()->status);
+        $this->assertSame('2026-09-10 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+        $this->assertEqualsWithDelta(1000.0, (float) $contract->fresh()->total_price, 0.01);
+        $this->assertEqualsWithDelta(1000.0, (float) $contract->charges()->sum('amount'), 0.01);
+        $this->assertSame(-483.0, (float) $contract->amendments()->where('pricing_policy', 'extension_void_reversal')->sole()->total_amount);
+    }
+
+    public function test_latest_approved_extension_can_be_revised_without_rewriting_old_ledger_rows(): void
+    {
+        [$contract, $actor] = $this->operationalContract([
+            'price_per_day_short' => 240,
+            'price_per_day_mid' => 180,
+        ]);
+        $service = app(ContractAmendmentService::class);
+        $approved = $service->approve($service->requestExtension($contract, $contract->return_date->copy()->addDays(2), $actor->id), $actor->id);
+        $originalChargeIds = $approved->charges()->pluck('id')->all();
+
+        $replacement = $service->reviseApprovedExtension(
+            $approved,
+            $approved->old_return_at->copy()->addDays(3),
+            $actor->id,
+            RentalPricingService::POLICY_DAILY_CEILING,
+            RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION,
+            'Corrected return date',
+        );
+
+        $this->assertSame('superseded', $approved->fresh()->status);
+        $this->assertTrue($replacement->isApproved());
+        $this->assertSame($approved->id, $replacement->pricing_snapshot['replaces_amendment_id']);
+        $this->assertSame('2026-09-13 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+        $this->assertEqualsWithDelta(1567.0, (float) $contract->fresh()->total_price, 0.01);
+        $this->assertEqualsWithDelta(1567.0, (float) $contract->charges()->sum('amount'), 0.01);
+        $this->assertEqualsCanonicalizing($originalChargeIds, ContractCharges::whereKey($originalChargeIds)->pluck('id')->all());
+        $this->assertSame([1, 2, 3], $contract->amendments()->pluck('sequence_no')->all());
+    }
+
+    public function test_older_approved_extension_cannot_be_revised_before_dependent_latest_extension(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $service = app(ContractAmendmentService::class);
+        $first = $service->approve($service->requestExtension($contract, $contract->return_date->copy()->addDay(), $actor->id), $actor->id);
+        $contract->refresh();
+        $second = $service->approve($service->requestExtension($contract, $contract->return_date->copy()->addDay(), $actor->id), $actor->id);
+
+        try {
+            $service->reviseApprovedExtension(
+                $first,
+                $first->old_return_at->copy()->addHours(12),
+                $actor->id,
+                RentalPricingService::POLICY_DAILY_CEILING,
+                RentalPricingService::RATE_SOURCE_CONTRACT,
+            );
+            $this->fail('An older dependent extension must not be revised first.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amendment', $exception->errors());
+        }
+
+        $this->assertTrue($first->fresh()->isApproved());
+        $this->assertTrue($second->fresh()->isApproved());
+        $this->assertSame('2026-09-12 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
     }
 
     public function test_approval_rejects_an_unseen_current_tariff_change(): void

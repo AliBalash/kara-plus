@@ -49,6 +49,11 @@
         $extensionAmendments = $contract->amendments
             ->where('type', \App\Models\ContractAmendment::TYPE_EXTENSION)
             ->values();
+        $extensionReversals = $contract->amendments
+            ->where('type', 'adjustment')
+            ->where('status', 'approved')
+            ->filter(fn ($amendment) => data_get($amendment->pricing_snapshot, 'reverses_amendment_id') !== null)
+            ->keyBy(fn ($amendment) => (int) data_get($amendment->pricing_snapshot, 'reverses_amendment_id'));
         $approvedExtensions = $extensionAmendments->where('status', 'approved');
         $approvedExtensionTotal = (float) $approvedExtensions->sum('total_amount');
     @endphp
@@ -98,6 +103,13 @@
                                     $extensionUsesContractRate = $extensionRateSource === \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT
                                         || ($extensionRateSource === null && is_numeric($extensionContractRate) && abs($extensionDailyRate - (float) $extensionContractRate) < 0.005);
                                     $extensionRateDiffers = is_numeric($extensionContractRate) && abs($extensionDailyRate - (float) $extensionContractRate) > 0.005;
+                                    $extensionRateSourceLabel = match ($extensionRateSource) {
+                                        \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT => 'Saved contract rate',
+                                        \App\Services\RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION => 'Current tariff · resulting total duration',
+                                        \App\Services\RentalPricingService::RATE_SOURCE_CURRENT => 'Current tariff · extension length',
+                                        default => $extensionUsesContractRate ? 'Saved contract rate · legacy' : 'Current tariff · legacy',
+                                    };
+                                    $extensionReversal = $extensionReversals->get((int) $extension->id);
                                 @endphp
                                 <tr>
                                     <td class="fw-semibold">#{{ $extension->sequence_no }}</td>
@@ -116,7 +128,7 @@
                                             </div>
                                             <small class="text-muted">+ VAT {{ number_format((float) $extension->tax_amount, 2) }} AED</small>
                                             <span class="badge d-block mt-1 {{ $extensionUsesContractRate ? 'bg-label-primary' : 'bg-label-warning' }}" style="width: fit-content">
-                                                {{ $extensionUsesContractRate ? 'Contract rate' : ($extensionRateSource ? 'Current tariff' : 'Current tariff · legacy') }}
+                                                {{ $extensionRateSourceLabel }}
                                             </span>
                                             @if ($extensionRateDiffers)
                                                 <small class="text-warning d-block">Contract rate: {{ number_format((float) $extensionContractRate, 2) }} AED/day</small>
@@ -130,6 +142,9 @@
                                             <span class="badge bg-warning text-dark">Pending · not added yet</span>
                                         @else
                                             <span class="badge bg-secondary">{{ \Illuminate\Support\Str::headline($extension->status) }} · not added</span>
+                                        @endif
+                                        @if ($extensionReversal)
+                                            <small class="text-muted d-block mt-1">Balanced by financial reversal #{{ $extensionReversal->sequence_no }} ({{ number_format((float) $extensionReversal->total_amount, 2) }} {{ $extensionReversal->currency }})</small>
                                         @endif
                                     </td>
                                     <td class="text-end fw-semibold">{{ number_format((float) $extension->total_amount, 2) }} {{ $extension->currency }}</td>
