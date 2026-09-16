@@ -1807,6 +1807,17 @@ class RentalRequestEdit extends Component
     {
         $tier = $pricingDays < 3 ? 'under_3' : 'over_3';
         $priced = (array) ($this->contractPricedLocations[$side] ?? []);
+        $originalLocation = (string) ($this->originalSelections[$side.'_location'] ?? '');
+
+        // Some legacy ledgers only retain a display label on the transfer
+        // charge. As long as the operator has not changed the saved location,
+        // a recorded amount remains the financial source of truth. A missing
+        // amount intentionally falls through to the captured location tariff
+        // so the operational correction can repair the incomplete ledger.
+        $bookedAmount = (float) ($priced['amount'] ?? 0);
+        if ($originalLocation !== '' && $location === $originalLocation && abs($bookedAmount) > 0.005) {
+            return $this->roundCurrency($bookedAmount);
+        }
 
         if (($priced['location'] ?? null) === $location && ($priced['tier'] ?? null) === $tier) {
             return $this->roundCurrency((float) ($priced['amount'] ?? 0));

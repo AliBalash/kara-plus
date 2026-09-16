@@ -671,14 +671,12 @@ class RentalRequestEditTest extends TestCase
         $this->actingAs($user);
         $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
         $car = Car::factory()->create(['car_model_id' => $model->id]);
-        LocationCost::query()->create([
-            'location' => 'UAE/Dubai/Clock Tower/Main Branch',
+        LocationCost::query()->updateOrCreate(['location' => 'UAE/Dubai/Clock Tower/Main Branch'], [
             'under_3_fee' => 25,
             'over_3_fee' => 25,
             'is_active' => true,
         ]);
-        LocationCost::query()->create([
-            'location' => 'UAE/Dubai/JBR',
+        LocationCost::query()->updateOrCreate(['location' => 'UAE/Dubai/JBR'], [
             'under_3_fee' => 50,
             'over_3_fee' => 50,
             'is_active' => true,
@@ -737,14 +735,12 @@ class RentalRequestEditTest extends TestCase
         $this->actingAs($user);
         $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
         $car = Car::factory()->create(['car_model_id' => $model->id]);
-        LocationCost::query()->create([
-            'location' => 'UAE/Dubai/Clock Tower/Main Branch',
+        LocationCost::query()->updateOrCreate(['location' => 'UAE/Dubai/Clock Tower/Main Branch'], [
             'under_3_fee' => 0,
             'over_3_fee' => 0,
             'is_active' => true,
         ]);
-        LocationCost::query()->create([
-            'location' => 'UAE/Dubai/Downtown',
+        LocationCost::query()->updateOrCreate(['location' => 'UAE/Dubai/Downtown'], [
             'under_3_fee' => 50,
             'over_3_fee' => 50,
             'is_active' => true,
