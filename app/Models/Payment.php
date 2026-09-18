@@ -60,6 +60,14 @@ class Payment extends Model
         'no_deposit_fee' => 'No Deposit Fee',
     ];
 
+    public const DISCOUNT_REASON_LABELS = [
+        'extension_discount' => 'Extension Discount',
+        'rental_rate_discount' => 'Rental Rate Discount',
+        'delivery_return_discount' => 'Delivery / Return Discount',
+        'outstanding_balance_discount' => 'Outstanding Balance Discount',
+        'management_discount' => 'Management Discount',
+    ];
+
     protected $fillable = [
         'contract_id',
         'customer_id',
@@ -70,6 +78,7 @@ class Payment extends Model
         'currency',
         'amount_in_aed',
         'payment_type',
+        'discount_reason',
         'description',
         'note',
         'payment_date',
@@ -91,6 +100,15 @@ class Payment extends Model
         'damage_images' => 'array',
         'approval_status' => 'string',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $payment): void {
+            if ($payment->payment_type !== 'discount') {
+                $payment->discount_reason = null;
+            }
+        });
+    }
 
     public function damageImagePaths(): array
     {
@@ -117,6 +135,21 @@ class Payment extends Model
     public static function paymentTypeLabels(): array
     {
         return self::PAYMENT_TYPE_LABELS;
+    }
+
+    public static function discountReasons(): array
+    {
+        return array_keys(self::DISCOUNT_REASON_LABELS);
+    }
+
+    public static function discountReasonLabels(): array
+    {
+        return self::DISCOUNT_REASON_LABELS;
+    }
+
+    public static function discountReasonLabel(?string $reason, string $fallback = 'Reason not recorded'): string
+    {
+        return self::DISCOUNT_REASON_LABELS[$reason] ?? $fallback;
     }
 
     public static function salikTripPaymentTypes(): array
