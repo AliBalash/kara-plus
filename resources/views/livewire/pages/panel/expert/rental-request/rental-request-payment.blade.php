@@ -195,6 +195,21 @@
                         @enderror
                     </div>
 
+                    @if ($payment_type === 'discount')
+                        <div class="col-md-4 mb-3" data-validation-field="discount_reason">
+                            <label class="form-label fw-semibold" for="discountReasonInput">Discount Reason <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                            <select id="discountReasonInput" class="form-control" wire:model="discount_reason" aria-required="true">
+                                <option value="">Select discount reason</option>
+                                @foreach (\App\Models\Payment::discountReasonLabels() as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('discount_reason')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    @endif
+
                     <div class="col-md-4 mb-3" data-validation-field="amount">
                         <label class="form-label fw-semibold" for="paymentAmountInput">
                             Amount

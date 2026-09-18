@@ -33,6 +33,8 @@ class PaymentEdit extends Component
     public $currency = 'AED';
     public $rate;
     public $payment_type;
+    public $discount_reason;
+    public bool $allowLegacyDiscountReasonBlank = false;
     public $payment_method = 'cash';
     public $payment_date;
     public $is_refundable = false;
@@ -68,6 +70,11 @@ class PaymentEdit extends Component
             ],
             'currency' => 'required|in:IRR,USD,AED,EUR,SAR,OMR',
             'payment_type' => 'required|in:' . $types,
+            'discount_reason' => [
+                Rule::requiredIf(fn () => $this->payment_type === 'discount' && ! $this->isUnchangedLegacyDiscount()),
+                'nullable',
+                Rule::in(Payment::discountReasons()),
+            ],
             'payment_method' => 'required|in:cash,transfer,ticket',
             'payment_date' => 'required|date',
             'is_refundable' => 'required|boolean',
@@ -92,6 +99,9 @@ class PaymentEdit extends Component
         $this->currency = $this->payment->currency;
         $this->rate = $this->payment->rate;
         $this->payment_type = $this->payment->payment_type;
+        $this->discount_reason = $this->payment->discount_reason;
+        $this->allowLegacyDiscountReasonBlank = $this->payment->payment_type === 'discount'
+            && $this->payment->discount_reason === null;
         $this->payment_method = $this->payment->payment_method;
         $this->payment_date = $this->payment->payment_date?->format('Y-m-d') ?? now()->format('Y-m-d');
         $this->is_refundable = (bool) $this->payment->is_refundable;
@@ -222,6 +232,7 @@ class PaymentEdit extends Component
                     'rate' => $this->currency !== 'AED' ? $this->rate : null,
                     'amount_in_aed' => $aedAmount,
                     'payment_type' => $this->payment_type,
+                    'discount_reason' => $this->payment_type === 'discount' ? $this->discount_reason : null,
                     'payment_method' => $this->payment_method,
                     'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                     'is_refundable' => $this->is_refundable,
@@ -263,6 +274,10 @@ class PaymentEdit extends Component
 
     public function updatedPaymentType($value): void
     {
+        if ($value !== 'discount') {
+            $this->discount_reason = null;
+            $this->allowLegacyDiscountReasonBlank = false;
+        }
         if (blank($value)) {
             $this->amount = null;
             $this->salik_trip_count = '';
@@ -300,6 +315,14 @@ class PaymentEdit extends Component
         }
 
         $this->refreshSalikDerivedFields();
+    }
+
+    private function isUnchangedLegacyDiscount(): bool
+    {
+        return $this->payment->payment_type === 'discount'
+            && $this->payment->discount_reason === null
+            && $this->allowLegacyDiscountReasonBlank
+            && blank($this->discount_reason);
     }
 
     public function updatedSalikTripCount($value): void

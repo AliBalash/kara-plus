@@ -37,6 +37,8 @@ class RentalRequestPayment extends Component
 
     public $payment_type;
 
+    public $discount_reason;
+
     public $payment_date;
 
     public $is_refundable = false;
@@ -130,6 +132,8 @@ class RentalRequestPayment extends Component
         'currency.in' => 'Selected currency is not supported.',
         'payment_type.required' => 'Please choose a payment type.',
         'payment_type.in' => 'Selected payment type is invalid.',
+        'discount_reason.required' => 'Please choose a discount reason.',
+        'discount_reason.in' => 'Selected discount reason is invalid.',
         'payment_date.required' => 'Payment date is required.',
         'payment_date.date' => 'Please provide a valid payment date.',
         'payment_method.required' => 'Please choose a payment method.',
@@ -158,6 +162,7 @@ class RentalRequestPayment extends Component
         'amount' => 'amount',
         'currency' => 'currency',
         'payment_type' => 'payment type',
+        'discount_reason' => 'discount reason',
         'payment_date' => 'payment date',
         'payment_method' => 'payment method',
         'is_refundable' => 'refundable selection',
@@ -201,6 +206,11 @@ class RentalRequestPayment extends Component
             ],
             'currency' => ['required', Rule::in(['IRR', 'USD', 'AED', 'EUR', 'SAR', 'OMR'])],
             'payment_type' => ['required', Rule::in(Payment::paymentTypes())],
+            'discount_reason' => [
+                Rule::requiredIf(fn () => $this->payment_type === 'discount'),
+                'nullable',
+                Rule::in(Payment::discountReasons()),
+            ],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['required', Rule::in(self::PAYMENT_METHODS)],
             'is_refundable' => ['required', 'boolean'],
@@ -451,6 +461,7 @@ class RentalRequestPayment extends Component
                     'rate' => $this->currency !== 'AED' ? $this->rate : null,
                     'amount_in_aed' => $aedAmount,
                     'payment_type' => $this->payment_type,
+                    'discount_reason' => $this->payment_type === 'discount' ? $this->discount_reason : null,
                     'payment_method' => $this->payment_method,
                     'note' => $this->note,
                     'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
@@ -576,6 +587,7 @@ class RentalRequestPayment extends Component
         $this->amount = '';
         $this->currency = 'AED';
         $this->payment_type = '';
+        $this->discount_reason = '';
         $this->payment_date = '';
         $this->payment_method = 'cash';
         $this->rate = '';
@@ -590,6 +602,9 @@ class RentalRequestPayment extends Component
 
     public function updatedPaymentType($value): void
     {
+        if ($value !== 'discount') {
+            $this->discount_reason = null;
+        }
         if (blank($value)) {
             $this->amount = null;
             $this->salik_trip_count = '';

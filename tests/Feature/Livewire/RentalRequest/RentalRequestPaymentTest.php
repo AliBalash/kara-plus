@@ -27,6 +27,80 @@ class RentalRequestPaymentTest extends TestCase
         Storage::fake('myimage');
     }
 
+    public function test_discount_payment_requires_a_valid_discount_reason_and_persists_it(): void
+    {
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()->for($user)->for($customer)->for(Car::factory())->status('payment')->create();
+
+        $baseFields = [
+            'amount' => 125,
+            'currency' => 'AED',
+            'payment_type' => 'discount',
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+            'is_refundable' => false,
+        ];
+
+        $this->actingAs($user);
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        foreach ($baseFields as $field => $value) {
+            $component->{$field} = $value;
+        }
+
+        try {
+            $component->submitPayment();
+            $this->fail('Discount reason should be required.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('discount_reason', $exception->errors());
+        }
+
+        $component->discount_reason = 'not-a-reason';
+        try {
+            $component->submitPayment();
+            $this->fail('Invalid discount reason should be rejected.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('discount_reason', $exception->errors());
+        }
+
+        $component->discount_reason = 'extension_discount';
+        $component->submitPayment();
+
+        $this->assertDatabaseHas('payments', [
+            'contract_id' => $contract->id,
+            'payment_type' => 'discount',
+            'discount_reason' => 'extension_discount',
+        ]);
+    }
+
+    public function test_non_discount_payment_clears_discount_reason(): void
+    {
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()->for($user)->for($customer)->for(Car::factory())->status('payment')->create();
+
+        $this->actingAs($user);
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $component->payment_type = 'discount';
+        $component->discount_reason = 'management_discount';
+        $component->updatedPaymentType('rental_fee');
+        $component->payment_type = 'rental_fee';
+        $component->amount = 100;
+        $component->currency = 'AED';
+        $component->payment_date = now()->toDateString();
+        $component->payment_method = 'cash';
+        $component->is_refundable = false;
+        $component->submitPayment();
+
+        $this->assertDatabaseHas('payments', [
+            'contract_id' => $contract->id,
+            'payment_type' => 'rental_fee',
+            'discount_reason' => null,
+        ]);
+    }
+
     public function test_submit_payment_persists_payment_record(): void
     {
         $user = User::factory()->create();

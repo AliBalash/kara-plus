@@ -114,6 +114,11 @@
                                             </span>
                                             <span>{{ $payment->user?->shortName() ?? '—' }}</span>
                                         </div>
+                                        @if ($payment->payment_type === 'discount')
+                                            <div class="ledger-entry__meta">
+                                                <span>Reason: {{ \App\Models\Payment::discountReasonLabel($payment->discount_reason) }}</span>
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <div class="ledger-entry__amounts">
