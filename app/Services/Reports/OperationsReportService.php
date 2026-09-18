@@ -529,7 +529,7 @@ class OperationsReportService
 
         $statusBreakdown = $rows
             ->countBy('status_label')
-            ->sortDesc();
+            ->sortByDesc('amount_in_aed');
 
         $summary = [
             'first_contracts' => $rows->count(),
@@ -1237,6 +1237,11 @@ class OperationsReportService
                 fn (Builder $query) => $query->where('payment_type', $filters['payment_type'])
             )
             ->when(
+                $filters['discount_reason'] !== 'all',
+                fn (Builder $query) => $query->where('payment_type', 'discount')
+                    ->where('discount_reason', $filters['discount_reason'])
+            )
+            ->when(
                 $filters['approval_status'] !== 'all',
                 fn (Builder $query) => $query->where('approval_status', $filters['approval_status'])
             )
@@ -1269,6 +1274,15 @@ class OperationsReportService
             ->map(fn (Collection $items) => round((float) $items->sum('amount_in_aed'), 2))
             ->sortDesc();
 
+        $discountReasonBreakdown = $rows
+            ->where('payment_type', 'discount')
+            ->groupBy('discount_reason_label')
+            ->map(fn (Collection $items) => [
+                'count' => $items->count(),
+                'amount_in_aed' => round((float) $items->sum('amount_in_aed'), 2),
+            ])
+            ->sortByDesc('amount_in_aed');
+
         $summary = [
             'payment_records' => $rows->count(),
             'net_recorded_payments' => round((float) $rows->sum('net_amount_for_summary'), 2),
@@ -1286,6 +1300,7 @@ class OperationsReportService
                 'Date From' => $filters['date_from'] ?? 'Open',
                 'Date To' => $filters['date_to'] ?? 'Open',
                 'Payment Type' => $filters['payment_type'] === 'all' ? 'All types' : Str::headline(str_replace('_', ' ', $filters['payment_type'])),
+                'Discount Reason' => $filters['discount_reason'] === 'all' ? 'All reasons' : Payment::discountReasonLabel($filters['discount_reason']),
                 'Approval' => $filters['approval_status'] === 'all' ? 'All approvals' : Str::headline($filters['approval_status']),
                 'Settlement' => match ($filters['payment_state']) {
                     'paid' => 'Paid only',
@@ -1294,6 +1309,7 @@ class OperationsReportService
                 },
             ],
             'summary' => $summary,
+            'discount_reason_breakdown' => $discountReasonBreakdown->all(),
             'summary_sections' => [
                 'Collection Snapshot' => [
                     'Payment Records' => $summary['payment_records'],
@@ -1304,6 +1320,9 @@ class OperationsReportService
                     'Refundable Amount (AED)' => $summary['refundable_amount'],
                 ],
                 'Type Mix (AED)' => $typeBreakdown->all(),
+                'Discount Reason Mix' => $discountReasonBreakdown->map(
+                    fn (array $item) => $item['count'].' records / '.number_format($item['amount_in_aed'], 2).' AED'
+                )->all(),
             ],
             'rows' => $rows,
             'export_headings' => [
@@ -1316,6 +1335,7 @@ class OperationsReportService
                 'Plate',
                 'Processed By',
                 'Payment Type',
+                'Discount Reason',
                 'Method',
                 'Currency',
                 'Original Amount',
@@ -1337,6 +1357,7 @@ class OperationsReportService
                     $row['plate_number'],
                     $row['processed_by'],
                     $row['payment_type_label'],
+                    $row['discount_reason_label'],
                     $row['payment_method_label'],
                     $row['currency'],
                     $row['amount'],
@@ -1842,7 +1863,11 @@ class OperationsReportService
             'plate_number' => $payment->car?->plate_number ?? $payment->contract?->car?->plate_number ?? '—',
             'processed_by' => $payment->user?->fullName() ?? '—',
             'payment_type' => $payment->payment_type,
-            'payment_type_label' => Str::headline(str_replace('_', ' ', $payment->payment_type)),
+            'payment_type_label' => Payment::paymentTypeLabels()[$payment->payment_type] ?? Str::headline(str_replace('_', ' ', $payment->payment_type)),
+            'discount_reason' => $payment->payment_type === 'discount' ? $payment->discount_reason : null,
+            'discount_reason_label' => $payment->payment_type === 'discount'
+                ? Payment::discountReasonLabel($payment->discount_reason)
+                : '—',
             'payment_method_label' => Str::headline($payment->payment_method),
             'currency' => $payment->currency,
             'amount' => round((float) $payment->amount, 2),
@@ -2077,10 +2102,20 @@ class OperationsReportService
             'date_from' => $this->normalizeDateString($filters['date_from'] ?? null),
             'date_to' => $this->normalizeDateString($filters['date_to'] ?? null),
             'payment_type' => trim((string) ($filters['payment_type'] ?? 'all')) ?: 'all',
+            'discount_reason' => $this->normalizeDiscountReasonFilter($filters['discount_reason'] ?? 'all'),
             'approval_status' => trim((string) ($filters['approval_status'] ?? 'all')) ?: 'all',
             'payment_state' => trim((string) ($filters['payment_state'] ?? 'all')) ?: 'all',
             'payment_method' => trim((string) ($filters['payment_method'] ?? 'all')) ?: 'all',
         ];
+    }
+
+    private function normalizeDiscountReasonFilter(mixed $value): string
+    {
+        $normalized = trim((string) $value) ?: 'all';
+
+        return $normalized === 'all' || in_array($normalized, Payment::discountReasons(), true)
+            ? $normalized
+            : 'all';
     }
 
     private function normalizeLeadFilters(array $filters): array

@@ -29,6 +29,57 @@ class OperationsReportServiceTest extends TestCase
         $this->service = app(OperationsReportService::class);
     }
 
+    public function test_payment_collections_filters_and_exports_discount_reasons(): void
+    {
+        $customer = Customer::factory()->create();
+        $car = Car::factory()->create();
+        $contract = Contract::factory()->for($customer)->for($car)->create();
+
+        Payment::factory()->for($contract)->for($customer)->for($car)->create([
+            'payment_type' => 'discount',
+            'discount_reason' => 'extension_discount',
+            'amount' => 100,
+            'amount_in_aed' => 100,
+            'payment_date' => '2025-06-01',
+        ]);
+        Payment::factory()->for($contract)->for($customer)->for($car)->create([
+            'payment_type' => 'discount',
+            'discount_reason' => 'management_discount',
+            'amount' => 200,
+            'amount_in_aed' => 200,
+            'payment_date' => '2025-06-02',
+        ]);
+        Payment::factory()->for($contract)->for($customer)->for($car)->create([
+            'payment_type' => 'discount',
+            'discount_reason' => null,
+            'amount' => 50,
+            'amount_in_aed' => 50,
+            'payment_date' => '2025-06-03',
+        ]);
+
+        $filtered = $this->service->paymentCollections([
+            'date_from' => '2025-06-01',
+            'date_to' => '2025-06-30',
+            'discount_reason' => 'extension_discount',
+        ]);
+
+        $this->assertCount(1, $filtered['rows']);
+        $this->assertSame('extension_discount', $filtered['rows'][0]['discount_reason']);
+        $this->assertSame('Extension Discount', $filtered['rows'][0]['discount_reason_label']);
+        $this->assertContains('Discount Reason', $filtered['export_headings']);
+        $this->assertContains('Extension Discount', $filtered['export_rows'][0]);
+
+        $allDiscounts = $this->service->paymentCollections([
+            'date_from' => '2025-06-01',
+            'date_to' => '2025-06-30',
+            'payment_type' => 'discount',
+        ]);
+
+        $this->assertCount(3, $allDiscounts['rows']);
+        $this->assertContains('Reason not recorded', array_column($allDiscounts['rows']->all(), 'discount_reason_label'));
+        $this->assertSame(1, $allDiscounts['discount_reason_breakdown']['Extension Discount']['count'] ?? null);
+    }
+
     public function test_customer_requests_report_filters_by_customer_and_builds_financial_summary(): void
     {
         $customer = Customer::factory()->create([
