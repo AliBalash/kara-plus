@@ -66,6 +66,7 @@ class PublicReservationService
     public function brands(): array
     {
         return CarModel::query()
+            ->whereHas('cars', static fn ($query) => $query->ourFleet()->where('status', '!=', Car::STATUS_SOLD))
             ->selectRaw('TRIM(brand) as brand')
             ->distinct()
             ->orderBy('brand')
@@ -78,6 +79,7 @@ class PublicReservationService
     public function models(?string $brand = null): array
     {
         $query = CarModel::query()
+            ->whereHas('cars', static fn ($query) => $query->ourFleet()->where('status', '!=', Car::STATUS_SOLD))
             ->select(['id', 'brand', 'model', 'is_featured'])
             ->orderBy('brand')
             ->orderBy('model');
@@ -111,6 +113,7 @@ class PublicReservationService
         $return = $returnDate ? Carbon::parse($returnDate) : null;
 
         $cars = Car::query()
+            ->ourFleet()
             ->where('status', '!=', 'sold')
             ->with([
                 'carModel.image',
@@ -169,7 +172,6 @@ class PublicReservationService
 
             return [
                 'id' => $car->id,
-                'plate_number' => $car->plate_number,
                 'status' => $car->status,
                 'availability' => (bool) $car->availability,
                 'operational_status' => $car->operationalStatus(),
@@ -311,6 +313,7 @@ class PublicReservationService
     private function hasExactCatalogFleetCar(VehicleCatalogItem $catalogItem): bool
     {
         return Car::query()
+            ->ourFleet()
             ->where('status', '!=', 'sold')
             ->where('manufacturing_year', $catalogItem->manufacturing_year)
             ->whereHas('carModel', static function ($query) use ($catalogItem) {
@@ -325,7 +328,7 @@ class PublicReservationService
     {
         $normalized = $this->normalizeQuotePayload($payload);
         $this->ensureRequestScheduleOrFail($normalized);
-        $car = Car::query()->with('carModel')->findOrFail($normalized['selected_car_id']);
+        $car = Car::query()->ourFleet()->with('carModel')->findOrFail($normalized['selected_car_id']);
         $car->syncOperationalState();
         $quote = $this->buildQuote($normalized, $car);
 
@@ -350,7 +353,7 @@ class PublicReservationService
                 $this->ensureRequestScheduleOrFail($normalized);
 
                 /** @var Car $car */
-                $car = Car::query()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
+                $car = Car::query()->ourFleet()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
                 $car->syncOperationalState();
 
                 if ($car->status === Car::STATUS_SOLD) {
@@ -393,7 +396,7 @@ class PublicReservationService
                     'birth_date' => $payload['birth_date'] ?? null,
                     'passport_number' => $passportNumber !== '' ? $passportNumber : null,
                     'passport_expiry_date' => $payload['passport_expiry_date'] ?? null,
-                    'nationality' => trim((string) ($payload['nationality'] ?? '')),
+                    'nationality' => $this->nullableString($payload['nationality'] ?? null),
                     'license_number' => $licenseNumber !== '' ? $licenseNumber : null,
                 ]);
                 $customer->save();

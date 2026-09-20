@@ -357,7 +357,6 @@ class PublicReservationApiTest extends TestCase
                 'pickup_location',
                 'phone',
                 'messenger_phone',
-                'nationality',
             ]);
     }
 
@@ -400,6 +399,37 @@ class PublicReservationApiTest extends TestCase
         $this->assertDatabaseHas('customers', [
             'email' => 'ali-without-national-code@example.com',
             'national_code' => null,
+        ]);
+    }
+
+    public function test_store_endpoint_allows_missing_nationality_and_national_identification(): void
+    {
+        $car = $this->seedCarWithKnownPricing();
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Main',
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('http://localhost/api/public/reservations/submit', [
+            'selected_car_id' => $car->id,
+            'pickup_location' => 'UAE/Dubai/Main',
+            'return_location' => 'UAE/Dubai/Main',
+            'pickup_date' => '2026-04-10 10:00:00',
+            'return_date' => '2026-04-12 10:00:00',
+            'first_name' => 'Ali',
+            'last_name' => 'Rezai',
+            'email' => 'ali-without-id-or-nationality@example.com',
+            'phone' => '+971501234569',
+            'messenger_phone' => '+971501234570',
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('customers', [
+            'email' => 'ali-without-id-or-nationality@example.com',
+            'national_code' => null,
+            'nationality' => null,
         ]);
     }
 
@@ -744,6 +774,56 @@ class PublicReservationApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.selection_mode', 'model_fallback')
             ->assertJsonPath('data.cars.0.id', $fallbackCar->id);
+    }
+
+    public function test_public_reservation_api_only_exposes_our_fleet_and_never_returns_plate_numbers(): void
+    {
+        $ourModel = CarModel::factory()->create(['brand' => 'Kara Plus', 'model' => 'Public Vehicle']);
+        $externalModel = CarModel::factory()->create(['brand' => 'Partner', 'model' => 'Private Vehicle']);
+
+        $ourCar = Car::factory()->available()->create([
+            'car_model_id' => $ourModel->id,
+            'manufacturing_year' => 2025,
+            'ownership_type' => 'company',
+            'is_company_car' => true,
+            'plate_number' => 'KP-1234',
+        ]);
+        $externalCar = Car::factory()->available()->create([
+            'car_model_id' => $externalModel->id,
+            'manufacturing_year' => 2025,
+            'ownership_type' => 'golden_key',
+            'is_company_car' => false,
+            'plate_number' => 'GK-1234',
+        ]);
+        $this->createCatalogVariant($ourModel, 2025, 'KARAPLUS-PUBLIC-25');
+        $this->createCatalogVariant($externalModel, 2025, 'PARTNER-PRIVATE-25');
+
+        $cars = $this->getJson('http://localhost/api/public/reservations/cars');
+        $cars->assertOk()->assertJsonCount(1, 'data');
+        $this->assertSame([$ourCar->id], $cars->json('data.0.candidate_car_ids'));
+        $this->assertArrayNotHasKey('plate_number', $cars->json('data.0'));
+
+        $this->getJson('http://localhost/api/public/reservations/brands')
+            ->assertOk()
+            ->assertJsonPath('data', ['Kara Plus']);
+        $this->getJson('http://localhost/api/public/reservations/models')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $ourModel->id);
+
+        LocationCost::query()->create([
+            'location' => 'UAE/Dubai/Main',
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+        $this->postJson('http://localhost/api/public/reservations/quote', [
+            'selected_car_id' => $externalCar->id,
+            'pickup_location' => 'UAE/Dubai/Main',
+            'return_location' => 'UAE/Dubai/Main',
+            'pickup_date' => '2026-04-10 10:00:00',
+            'return_date' => '2026-04-12 10:00:00',
+        ])->assertNotFound();
     }
 
     private function seedCarWithKnownPricing(): Car
