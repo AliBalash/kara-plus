@@ -1093,12 +1093,13 @@ class Car extends Model
         return $period->dateWindowLabel();
     }
 
-    public function hasNeedActionReservationWindow(?Carbon $now = null): bool
+    public function hasNeedActionReservationWindow(?Carbon $now = null, ?int $exceptContractId = null): bool
     {
         $now ??= Carbon::now();
 
         return $this->contracts()
             ->whereIn('current_status', static::reservingStatuses())
+            ->when($exceptContractId, fn ($query) => $query->whereKeyNot($exceptContractId))
             ->whereNotNull('pickup_date')
             ->where('pickup_date', '<=', $now)
             ->whereNotNull('return_date')

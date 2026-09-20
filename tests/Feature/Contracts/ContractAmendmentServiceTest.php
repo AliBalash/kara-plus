@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\ContractAmendmentService;
 use App\Services\ContractCommercialCorrectionService;
 use App\Services\RentalPricingService;
+use App\Services\VehicleAvailabilityService;
 use Carbon\Carbon;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -125,6 +126,67 @@ class ContractAmendmentServiceTest extends TestCase
         $this->assertSame(1, Contract::count());
         $this->assertSame(1, Payment::count());
         $this->assertEqualsWithDelta((float) $approved->total_amount, $contract->fresh()->calculateRemainingBalance(), 0.01);
+    }
+
+    public function test_overdue_contract_can_be_extended_from_need_action_and_restores_active_vehicle_state(): void
+    {
+        [$contract, $actor, $originalCharge] = $this->operationalContract();
+        $car = $contract->car->fresh();
+
+        // The helper's planned return is in the past, so the automatic status
+        // synchronizer has correctly put this still-open rental in Need Action.
+        $this->assertSame(Car::STATUS_UNAVAILABLE, $car->status);
+        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
+
+        Payment::factory()->for($contract)->for($contract->customer)->for($car)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 1000,
+            'amount_in_aed' => 1000,
+            'approval_status' => 'approved',
+        ]);
+
+        $service = app(ContractAmendmentService::class);
+        $amendment = $service->requestExtension($contract, Carbon::now()->addDay(), $actor->id);
+        $approved = $service->approve($amendment, $actor->id);
+
+        $contract->refresh();
+        $car->refresh();
+
+        $this->assertTrue($approved->isApproved());
+        $this->assertTrue($contract->return_date->isFuture());
+        $this->assertSame(Car::STATUS_RESERVED, $car->status);
+        $this->assertFalse($car->availability);
+        $this->assertNull($car->unavailability_reason);
+        $this->assertSame(Car::MANUAL_STATUS_AVAILABLE, $car->resolvedManualStatus());
+        $this->assertSame(1, Payment::count());
+        $this->assertSame($originalCharge->id, $contract->charges()->where('source_type', 'original')->sole()->id);
+        $this->assertEqualsWithDelta(1000 + (float) $approved->total_amount, (float) $contract->total_price, 0.01);
+        $this->assertEqualsWithDelta((float) $approved->total_amount, $contract->calculateRemainingBalance(), 0.01);
+    }
+
+    public function test_need_action_from_another_overdue_contract_remains_a_vehicle_block(): void
+    {
+        $car = Car::factory()->available()->create();
+        $now = Carbon::now();
+
+        Contract::factory()->for($car)->for(Customer::factory()->state(['gender' => 'male']))->state([
+            'current_status' => 'awaiting_return',
+            'pickup_date' => $now->copy()->subHours(3),
+            'return_date' => $now->copy()->subHour(),
+        ])->create();
+
+        $car->refresh();
+
+        $this->assertSame(Car::UNAVAILABILITY_REASON_NEED_ACTION, $car->unavailability_reason);
+        $conflicts = app(VehicleAvailabilityService::class)->conflicts(
+            $car,
+            $now->copy()->subMinutes(30),
+            $now->copy()->addDay(),
+            999999,
+        );
+
+        $this->assertContains('vehicle_status', array_column($conflicts, 'type'));
     }
 
     public function test_insurance_addons_and_vat_are_priced_for_only_the_added_period(): void
