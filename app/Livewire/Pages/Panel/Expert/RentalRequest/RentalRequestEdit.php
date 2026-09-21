@@ -10,6 +10,7 @@ use App\Models\Agent;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\Contract;
+use App\Models\ContractAmendment;
 use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\LocationCost;
@@ -199,6 +200,15 @@ class RentalRequestEdit extends Component
 
     public float $extension_charges_total = 0.0;
 
+    /**
+     * The approved extension that currently determines return_date. Kept
+     * separately from original_return_date so Edit cannot make the two dates
+     * look interchangeable.
+     *
+     * @var array{id: int, old_return_at: string, new_return_at: string}|null
+     */
+    public ?array $activeApprovedExtension = null;
+
     public float $commercial_base_days = 0.0;
 
     /** Days represented by the immutable financial ledger, including approved extensions. */
@@ -227,7 +237,7 @@ class RentalRequestEdit extends Component
             ->get();
         $this->communicationChannelOptions = Contract::COMMUNICATION_CHANNELS;
         $this->brands = CarModel::distinct()->pluck('brand')->filter()->sort()->values()->toArray();
-        $this->contract = Contract::with(['customer', 'car.carModel', 'requestedCar.carModel', 'payments'])->findOrFail($contractId);
+        $this->contract = Contract::with(['customer', 'car.carModel', 'requestedCar.carModel', 'payments', 'amendments'])->findOrFail($contractId);
 
         $this->apply_discount = (bool) ($this->contract->custom_daily_rate_enabled ?? false);
 
@@ -242,6 +252,7 @@ class RentalRequestEdit extends Component
         }
 
         $this->initializeFromContract();
+        $this->refreshActiveApprovedExtension();
         $this->loadLocationCosts();
         $this->loadChargesFromDatabase($contractId);
         $this->calculateCosts();
@@ -1379,6 +1390,13 @@ class RentalRequestEdit extends Component
                 ]);
             }
 
+            $activeExtension = $this->activeApprovedExtensionFor($this->contract);
+            if ($activeExtension !== null && ! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
+                throw ValidationException::withMessages([
+                    'return_date' => [$this->approvedExtensionReturnDateError($activeExtension)],
+                ]);
+            }
+
             if ($this->commercialSnapshotVersion !== ''
                 && ! hash_equals($this->commercialSnapshotVersion, $this->contractCommercialVersion())) {
                 throw ValidationException::withMessages([
@@ -1423,6 +1441,7 @@ class RentalRequestEdit extends Component
 
             $this->updateOperationalContract();
             $this->contract = $this->contract->fresh(['customer', 'car.carModel', 'payments', 'charges', 'amendments']);
+            $this->refreshActiveApprovedExtension();
             $this->applyStoredFinancialSnapshotForOperationalContract();
             $this->captureContractPricingContext();
             $this->originalSelections = $this->captureSelectionSnapshot();
@@ -1487,7 +1506,7 @@ class RentalRequestEdit extends Component
 
         if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
             if ($this->returnIncreaseExceedsTolerance()) {
-                $errors['return_date'] = ['This return increase is beyond the one-hour tolerance. Use Extend Contract to extend the rental period.'];
+                $errors['return_date'] = ['The proposed return is more than one hour later than the current planned return. No changes were saved. Use Extend Contract to create an auditable extension and update the contract balance.'];
             }
         }
 
@@ -1525,6 +1544,42 @@ class RentalRequestEdit extends Component
 
         return $candidateReturnAt->greaterThan($currentReturnAt)
             && $currentReturnAt->diffInMinutes($candidateReturnAt) > Contract::RETURN_TIME_TOLERANCE_MINUTES;
+    }
+
+    private function refreshActiveApprovedExtension(): void
+    {
+        $extension = $this->activeApprovedExtensionFor($this->contract);
+
+        $this->activeApprovedExtension = $extension ? [
+            'id' => $extension->id,
+            'old_return_at' => $extension->old_return_at->format('Y-m-d H:i'),
+            'new_return_at' => $extension->new_return_at->format('Y-m-d H:i'),
+        ] : null;
+    }
+
+    private function activeApprovedExtensionFor(Contract $contract): ?ContractAmendment
+    {
+        if (! $contract->return_date) {
+            return null;
+        }
+
+        return $contract->amendments()
+            ->where('type', ContractAmendment::TYPE_EXTENSION)
+            ->where('status', 'approved')
+            ->orderByDesc('effective_at')
+            ->orderByDesc('id')
+            ->get()
+            ->first(fn (ContractAmendment $extension) => $extension->new_return_at
+                && $extension->new_return_at->equalTo($contract->return_date));
+    }
+
+    private function approvedExtensionReturnDateError(ContractAmendment $extension): string
+    {
+        return sprintf(
+            'No changes were saved. Approved extension #%d sets the current planned return to %s. Edit cannot shorten, remove, or replace that extension. Keep this date and save your other changes, or use Extend Contract to revise the extension.',
+            $extension->id,
+            $extension->new_return_at->format('d M Y, H:i'),
+        );
     }
 
     /**

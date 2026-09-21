@@ -244,7 +244,23 @@
                 <div class="small mt-1">
                     Vehicle, schedule and commercial selections may be corrected by every signed-in panel user.
                     All totals use this contract's saved tariffs. Financial changes are saved as an audited adjustment; original charges and payments remain intact.
-                    A return increase beyond the one-hour tolerance must use <strong>Extend Contract</strong>.
+                    A return increase beyond the one-hour tolerance must use <strong>Extend Contract</strong>; it updates the planned return and contract balance together.
+                </div>
+            </div>
+        @endif
+        @if ($activeApprovedExtension)
+            <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bx bx-lock-alt fs-4 lh-1"></i>
+                    <div class="small">
+                        <div class="fw-semibold">Approved extension is active — return date is protected</div>
+                        <div class="mt-1">
+                            <strong>Original return:</strong> {{ $contract->original_return_date?->format('d M Y, H:i') ?? '—' }}
+                            <span class="mx-1">|</span>
+                            <strong>Current planned return:</strong> {{ $activeApprovedExtension['new_return_at'] }}
+                        </div>
+                        <div class="mt-1">You can still edit customer details, notes, locations, and eligible commercial corrections. Saving from Edit cannot shorten or remove this extension. Use the Extend Contract tab if the return date itself must change.</div>
+                    </div>
                 </div>
             </div>
         @endif
@@ -960,16 +976,28 @@
 
                         <div class="mb-3" data-validation-field="return_date">
                             <label class="form-label fw-semibold mb-1" for="editReturnDateInput">
-                                Return Date & Time <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                                Current Planned Return <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
                             </label>
+                            @if ($contract->original_return_date)
+                                <div class="alert alert-info py-2 small mb-2">
+                                    <div><strong>Original return:</strong> {{ $contract->original_return_date->format('Y-m-d H:i') }}</div>
+                                    @if ($activeApprovedExtension)
+                                        <div><strong>Approved extension:</strong> {{ $activeApprovedExtension['old_return_at'] }} → {{ $activeApprovedExtension['new_return_at'] }}</div>
+                                        <div class="mt-1">Original return is historical. Current planned return is the live operational date and is controlled by this extension.</div>
+                                    @endif
+                                </div>
+                            @endif
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bx bx-calendar"></i></span>
                                 <input id="editReturnDateInput" type="datetime-local"
                                     class="form-control @error('return_date') is-invalid @enderror"
                                     wire:model.live="return_date" aria-required="true" data-bs-toggle="tooltip"
+                                    @disabled($activeApprovedExtension !== null)
                                     title="Select return date and time">
                             </div>
-                            @if ($operationalEditLocked)
+                            @if ($activeApprovedExtension)
+                                <div class="form-text">This field is locked to prevent an Edit save from cancelling the approved extension. Use Extend Contract to change the date.</div>
+                            @elseif ($operationalEditLocked)
                                 <div class="form-text">You may correct the planned return within the one-hour tolerance. For a later return, use Extend Contract.</div>
                             @endif
                             @error('return_date')

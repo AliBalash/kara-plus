@@ -560,6 +560,37 @@ class ContractAmendmentServiceTest extends TestCase
         $this->assertSame(1100.0, (float) $contract->charges()->sum('amount'));
     }
 
+    public function test_commercial_correction_cannot_replace_the_return_date_of_an_approved_extension(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $extension = app(ContractAmendmentService::class)->requestExtension(
+            $contract,
+            $contract->return_date->copy()->addDays(3),
+            $actor->id,
+        );
+        app(ContractAmendmentService::class)->approve($extension, $actor->id);
+        $contract->refresh();
+
+        try {
+            app(ContractCommercialCorrectionService::class)->apply(
+                $contract,
+                $actor->id,
+                ['return_date' => $contract->original_return_date],
+                ['base_rental' => (float) $contract->total_price, 'vat' => 0],
+                ['base_rental' => (float) $contract->total_price, 'vat' => 0],
+            );
+            $this->fail('A commercial correction must not undo an approved extension.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'No correction was applied. Approved extension #1 sets the current planned return to 13 Sep 2026, 10:00. A commercial correction cannot shorten, remove, or replace that extension. Use Extend Contract to revise it.',
+                $exception->errors()['return_date'][0],
+            );
+        }
+
+        $this->assertTrue($contract->fresh()->return_date->equalTo($extension->new_return_at));
+        $this->assertSame(1, $contract->amendments()->count());
+    }
+
     public function test_contract_customer_and_vehicle_history_cannot_be_hard_deleted(): void
     {
         [$contract, $actor] = $this->operationalContract();

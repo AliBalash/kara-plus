@@ -81,6 +81,18 @@ class ContractCommercialCorrectionService
                 ]);
             }
 
+            $requestedReturnAt = Carbon::parse($contractAttributes['return_date'] ?? $contract->return_date);
+            $activeExtension = $this->activeApprovedExtension($contract);
+            if ($activeExtension !== null && ! $requestedReturnAt->equalTo($contract->return_date)) {
+                throw ValidationException::withMessages([
+                    'return_date' => [sprintf(
+                        'No correction was applied. Approved extension #%d sets the current planned return to %s. A commercial correction cannot shorten, remove, or replace that extension. Use Extend Contract to revise it.',
+                        $activeExtension->id,
+                        $activeExtension->new_return_at->format('d M Y, H:i'),
+                    )],
+                ]);
+            }
+
             if ($scope === self::SCOPE_OPERATIONAL_LOCATION) {
                 $this->assertLocationOnlyCorrection($contract, $contractAttributes, $currentBreakdown, $correctedBreakdown);
             }
@@ -265,6 +277,22 @@ class ContractCommercialCorrectionService
                 ]);
             }
         }
+    }
+
+    private function activeApprovedExtension(Contract $contract): ?ContractAmendment
+    {
+        if (! $contract->return_date) {
+            return null;
+        }
+
+        return $contract->amendments()
+            ->where('type', ContractAmendment::TYPE_EXTENSION)
+            ->where('status', 'approved')
+            ->orderByDesc('effective_at')
+            ->orderByDesc('id')
+            ->get()
+            ->first(fn (ContractAmendment $extension) => $extension->new_return_at
+                && $extension->new_return_at->equalTo($contract->return_date));
     }
 
     /** @return array<string, float> */

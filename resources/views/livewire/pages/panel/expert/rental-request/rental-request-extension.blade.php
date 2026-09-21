@@ -34,6 +34,22 @@
         <div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>{{ session('message') }}</div>
     @endif
 
+    <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-info-circle fs-5 lh-1"></i>
+            <div class="small">
+                <div class="fw-semibold">When an approved extension can be revised</div>
+                <div class="mt-1">An approved extension may be edited or removed only when all of the following are true:</div>
+                <ul class="mb-1 ps-3">
+                    <li>The contract is still open and the vehicle has not been returned.</li>
+                    <li>It is the latest approved extension on this contract.</li>
+                    <li>No extension request is awaiting approval.</li>
+                </ul>
+                <div>If any condition is not met, the extension is protected to preserve the correct dates, charges, and customer balance. Revise extensions newest-first.</div>
+            </div>
+        </div>
+    </div>
+
     <div class="card mb-4 border-0 shadow-sm">
         <div class="card-body">
             <div class="row g-4">

@@ -558,7 +558,7 @@ class RentalRequestEditTest extends TestCase
             $this->fail('An operational contract return date must not be edited directly.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'This return increase is beyond the one-hour tolerance. Use Extend Contract to extend the rental period.',
+                'The proposed return is more than one hour later than the current planned return. No changes were saved. Use Extend Contract to create an auditable extension and update the contract balance.',
                 $exception->errors()['return_date'][0]
             );
         }
