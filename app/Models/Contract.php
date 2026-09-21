@@ -443,8 +443,10 @@ class Contract extends Model
     }
 
     /**
-     * Correct operational planning details without rewriting the financial
-     * ledger. A return increase beyond the time tolerance is an amendment.
+     * Correct minor operational planning details without rewriting the
+     * financial ledger. Any material return-date change must first pass
+     * through the commercial correction workflow, which updates the planned
+     * return and its financial total atomically.
      */
     public function applyOperationalScheduleAndLocationCorrections(
         $newPickupAt,
@@ -459,9 +461,9 @@ class Contract extends Model
             throw new \DomainException('The planned return must be after the pickup time.');
         }
 
-        if ($newReturnAt->greaterThan($currentReturnAt)
+        if ($newReturnAt->notEqualTo($currentReturnAt)
             && $currentReturnAt->diffInMinutes($newReturnAt) > self::RETURN_TIME_TOLERANCE_MINUTES) {
-            throw new \DomainException('A return increase beyond the one-hour tolerance must be handled through an extension.');
+            throw new \DomainException('A material planned return change must be saved through the commercial correction workflow so the date and financial ledger remain synchronized.');
         }
 
         $this->commercialMutationAuthorized = true;

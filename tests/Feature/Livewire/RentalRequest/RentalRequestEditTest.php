@@ -627,6 +627,59 @@ class RentalRequestEditTest extends TestCase
         $this->assertEqualsWithDelta(0, (float) $adjustment->total_amount, 0.01);
     }
 
+    public function test_operational_return_shortening_updates_the_planned_return_and_financial_ledger_together(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 945,
+                'used_daily_rate' => 300,
+                'meta' => ['pricing_tariffs' => [
+                    ...RentalDuration::currentPolicySnapshot(),
+                    'base_days' => 3,
+                    'daily_rate' => 300,
+                    'tax_rate' => 0.05,
+                    'extension_duration_minutes' => 0,
+                ]],
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 45]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-09T10:00';
+        $component->submit();
+
+        $contract->refresh();
+
+        $this->assertSame('2026-09-09 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(630.0, (float) $contract->total_price);
+        $this->assertEqualsWithDelta(630, (float) $contract->charges()->sum('amount'), 0.01);
+        $adjustment = $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->sole();
+        $this->assertEqualsWithDelta(-315, (float) $adjustment->total_amount, 0.01);
+        $this->assertEqualsWithDelta(-15, (float) $adjustment->tax_amount, 0.01);
+    }
+
     public function test_operational_contract_rejects_a_return_correction_beyond_tolerance(): void
     {
         Carbon::setTestNow('2026-09-08 12:00:00');

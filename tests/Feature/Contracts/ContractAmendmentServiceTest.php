@@ -591,6 +591,30 @@ class ContractAmendmentServiceTest extends TestCase
         $this->assertSame(1, $contract->amendments()->count());
     }
 
+    public function test_material_return_shortening_cannot_bypass_the_commercial_correction_workflow(): void
+    {
+        [$contract] = $this->operationalContract();
+        $originalReturn = $contract->return_date->copy();
+
+        try {
+            $contract->applyOperationalScheduleAndLocationCorrections(
+                $contract->pickup_date,
+                $originalReturn->copy()->subDays(2),
+                $contract->pickup_location,
+                $contract->return_location,
+            );
+            $this->fail('A material return shortening must not update the schedule by itself.');
+        } catch (DomainException $exception) {
+            $this->assertSame(
+                'A material planned return change must be saved through the commercial correction workflow so the date and financial ledger remain synchronized.',
+                $exception->getMessage(),
+            );
+        }
+
+        $this->assertTrue($contract->fresh()->return_date->equalTo($originalReturn));
+        $this->assertSame(0, $contract->amendments()->count());
+    }
+
     public function test_contract_customer_and_vehicle_history_cannot_be_hard_deleted(): void
     {
         [$contract, $actor] = $this->operationalContract();
