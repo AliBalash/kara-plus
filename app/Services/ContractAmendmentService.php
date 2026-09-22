@@ -364,6 +364,9 @@ class ContractAmendmentService
         if (! in_array($contract->current_status, Contract::AMENDABLE_STATUSES, true)) {
             throw ValidationException::withMessages(['contract' => 'Only a delivered rental that has not yet been returned may be extended.']);
         }
+        if ($contract->actual_return_at !== null) {
+            throw ValidationException::withMessages(['contract' => 'This vehicle has already been returned. The extension was not saved.']);
+        }
         if (! $contract->return_date) {
             throw ValidationException::withMessages(['contract' => 'Contract has no planned return date.']);
         }

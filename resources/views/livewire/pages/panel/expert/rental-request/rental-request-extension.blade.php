@@ -34,6 +34,17 @@
         <div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>{{ session('message') }}</div>
     @endif
 
+    @if ($extensionUpdate = session('extensionUpdate'))
+        <div class="alert alert-success border-0 shadow-sm mb-4">
+            <div class="fw-semibold">Extension #{{ $extensionUpdate['sequence_no'] }} is now {{ $extensionUpdate['status'] }}.</div>
+            <div class="small mt-1">
+                Planned return: <strong>{{ $extensionUpdate['new_return_at'] }}</strong>
+                <span class="mx-1">·</span>
+                Extension total: <strong>{{ number_format($extensionUpdate['total_amount'], 2) }} {{ $extensionUpdate['currency'] }}</strong>
+            </div>
+        </div>
+    @endif
+
     <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
         <div class="d-flex align-items-start gap-2">
             <i class="bi bi-info-circle fs-5 lh-1"></i>
@@ -69,6 +80,13 @@
     @error('contract')<div class="alert alert-danger">{{ $message }}</div>@enderror
     @error('amendment')<div class="alert alert-danger">{{ $message }}</div>@enderror
     @error('pricing')<div class="alert alert-danger">{{ $message }}</div>@enderror
+    @error('idempotencyKey')<div class="alert alert-danger">{{ $message }}</div>@enderror
+
+    @if ($extensionBlocker = $this->extensionOperationBlocker())
+        <div class="alert {{ str_contains($extensionBlocker, 'Need Action') ? 'alert-info' : 'alert-warning' }} border-0 shadow-sm mb-4" role="status">
+            {{ $extensionBlocker }}
+        </div>
+    @endif
 
     @if ($confirmationAction && $confirmationImpact !== [])
         @php $isDeleteConfirmation = $confirmationAction === 'delete'; @endphp
@@ -220,9 +238,7 @@
                 </form>
             </div>
         </div>
-    @elseif (!in_array($contract->current_status, \App\Models\Contract::AMENDABLE_STATUSES, true))
-        <div class="alert alert-warning">Only a delivered rental that has not yet been returned can be extended.</div>
-    @else
+    @elseif (!$extensionBlocker)
         <div class="alert alert-info">Edit, approve, reject, cancel or delete the pending extension before creating another request.</div>
     @endif
 

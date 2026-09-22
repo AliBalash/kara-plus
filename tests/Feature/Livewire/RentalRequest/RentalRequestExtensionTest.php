@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RentalRequestExtensionTest extends TestCase
@@ -86,7 +87,9 @@ class RentalRequestExtensionTest extends TestCase
             ->call('preview')
             ->set('reviewConfirmed', true)
             ->call('request')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->assertSee('Extension #'.$amendment->sequence_no.' is now Pending Approval.')
+            ->assertSee('2026-09-13 10:00');
 
         $this->assertSame('2026-09-13 10:00:00', $amendment->fresh()->new_return_at->format('Y-m-d H:i:s'));
         $this->assertEqualsWithDelta(1000, (float) $contract->fresh()->total_price, 0.01);
@@ -108,6 +111,41 @@ class RentalRequestExtensionTest extends TestCase
         $this->assertSoftDeleted('contract_amendments', ['id' => $amendment->id]);
         $this->assertEqualsWithDelta(1000, (float) $contract->fresh()->total_price, 0.01);
         $this->assertSame('2026-09-10 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+    }
+
+    public function test_driver_cannot_open_or_invoke_contract_extension_management(): void
+    {
+        [$contract] = $this->operationalContract();
+        Role::findOrCreate('driver', 'web');
+        $driver = User::factory()->create();
+        $driver->assignRole('driver');
+
+        $this->actingAs($driver)
+            ->get(route('rental-requests.extend', $contract->id))
+            ->assertRedirect(route('expert.dashboard'));
+
+        Livewire::actingAs($driver)
+            ->test(RentalRequestExtension::class, ['contractId' => $contract->id])
+            ->assertForbidden();
+    }
+
+    public function test_actual_return_blocks_extension_and_explains_why_without_saving(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $contract->update(['actual_return_at' => Carbon::parse('2026-09-10 11:00:00')]);
+        $this->actingAs($actor);
+
+        Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
+            ->assertSee('Extensions cannot be created or edited after the actual return is recorded.')
+            ->set('newReturnAt', '2026-09-12T10:00')
+            ->call('preview')
+            ->set('reviewConfirmed', true)
+            ->call('request')
+            ->assertHasErrors(['contract'])
+            ->assertSee('This vehicle has already been returned. The extension was not saved.');
+
+        $this->assertSame(0, ContractAmendment::query()->count());
+        $this->assertEqualsWithDelta(1000, (float) $contract->fresh()->total_price, 0.01);
     }
 
     public function test_approved_revision_and_removal_require_confirmation_and_restore_the_contract(): void

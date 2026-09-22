@@ -55,6 +55,15 @@ class RentalRequestExtension extends Component
 
     public bool $confirmationAccepted = false;
 
+    /**
+     * Drivers may access the general contract screen, but must never be able
+     * to invoke extension actions through a manually crafted Livewire request.
+     */
+    public function boot(): void
+    {
+        abort_if(auth()->user()?->hasRole('driver'), 403);
+    }
+
     public function mount(int $contractId): void
     {
         $this->contract = Contract::with(['car', 'amendments.charges', 'payments'])->findOrFail($contractId);
@@ -113,20 +122,21 @@ class RentalRequestExtension extends Component
             if ($this->editingAmendmentId !== null) {
                 $amendment = $this->contract->amendments()->findOrFail($this->editingAmendmentId);
                 if ($amendment->isApproved()) {
-                    $service->reviseApprovedExtension($amendment, $this->newReturnAt, auth()->id(), $this->pricingPolicy, $this->rateSource, $this->reason, $this->notes);
+                    $updatedAmendment = $service->reviseApprovedExtension($amendment, $this->newReturnAt, auth()->id(), $this->pricingPolicy, $this->rateSource, $this->reason, $this->notes);
                     $message = 'Approved extension revised. The old charge was reversed and retained in history.';
                 } else {
-                    $service->updatePendingExtension($amendment, $this->newReturnAt, auth()->id(), $this->pricingPolicy, $this->rateSource, $this->reason, $this->notes);
+                    $updatedAmendment = $service->updatePendingExtension($amendment, $this->newReturnAt, auth()->id(), $this->pricingPolicy, $this->rateSource, $this->reason, $this->notes);
                     $message = 'Pending extension updated after review.';
                 }
             } else {
-                $service->requestExtension($this->contract, $this->newReturnAt, auth()->id(), $this->idempotencyKey, $this->pricingPolicy, $this->reason, $this->notes, $this->rateSource);
+                $updatedAmendment = $service->requestExtension($this->contract, $this->newReturnAt, auth()->id(), $this->idempotencyKey, $this->pricingPolicy, $this->reason, $this->notes, $this->rateSource);
                 $message = 'Extension request created and awaits approval.';
             }
 
             $this->reloadContract();
             $this->resetForm();
             session()->flash('message', $message);
+            session()->flash('extensionUpdate', $this->extensionUpdateSummary($updatedAmendment));
         } catch (ValidationException $exception) {
             $this->captureValidationErrors($exception);
         }
@@ -258,7 +268,7 @@ class RentalRequestExtension extends Component
 
     public function canRequestExtension(): bool
     {
-        return in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)
+        return $this->canOperateExtensions()
             && ! $this->contract->amendments->contains(fn (ContractAmendment $amendment) => $amendment->isPending());
     }
 
@@ -268,7 +278,7 @@ class RentalRequestExtension extends Component
             return false;
         }
         if ($amendment->isPending()) {
-            return true;
+            return $this->canOperateExtensions();
         }
 
         return $amendment->isApproved() && $this->isLatestEffectiveApprovedExtension($amendment);
@@ -464,6 +474,29 @@ class RentalRequestExtension extends Component
             && ! $this->contract->amendments->contains(fn (ContractAmendment $item) => $item->isPending());
     }
 
+    public function extensionOperationBlocker(): ?string
+    {
+        if ($this->contract->actual_return_at !== null) {
+            return 'The vehicle was returned on '.$this->contract->actual_return_at->format('Y-m-d H:i').'. Extensions cannot be created or edited after the actual return is recorded.';
+        }
+
+        if (! in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)) {
+            return 'This contract is currently '.Str::headline($this->contract->current_status).'. Extensions are available only while the rental is delivered and awaiting return.';
+        }
+
+        if ($this->contract->car?->unavailability_reason === 'need_action') {
+            return 'This vehicle is marked Need Action. You may still extend its own open contract; final approval will check whether another reservation or vehicle hold conflicts with the new return date.';
+        }
+
+        return null;
+    }
+
+    private function canOperateExtensions(): bool
+    {
+        return in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)
+            && $this->contract->actual_return_at === null;
+    }
+
     private function invalidatePreview(): void
     {
         $this->quote = [];
@@ -484,6 +517,19 @@ class RentalRequestExtension extends Component
         $this->reviewConfirmed = false;
         $this->dismissConfirmation();
         $this->resetErrorBag();
+    }
+
+    private function extensionUpdateSummary(ContractAmendment $amendment): array
+    {
+        $amendment->refresh();
+
+        return [
+            'sequence_no' => $amendment->sequence_no,
+            'status' => Str::headline($amendment->status),
+            'new_return_at' => $amendment->new_return_at?->format('Y-m-d H:i'),
+            'total_amount' => (float) $amendment->total_amount,
+            'currency' => $amendment->currency,
+        ];
     }
 
     public function render()
