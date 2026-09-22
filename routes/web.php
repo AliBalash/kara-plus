@@ -74,6 +74,7 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
     Route::get('/expert/rental-requests/website-review', RentalRequestWebsiteReview::class)->name('rental-requests.website-review');
     Route::get('/expert/rental-requests/create/', RentalRequestCreate::class)->name('rental-requests.creat');
     Route::get('/expert/rental-requests/edit/{contractId}/', RentalRequestEdit::class)->name('rental-requests.edit');
+    Route::get('/expert/rental-requests/extend/{contractId}/amendments/{amendmentId}/edit', RentalRequestExtension::class)->name('rental-requests.extend.edit');
     Route::get('/expert/rental-requests/extend/{contractId}', RentalRequestExtension::class)->name('rental-requests.extend');
 
     Route::get('/expert/rental-requests/me', RentalRequestMe::class)->name('rental-requests.me');

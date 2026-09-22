@@ -378,24 +378,36 @@ class ContractAmendmentService
     private function assertLatestEffectiveExtension(Contract $contract, ContractAmendment $amendment): void
     {
         if (! $amendment->isApproved() || $amendment->type !== ContractAmendment::TYPE_EXTENSION) {
-            throw ValidationException::withMessages(['amendment' => 'Only an approved extension can use an approved revision or reversal.']);
+            throw ValidationException::withMessages(['amendment' => 'This record is not an approved extension. Select the current extension that ends on the contract return date.']);
         }
         if (! in_array($contract->current_status, Contract::AMENDABLE_STATUSES, true) || $contract->actual_return_at !== null) {
-            throw ValidationException::withMessages(['contract' => 'A returned or closed contract cannot have an approved extension revised.']);
+            $reason = $contract->actual_return_at !== null
+                ? 'The vehicle was returned on '.$contract->actual_return_at->format('d M Y H:i').', so its extension can no longer be changed.'
+                : 'This contract is '.$contract->current_status.' and is no longer open for extension changes.';
+            throw ValidationException::withMessages(['contract' => $reason]);
         }
         $latestId = $contract->amendments()
             ->where('type', ContractAmendment::TYPE_EXTENSION)
             ->where('status', 'approved')
+            ->reorder()
             ->latest('sequence_no')
             ->value('id');
-        if ((int) $latestId !== (int) $amendment->id
-            || Carbon::parse($contract->return_date)->notEqualTo($amendment->new_return_at)) {
+        if ((int) $latestId !== (int) $amendment->id) {
+            $latest = $contract->amendments()->find($latestId);
             throw ValidationException::withMessages([
-                'amendment' => 'Extensions must be revised or removed newest-first because later dates and charges depend on them.',
+                'amendment' => 'This is an older extension. Edit the latest extension instead'
+                    .($latest ? ' (#'.$latest->sequence_no.', ending '.$latest->new_return_at?->format('d M Y H:i').').' : '.'),
+            ]);
+        }
+        if (Carbon::parse($contract->return_date)->notEqualTo($amendment->new_return_at)) {
+            throw ValidationException::withMessages([
+                'amendment' => 'The contract return date is '.$contract->return_date->format('d M Y H:i')
+                    .' but this extension ends '.$amendment->new_return_at->format('d M Y H:i')
+                    .'. Refresh the page and select the extension ending on the current contract return date.',
             ]);
         }
         if ($contract->amendments()->where('status', 'pending_approval')->exists()) {
-            throw ValidationException::withMessages(['amendment' => 'Resolve the pending amendment before revising approved history.']);
+            throw ValidationException::withMessages(['amendment' => 'There is an extension waiting for approval. Approve, reject, or cancel that request first, then edit the latest approved extension.']);
         }
     }
 

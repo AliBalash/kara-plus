@@ -23,11 +23,11 @@
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-            <div class="text-muted small">Contract #{{ $contract->id }}</div>
-            <h4 class="mb-0">Manage Contract Extensions</h4>
-            <div class="text-muted mt-1">Preview every date, day-count, price and balance consequence before it becomes effective.</div>
+            <div class="text-muted small">Contract #{{ $contract->id }} @if($editingAmendmentId) <span class="mx-1">/</span> Extension edit @endif</div>
+            <h4 class="mb-0">{{ $editingAmendmentId ? 'Edit planned return' : 'Manage Contract Extensions' }}</h4>
+            <div class="text-muted mt-1">{{ $editingAmendmentId ? 'Update the return time, preview the impact, then save.' : 'See the current return date, charges and complete extension history in one place.' }}</div>
         </div>
-        <a class="btn btn-outline-secondary" href="{{ route('rental-requests.details', $contract->id) }}">Back to contract</a>
+        <a class="btn btn-outline-secondary" href="{{ $editingAmendmentId ? route('rental-requests.extend', $contract->id) : route('rental-requests.details', $contract->id) }}">{{ $editingAmendmentId ? 'Back to extensions' : 'Back to contract' }}</a>
     </div>
 
     @if (session('message'))
@@ -45,6 +45,7 @@
         </div>
     @endif
 
+    @if (! $editingAmendmentId)
     <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
         <div class="d-flex align-items-start gap-2">
             <i class="bi bi-info-circle fs-5 lh-1"></i>
@@ -60,6 +61,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <div class="card mb-4 border-0 shadow-sm">
         <div class="card-body">
@@ -85,6 +87,13 @@
     @if ($extensionBlocker = $this->extensionOperationBlocker())
         <div class="alert {{ str_contains($extensionBlocker, 'Need Action') ? 'alert-info' : 'alert-warning' }} border-0 shadow-sm mb-4" role="status">
             {{ $extensionBlocker }}
+        </div>
+    @endif
+
+    @if (! $editingAmendmentId && $this->canOperateExtensions() && $extensionAmendments->where('status', 'approved')->isNotEmpty())
+        <div class="mb-4">
+            <button wire:click="editLatestApprovedExtension" wire:loading.attr="disabled" class="btn btn-primary">Edit current return date</button>
+            <span class="small text-muted ms-2">Opens the latest extension automatically.</span>
         </div>
     @endif
 
@@ -129,9 +138,9 @@
                 <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
                     <div>
                         <h5 class="mb-1">{{ $editingAmendmentId ? 'Edit extension #'.$contract->amendments->firstWhere('id', $editingAmendmentId)?->sequence_no : 'New extension request' }}</h5>
-                        <div class="small text-muted">Changing any pricing input invalidates the preview and requires a fresh review.</div>
+                        <div class="small text-muted">Preview shows the dates, price and balance before saving. Saving recalculates them once more with the latest data.</div>
                     </div>
-                    @if ($editingAmendmentId)<button type="button" wire:click="cancelEdit" class="btn btn-sm btn-outline-secondary">Cancel edit</button>@endif
+                    @if ($editingAmendmentId)<a class="btn btn-sm btn-outline-secondary" href="{{ route('rental-requests.extend', $contract->id) }}">Cancel edit</a>@endif
                 </div>
 
                 @if ($editingApproved)
@@ -225,12 +234,11 @@
                         <div class="col-12">
                             <div class="form-check p-3 border rounded bg-light">
                                 <input id="reviewConfirmed" class="form-check-input" type="checkbox" wire:model.live="reviewConfirmed">
-                                <label class="form-check-label fw-semibold" for="reviewConfirmed">I reviewed the dates, day count, selected price basis, itemized charges, contract total and customer balance.</label>
-                                @error('reviewConfirmed')<small class="text-danger d-block">You must confirm the displayed consequences.</small>@enderror
+                                <label class="form-check-label fw-semibold" for="reviewConfirmed">I reviewed the displayed dates, charges and balance.</label>
                             </div>
                         </div>
                         <div class="col-12">
-                            <button wire:loading.attr="disabled" class="btn btn-primary" @disabled(!$reviewConfirmed)>
+                            <button wire:loading.attr="disabled" class="btn btn-primary">
                                 {{ $editingAmendmentId ? ($editingApproved ? 'Confirm and apply approved revision' : 'Update reviewed request') : 'Create reviewed extension request' }}
                             </button>
                         </div>
@@ -289,7 +297,7 @@
                                             <button wire:click="reject({{ $amendment->id }})" wire:confirm="Reject this extension request without changing the contract?" wire:loading.attr="disabled" class="btn btn-sm btn-outline-danger">Reject</button>
                                             <button wire:click="cancel({{ $amendment->id }})" wire:confirm="Cancel this extension request without changing the contract?" wire:loading.attr="disabled" class="btn btn-sm btn-outline-secondary">Cancel</button>
                                         @endif
-                                        @if ($this->canEditAmendment($amendment))<button wire:click="edit({{ $amendment->id }})" wire:loading.attr="disabled" class="btn btn-sm btn-outline-primary">Edit</button>@endif
+                                        @if ($this->canEditAmendment($amendment))<a href="{{ route('rental-requests.extend.edit', ['contractId' => $contract->id, 'amendmentId' => $amendment->id]) }}" class="btn btn-sm btn-outline-primary">Edit</a>@endif
                                         @if ($this->canDeleteAmendment($amendment))<button wire:click="prepareDelete({{ $amendment->id }})" wire:loading.attr="disabled" class="btn btn-sm btn-outline-danger">Delete</button>@endif
                                         @if ($amendment->isApproved() && !$this->canEditAmendment($amendment))<small class="text-muted">Dependent history — manage newer extension first</small>@endif
                                     </div>

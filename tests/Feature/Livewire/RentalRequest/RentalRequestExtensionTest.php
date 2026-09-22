@@ -30,7 +30,7 @@ class RentalRequestExtensionTest extends TestCase
         URL::forceRootUrl('http://localhost');
     }
 
-    public function test_page_previews_all_three_rate_sources_and_requires_review_before_request(): void
+    public function test_page_previews_all_three_rate_sources_and_allows_save_without_required_review_checkbox(): void
     {
         [$contract, $actor] = $this->operationalContract();
         $this->actingAs($actor);
@@ -48,13 +48,6 @@ class RentalRequestExtensionTest extends TestCase
             ->assertSet('quote.resulting_rental_days', 11)
             ->assertSet('quote.impact.rental_days_before', 9)
             ->assertSet('quote.impact.rental_days_after', 11)
-            ->call('request')
-            ->assertHasErrors(['reviewConfirmed']);
-
-        $this->assertSame(0, ContractAmendment::query()->count());
-
-        $component
-            ->set('reviewConfirmed', true)
             ->call('request')
             ->assertHasNoErrors()
             ->assertSee('Pending Approval');
@@ -135,7 +128,7 @@ class RentalRequestExtensionTest extends TestCase
         $contract->update(['actual_return_at' => Carbon::parse('2026-09-10 11:00:00')]);
         $this->actingAs($actor);
 
-        Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
+        $component = Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
             ->assertSee('Extensions cannot be created or edited after the actual return is recorded.')
             ->set('newReturnAt', '2026-09-12T10:00')
             ->call('preview')
@@ -222,8 +215,7 @@ class RentalRequestExtensionTest extends TestCase
             Carbon::parse('2026-09-14 10:00:00'),
             $actor->id,
         ), $actor->id);
-
-        Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
+        $component = Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
             ->call('edit', $latest->id)
             ->assertSet('editingAmendmentId', $latest->id)
             ->set('newReturnAt', '2026-09-13T17:00')
@@ -243,6 +235,24 @@ class RentalRequestExtensionTest extends TestCase
         $this->assertSame('superseded', $latest->fresh()->status);
         $this->assertTrue($first->fresh()->isApproved());
         $this->assertSame('2026-09-13 17:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+    }
+
+    public function test_edit_route_opens_the_selected_extension_directly(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $this->actingAs($actor);
+        $extension = app(ContractAmendmentService::class)->approve(
+            app(ContractAmendmentService::class)->requestExtension($contract, Carbon::parse('2026-09-12 10:00:00'), $actor->id),
+            $actor->id,
+        );
+
+        Livewire::test(RentalRequestExtension::class, [
+            'contractId' => $contract->id,
+            'amendmentId' => $extension->id,
+        ])
+            ->assertSet('editingAmendmentId', $extension->id)
+            ->assertSet('editingApproved', true)
+            ->assertSet('newReturnAt', '2026-09-12T10:00');
     }
 
     public function test_confirmation_is_invalidated_when_customer_balance_changes_after_review(): void

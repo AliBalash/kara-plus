@@ -3303,6 +3303,7 @@ TEXT);
             ->where('type', 'adjustment')
             ->where('status', 'approved')
             ->whereIn('pricing_policy', $correctionPolicies)
+            ->reorder()
             ->latest('sequence_no')
             ->first();
         $correctedSnapshot = (array) data_get($latestCorrection?->pricing_snapshot, 'corrected_breakdown', []);

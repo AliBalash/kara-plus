@@ -64,11 +64,15 @@ class RentalRequestExtension extends Component
         abort_if(auth()->user()?->hasRole('driver'), 403);
     }
 
-    public function mount(int $contractId): void
+    public function mount(int $contractId, ?int $amendmentId = null): void
     {
         $this->contract = Contract::with(['car', 'amendments.charges', 'payments'])->findOrFail($contractId);
         $this->newReturnAt = optional($this->contract->return_date)->format('Y-m-d\TH:i') ?? '';
         $this->idempotencyKey = (string) Str::uuid();
+
+        if ($amendmentId !== null) {
+            $this->edit($amendmentId);
+        }
     }
 
     public function preview(RentalPricingService $pricing): void
@@ -101,13 +105,6 @@ class RentalRequestExtension extends Component
             // when validating and applying an approved revision.
             $this->reloadContract();
 
-            if ($this->quote === []) {
-                $this->addError('quote', 'Preview and review the complete extension impact before submitting.');
-
-                return;
-            }
-            $this->validateInput(true);
-
             $latestQuote = $pricing->quoteExtension(
                 $this->contract->fresh('car'),
                 $this->newReturnAt,
@@ -116,13 +113,9 @@ class RentalRequestExtension extends Component
                 $this->extensionQuoteStartAt(),
             );
             $latestQuote['impact'] = $this->quoteImpact($latestQuote);
-            if ($this->quoteFingerprint($latestQuote) !== $this->quoteFingerprint($this->quote)) {
-                $this->quote = $latestQuote;
-                $this->reviewConfirmed = false;
-                $this->addError('quote', 'The dates, tariff, or balance changed after the preview. Review the refreshed impact before submitting.');
-
-                return;
-            }
+            // Preview is optional. Submission always uses a fresh quote so the
+            // charge is correct even if the page has been open for some time.
+            $this->quote = $latestQuote;
 
             if ($this->editingAmendmentId !== null) {
                 $amendment = $this->contract->amendments()->findOrFail($this->editingAmendmentId);
@@ -171,6 +164,28 @@ class RentalRequestExtension extends Component
         $this->reviewConfirmed = false;
         $this->dismissConfirmation();
         $this->resetErrorBag();
+    }
+
+    /** Send the operator straight to the one extension which can change the current return date. */
+    public function editLatestApprovedExtension(): void
+    {
+        $this->reloadContract();
+        $latest = $this->contract->amendments
+            ->where('type', ContractAmendment::TYPE_EXTENSION)
+            ->where('status', 'approved')
+            ->sortByDesc('sequence_no')
+            ->first();
+
+        if ($latest === null || ! $this->canEditAmendment($latest)) {
+            $this->addError('amendment', 'There is no editable current extension. See the message above for the exact reason.');
+
+            return;
+        }
+
+        $this->redirectRoute('rental-requests.extend.edit', [
+            'contractId' => $this->contract->id,
+            'amendmentId' => $latest->id,
+        ]);
     }
 
     public function cancelEdit(): void
@@ -338,7 +353,7 @@ class RentalRequestExtension extends Component
         $this->contract->refresh()->load(['car', 'amendments.charges', 'payments']);
     }
 
-    private function validateInput(bool $requireReviewConfirmation = false): void
+    private function validateInput(): void
     {
         $rules = [
             'newReturnAt' => ['required', 'date'],
@@ -348,9 +363,6 @@ class RentalRequestExtension extends Component
             'notes' => ['nullable', 'string', 'max:5000'],
             'idempotencyKey' => ['required', 'uuid'],
         ];
-        if ($requireReviewConfirmation) {
-            $rules['reviewConfirmed'] = ['accepted'];
-        }
         $this->validate($rules);
     }
 
@@ -368,22 +380,6 @@ class RentalRequestExtension extends Component
                 $this->addError($componentField, $message);
             }
         }
-    }
-
-    private function quoteFingerprint(array $quote): string
-    {
-        return hash('sha256', json_encode([
-            'duration_minutes' => (int) ($quote['duration_minutes'] ?? 0),
-            'billable_days' => (float) ($quote['billable_days'] ?? 0),
-            'resulting_rental_days' => (int) ($quote['resulting_rental_days'] ?? 0),
-            'pricing_policy' => (string) ($quote['pricing_policy'] ?? ''),
-            'rate_source' => (string) ($quote['rate_source'] ?? ''),
-            'requested_rate_source' => (string) ($quote['requested_rate_source'] ?? ''),
-            'items' => (array) ($quote['items'] ?? []),
-            'subtotal' => (float) ($quote['subtotal'] ?? 0),
-            'tax' => (float) ($quote['tax'] ?? 0),
-            'total' => (float) ($quote['total'] ?? 0),
-        ], JSON_THROW_ON_ERROR));
     }
 
     private function extensionQuoteStartAt(): Carbon|string|null
