@@ -96,6 +96,11 @@ class RentalRequestExtension extends Component
         $this->validateInput();
 
         try {
+            // A Livewire form may have remained open while another operator
+            // changed this contract. Always use the current extension chain
+            // when validating and applying an approved revision.
+            $this->reloadContract();
+
             if ($this->quote === []) {
                 $this->addError('quote', 'Preview and review the complete extension impact before submitting.');
 
@@ -144,6 +149,9 @@ class RentalRequestExtension extends Component
 
     public function edit(int $amendmentId): void
     {
+        // Do not let an old page state select an extension which has since
+        // stopped being the latest effective extension.
+        $this->reloadContract();
         $amendment = $this->contract->amendments()->findOrFail($amendmentId);
         if (! $this->canEditAmendment($amendment)) {
             $this->addError('amendment', 'Only a pending extension or the latest effective approved extension can be edited.');

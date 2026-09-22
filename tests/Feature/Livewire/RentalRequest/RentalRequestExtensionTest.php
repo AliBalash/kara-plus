@@ -205,6 +205,46 @@ class RentalRequestExtensionTest extends TestCase
         $this->assertEqualsWithDelta(0, (float) $contract->charges()->where('source_type', 'amendment')->sum('amount'), 0.01);
     }
 
+    public function test_latest_approved_extension_can_be_shortened_after_prior_extensions(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $this->actingAs($actor);
+        $service = app(ContractAmendmentService::class);
+
+        $first = $service->approve($service->requestExtension(
+            $contract,
+            Carbon::parse('2026-09-12 10:00:00'),
+            $actor->id,
+        ), $actor->id);
+        $contract->refresh();
+        $latest = $service->approve($service->requestExtension(
+            $contract,
+            Carbon::parse('2026-09-14 10:00:00'),
+            $actor->id,
+        ), $actor->id);
+
+        Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
+            ->call('edit', $latest->id)
+            ->assertSet('editingAmendmentId', $latest->id)
+            ->set('newReturnAt', '2026-09-13T17:00')
+            ->call('preview')
+            ->set('reviewConfirmed', true)
+            ->call('request')
+            ->assertHasNoErrors();
+
+        $replacement = ContractAmendment::query()
+            ->where('contract_id', $contract->id)
+            ->where('type', ContractAmendment::TYPE_EXTENSION)
+            ->where('status', 'approved')
+            ->latest('sequence_no')
+            ->firstOrFail();
+
+        $this->assertSame($latest->id, $replacement->pricing_snapshot['replaces_amendment_id']);
+        $this->assertSame('superseded', $latest->fresh()->status);
+        $this->assertTrue($first->fresh()->isApproved());
+        $this->assertSame('2026-09-13 17:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+    }
+
     public function test_confirmation_is_invalidated_when_customer_balance_changes_after_review(): void
     {
         [$contract, $actor] = $this->operationalContract();
