@@ -6,6 +6,7 @@ use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Concerns\LogsBusinessRead;
 use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Models\Contract;
+use App\Models\ContractAmendment;
 use App\Models\ContractBalanceTransfer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
@@ -241,7 +242,7 @@ class RentalRequestPayment extends Component
 
     public function loadData()
     {
-        $this->contract = Contract::with(['payments', 'customer', 'car', 'pickupDocument', 'amendments'])->findOrFail($this->contractId);
+        $this->contract = Contract::with(['payments.user', 'customer', 'car', 'pickupDocument', 'amendments'])->findOrFail($this->contractId);
         $this->contractMeta = $this->contract->meta ?? [];
         $this->totalPrice = $this->roundCurrency($this->contract->total_price ?? 0);
 
@@ -321,6 +322,95 @@ class RentalRequestPayment extends Component
         );
 
         $this->loadTransferLedger();
+    }
+
+    /**
+     * Build a read-only ledger timeline for the payment screen.
+     *
+     * Payments predate the amendment/payment allocation schema, so their
+     * lifecycle ownership is deliberately inferred from when they were
+     * registered: entries recorded after an extension is approved are shown
+     * in that extension's ledger. This changes neither payment values nor the
+     * balance calculation.
+     */
+    public function getPaymentLifecycleSectionsProperty(): array
+    {
+        $extensions = $this->contract->amendments
+            ->where('type', ContractAmendment::TYPE_EXTENSION)
+            ->where('status', 'approved')
+            ->sortBy('sequence_no')
+            ->values();
+
+        $payments = $this->existingPayments
+            ->sortBy(fn (Payment $payment) => sprintf('%s-%010d', optional($payment->created_at)->format('Y-m-d H:i:s.u') ?? '', $payment->id))
+            ->values();
+
+        $approvedExtensionTotal = (float) $extensions->sum('total_amount');
+        $sections = [];
+
+        foreach ($extensions as $index => $extension) {
+            $boundary = $extension->approved_at ?? $extension->effective_at ?? $extension->created_at;
+            $nextExtension = $extensions->get($index + 1);
+            $nextBoundary = $nextExtension?->approved_at ?? $nextExtension?->effective_at ?? $nextExtension?->created_at;
+
+            if ($index === 0) {
+                $originalPayments = $payments->filter(fn (Payment $payment) => ! $boundary || ! $payment->created_at || $payment->created_at->lt($boundary))->values();
+                $sections[] = $this->paymentLifecycleSection(
+                    'Original agreement',
+                    'Initial rental period before extensions.',
+                    $this->roundCurrency((float) $this->totalPrice - $approvedExtensionTotal),
+                    $this->contract->pickup_date,
+                    $extension->extension_start_at ?? $extension->old_return_at,
+                    $originalPayments,
+                    'original',
+                );
+            }
+
+            $sectionPayments = $payments->filter(function (Payment $payment) use ($boundary, $nextBoundary): bool {
+                if (! $payment->created_at || ! $boundary || $payment->created_at->lt($boundary)) {
+                    return false;
+                }
+
+                return ! $nextBoundary || $payment->created_at->lt($nextBoundary);
+            })->values();
+
+            $sections[] = $this->paymentLifecycleSection(
+                'Extension #'.$extension->sequence_no,
+                'Payments registered after this extension was approved.',
+                (float) $extension->total_amount,
+                $extension->extension_start_at ?? $extension->old_return_at,
+                $extension->extension_end_at ?? $extension->new_return_at,
+                $sectionPayments,
+                'extension',
+            );
+        }
+
+        if ($extensions->isEmpty()) {
+            $sections[] = $this->paymentLifecycleSection(
+                'Original agreement',
+                'All entries belong to the original rental period.',
+                (float) $this->totalPrice,
+                $this->contract->pickup_date,
+                $this->contract->return_date,
+                $payments,
+                'original',
+            );
+        }
+
+        return $sections;
+    }
+
+    private function paymentLifecycleSection(string $title, string $subtitle, float $contractAmount, $startsAt, $endsAt, $payments, string $kind): array
+    {
+        return [
+            'title' => $title,
+            'subtitle' => $subtitle,
+            'contract_amount' => $this->roundCurrency($contractAmount),
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+            'payments' => $payments,
+            'kind' => $kind,
+        ];
     }
 
     protected function loadTransferLedger(): void

@@ -462,7 +462,7 @@ class Contract extends Model
         }
 
         if ($newReturnAt->notEqualTo($currentReturnAt)
-            && $currentReturnAt->diffInMinutes($newReturnAt) > self::RETURN_TIME_TOLERANCE_MINUTES) {
+            && abs($currentReturnAt->diffInMinutes($newReturnAt)) > self::RETURN_TIME_TOLERANCE_MINUTES) {
             throw new \DomainException('A material planned return change must be saved through the commercial correction workflow so the date and financial ledger remain synchronized.');
         }
 

@@ -404,7 +404,7 @@ class RentalRequestPaymentTest extends TestCase
         Storage::disk('myimage')->assertMissing('payments/damage-3.webp');
     }
 
-    public function test_existing_payments_table_groups_customer_payments_and_charges(): void
+    public function test_existing_payments_table_groups_entries_in_the_original_agreement_timeline(): void
     {
         $user = User::factory()->create();
         $customerPayment = Payment::factory()
@@ -437,8 +437,8 @@ class RentalRequestPaymentTest extends TestCase
         ])->render();
         $normalizedHtml = preg_replace('/\s+/', ' ', $html);
 
-        $this->assertStringContainsString('Customer Payments', $normalizedHtml);
-        $this->assertStringContainsString('Charges &amp; Costs', $normalizedHtml);
+        $this->assertStringContainsString('Payment timeline', $normalizedHtml);
+        $this->assertStringContainsString('Original agreement', $normalizedHtml);
         $this->assertStringContainsString('20,000,000.00', $normalizedHtml);
         $this->assertStringContainsString('Deducted from balance: 51.60 AED', $normalizedHtml);
         $this->assertStringContainsString('520.00', $normalizedHtml);

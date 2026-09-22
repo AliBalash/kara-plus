@@ -815,6 +815,8 @@
 
     @include('livewire.pages.panel.expert.rental-request.partials.existing-payments-table', [
         'existingPayments' => $existingPayments,
+        'paymentLifecycleSections' => $this->paymentLifecycleSections,
+        'remainingBalance' => $remainingBalance,
     ])
 </div>
 
@@ -1089,6 +1091,25 @@
             color: #0f172a;
         }
 
+        .payments-overview__card--balance {
+            background: linear-gradient(135deg, #0f172a, #1e3a5f);
+            border-color: transparent;
+        }
+
+        .payments-overview__card--balance .payments-overview__label {
+            color: rgba(255, 255, 255, 0.68);
+        }
+
+        .payments-overview__card--balance .payments-overview__value {
+            color: #fff;
+        }
+
+        .payment-lifecycle {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
         .ledger-panel {
             height: 100%;
             border-radius: 1.45rem;
@@ -1106,6 +1127,16 @@
         .ledger-panel--charge {
             background:
                 linear-gradient(180deg, rgba(255, 247, 237, 0.95), rgba(255, 255, 255, 1) 22%);
+        }
+
+        .ledger-panel--original {
+            background:
+                linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 1) 22%);
+        }
+
+        .ledger-panel--extension {
+            background:
+                linear-gradient(180deg, rgba(240, 253, 250, 0.95), rgba(255, 255, 255, 1) 22%);
         }
 
         .ledger-panel__header {
@@ -1145,6 +1176,16 @@
             box-shadow: 0 0.8rem 1.5rem rgba(245, 158, 11, 0.22);
         }
 
+        .ledger-panel--original .ledger-panel__icon {
+            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            box-shadow: 0 0.8rem 1.5rem rgba(37, 99, 235, 0.22);
+        }
+
+        .ledger-panel--extension .ledger-panel__icon {
+            background: linear-gradient(135deg, #059669, #14b8a6);
+            box-shadow: 0 0.8rem 1.5rem rgba(5, 150, 105, 0.22);
+        }
+
         .ledger-panel__title {
             font-size: 1.04rem;
             font-weight: 700;
@@ -1155,6 +1196,15 @@
             font-size: 0.84rem;
             color: #64748b;
             max-width: 28rem;
+        }
+
+        .ledger-period-badge {
+            padding: 0.28rem 0.58rem;
+            border-radius: 999px;
+            background: rgba(15, 118, 110, 0.09);
+            color: #0f766e;
+            font-size: 0.72rem;
+            font-weight: 700;
         }
 
         .ledger-panel__summary {
@@ -1174,6 +1224,11 @@
         .ledger-panel__total {
             font-size: 1.05rem;
             color: #0f172a;
+        }
+
+        .ledger-panel__contract-total {
+            font-size: 0.78rem;
+            color: #64748b;
         }
 
         .ledger-list {

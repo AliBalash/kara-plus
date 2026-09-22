@@ -1,33 +1,16 @@
 @php
-    $customerPayments = $existingPayments->reject(
-        fn($payment) => \App\Models\Payment::isChargePaymentType($payment->payment_type)
-    )->values();
-
-    $chargePayments = $existingPayments->filter(
-        fn($payment) => \App\Models\Payment::isChargePaymentType($payment->payment_type)
-    )->values();
-
-    $groups = [
-        [
-            'title' => 'Customer Payments',
-            'subtitle' => 'Rental collections, deposits, discounts, and refunds.',
-            'accent' => 'customer',
-            'icon' => 'bi-wallet2',
-            'payments' => $customerPayments,
-            'empty' => 'No customer payments found.',
-        ],
-        [
-            'title' => 'Charges & Costs',
-            'subtitle' => 'Salik, fines, parking, damage, fuel, carwash, and similar costs.',
-            'accent' => 'charge',
-            'icon' => 'bi-receipt-cutoff',
-            'payments' => $chargePayments,
-            'empty' => 'No charges found.',
-        ],
-    ];
-
     $overallCount = $existingPayments->count();
     $overallAed = (float) $existingPayments->sum('amount_in_aed');
+    $remainingBalance = $remainingBalance ?? 0;
+    $paymentLifecycleSections = $paymentLifecycleSections ?? [[
+        'title' => 'Original agreement',
+        'subtitle' => 'All entries belong to the original rental period.',
+        'contract_amount' => 0,
+        'starts_at' => null,
+        'ends_at' => null,
+        'payments' => $existingPayments,
+        'kind' => 'original',
+    ]];
 
     $amountLabel = static function ($paymentType): string {
         return \App\Models\Payment::isChargePaymentType($paymentType)
@@ -53,8 +36,8 @@
     <div class="payments-workspace__hero">
         <div>
             <div class="payments-kicker">Accounting View</div>
-            <h5 class="payments-title mb-1">Existing Payments</h5>
-            <p class="payments-subtitle mb-0">Customer inflows and contract charges are separated for cleaner invoice review.</p>
+            <h5 class="payments-title mb-1">Payment timeline</h5>
+            <p class="payments-subtitle mb-0">The original agreement and every approved extension have their own ledger, so the full payment history is readable at a glance.</p>
         </div>
         <div class="payments-overview">
             <div class="payments-overview__card">
@@ -65,31 +48,44 @@
                 <span class="payments-overview__label">Ledger Total</span>
                 <strong class="payments-overview__value">{{ number_format($overallAed, 2) }} AED</strong>
             </div>
+            <div class="payments-overview__card payments-overview__card--balance">
+                <span class="payments-overview__label">Overall Balance</span>
+                <strong class="payments-overview__value {{ $remainingBalance <= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($remainingBalance, 2) }} AED</strong>
+            </div>
         </div>
     </div>
 
-    <div class="row g-4">
-        @foreach ($groups as $group)
+    <div class="payment-lifecycle">
+        @foreach ($paymentLifecycleSections as $section)
             @php
-                $groupPayments = $group['payments'];
+                $groupPayments = $section['payments'];
                 $groupTotalAed = (float) $groupPayments->sum('amount_in_aed');
                 $groupCount = $groupPayments->count();
             @endphp
-            <div class="col-12 col-xl-6">
-                <section class="ledger-panel ledger-panel--{{ $group['accent'] }}">
+            <section class="ledger-panel ledger-panel--{{ $section['kind'] }}">
                     <header class="ledger-panel__header">
                         <div class="ledger-panel__title-wrap">
                             <div class="ledger-panel__icon">
-                                <i class="bi {{ $group['icon'] }}"></i>
+                                <i class="bi {{ $section['kind'] === 'original' ? 'bi-file-earmark-text' : 'bi-calendar-plus' }}"></i>
                             </div>
                             <div>
-                                <h6 class="ledger-panel__title mb-1">{{ $group['title'] }}</h6>
-                                <p class="ledger-panel__subtitle mb-0">{{ $group['subtitle'] }}</p>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                    <h6 class="ledger-panel__title mb-0">{{ $section['title'] }}</h6>
+                                    <span class="ledger-period-badge">
+                                        @if ($section['starts_at'] && $section['ends_at'])
+                                            {{ \Carbon\Carbon::parse($section['starts_at'])->format('Y-m-d') }} → {{ \Carbon\Carbon::parse($section['ends_at'])->format('Y-m-d') }}
+                                        @else
+                                            Base rental period
+                                        @endif
+                                    </span>
+                                </div>
+                                <p class="ledger-panel__subtitle mb-0">{{ $section['subtitle'] }}</p>
                             </div>
                         </div>
                         <div class="ledger-panel__summary">
-                            <span class="ledger-panel__count">{{ $groupCount }} item{{ $groupCount === 1 ? '' : 's' }}</span>
-                            <strong class="ledger-panel__total">{{ number_format($groupTotalAed, 2) }} AED</strong>
+                            <span class="ledger-panel__count">{{ $groupCount }} entry{{ $groupCount === 1 ? '' : 'ies' }}</span>
+                            <strong class="ledger-panel__total">{{ number_format($groupTotalAed, 2) }} AED recorded</strong>
+                            <span class="ledger-panel__contract-total">Contract value: {{ number_format($section['contract_amount'], 2) }} AED</span>
                         </div>
                     </header>
 
@@ -192,15 +188,14 @@
                         @empty
                             <div class="ledger-empty">
                                 <div class="ledger-empty__icon">
-                                    <i class="bi {{ $group['icon'] }}"></i>
+                                    <i class="bi bi-journal-text"></i>
                                 </div>
-                                <div class="ledger-empty__title">{{ $group['empty'] }}</div>
-                                <div class="ledger-empty__text">New entries will appear here after they are recorded.</div>
+                                <div class="ledger-empty__title">No payments recorded in this section</div>
+                                <div class="ledger-empty__text">New entries registered in this contract stage will appear here.</div>
                             </div>
                         @endforelse
                     </div>
                 </section>
-            </div>
         @endforeach
     </div>
 </div>
