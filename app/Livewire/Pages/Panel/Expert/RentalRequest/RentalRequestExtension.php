@@ -97,7 +97,7 @@ class RentalRequestExtension extends Component
     public function request(ContractAmendmentService $service, RentalPricingService $pricing): void
     {
         $this->resetErrorBag();
-        $this->validateInput();
+        $this->validateInput(true);
 
         try {
             // A Livewire form may have remained open while another operator
@@ -353,7 +353,7 @@ class RentalRequestExtension extends Component
         $this->contract->refresh()->load(['car', 'amendments.charges', 'payments']);
     }
 
-    private function validateInput(): void
+    private function validateInput(bool $requireReviewConfirmation = false): void
     {
         $rules = [
             'newReturnAt' => ['required', 'date'],
@@ -363,6 +363,9 @@ class RentalRequestExtension extends Component
             'notes' => ['nullable', 'string', 'max:5000'],
             'idempotencyKey' => ['required', 'uuid'],
         ];
+        if ($requireReviewConfirmation) {
+            $rules['reviewConfirmed'] = ['accepted'];
+        }
         $this->validate($rules);
     }
 
@@ -473,32 +476,17 @@ class RentalRequestExtension extends Component
 
         return (int) $latestId === (int) $amendment->id
             && $this->contract->return_date?->equalTo($amendment->new_return_at)
-            && in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)
-            && $this->contract->actual_return_at === null
             && ! $this->contract->amendments->contains(fn (ContractAmendment $item) => $item->isPending());
     }
 
     public function extensionOperationBlocker(): ?string
     {
-        if ($this->contract->actual_return_at !== null) {
-            return 'The vehicle was returned on '.$this->contract->actual_return_at->format('Y-m-d H:i').'. Extensions cannot be created or edited after the actual return is recorded.';
-        }
-
-        if (! in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)) {
-            return 'This contract is currently '.Str::headline($this->contract->current_status).'. Extensions are available only while the rental is delivered and awaiting return.';
-        }
-
-        if ($this->contract->car?->unavailability_reason === 'need_action') {
-            return 'This vehicle is marked Need Action. You may still extend its own open contract; final approval will check whether another reservation or vehicle hold conflicts with the new return date.';
-        }
-
         return null;
     }
 
     private function canOperateExtensions(): bool
     {
-        return in_array($this->contract->current_status, Contract::AMENDABLE_STATUSES, true)
-            && $this->contract->actual_return_at === null;
+        return $this->contract->return_date !== null;
     }
 
     private function invalidatePreview(): void

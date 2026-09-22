@@ -532,13 +532,14 @@ class ContractAmendmentServiceTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_returned_contract_cannot_be_extended(): void
+    public function test_returned_contract_can_receive_an_extension_request(): void
     {
         [$contract, $actor] = $this->operationalContract();
         $contract->update(['current_status' => 'returned']);
 
-        $this->expectException(ValidationException::class);
-        app(ContractAmendmentService::class)->requestExtension($contract, $contract->return_date->copy()->addDay(), $actor->id);
+        $extension = app(ContractAmendmentService::class)->requestExtension($contract, $contract->return_date->copy()->addDay(), $actor->id);
+
+        $this->assertTrue($extension->isPending());
     }
 
     public function test_commercial_correction_accepts_any_signed_in_panel_user_and_audits_the_actor(): void

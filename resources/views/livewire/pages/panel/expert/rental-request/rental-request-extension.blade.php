@@ -1,4 +1,6 @@
 <div class="container-xxl flex-grow-1 container-p-y">
+    <x-detail-rental-request-tabs :contract-id="$contract->id" />
+
     @php
         $extensionAmendments = $contract->amendments
             ->where('type', \App\Models\ContractAmendment::TYPE_EXTENSION)
@@ -235,10 +237,11 @@
                             <div class="form-check p-3 border rounded bg-light">
                                 <input id="reviewConfirmed" class="form-check-input" type="checkbox" wire:model.live="reviewConfirmed">
                                 <label class="form-check-label fw-semibold" for="reviewConfirmed">I reviewed the displayed dates, charges and balance.</label>
+                                @error('reviewConfirmed')<small class="text-danger d-block">Confirm that you reviewed the impact before saving.</small>@enderror
                             </div>
                         </div>
                         <div class="col-12">
-                            <button wire:loading.attr="disabled" class="btn btn-primary">
+                            <button wire:loading.attr="disabled" class="btn btn-primary" @disabled(!$reviewConfirmed)>
                                 {{ $editingAmendmentId ? ($editingApproved ? 'Confirm and apply approved revision' : 'Update reviewed request') : 'Create reviewed extension request' }}
                             </button>
                         </div>

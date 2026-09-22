@@ -30,7 +30,7 @@ class RentalRequestExtensionTest extends TestCase
         URL::forceRootUrl('http://localhost');
     }
 
-    public function test_page_previews_all_three_rate_sources_and_allows_save_without_required_review_checkbox(): void
+    public function test_page_previews_all_three_rate_sources_and_requires_review_before_save(): void
     {
         [$contract, $actor] = $this->operationalContract();
         $this->actingAs($actor);
@@ -48,6 +48,9 @@ class RentalRequestExtensionTest extends TestCase
             ->assertSet('quote.resulting_rental_days', 11)
             ->assertSet('quote.impact.rental_days_before', 9)
             ->assertSet('quote.impact.rental_days_after', 11)
+            ->call('request')
+            ->assertHasErrors(['reviewConfirmed'])
+            ->set('reviewConfirmed', true)
             ->call('request')
             ->assertHasNoErrors()
             ->assertSee('Pending Approval');
@@ -122,23 +125,27 @@ class RentalRequestExtensionTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_actual_return_blocks_extension_and_explains_why_without_saving(): void
+    public function test_actual_return_does_not_block_revision_and_recalculates_contract_amounts(): void
     {
         [$contract, $actor] = $this->operationalContract();
+        $extension = app(ContractAmendmentService::class)->approve(
+            app(ContractAmendmentService::class)->requestExtension($contract, Carbon::parse('2026-09-12 10:00:00'), $actor->id),
+            $actor->id,
+        );
         $contract->update(['actual_return_at' => Carbon::parse('2026-09-10 11:00:00')]);
         $this->actingAs($actor);
 
-        $component = Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
-            ->assertSee('Extensions cannot be created or edited after the actual return is recorded.')
-            ->set('newReturnAt', '2026-09-12T10:00')
+        Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id, 'amendmentId' => $extension->id])
+            ->assertSet('editingAmendmentId', $extension->id)
+            ->set('newReturnAt', '2026-09-11T17:00')
             ->call('preview')
             ->set('reviewConfirmed', true)
             ->call('request')
-            ->assertHasErrors(['contract'])
-            ->assertSee('This vehicle has already been returned. The extension was not saved.');
+            ->assertHasNoErrors();
 
-        $this->assertSame(0, ContractAmendment::query()->count());
-        $this->assertEqualsWithDelta(1000, (float) $contract->fresh()->total_price, 0.01);
+        $this->assertSame('superseded', $extension->fresh()->status);
+        $this->assertSame('2026-09-11 17:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-09-10 11:00:00', $contract->fresh()->actual_return_at->format('Y-m-d H:i:s'));
     }
 
     public function test_approved_revision_and_removal_require_confirmation_and_restore_the_contract(): void

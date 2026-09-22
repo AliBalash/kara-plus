@@ -361,12 +361,6 @@ class ContractAmendmentService
 
     private function assertExtendable(Contract $contract, Carbon|string $newReturnAt): void
     {
-        if (! in_array($contract->current_status, Contract::AMENDABLE_STATUSES, true)) {
-            throw ValidationException::withMessages(['contract' => 'Only a delivered rental that has not yet been returned may be extended.']);
-        }
-        if ($contract->actual_return_at !== null) {
-            throw ValidationException::withMessages(['contract' => 'This vehicle has already been returned. The extension was not saved.']);
-        }
         if (! $contract->return_date) {
             throw ValidationException::withMessages(['contract' => 'Contract has no planned return date.']);
         }
@@ -379,12 +373,6 @@ class ContractAmendmentService
     {
         if (! $amendment->isApproved() || $amendment->type !== ContractAmendment::TYPE_EXTENSION) {
             throw ValidationException::withMessages(['amendment' => 'This record is not an approved extension. Select the current extension that ends on the contract return date.']);
-        }
-        if (! in_array($contract->current_status, Contract::AMENDABLE_STATUSES, true) || $contract->actual_return_at !== null) {
-            $reason = $contract->actual_return_at !== null
-                ? 'The vehicle was returned on '.$contract->actual_return_at->format('d M Y H:i').', so its extension can no longer be changed.'
-                : 'This contract is '.$contract->current_status.' and is no longer open for extension changes.';
-            throw ValidationException::withMessages(['contract' => $reason]);
         }
         $latestId = $contract->amendments()
             ->where('type', ContractAmendment::TYPE_EXTENSION)
