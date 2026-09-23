@@ -815,7 +815,8 @@
 
     @include('livewire.pages.panel.expert.rental-request.partials.existing-payments-table', [
         'existingPayments' => $existingPayments,
-        'paymentLifecycleSections' => $this->paymentLifecycleSections,
+        'paymentPeriods' => $this->paymentPeriods,
+        'paymentPeriodFilter' => $paymentPeriodFilter,
         'remainingBalance' => $remainingBalance,
     ])
 </div>
@@ -1110,6 +1111,46 @@
             gap: 1.25rem;
         }
 
+        .payment-period-selector {
+            display: flex;
+            gap: 0.65rem;
+            overflow-x: auto;
+            padding: 0.2rem 0.1rem 0.65rem;
+            margin-bottom: 0.55rem;
+        }
+
+        .payment-period-selector__button {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.2rem;
+            min-width: 11rem;
+            padding: 0.7rem 0.85rem;
+            color: #475569;
+            background: #fff;
+            border: 1px solid #dbe3ee;
+            border-radius: 0.8rem;
+            text-align: left;
+            font-size: 0.78rem;
+        }
+
+        .payment-period-selector__button strong {
+            color: #0f172a;
+            font-size: 0.88rem;
+        }
+
+        .payment-period-selector__button.is-active {
+            background: #0f766e;
+            border-color: #0f766e;
+            box-shadow: 0 0.4rem 1rem rgba(15, 118, 110, 0.18);
+        }
+
+        .payment-period-selector__button.is-active,
+        .payment-period-selector__button.is-active strong {
+            color: #fff;
+        }
+
         .ledger-panel {
             height: 100%;
             border-radius: 1.45rem;
@@ -1134,7 +1175,7 @@
                 linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 1) 22%);
         }
 
-        .ledger-panel--extension {
+        .ledger-panel--period {
             background:
                 linear-gradient(180deg, rgba(240, 253, 250, 0.95), rgba(255, 255, 255, 1) 22%);
         }
@@ -1181,7 +1222,7 @@
             box-shadow: 0 0.8rem 1.5rem rgba(37, 99, 235, 0.22);
         }
 
-        .ledger-panel--extension .ledger-panel__icon {
+        .ledger-panel--period .ledger-panel__icon {
             background: linear-gradient(135deg, #059669, #14b8a6);
             box-shadow: 0 0.8rem 1.5rem rgba(5, 150, 105, 0.22);
         }
@@ -1359,6 +1400,21 @@
             background: rgba(59, 130, 246, 0.1);
             color: #1d4ed8;
             border: 1px solid rgba(59, 130, 246, 0.16);
+        }
+
+        .ledger-chip--approved {
+            background: rgba(34, 197, 94, 0.12);
+            color: #15803d;
+        }
+
+        .ledger-chip--pending {
+            background: rgba(245, 158, 11, 0.14);
+            color: #a16207;
+        }
+
+        .ledger-chip--rejected {
+            background: rgba(239, 68, 68, 0.12);
+            color: #b91c1c;
         }
 
         .ledger-chip--accent {

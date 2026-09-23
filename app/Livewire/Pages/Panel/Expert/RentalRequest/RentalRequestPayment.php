@@ -6,11 +6,11 @@ use App\Livewire\Concerns\InteractsWithToasts;
 use App\Livewire\Concerns\LogsBusinessRead;
 use App\Livewire\Concerns\RefreshesFileInputs;
 use App\Models\Contract;
-use App\Models\ContractAmendment;
 use App\Models\ContractBalanceTransfer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Services\Media\DeferredImageUploadService;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +45,9 @@ class RentalRequestPayment extends Component
     public $is_refundable = false;
 
     public $existingPayments;
+
+    /** The ledger filter is display-only; it never affects balance calculations. */
+    public string $paymentPeriodFilter = 'all';
 
     public $totalPrice;
 
@@ -324,93 +327,82 @@ class RentalRequestPayment extends Component
         $this->loadTransferLedger();
     }
 
-    /**
-     * Build a read-only ledger timeline for the payment screen.
-     *
-     * Payments predate the amendment/payment allocation schema, so their
-     * lifecycle ownership is deliberately inferred from when they were
-     * registered: entries recorded after an extension is approved are shown
-     * in that extension's ledger. This changes neither payment values nor the
-     * balance calculation.
-     */
-    public function getPaymentLifecycleSectionsProperty(): array
+    /** Build display-only, rolling 30-day accounting periods from contract dates. */
+    public function getPaymentPeriodsProperty(): array
     {
-        $extensions = $this->contract->amendments
-            ->where('type', ContractAmendment::TYPE_EXTENSION)
-            ->where('status', 'approved')
-            ->sortBy('sequence_no')
-            ->values();
+        $pickupAt = $this->contract->pickup_date ? Carbon::parse($this->contract->pickup_date) : now();
+        $returnAt = $this->contract->return_date ? Carbon::parse($this->contract->return_date) : $pickupAt->copy();
+        $pickup = $pickupAt->copy()->startOfDay();
+        $durationDays = RentalDuration::billableDays(
+            $pickupAt,
+            $returnAt,
+            RentalDuration::policyFromContractMeta($this->contract->meta),
+        );
+        $periodCount = (int) ceil($durationDays / 30);
+        $periods = [];
 
-        $payments = $this->existingPayments
-            ->sortBy(fn (Payment $payment) => sprintf('%s-%010d', optional($payment->created_at)->format('Y-m-d H:i:s.u') ?? '', $payment->id))
-            ->values();
-
-        $approvedExtensionTotal = (float) $extensions->sum('total_amount');
-        $sections = [];
-
-        foreach ($extensions as $index => $extension) {
-            $boundary = $extension->approved_at ?? $extension->effective_at ?? $extension->created_at;
-            $nextExtension = $extensions->get($index + 1);
-            $nextBoundary = $nextExtension?->approved_at ?? $nextExtension?->effective_at ?? $nextExtension?->created_at;
-
-            if ($index === 0) {
-                $originalPayments = $payments->filter(fn (Payment $payment) => ! $boundary || ! $payment->created_at || $payment->created_at->lt($boundary))->values();
-                $sections[] = $this->paymentLifecycleSection(
-                    'Original agreement',
-                    'Initial rental period before extensions.',
-                    $this->roundCurrency((float) $this->totalPrice - $approvedExtensionTotal),
-                    $this->contract->pickup_date,
-                    $extension->extension_start_at ?? $extension->old_return_at,
-                    $originalPayments,
-                    'original',
-                );
-            }
-
-            $sectionPayments = $payments->filter(function (Payment $payment) use ($boundary, $nextBoundary): bool {
-                if (! $payment->created_at || ! $boundary || $payment->created_at->lt($boundary)) {
-                    return false;
-                }
-
-                return ! $nextBoundary || $payment->created_at->lt($nextBoundary);
-            })->values();
-
-            $sections[] = $this->paymentLifecycleSection(
-                'Extension #'.$extension->sequence_no,
-                'Payments registered after this extension was approved.',
-                (float) $extension->total_amount,
-                $extension->extension_start_at ?? $extension->old_return_at,
-                $extension->extension_end_at ?? $extension->new_return_at,
-                $sectionPayments,
-                'extension',
-            );
+        for ($index = 0; $index < $periodCount; $index++) {
+            $startsAt = $pickup->copy()->addDays($index * 30);
+            $periodDays = min(30, $durationDays - ($index * 30));
+            $endsAt = $startsAt->copy()->addDays($periodDays);
+            $periods[] = [
+                'key' => 'period-'.($index + 1),
+                'period_number' => $index + 1,
+                'title' => 'Period '.($index + 1),
+                'is_final' => $index + 1 === $periodCount && $periodCount > 1,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'display_ends_at' => $endsAt->copy()->subDay(),
+                'duration_days' => $periodDays,
+                'payments' => collect(),
+                'entry_count' => 0,
+            ];
         }
 
-        if ($extensions->isEmpty()) {
-            $sections[] = $this->paymentLifecycleSection(
-                'Original agreement',
-                'All entries belong to the original rental period.',
-                (float) $this->totalPrice,
-                $this->contract->pickup_date,
-                $this->contract->return_date,
-                $payments,
-                'original',
-            );
+        foreach ($this->existingPayments as $payment) {
+            $periodIndex = $this->paymentPeriodIndex($payment, $pickup, $periods);
+            $periods[$periodIndex]['payments']->push($payment);
         }
 
-        return $sections;
+        foreach ($periods as $index => $period) {
+            $periods[$index]['payments'] = $period['payments']
+                ->sortBy(fn (Payment $payment) => sprintf('%s-%010d', optional($this->paymentAccountingDate($payment))->format('Y-m-d H:i:s.u') ?? '', $payment->id))
+                ->values();
+            $periods[$index]['entry_count'] = $periods[$index]['payments']->count();
+        }
+
+        return $periods;
     }
 
-    private function paymentLifecycleSection(string $title, string $subtitle, float $contractAmount, $startsAt, $endsAt, $payments, string $kind): array
+    private function paymentPeriodIndex(Payment $payment, Carbon $pickup, array $periods): int
     {
-        return [
-            'title' => $title,
-            'subtitle' => $subtitle,
-            'contract_amount' => $this->roundCurrency($contractAmount),
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'payments' => $payments,
-            'kind' => $kind,
-        ];
+        $accountingDate = $this->paymentAccountingDate($payment);
+
+        if (! $accountingDate || $accountingDate->lt($pickup)) {
+            return 0;
+        }
+
+        $index = (int) floor($pickup->diffInDays($accountingDate, false) / 30);
+
+        return min(max(0, $index), count($periods) - 1);
+    }
+
+    /** Prefer the accounting date, but tolerate incomplete legacy records. */
+    private function paymentAccountingDate(Payment $payment): ?Carbon
+    {
+        foreach ([$payment->payment_date, $payment->created_at] as $candidate) {
+            if (! $candidate) {
+                continue;
+            }
+
+            try {
+                return Carbon::parse($candidate)->startOfDay();
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return null;
     }
 
     protected function loadTransferLedger(): void

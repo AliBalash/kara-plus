@@ -5,6 +5,7 @@ namespace Tests\Feature\Livewire\RentalRequest;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPayment;
 use App\Models\Car;
 use App\Models\Contract;
+use App\Models\ContractAmendment;
 use App\Models\ContractBalanceTransfer;
 use App\Models\Customer;
 use App\Models\CustomerDocument;
@@ -404,7 +405,7 @@ class RentalRequestPaymentTest extends TestCase
         Storage::disk('myimage')->assertMissing('payments/damage-3.webp');
     }
 
-    public function test_existing_payments_table_groups_entries_in_the_original_agreement_timeline(): void
+    public function test_existing_payments_table_uses_a_single_all_entries_ledger(): void
     {
         $user = User::factory()->create();
         $customerPayment = Payment::factory()
@@ -437,14 +438,112 @@ class RentalRequestPaymentTest extends TestCase
         ])->render();
         $normalizedHtml = preg_replace('/\s+/', ' ', $html);
 
-        $this->assertStringContainsString('Payment timeline', $normalizedHtml);
-        $this->assertStringContainsString('Original agreement', $normalizedHtml);
+        $this->assertStringContainsString('Payment ledger', $normalizedHtml);
+        $this->assertStringContainsString('All Entries', $normalizedHtml);
         $this->assertStringContainsString('20,000,000.00', $normalizedHtml);
         $this->assertStringContainsString('Deducted from balance: 51.60 AED', $normalizedHtml);
         $this->assertStringContainsString('520.00', $normalizedHtml);
         $this->assertStringContainsString('Charge in balance: 520.00 AED', $normalizedHtml);
         $this->assertStringContainsString('Registered: '.now()->setTime(10, 15, 0)->format('Y-m-d H:i'), $normalizedHtml);
         $this->assertStringContainsString('Registered: '.now()->setTime(12, 45, 0)->format('Y-m-d H:i'), $normalizedHtml);
+    }
+
+    public function test_accounting_periods_are_rolling_30_day_blocks_regardless_of_extension_count(): void
+    {
+        foreach ([20 => [20], 30 => [30], 31 => [30, 1], 60 => [30, 30], 61 => [30, 30, 1], 100 => [30, 30, 30, 10]] as $days => $expectedDurations) {
+            [$component, $contract, $user] = $this->paymentPeriodComponent($days);
+
+            if ($days === 20) {
+                foreach ([1, 2, 3] as $sequence) {
+                    ContractAmendment::create([
+                        'contract_id' => $contract->id,
+                        'sequence_no' => $sequence,
+                        'type' => ContractAmendment::TYPE_EXTENSION,
+                        'status' => 'approved',
+                        'requested_by' => $user->id,
+                        'approved_by' => $user->id,
+                        'approved_at' => now(),
+                        'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
+                    ]);
+                }
+
+                $component->loadData();
+            }
+
+            $this->assertSame($expectedDurations, collect($component->paymentPeriods)->pluck('duration_days')->all());
+        }
+    }
+
+    public function test_payments_are_assigned_once_by_payment_date_with_safe_out_of_range_handling(): void
+    {
+        [$component, $contract, $user, $customer, $pickup] = $this->paymentPeriodComponent(100, true);
+        $payments = collect([
+            ['rental_fee', $pickup->copy()->subDay()],
+            ['fine', $pickup->copy()->addDays(9)],
+            ['no_deposit_fee', $pickup->copy()->addDays(29)], // final day of Period 1
+            ['parking', $pickup->copy()->addDays(30)], // exact Period 2 boundary
+            ['damage', $pickup->copy()->addDays(44)],
+            ['salik_4_aed', $pickup->copy()->addDays(74)],
+            ['discount', $pickup->copy()->addDays(100)], // after return; final period
+        ])->map(fn (array $entry) => Payment::factory()
+            ->for($contract)->for($customer)->for($user)->for($contract->car)
+            ->create(['payment_type' => $entry[0], 'payment_date' => $entry[1], 'amount' => 10, 'amount_in_aed' => 10]));
+
+        $component->loadData();
+        $periods = collect($component->paymentPeriods);
+        $periodPaymentIds = $periods->flatMap(fn (array $period) => $period['payments']->pluck('id'));
+
+        $this->assertSame([3, 2, 1, 1], $periods->pluck('entry_count')->all());
+        $this->assertSame($payments->pluck('id')->sort()->values()->all(), $periodPaymentIds->sort()->values()->all());
+        $this->assertSame($periodPaymentIds->count(), $periodPaymentIds->unique()->count());
+        $this->assertSame($payments->first()->id, $periods[0]['payments']->first()->id);
+        $this->assertSame($payments[3]->id, $periods[1]['payments']->first()->id);
+        $this->assertSame($payments->last()->id, $periods[3]['payments']->first()->id);
+    }
+
+    public function test_periods_use_contract_billable_days_and_date_boundaries(): void
+    {
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $pickup = now()->setDate(2026, 1, 1)->setTime(14, 10);
+        $contract = Contract::factory()->for($user)->for($customer)->for(Car::factory())->status('payment')->create([
+            'pickup_date' => $pickup,
+            'return_date' => $pickup->copy()->addDays(37)->addHours(2)->addMinutes(50),
+            'meta' => [],
+        ]);
+
+        $periodOnePayment = Payment::factory()->for($contract)->for($customer)->for($user)->for($contract->car)->create([
+            'payment_date' => '2026-01-30',
+        ]);
+        $periodTwoPayment = Payment::factory()->for($contract)->for($customer)->for($user)->for($contract->car)->create([
+            'payment_date' => '2026-01-31',
+        ]);
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $periods = collect($component->paymentPeriods);
+
+        $this->assertSame([30, 8], $periods->pluck('duration_days')->all());
+        $this->assertSame('2026-01-30', $periods[0]['display_ends_at']->toDateString());
+        $this->assertSame('2026-02-07', $periods[1]['display_ends_at']->toDateString());
+        $this->assertSame([$periodOnePayment->id], $periods[0]['payments']->pluck('id')->all());
+        $this->assertSame([$periodTwoPayment->id], $periods[1]['payments']->pluck('id')->all());
+    }
+
+    private function paymentPeriodComponent(int $days, bool $includeContext = false): array
+    {
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $pickup = now()->startOfDay()->setDate(2026, 1, 1);
+        $contract = Contract::factory()->for($user)->for($customer)->for(Car::factory())->status('payment')->create([
+            'pickup_date' => $pickup,
+            'return_date' => $pickup->copy()->addDays($days),
+            'total_price' => 1000,
+        ]);
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+
+        return $includeContext ? [$component, $contract, $user, $customer, $pickup] : [$component, $contract, $user];
     }
 
     public function test_zero_remaining_balance_is_not_serialized_as_negative_zero(): void
