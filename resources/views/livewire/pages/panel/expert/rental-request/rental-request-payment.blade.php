@@ -1,4 +1,4 @@
-<div class="container">
+<div class="container payment-page">
     <div class="row g-3 align-items-center">
         <div class="col-lg-4">
             <h4 class="fw-bold py-3 mb-0">
@@ -59,7 +59,7 @@
     @endphp
 
     @if ($extensionAmendments->isNotEmpty())
-        <div class="card border-info shadow-sm mb-4">
+        <div class="card border-info shadow-sm mb-4 payment-extension-charges">
             <div class="card-header bg-info-subtle d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-calendar-plus"></i>
@@ -831,6 +831,16 @@
             border-radius: 1rem;
             padding: 1rem 1.2rem;
             box-shadow: 0 6px 16px rgba(33, 56, 86, 0.06);
+        }
+
+        .payment-page {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .payment-extension-charges {
+            order: 10;
+            margin-top: 1.5rem;
         }
 
         .status-overview {
