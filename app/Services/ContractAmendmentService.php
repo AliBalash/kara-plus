@@ -387,13 +387,10 @@ class ContractAmendmentService
                     .($latest ? ' (#'.$latest->sequence_no.', ending '.$latest->new_return_at?->format('d M Y H:i').').' : '.'),
             ]);
         }
-        if (Carbon::parse($contract->return_date)->notEqualTo($amendment->new_return_at)) {
-            throw ValidationException::withMessages([
-                'amendment' => 'The contract return date is '.$contract->return_date->format('d M Y H:i')
-                    .' but this extension ends '.$amendment->new_return_at->format('d M Y H:i')
-                    .'. Refresh the page and select the extension ending on the current contract return date.',
-            ]);
-        }
+        // The planned return may have been corrected outside the amendment
+        // workflow. The latest approved extension remains the authoritative
+        // commercial record: revising it re-syncs the contract return date,
+        // while deleting it rolls the date back to the extension start.
         if ($contract->amendments()->where('status', 'pending_approval')->exists()) {
             throw ValidationException::withMessages(['amendment' => 'There is an extension waiting for approval. Approve, reject, or cancel that request first, then edit the latest approved extension.']);
         }

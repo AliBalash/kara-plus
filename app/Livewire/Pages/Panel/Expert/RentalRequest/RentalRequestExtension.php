@@ -475,7 +475,6 @@ class RentalRequestExtension extends Component
             ->first()?->id;
 
         return (int) $latestId === (int) $amendment->id
-            && $this->contract->return_date?->equalTo($amendment->new_return_at)
             && ! $this->contract->amendments->contains(fn (ContractAmendment $item) => $item->isPending());
     }
 

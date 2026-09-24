@@ -5,6 +5,12 @@
         $extensionAmendments = $contract->amendments
             ->where('type', \App\Models\ContractAmendment::TYPE_EXTENSION)
             ->values();
+        $latestApprovedExtension = $extensionAmendments
+            ->where('status', 'approved')
+            ->sortByDesc('sequence_no')
+            ->first();
+        $scheduleMismatch = $latestApprovedExtension !== null
+            && ! $contract->return_date?->equalTo($latestApprovedExtension->new_return_at);
         $extensionReversals = $contract->amendments
             ->where('type', 'adjustment')
             ->where('status', 'approved')
@@ -85,6 +91,23 @@
     @error('amendment')<div class="alert alert-danger">{{ $message }}</div>@enderror
     @error('pricing')<div class="alert alert-danger">{{ $message }}</div>@enderror
     @error('idempotencyKey')<div class="alert alert-danger">{{ $message }}</div>@enderror
+
+    @if ($scheduleMismatch)
+        <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+            <div class="d-flex align-items-start gap-2">
+                <i class="bx bx-error-circle fs-4 lh-1"></i>
+                <div>
+                    <div class="fw-semibold">Return date needs reconciliation</div>
+                    <div class="small mt-1">
+                        Contract planned return: <strong>{{ $contract->return_date?->format('d M Y H:i') }}</strong>
+                        <span class="mx-1">·</span>
+                        Latest extension #{{ $latestApprovedExtension->sequence_no }} ends: <strong>{{ $latestApprovedExtension->new_return_at?->format('d M Y H:i') }}</strong>.
+                    </div>
+                    <div class="small mt-1">You can still edit or remove this latest extension. Saving an edit synchronizes the contract return date and recalculates charges; removing it reverses its charges and restores the extension start date.</div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @if ($extensionBlocker = $this->extensionOperationBlocker())
         <div class="alert {{ str_contains($extensionBlocker, 'Need Action') ? 'alert-info' : 'alert-warning' }} border-0 shadow-sm mb-4" role="status">

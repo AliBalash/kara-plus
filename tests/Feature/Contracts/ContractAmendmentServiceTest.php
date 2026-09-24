@@ -16,6 +16,7 @@ use App\Services\VehicleAvailabilityService;
 use Carbon\Carbon;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -451,6 +452,35 @@ class ContractAmendmentServiceTest extends TestCase
         $this->assertTrue($first->fresh()->isApproved());
         $this->assertTrue($second->fresh()->isApproved());
         $this->assertSame('2026-09-12 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+    }
+
+    public function test_latest_extension_revision_reconciles_a_drifted_contract_return_date(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $service = app(ContractAmendmentService::class);
+        $approved = $service->approve($service->requestExtension(
+            $contract,
+            $contract->return_date->copy()->addDays(2),
+            $actor->id,
+        ), $actor->id);
+
+        // Simulate a planned-return edit made outside the amendment workflow.
+        DB::table('contracts')->where('id', $contract->id)->update([
+            'return_date' => $approved->new_return_at->copy()->subHours(3),
+        ]);
+        $contract->refresh();
+
+        $replacement = $service->reviseApprovedExtension(
+            $approved,
+            $approved->old_return_at->copy()->addDays(3),
+            $actor->id,
+            RentalPricingService::POLICY_DAILY_CEILING,
+            RentalPricingService::RATE_SOURCE_CONTRACT,
+        );
+
+        $this->assertSame('superseded', $approved->fresh()->status);
+        $this->assertTrue($replacement->isApproved());
+        $this->assertTrue($contract->fresh()->return_date->equalTo($replacement->new_return_at));
     }
 
     public function test_approval_rejects_an_unseen_current_tariff_change(): void
