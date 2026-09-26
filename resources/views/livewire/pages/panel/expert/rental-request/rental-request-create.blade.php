@@ -697,7 +697,7 @@
                                             <span class="input-group-text"><i class="bx bxs-discount"></i></span>
                                             <input type="number" step="0.01" min="0" inputmode="decimal"
                                                 class="form-control @error('custom_daily_rate') is-invalid @enderror"
-                                                wire:model.live="custom_daily_rate"
+                                                wire:model.blur="custom_daily_rate"
                                                 placeholder="Enter custom daily rate (e.g. 180 AED)"
                                                 @disabled(!$apply_discount)>
                                             <span class="input-group-text">AED/day</span>
@@ -707,7 +707,7 @@
                                             @enderror
                                         </div>
                                         <small class="text-muted">
-                                            Enter an exact AED/day rate with up to two decimal places (for example, 46.66).<br>
+                                            Enter an exact AED/day rate with up to two decimal places (for example, 46.66). Pricing updates after you leave this field.<br>
                                             When custom rate is off, pricing auto-resets to the car's standard rate.
                                         </small>
                                     </div>
