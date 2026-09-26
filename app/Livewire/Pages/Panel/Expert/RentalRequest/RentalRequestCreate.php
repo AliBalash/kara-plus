@@ -964,7 +964,9 @@ class RentalRequestCreate extends Component
             'kardo_required' => ['boolean'],
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
-            'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
+            // The contracts table stores AED rates to two decimal places. Reject
+            // extra precision instead of silently rounding a rate the expert typed.
+            'custom_daily_rate' => ['nullable', 'numeric', 'decimal:0,2', 'min:0'],
             'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
             'deposit_category' => ['nullable', 'in:cash_aed,cheque,transfer_cash_irr', 'required_with:deposit'],

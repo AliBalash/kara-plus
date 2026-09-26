@@ -145,7 +145,7 @@ class RentalRequestEditTest extends TestCase
         $component->selected_services = ['additional_driver', 'child_seat'];
         $component->selected_insurance = 'ldw_insurance';
         $component->apply_discount = true;
-        $component->custom_daily_rate = 300.65;
+        $component->custom_daily_rate = 46.66;
         $component->kardo_required = false;
         $component->pickup_location = 'UAE/Dubai/JBR';
         $component->return_location = 'UAE/Dubai/JBR';
@@ -217,6 +217,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertEquals('UAE/Dubai/JBR', $contract->pickup_location);
         $this->assertEquals('Updated notes', $contract->notes);
         $this->assertFalse((bool) $contract->kardo_required);
+        $this->assertEqualsWithDelta(46.66, (float) $contract->used_daily_rate, 0.001);
         $this->assertEquals('Collect balance in cash at pickup', $contract->meta['driver_note'] ?? null);
 
         $charges = $contract->charges()->pluck('amount', 'title');
@@ -228,7 +229,7 @@ class RentalRequestEditTest extends TestCase
 
         $expectedDays = $newPickup->diffInDays($newReturn, false);
         $transferFees = 50 * 2; // pickup and return location fees for JBR
-        $expectedSubtotal = ($expectedDays * 300.65) + ($expectedDays * 20) + 20 + ($expectedDays * 40.6) + $transferFees;
+        $expectedSubtotal = ($expectedDays * 46.66) + ($expectedDays * 20) + 20 + ($expectedDays * 40.6) + $transferFees;
         $expectedSubtotal = round($expectedSubtotal, 2);
         $expectedTax = round($expectedSubtotal * 0.05, 2);
         $this->assertEqualsWithDelta($expectedDays * 20, (float) ($chargesArray['child_seat'] ?? 0), 0.01);
