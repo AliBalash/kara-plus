@@ -65,13 +65,13 @@ class RentalRequestPaymentTest extends TestCase
             $this->assertArrayHasKey('discount_reason', $exception->errors());
         }
 
-        $component->discount_reason = 'extension_discount';
+        $component->discount_reason = 'item_owner_discount';
         $component->submitPayment();
 
         $this->assertDatabaseHas('payments', [
             'contract_id' => $contract->id,
             'payment_type' => 'discount',
-            'discount_reason' => 'extension_discount',
+            'discount_reason' => 'item_owner_discount',
         ]);
     }
 

@@ -80,6 +80,28 @@ class OperationsReportServiceTest extends TestCase
         $this->assertSame(1, $allDiscounts['discount_reason_breakdown']['Extension Discount']['count'] ?? null);
     }
 
+    public function test_payment_collections_supports_item_owner_discounts(): void
+    {
+        $customer = Customer::factory()->create();
+        $car = Car::factory()->create();
+        $contract = Contract::factory()->for($customer)->for($car)->create();
+
+        Payment::factory()->for($contract)->for($customer)->for($car)->create([
+            'payment_type' => 'discount',
+            'discount_reason' => 'item_owner_discount',
+            'amount' => 100,
+            'amount_in_aed' => 100,
+            'payment_date' => '2025-06-01',
+        ]);
+
+        $report = $this->service->paymentCollections([
+            'discount_reason' => 'item_owner_discount',
+        ]);
+
+        $this->assertCount(1, $report['rows']);
+        $this->assertSame('Item Owner', $report['rows'][0]['discount_reason_label']);
+    }
+
     public function test_customer_requests_report_filters_by_customer_and_builds_financial_summary(): void
     {
         $customer = Customer::factory()->create([

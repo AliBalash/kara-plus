@@ -41,13 +41,13 @@ class PaymentEditTest extends TestCase
             $this->assertArrayHasKey('discount_reason', $exception->errors());
         }
 
-        $component->discount_reason = 'management_discount';
+        $component->discount_reason = 'item_owner_discount';
         $component->updatePayment();
 
         $this->assertDatabaseHas('payments', [
             'id' => $payment->id,
             'payment_type' => 'discount',
-            'discount_reason' => 'management_discount',
+            'discount_reason' => 'item_owner_discount',
         ]);
     }
 

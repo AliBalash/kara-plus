@@ -66,6 +66,7 @@ class Payment extends Model
         'delivery_return_discount' => 'Delivery / Return Discount',
         'outstanding_balance_discount' => 'Outstanding Balance Discount',
         'management_discount' => 'Management Discount',
+        'item_owner_discount' => 'Item Owner',
     ];
 
     protected $fillable = [
