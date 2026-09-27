@@ -527,6 +527,80 @@ class RentalRequestEditTest extends TestCase
         $this->assertSame(900.0, (float) $charge->fresh()->amount);
     }
 
+    public function test_operational_contract_keeps_its_custom_daily_rate_when_the_tariff_snapshot_has_the_standard_rate(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $car = Car::factory()->create([
+            'price_per_day_short' => 80,
+            'price_per_day_mid' => 60,
+            'price_per_day_long' => 40,
+        ]);
+        $customer = Customer::factory()->create([
+            'phone' => '+971500000511',
+            'messenger_phone' => '+971500000512',
+            'nationality' => 'IR',
+            'passport_expiry_date' => '2027-09-08',
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-10-07 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 1364.90,
+                'used_daily_rate' => 43.33,
+                'custom_daily_rate_enabled' => true,
+                'discount_note' => 'Discount applied: 43.33 AED instead of standard rate',
+                'meta' => ['pricing_tariffs' => [
+                    'daily_rate' => 40,
+                    'tax_rate' => 0.05,
+                    'base_days' => 30,
+                ]],
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1299.90,
+            'quantity' => 30,
+            'unit' => 'day',
+            'unit_price' => 43.33,
+        ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'tax',
+            'type' => 'tax',
+            'amount' => 65,
+        ]);
+        $payment = Payment::factory()->for($contract)->for($customer)->for($car)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 1364.90,
+            'amount_in_aed' => 1364.90,
+        ]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+
+        $this->assertEqualsWithDelta(43.33, (float) $component->dailyRate, 0.001);
+        $this->assertEqualsWithDelta(43.33, (float) $component->custom_daily_rate, 0.001);
+
+        $component->notes = 'Customer asked for a phone call before return.';
+        $component->submit();
+
+        $contract->refresh();
+        $this->assertEqualsWithDelta(43.33, (float) $contract->used_daily_rate, 0.001);
+        $this->assertEqualsWithDelta(1364.90, (float) $contract->total_price, 0.001);
+        $this->assertSame(2, $contract->charges()->count());
+        $this->assertSame(0, $contract->amendments()->count());
+        $this->assertEqualsWithDelta(1364.90, (float) $payment->fresh()->amount_in_aed, 0.001);
+    }
+
     public function test_operational_contract_rejects_a_planned_return_change_and_keeps_financial_history_intact(): void
     {
         Carbon::setTestNow('2026-09-08 12:00:00');

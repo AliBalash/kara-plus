@@ -1657,7 +1657,16 @@ class RentalRequestEdit extends Component
 
                 return $start && $end ? max(0, Carbon::parse($start)->diffInMinutes(Carbon::parse($end))) : 0;
             });
-        $dailyRate = (float) ($storedTariffs['daily_rate'] ?? $summary['daily_rate'] ?? 0);
+        // A delivered contract's ledger is the source of truth. The tariff
+        // snapshot can contain the vehicle's original catalogue rate while a
+        // valid custom daily rate is stored on the contract/ledger.
+        $dailyRate = (float) ($summary['daily_rate'] ?? 0);
+        if ($dailyRate <= 0) {
+            $dailyRate = (float) ($this->contract->used_daily_rate ?? 0);
+        }
+        if ($dailyRate <= 0) {
+            $dailyRate = (float) ($storedTariffs['daily_rate'] ?? 0);
+        }
         if ($dailyRate <= 0 && $baseDays > 0) {
             $dailyRate = (float) ($summary['base_rental'] ?? 0) / $baseDays;
         }
