@@ -499,6 +499,8 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertSame($payments->first()->id, $periods[0]['payments']->first()->id);
         $this->assertSame($payments[3]->id, $periods[1]['payments']->first()->id);
         $this->assertSame($payments->last()->id, $periods[3]['payments']->first()->id);
+        $this->assertSame([-10.0, -20.0, -10.0, 10.0], $periods->pluck('ledger_balance')->all());
+        $this->assertSame(-30.0, $component->overallLedgerBalance);
     }
 
     public function test_periods_use_contract_billable_days_and_date_boundaries(): void

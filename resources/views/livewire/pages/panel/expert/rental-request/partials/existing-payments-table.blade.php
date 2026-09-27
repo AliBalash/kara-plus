@@ -5,6 +5,14 @@
     $paymentPeriodFilter = $paymentPeriodFilter ?? 'all';
     $selectedPeriod = collect($paymentPeriods)->firstWhere('key', $paymentPeriodFilter);
     $ledgerPayments = $selectedPeriod['payments'] ?? $existingPayments;
+    $overallLedgerBalance = $overallLedgerBalance ?? $existingPayments->sum(function ($payment) {
+        $amount = (float) ($payment->amount_in_aed ?? 0);
+
+        return \App\Models\Payment::isChargePaymentType($payment->payment_type) || $payment->payment_type === 'payment_back'
+            ? -$amount
+            : $amount;
+    });
+    $sectionLedgerBalance = (float) ($selectedPeriod['ledger_balance'] ?? $overallLedgerBalance);
     $ledgerTitle = $selectedPeriod['title'] ?? 'All Entries';
     $ledgerDateRange = $selectedPeriod
         ? $selectedPeriod['starts_at']->format('M d').' – '.$selectedPeriod['display_ends_at']->format('M d')
@@ -44,7 +52,7 @@
             </div>
             <div class="payments-overview__card payments-overview__card--balance">
                 <span class="payments-overview__label">Overall Balance</span>
-                <strong class="payments-overview__value {{ $remainingBalance <= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($remainingBalance, 2) }} AED</strong>
+                <strong class="payments-overview__value {{ $overallLedgerBalance >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($overallLedgerBalance, 2) }} AED</strong>
             </div>
         </div>
     </div>
@@ -206,6 +214,15 @@
                             </div>
                         @endforelse
                     </div>
-        </section>
+                    <footer class="ledger-panel__balance">
+                        <div>
+                            <span class="ledger-panel__balance-label">Section Balance</span>
+                            <span class="ledger-panel__balance-help">Customer credits − charges</span>
+                        </div>
+                        <strong class="ledger-panel__balance-value {{ $sectionLedgerBalance >= 0 ? 'is-positive' : 'is-negative' }}">
+                            {{ number_format($sectionLedgerBalance, 2) }} AED
+                        </strong>
+                    </footer>
+                </section>
     </div>
 </div>

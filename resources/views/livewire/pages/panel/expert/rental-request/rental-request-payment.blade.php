@@ -818,6 +818,7 @@
         'paymentPeriods' => $this->paymentPeriods,
         'paymentPeriodFilter' => $paymentPeriodFilter,
         'remainingBalance' => $remainingBalance,
+        'overallLedgerBalance' => $this->overallLedgerBalance,
     ])
 </div>
 
@@ -1282,6 +1283,47 @@
             color: #64748b;
         }
 
+        .ledger-panel__balance {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(248, 250, 252, 0.72);
+        }
+
+        .ledger-panel__balance-label,
+        .ledger-panel__balance-help {
+            display: block;
+        }
+
+        .ledger-panel__balance-label {
+            color: #0f172a;
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+
+        .ledger-panel__balance-help {
+            margin-top: 0.2rem;
+            color: #64748b;
+            font-size: 0.76rem;
+        }
+
+        .ledger-panel__balance-value {
+            white-space: nowrap;
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .ledger-panel__balance-value.is-positive {
+            color: #059669;
+        }
+
+        .ledger-panel__balance-value.is-negative {
+            color: #dc2626;
+        }
+
         .ledger-list {
             padding: 1rem;
             display: flex;
@@ -1547,6 +1589,11 @@
                 text-align: left;
                 align-items: flex-start;
                 justify-content: flex-start;
+            }
+
+            .ledger-panel__balance {
+                align-items: flex-start;
+                flex-direction: column;
             }
         }
     </style>

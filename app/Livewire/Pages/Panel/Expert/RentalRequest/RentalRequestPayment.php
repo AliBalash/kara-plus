@@ -356,6 +356,7 @@ class RentalRequestPayment extends Component
                 'duration_days' => $periodDays,
                 'payments' => collect(),
                 'entry_count' => 0,
+                'ledger_balance' => 0.0,
             ];
         }
 
@@ -369,9 +370,37 @@ class RentalRequestPayment extends Component
                 ->sortBy(fn (Payment $payment) => sprintf('%s-%010d', optional($this->paymentAccountingDate($payment))->format('Y-m-d H:i:s.u') ?? '', $payment->id))
                 ->values();
             $periods[$index]['entry_count'] = $periods[$index]['payments']->count();
+            $periods[$index]['ledger_balance'] = $this->paymentLedgerBalance($periods[$index]['payments']);
         }
 
         return $periods;
+    }
+
+    /**
+     * Display-only cash/charge balance for a payment period.
+     *
+     * Customer credits increase this balance while costs (fine, Salik, etc.)
+     * and money returned to the customer reduce it. It intentionally does not
+     * replace the contract's remaining-balance calculation.
+     */
+    public function getOverallLedgerBalanceProperty(): float
+    {
+        return $this->paymentLedgerBalance($this->existingPayments);
+    }
+
+    private function paymentLedgerBalance($payments): float
+    {
+        $balance = $payments->sum(function (Payment $payment): float {
+            $amount = (float) ($payment->amount_in_aed ?? 0);
+
+            if (Payment::isChargePaymentType($payment->payment_type) || $payment->payment_type === 'payment_back') {
+                return -$amount;
+            }
+
+            return $amount;
+        });
+
+        return $this->roundCurrency($balance);
     }
 
     private function paymentPeriodIndex(Payment $payment, Carbon $pickup, array $periods): int
