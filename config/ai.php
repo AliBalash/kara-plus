@@ -29,6 +29,10 @@ return [
         'dashboard_operations' => env('KARA_AI_DASHBOARD_BRIEF_ENABLED', true),
         'payment_queue' => env('KARA_AI_PAYMENT_BRIEF_ENABLED', true),
         'changes_since_login' => env('KARA_AI_CHANGES_ENABLED', true),
+        'reservation_triage' => env('KARA_AI_RESERVATION_TRIAGE_ENABLED', true),
+        'reservation_queue' => env('KARA_AI_RESERVATION_QUEUE_ENABLED', true),
+        'contract_finance' => env('KARA_AI_CONTRACT_FINANCE_ENABLED', true),
+        'fleet_outlook' => env('KARA_AI_FLEET_OUTLOOK_ENABLED', true),
     ],
     'models' => [
         'default' => [

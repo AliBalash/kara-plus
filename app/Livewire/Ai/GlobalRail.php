@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Ai;
 
+use App\Models\Contract;
 use Livewire\Component;
 
 class GlobalRail extends Component
@@ -45,6 +46,12 @@ class GlobalRail extends Component
                     'entity_id' => $cid,
                     'label' => 'Contract 360 · #'.$cid,
                 ]];
+                if ($routeName === 'rental-requests.edit' && ! auth()->user()?->hasRole('driver') && Contract::whereKey($cid)->where('current_status', Contract::STATUS_REVIEW_PENDING)->where('intake_source', Contract::INTAKE_SOURCE_WEBSITE)->exists()) {
+                    array_unshift($this->presets, ['feature' => 'reservation_triage', 'entity_id' => $cid, 'label' => 'Website request review · #'.$cid]);
+                }
+                if (in_array($routeName, ['rental-requests.payment', 'rental-requests.balance-transfer'], true)) {
+                    array_unshift($this->presets, ['feature' => 'contract_finance', 'entity_id' => $cid, 'label' => 'Contract ledger · #'.$cid]);
+                }
 
                 return;
             }
@@ -77,12 +84,28 @@ class GlobalRail extends Component
         // 2) Payment workspace — صف پرداخت
         if (in_array($routeName, ['rental-requests.confirm-payment-list', 'rental-requests.payment.list', 'rental-requests.processed-payments', 'cashier.dashboard', 'payments.edit'], true) || $paymentId) {
             $this->contextTitle = 'Payment workspace';
-            $this->contextDescription = 'Live payment queue — pending batches ranked by age and amount, directly from the database.';
+            $this->contextDescription = 'Pending ledger entries grouped by age, with links to the underlying records.';
             $this->presets = [[
                 'feature' => 'payment_queue',
                 'entity_id' => null,
                 'label' => 'Payment priorities',
             ]];
+
+            return;
+        }
+
+        if ($routeName === 'rental-requests.website-review') {
+            $this->contextTitle = 'Website review workspace';
+            $this->contextDescription = 'Open requests, unassigned work and review age from saved CRM records.';
+            $this->presets = [['feature' => 'reservation_queue', 'entity_id' => null, 'label' => 'Website review priorities']];
+
+            return;
+        }
+
+        if ($routeName === 'car.list') {
+            $this->contextTitle = 'Fleet workspace';
+            $this->contextDescription = 'Returns, pickups and recorded dates needing verification in the next seven days.';
+            $this->presets = [['feature' => 'fleet_outlook', 'entity_id' => null, 'label' => 'Fleet next 7 days']];
 
             return;
         }

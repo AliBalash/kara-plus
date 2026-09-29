@@ -6,6 +6,7 @@ use App\Livewire\Ai\InsightCard;
 use App\Models\AiFeedback;
 use App\Models\AiInsight;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -30,6 +31,23 @@ class InsightCardAuthorizationTest extends TestCase
         $component = app(InsightCard::class);
         $component->mount('dashboard_operations');
         $this->assertSame('dashboard_operations', $component->feature);
+    }
+
+    public function test_driver_cannot_open_finance_or_reservation_ai_features(): void
+    {
+        Role::findOrCreate('driver', 'web');
+        $driver = User::factory()->create();
+        $driver->assignRole('driver');
+        $this->actingAs($driver);
+
+        foreach (['reservation_triage', 'reservation_queue', 'contract_finance', 'fleet_outlook'] as $feature) {
+            try {
+                app(InsightCard::class)->mount($feature, 1);
+                $this->fail("Driver unexpectedly opened {$feature}.");
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+                $this->assertSame(403, $exception->getStatusCode());
+            }
+        }
     }
 
     public function test_feedback_is_stored_as_ai_quality_metadata_only(): void

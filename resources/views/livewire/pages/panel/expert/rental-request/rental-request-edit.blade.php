@@ -1402,6 +1402,9 @@
             <span>Unsaved form edits are not sent to Kara AI. Save the contract first, then use <strong>Check latest data</strong> below.</span>
         </div>
         <livewire:ai.insight-card feature="contract_brief" :entity-id="$contract->id" :key="'ai-contract-edit-'.$contract->id" />
+        @if($contract->isReviewPending() && $contract->isWebsiteIntake() && config('ai.features.reservation_triage') && !auth()->user()?->hasRole('driver'))
+            <div class="mt-3"><livewire:ai.insight-card feature="reservation_triage" :entity-id="$contract->id" :key="'ai-reservation-triage-'.$contract->id" /></div>
+        @endif
     </section>
 </div>
 

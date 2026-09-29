@@ -16,6 +16,7 @@ class AiInsightService
 {
     public function generate(string $feature, ?int $entityId = null, bool $force = false): array
     {
+        abort_if(Auth::user()?->hasRole('driver') && in_array($feature, ['reservation_triage', 'reservation_queue', 'contract_finance', 'fleet_outlook'], true), 403);
         if (! config('ai.enabled') || ! config('ai.features.'.$feature, false)) {
             return ['state' => 'disabled'];
         }
@@ -90,6 +91,10 @@ class AiInsightService
             'contract_brief' => $this->contractPayload($engine, $entityId),
             'customer_brief' => $this->customerPayload($engine, $entityId),
             'vehicle_brief' => $this->vehiclePayload($engine, $entityId),
+            'reservation_triage' => app(AiBusinessBriefs::class)->reservation((int) $entityId),
+            'reservation_queue' => app(AiBusinessBriefs::class)->reservationQueue(),
+            'contract_finance' => app(AiBusinessBriefs::class)->finance((int) $entityId),
+            'fleet_outlook' => app(AiBusinessBriefs::class)->fleetOutlook(),
             'dashboard_operations' => [$engine->dashboard(), [], 'dashboard'],
             'payment_queue' => [$engine->payments(), [], 'payment_queue'],
             'changes_since_login' => [$engine->changes(Auth::id()), ['period_hours' => 24], 'user'],

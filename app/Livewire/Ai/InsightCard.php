@@ -42,6 +42,7 @@ class InsightCard extends Component
     {
         abort_unless(auth()->check(), 403);
         abort_unless(array_key_exists($feature, config('ai.features', [])), 404);
+        abort_if(auth()->user()->hasRole('driver') && in_array($feature, ['reservation_triage', 'reservation_queue', 'contract_finance', 'fleet_outlook'], true), 403);
         $this->feature = $feature;
         $this->entityId = $entityId;
     }

@@ -10,9 +10,11 @@ use App\Models\Customer;
 use App\Models\Insurance;
 use App\Models\Payment;
 use App\Models\User;
+use App\Livewire\Ai\InsightCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AiInsightServiceTest extends TestCase
@@ -63,6 +65,11 @@ class AiInsightServiceTest extends TestCase
         $this->assertNotNull($first['generated_at']);
         $this->assertNotNull($first['expires_at']);
         $this->assertDatabaseCount('ai_insights', 1);
+        Livewire::test(InsightCard::class, ['feature' => 'contract_brief', 'entityId' => $contract->id])
+            ->call('load')
+            ->assertSee('Contract pulse')
+            ->assertSee('Review required')
+            ->assertSee('Late return');
         $run = AiRun::where('status', 'success')->firstOrFail();
         $this->assertSame(101, $run->input_tokens);
         $this->assertSame(32, $run->output_tokens);

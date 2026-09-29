@@ -7,6 +7,10 @@
             'dashboard_operations' => ['title' => 'Today’s operations', 'subtitle' => 'Actionable priorities for you — overdue, pending, and today’s schedule'],
             'payment_queue' => ['title' => 'Payment priorities', 'subtitle' => 'Recent reviews, historical backlog and date anomalies'],
             'changes_since_login' => ['title' => 'Team changes', 'subtitle' => 'Business activity since your last login — no technical noise'],
+            'reservation_triage' => ['title' => 'Website request review', 'subtitle' => 'Saved quote, vehicle choice and live approval checks'],
+            'reservation_queue' => ['title' => 'Website review queue', 'subtitle' => 'Open requests, ownership and waiting time'],
+            'contract_finance' => ['title' => 'Contract ledger', 'subtitle' => 'Why the operational balance looks this way'],
+            'fleet_outlook' => ['title' => 'Fleet next 7 days', 'subtitle' => 'Returns, pickups and records needing verification'],
         ][$feature] ?? ['title' => \Illuminate\Support\Str::headline($feature), 'subtitle' => 'Verified operational insight'];
         $generated = $generatedAt ? \Illuminate\Support\Carbon::parse($generatedAt) : null;
         $expires = $expiresAt ? \Illuminate\Support\Carbon::parse($expiresAt) : null;
@@ -47,6 +51,13 @@
                             @else
                                 {{ $fact['title'] }}
                             @endif
+                            @if(isset($fact['metrics']['count']))
+                                <strong>· {{ number_format((int) $fact['metrics']['count']) }}</strong>
+                            @elseif(isset($fact['metrics']['amount_aed']))
+                                <strong>· AED {{ number_format((float) $fact['metrics']['amount_aed'], 2) }}</strong>
+                            @elseif(isset($fact['metrics']['quote_aed'], $fact['metrics']['saved_total_aed']))
+                                <strong>· AED {{ number_format((float) $fact['metrics']['quote_aed'], 2) }} → {{ number_format((float) $fact['metrics']['saved_total_aed'], 2) }}</strong>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
@@ -57,7 +68,9 @@
             <button class="btn btn-sm kara-btn-outline mt-3" wire:click="load" wire:loading.attr="disabled">Check again</button>
         @else
             @if($feature === 'contract_brief' && isset($meta['score']))
-                @php($pulseTone = $meta['score'] >= 85 ? 'success' : ($meta['score'] >= 60 ? 'warning' : 'danger'))
+                @php
+                    $pulseTone = $meta['score'] >= 85 ? 'success' : ($meta['score'] >= 60 ? 'warning' : 'danger');
+                @endphp
                 <div class="kara-ai-pulse-card is-{{ $pulseTone }}">
                     <div class="kara-ai-pulse-card__score">{{ $meta['score'] }}<span>/100</span></div>
                     <div class="kara-ai-pulse-card__text"><strong>Contract pulse · {{ $meta['label'] }}</strong><small>{{ $meta['issues_count'] }} item(s) need your eye</small></div>
@@ -70,6 +83,31 @@
                 <p>{{ $insight['summary'] ?? 'No summary was returned.' }}</p>
                 <small>AI wording is advisory. Check the linked records before acting.</small>
             </div>
+
+            @if(in_array($feature, ['reservation_triage', 'reservation_queue', 'contract_finance', 'fleet_outlook'], true) && $facts)
+                @php
+                    $verifiedFacts = collect($facts)->sortByDesc('severity')->take(5);
+                    if ($feature === 'fleet_outlook') {
+                        $verifiedFacts = collect($facts)->filter(fn ($fact) => empty($fact['entity_id']))->sortByDesc('severity')->take(6)
+                            ->concat(collect($facts)->filter(fn ($fact) => !empty($fact['entity_id']))->sortByDesc('severity')->take(2));
+                    }
+                @endphp
+                <div class="kara-ai-verified">
+                    <strong><i class="bx bx-data me-1"></i>Verified panel facts</strong>
+                    @foreach($verifiedFacts as $fact)
+                        <div class="kara-ai-verified__row">
+                            <a href="{{ $fact['evidence_url'] }}">{{ $fact['title'] }}</a>
+                            @if(isset($fact['metrics']['count']))
+                                <span>{{ number_format((int) $fact['metrics']['count']) }}</span>
+                            @elseif(isset($fact['metrics']['amount_aed']))
+                                <span>AED {{ number_format((float) $fact['metrics']['amount_aed'], 2) }}</span>
+                            @elseif(isset($fact['metrics']['quote_aed'], $fact['metrics']['saved_total_aed']))
+                                <span>AED {{ number_format((float) $fact['metrics']['quote_aed'], 2) }} → {{ number_format((float) $fact['metrics']['saved_total_aed'], 2) }}</span>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
 
             @foreach([
                 'critical_alerts' => ['Critical', 'danger', 'bx-error-circle'],
@@ -183,6 +221,11 @@
             .kara-ai-card__answer{ background:var(--kara-soft); border:1px solid var(--kara-border); border-radius:14px; padding:14px 15px; margin-bottom:14px; }
             .kara-ai-card__answer h6{ font-size:14px!important; font-weight:750!important; color:var(--kara-ink)!important; margin:0 0 6px!important; line-height:1.35; }
             .kara-ai-card__answer p{ margin:0!important; color:#343840!important; font-size:13px!important; line-height:1.65!important; }
+            .kara-ai-verified{ margin-bottom:14px; padding:12px 13px; border:1px solid #dbeafe; border-radius:12px; background:#f8fbff; }
+            .kara-ai-verified>strong{ display:block; color:#1e40af; font-size:11px; margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em; }
+            .kara-ai-verified__row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:5px 0; font-size:12px; border-top:1px solid #eaf1fb; }
+            .kara-ai-verified__row a{ color:#334155; text-decoration:none; } .kara-ai-verified__row a:hover{ text-decoration:underline; }
+            .kara-ai-verified__row span{ flex:0 0 auto; color:#0f172a; font-weight:800; }
             .kara-ai-signal-group{ margin-top:14px; }
             .kara-ai-signal-group__title{ display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; margin-bottom:8px; }
             .kara-ai-signal-group__title.is-danger{ color:var(--kara-red); } .kara-ai-signal-group__title.is-warning{ color:var(--kara-warning); } .kara-ai-signal-group__title.is-success{ color:var(--kara-success); } .kara-ai-signal-group__title.is-secondary{ color:#6b7280; }
