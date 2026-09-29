@@ -59,7 +59,7 @@ class AiInsightServiceTest extends TestCase
         $preview = Livewire::test(InsightCard::class, ['feature' => 'contract_brief', 'entityId' => $contract->id])
             ->call('loadFacts')
             ->assertSet('state', 'preview')
-            ->assertSee('Verified facts are ready');
+            ->assertSee('Preparing AI summary');
         $this->assertNotEmpty($preview->get('facts'));
         Http::assertNothingSent();
 
@@ -147,6 +147,7 @@ class AiInsightServiceTest extends TestCase
 
     public function test_malformed_ai_response_is_not_cached_or_displayed(): void
     {
+        $this->actingAs(User::factory()->create());
         config()->set('ai.features.dashboard_operations', true);
         Http::fake(['ajil.test/v1/chat/completions' => Http::response([
             'model' => 'llama-3.3-70b-versatile',
@@ -158,6 +159,11 @@ class AiInsightServiceTest extends TestCase
         $this->assertSame('unavailable', $result['state']);
         $this->assertDatabaseCount('ai_insights', 0);
         $this->assertDatabaseHas('ai_runs', ['feature' => 'dashboard_operations', 'status' => 'unavailable']);
+        Livewire::test(InsightCard::class, ['feature' => 'dashboard_operations'])
+            ->call('load')
+            ->assertSee('AI summary unavailable')
+            ->assertSee('Current records')
+            ->assertDontSee('Panel workflows are unaffected');
     }
 
     public function test_dashboard_context_is_cacheable_when_the_verified_facts_are_unchanged(): void

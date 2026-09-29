@@ -9,9 +9,7 @@ class GlobalRail extends Component
 {
     public bool $open = false;
 
-    public string $contextTitle = 'Kara AI';
-
-    public string $contextDescription = 'Open a supported workspace to see a page-aware insight.';
+    public string $contextTitle = 'Overview';
 
     /** @var array<int, array{feature: string, entity_id: int|null, label: string}> */
     public array $presets = [];
@@ -39,8 +37,7 @@ class GlobalRail extends Component
             // fallback: try to extract contractId from any param
             $cid = is_numeric($contractId) ? (int) $contractId : null;
             if ($cid) {
-                $this->contextTitle = 'Contract workspace';
-                $this->contextDescription = 'Page-aware brief for this contract — customer history, lifecycle, vehicle, documents and payments from the live database.';
+                $this->contextTitle = 'Contract #'.$cid;
                 $this->presets = [[
                     'feature' => 'contract_brief',
                     'entity_id' => $cid,
@@ -58,8 +55,7 @@ class GlobalRail extends Component
         }
 
         if (is_numeric($customerId) && in_array($routeName, ['customer.detail', 'customer.history', 'customer.debt'], true)) {
-            $this->contextTitle = 'Customer workspace';
-            $this->contextDescription = 'Customer activity and follow-up priorities from verified, non-identifying CRM data.';
+            $this->contextTitle = 'Customer #'.(int) $customerId;
             $this->presets = [[
                 'feature' => 'customer_brief',
                 'entity_id' => (int) $customerId,
@@ -70,8 +66,7 @@ class GlobalRail extends Component
         }
 
         if (is_numeric($carId) && in_array($routeName, ['car.detail', 'car.edit'], true)) {
-            $this->contextTitle = 'Vehicle workspace';
-            $this->contextDescription = 'Fleet readiness, service and booking context from verified records.';
+            $this->contextTitle = 'Vehicle #'.(int) $carId;
             $this->presets = [[
                 'feature' => 'vehicle_brief',
                 'entity_id' => (int) $carId,
@@ -83,8 +78,7 @@ class GlobalRail extends Component
 
         // 2) Payment workspace — صف پرداخت
         if (in_array($routeName, ['rental-requests.confirm-payment-list', 'rental-requests.payment.list', 'rental-requests.processed-payments', 'cashier.dashboard', 'payments.edit'], true) || $paymentId) {
-            $this->contextTitle = 'Payment workspace';
-            $this->contextDescription = 'Pending ledger entries grouped by age, with links to the underlying records.';
+            $this->contextTitle = 'Payments';
             $this->presets = [[
                 'feature' => 'payment_queue',
                 'entity_id' => null,
@@ -95,16 +89,14 @@ class GlobalRail extends Component
         }
 
         if ($routeName === 'rental-requests.website-review') {
-            $this->contextTitle = 'Website review workspace';
-            $this->contextDescription = 'Open requests, unassigned work and review age from saved CRM records.';
+            $this->contextTitle = 'Website requests';
             $this->presets = [['feature' => 'reservation_queue', 'entity_id' => null, 'label' => 'Website review priorities']];
 
             return;
         }
 
         if ($routeName === 'car.list') {
-            $this->contextTitle = 'Fleet workspace';
-            $this->contextDescription = 'Returns, pickups and recorded dates needing verification in the next seven days.';
+            $this->contextTitle = 'Fleet';
             $this->presets = [['feature' => 'fleet_outlook', 'entity_id' => null, 'label' => 'Fleet next 7 days']];
 
             return;
@@ -112,8 +104,7 @@ class GlobalRail extends Component
 
         // 3) Dashboard — ترکیبی از عملیات امروز + تغییرات همکاران
         if ($routeName === 'expert.dashboard') {
-            $this->contextTitle = 'Operations workspace';
-            $this->contextDescription = 'Today’s priorities and only business changes since your last login — no technical noise.';
+            $this->contextTitle = 'Today';
             $this->presets = [
                 ['feature' => 'dashboard_operations', 'entity_id' => null, 'label' => 'Today’s operations'],
                 ['feature' => 'changes_since_login', 'entity_id' => null, 'label' => 'What changed since you were away'],
@@ -127,17 +118,13 @@ class GlobalRail extends Component
         if (str_starts_with($routeName, 'expert.') || str_starts_with($routeName, 'rental-requests.') || str_starts_with($routeName, 'reports.') || str_starts_with($routeName, 'leads.') || str_starts_with($routeName, 'customer.') || str_starts_with($routeName, 'car.')) {
             // Tailor title per section but keep data source verified
             if (str_starts_with($routeName, 'leads.')) {
-                $this->contextTitle = 'Leads workspace';
-                $this->contextDescription = 'Daily lead insights and recent business changes — from verified panel data.';
+                $this->contextTitle = 'Leads';
             } elseif (str_starts_with($routeName, 'car.')) {
-                $this->contextTitle = 'Fleet workspace';
-                $this->contextDescription = 'Fleet health and today’s operations — availability and attention items from the database.';
+                $this->contextTitle = 'Fleet';
             } elseif (str_starts_with($routeName, 'customer.')) {
-                $this->contextTitle = 'Customer workspace';
-                $this->contextDescription = 'Customer operations and recent team activity — verified records only.';
+                $this->contextTitle = 'Customers';
             } else {
-                $this->contextTitle = 'Expert workspace';
-                $this->contextDescription = 'Page-aware operational brief — today’s priorities from the live database.';
+                $this->contextTitle = 'Today';
             }
 
             // For generic pages show a single most-useful insight to avoid noise
@@ -156,8 +143,7 @@ class GlobalRail extends Component
         }
 
         // 5) Fallback — never show empty, keep copilot ready
-        $this->contextTitle = 'Kara AI';
-        $this->contextDescription = 'Open a supported workspace to see a page-aware insight, or check today’s operations.';
+        $this->contextTitle = 'Today';
         $this->presets = [
             ['feature' => 'dashboard_operations', 'entity_id' => null, 'label' => 'Today’s operations'],
         ];

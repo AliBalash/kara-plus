@@ -1,17 +1,17 @@
 <section class="card border-0 kara-ai-card" wire:init="loadFacts" aria-live="polite">
     @php
         $featureCopy = [
-            'contract_brief' => ['title' => 'Contract 360', 'subtitle' => 'Everything about this request — customer, lifecycle, vehicle, docs & payments'],
-            'customer_brief' => ['title' => 'Customer 360', 'subtitle' => 'Contract history, pending items and verified follow-up'],
-            'vehicle_brief' => ['title' => 'Vehicle 360', 'subtitle' => 'Availability, maintenance, insurance and bookings'],
-            'dashboard_operations' => ['title' => 'Today’s operations', 'subtitle' => 'Actionable priorities for you — overdue, pending, and today’s schedule'],
-            'payment_queue' => ['title' => 'Payment priorities', 'subtitle' => 'Recent reviews, historical backlog and date anomalies'],
-            'changes_since_login' => ['title' => 'Team changes', 'subtitle' => 'Business activity since your last login — no technical noise'],
-            'reservation_triage' => ['title' => 'Website request review', 'subtitle' => 'Saved quote, vehicle choice and live approval checks'],
-            'reservation_queue' => ['title' => 'Website review queue', 'subtitle' => 'Open requests, ownership and waiting time'],
-            'contract_finance' => ['title' => 'Contract ledger', 'subtitle' => 'Why the operational balance looks this way'],
-            'fleet_outlook' => ['title' => 'Fleet next 7 days', 'subtitle' => 'Returns, pickups and records needing verification'],
-        ][$feature] ?? ['title' => \Illuminate\Support\Str::headline($feature), 'subtitle' => 'Verified operational insight'];
+            'contract_brief' => 'Contract 360',
+            'customer_brief' => 'Customer 360',
+            'vehicle_brief' => 'Vehicle 360',
+            'dashboard_operations' => 'Today’s operations',
+            'payment_queue' => 'Payment priorities',
+            'changes_since_login' => 'Team changes',
+            'reservation_triage' => 'Website request review',
+            'reservation_queue' => 'Website review queue',
+            'contract_finance' => 'Contract ledger',
+            'fleet_outlook' => 'Fleet next 7 days',
+        ][$feature] ?? \Illuminate\Support\Str::headline($feature);
         $featureIcon = [
             'contract_brief' => 'bx-file',
             'customer_brief' => 'bx-user-circle',
@@ -34,35 +34,28 @@
                 <img src="{{ asset('assets/panel/assets/img/ai/kara-ai-logo.jpg') }}" alt="">
             </span>
             <div class="kara-ai-card__head-text">
-                <div class="kara-ai-card__eyebrow">Kara AI · verified facts</div>
-                <h6 class="kara-ai-card__title">{{ $featureCopy['title'] }}</h6>
-                <p class="kara-ai-card__subtitle">{{ $featureCopy['subtitle'] }}</p>
+                <h6 class="kara-ai-card__title">{{ $featureCopy }}</h6>
             </div>
             <div class="kara-ai-card__head-meta">
                 <span class="kara-ai-card__feature-icon" aria-hidden="true"><i class="bx {{ $featureIcon }}"></i></span>
-                @if($cached)
-                    <span class="kara-ai-cache-badge" title="Facts unchanged, reused valid cache"><i class="bx bx-check-circle"></i> Up to date</span>
-                @else
-                    <span class="kara-ai-live-badge"><span class="live-dot"></span> Live</span>
-                @endif
             </div>
         </div>
 
         @if($state === 'idle' || $state === 'loading')
             <div class="kara-ai-card__loading">
                 <span class="kara-ai-card__loader" aria-hidden="true"></span>
-                <div><strong>Reading this workspace…</strong><small>Collecting verified facts from the database.</small></div>
+                <strong>Loading records…</strong>
             </div>
         @elseif($state === 'disabled')
-            <div class="kara-ai-card__message"><i class="bx bx-power-off"></i><div><strong>Assistant is disabled</strong><small>Enable KARA_AI_ENABLED to use it.</small></div></div>
+            <div class="kara-ai-card__message"><i class="bx bx-power-off"></i><strong>AI is off</strong></div>
         @elseif($state === 'preview' || $state === 'unavailable')
             @if($state === 'preview')
-                <div class="kara-ai-card__message" x-init="$wire.load()"><i class="bx bx-loader-circle bx-spin" aria-hidden="true"></i><div><strong>Verified facts are ready</strong><small>AI is preparing the explanation. You can open the linked records now.</small></div></div>
+                <div class="kara-ai-card__message" x-init="$wire.load()"><i class="bx bx-loader-circle bx-spin" aria-hidden="true"></i><strong>Preparing AI summary…</strong></div>
             @else
-                <div class="kara-ai-card__message"><i class="bx bx-cloud-lightning" aria-hidden="true"></i><div><strong>Insight is temporarily unavailable</strong><small>Panel workflows are unaffected.</small></div></div>
+                <div class="kara-ai-card__message"><i class="bx bx-cloud-lightning" aria-hidden="true"></i><strong>AI summary unavailable</strong></div>
             @endif
             @if($facts)
-                <div class="mt-3 small fw-semibold">Verified checks from the database</div>
+                <div class="mt-3 small fw-semibold">Current records</div>
                 <ul class="list-unstyled mt-2 mb-0">
                     @foreach($facts as $fact)
                         <li class="mb-2">
@@ -86,7 +79,7 @@
                 <button class="btn btn-sm kara-btn-outline mt-3" wire:click="load" wire:loading.attr="disabled">Try again</button>
             @endif
         @elseif($state === 'busy')
-            <div class="kara-ai-card__message"><i class="bx bx-loader-circle bx-spin"></i><div><strong>Already preparing</strong><small>Check again shortly — duplicate call skipped.</small></div></div>
+            <div class="kara-ai-card__message"><i class="bx bx-loader-circle bx-spin"></i><strong>Analysis in progress</strong></div>
             <button class="btn btn-sm kara-btn-outline mt-3" wire:click="load" wire:loading.attr="disabled">Check again</button>
         @else
             @if($feature === 'contract_brief' && isset($meta['score']))
@@ -103,7 +96,6 @@
             <div class="kara-ai-card__answer">
                 <h6>{{ $insight['headline'] ?? 'Operational brief' }}</h6>
                 <p>{{ $insight['summary'] ?? 'No summary was returned.' }}</p>
-                <small>AI wording is advisory. Check the linked records before acting.</small>
             </div>
 
             @if(in_array($feature, ['reservation_triage', 'reservation_queue', 'contract_finance', 'fleet_outlook'], true) && $facts)
@@ -228,13 +220,7 @@
             .kara-ai-card__feature-icon{ width:34px; height:34px; display:grid; place-items:center; border:1px solid #ffe4e6; border-radius:11px; background:linear-gradient(145deg,#fff,#fff1f2); color:var(--kara-red); box-shadow:0 4px 9px rgba(237,28,36,.09), inset 0 1px 0 #fff; transform:translateY(0); transition:transform .25s ease, box-shadow .25s ease; }
             .kara-ai-card__feature-icon i{ font-size:18px; }
             .kara-ai-card:hover .kara-ai-card__feature-icon{ transform:translateY(-3px); box-shadow:0 8px 16px rgba(237,28,36,.14), inset 0 1px 0 #fff; }
-            .kara-ai-card__eyebrow{ display:inline-flex; align-items:center; gap:6px; color:var(--kara-red); font-size:10.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; margin-bottom:6px; }
-            .kara-ai-card__title{ font-size:15px!important; font-weight:750!important; color:var(--kara-ink)!important; margin:0 0 3px!important; letter-spacing:-.01em; }
-            .kara-ai-card__subtitle{ color:var(--kara-muted)!important; font-size:12.5px!important; line-height:1.5!important; margin:0!important; max-width:32ch; }
-            .kara-ai-cache-badge, .kara-ai-live-badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; border:1px solid; }
-            .kara-ai-cache-badge{ background:#f0fdf4; color:#15803d; border-color:#dcfce7; }
-            .kara-ai-live-badge{ background:#fff1f2; color:#be123c; border-color:#ffe4e6; }
-            .kara-ai-live-badge .live-dot{ width:7px; height:7px; border-radius:50%; background:var(--kara-red); box-shadow:0 0 0 4px rgba(237,28,36,.12); animation:kara-pulse 1.8s infinite; }
+            .kara-ai-card__title{ font-size:15px!important; font-weight:750!important; color:var(--kara-ink)!important; margin:0!important; letter-spacing:-.01em; }
             .kara-ai-card__loading,.kara-ai-card__message{ display:flex; align-items:center; gap:14px; padding:16px; border-radius:14px; background:var(--kara-soft); border:1px solid var(--kara-border); color:#1f2328; }
             .kara-ai-card__loading strong,.kara-ai-card__message strong{ font-size:13px; }
             .kara-ai-card__loading small,.kara-ai-card__message small{ display:block; margin-top:3px; color:var(--kara-muted); font-size:12px; line-height:1.4; }
@@ -286,9 +272,9 @@
             .kara-btn-icon:hover{ background:var(--kara-soft); color:var(--kara-ink); border-color:#d1d5db; }
             .feedback-label{ font-size:12px; color:var(--kara-muted); font-weight:600; } .feedback-thanks{ display:inline-flex; align-items:center; gap:4px; color:var(--kara-success); font-size:12.5px; font-weight:700; }
             .kara-ai-card__overlay{ position:absolute; inset:0; z-index:5; background:rgba(255,255,255,.82); backdrop-filter:blur(4px); display:none; flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:var(--radius); color:#1f2328; font-size:13px; font-weight:600; }
-            @keyframes kara-spin{ to{ transform:rotate(360deg); } } @keyframes kara-pulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.15); opacity:.7; } }
+            @keyframes kara-spin{ to{ transform:rotate(360deg); } }
             @media (max-width:640px){ .kara-ai-card .card-body{ padding:16px!important; } .kara-ai-card__header{ gap:8px; } .kara-ai-card__brand{ flex-basis:34px; width:34px; height:34px; } .kara-ai-card__feature-icon{ width:30px; height:30px; } .kara-ai-card__actions{ flex-direction:column; align-items:stretch; } .action-left,.action-right{ justify-content:space-between; } }
-            @media (prefers-reduced-motion:reduce){ .kara-ai-card__loader,.live-dot,.kara-ai-card__message .bx-spin{ animation:none!important; } .kara-ai-card__brand,.kara-ai-card__feature-icon{ transition:none!important; } }
+            @media (prefers-reduced-motion:reduce){ .kara-ai-card__loader,.kara-ai-card__message .bx-spin{ animation:none!important; } .kara-ai-card__brand,.kara-ai-card__feature-icon{ transition:none!important; } }
         </style>
     @endonce
 </section>

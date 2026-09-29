@@ -4,7 +4,7 @@
             aria-expanded="{{ $open ? 'true' : 'false' }}" aria-controls="kara-ai-context-panel">
             <span class="kara-ai-rail__trigger-copy">
                 <strong>Kara AI</strong>
-                <small>{{ count($presets) ? 'Ready for this page' : 'AI ready' }}</small>
+                <small>{{ $contextTitle }}</small>
             </span>
             <i class="bx bx-chevron-left kara-ai-rail__chevron" aria-hidden="true"></i>
             <span class="kara-ai-orbit" aria-hidden="true">
@@ -21,12 +21,7 @@
                         <img src="{{ asset('assets/panel/assets/img/ai/kara-ai-logo.jpg') }}" alt="">
                     </span>
                     <div class="kara-ai-rail__header-text">
-                        <div class="kara-ai-rail__eyebrow-row">
-                            <span class="kara-ai-eyebrow">Page-aware · verified</span>
-                            <span class="kara-ai-status"><i></i> Live</span>
-                        </div>
-                        <h5>{{ $contextTitle }}</h5>
-                        <p>{{ $contextDescription }}</p>
+                        <h5>Kara AI · {{ $contextTitle }}</h5>
                     </div>
                 </div>
                 <button type="button" class="kara-ai-rail__close" wire:click="toggle" aria-label="Close Kara AI">
@@ -34,19 +29,9 @@
                 </button>
             </header>
 
-            <div class="kara-ai-scope-note">
-                <i class="bx bx-shield-quarter"></i>
-                <span><strong>Read-only:</strong> Explains verified database records. Never edits or approves.</span>
-            </div>
-
             @if(count($presets))
                 <div class="kara-ai-rail__content">
                     @foreach($presets as $preset)
-                        <div class="kara-ai-preset-label">
-                            <span class="preset-dot"></span>
-                            {{ $preset['label'] }}
-                            <span class="preset-page-hint">· page-aware</span>
-                        </div>
                         <livewire:ai.insight-card
                             :feature="$preset['feature']"
                             :entity-id="$preset['entity_id']"
@@ -62,15 +47,6 @@
                 </div>
             @endif
 
-            <div class="kara-ai-capabilities">
-                <span><i class="bx bx-layout" aria-hidden="true"></i>Operations</span>
-                <span><i class="bx bx-file-blank" aria-hidden="true"></i>Contracts</span>
-                <span><i class="bx bx-user-circle" aria-hidden="true"></i>Customers</span>
-                <span><i class="bx bx-car" aria-hidden="true"></i>Fleet</span>
-                <span><i class="bx bx-credit-card" aria-hidden="true"></i>Payments</span>
-                <span><i class="bx bx-calendar-check" aria-hidden="true"></i>Requests</span>
-            </div>
-            <div class="kara-ai-rail__footer">Verified data only · No guesswork</div>
         </section>
     @endif
 
@@ -101,37 +77,21 @@
             /* Panel — premium white sheet */
             .kara-ai-rail__panel{ pointer-events:auto; position:fixed; right:16px; top:50%; transform:translateY(-50%); width:min(440px, calc(100vw - 24px)); max-height:calc(100vh - 28px); overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--kara-border); border-radius:22px; background:#fff; box-shadow:0 24px 64px rgba(15,23,42,.14), 0 8px 24px rgba(15,23,42,.08); animation:kara-ai-panel-in .32s cubic-bezier(.22,1,.36,1); scrollbar-width:thin; scrollbar-color:#e2e8f0 transparent; }
             .kara-ai-rail__panel::-webkit-scrollbar{ width:6px; } .kara-ai-rail__panel::-webkit-scrollbar-thumb{ background:#e2e8f0; border-radius:999px; }
-            .kara-ai-rail__header{ position:sticky; top:0; z-index:2; padding:18px 16px; background:rgba(255,255,255,.94); backdrop-filter:blur(12px); border-bottom:1px solid #f1f5f9; border-radius:22px 22px 0 0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+            .kara-ai-rail__header{ position:sticky; top:0; z-index:2; padding:14px 16px; background:rgba(255,255,255,.94); backdrop-filter:blur(12px); border-bottom:1px solid #f1f5f9; border-radius:22px 22px 0 0; display:flex; align-items:center; justify-content:space-between; gap:12px; }
             .kara-ai-rail__header-main{ display:flex; gap:12px; align-items:flex-start; min-width:0; flex:1; }
             .kara-ai-rail__header-text{ min-width:0; flex:1; }
-            .kara-ai-rail__eyebrow-row{ display:flex; align-items:center; gap:8px; margin-bottom:5px; }
-            .kara-ai-eyebrow{ color:var(--kara-red); font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; display:flex; align-items:center; gap:5px; }
-            .kara-ai-eyebrow::before{ content:'✦'; color:var(--kara-red); font-size:10px; }
-            .kara-ai-status{ display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border-radius:999px; background:#f0fdf4; border:1px solid #dcfce7; color:#166534; font-size:10.5px; font-weight:700; letter-spacing:.01em; }
-            .kara-ai-status i{ width:6px; height:6px; border-radius:50%; background:#10b981; box-shadow:0 0 0 4px rgba(16,185,129,.14); }
-            .kara-ai-rail__header h5{ font-size:14.5px!important; font-weight:800!important; color:var(--kara-ink)!important; margin:0 0 4px!important; letter-spacing:-.02em; line-height:1.25; }
-            .kara-ai-rail__header p{ color:var(--kara-muted)!important; font-size:12.5px!important; line-height:1.55!important; margin:0!important; max-width:32ch; }
+            .kara-ai-rail__header h5{ font-size:14.5px!important; font-weight:800!important; color:var(--kara-ink)!important; margin:0!important; letter-spacing:-.02em; line-height:1.25; }
             .kara-ai-rail__close{ flex:0 0 36px; width:36px; height:36px; border:1px solid #f1f5f9; border-radius:11px; background:#fff; color:var(--kara-muted); display:grid; place-items:center; font-size:18px; cursor:pointer; transition:all .16s ease; box-shadow:0 1px 3px rgba(15,23,42,.04); }
             .kara-ai-rail__close:hover{ background:#f8fafc; color:var(--kara-ink); border-color:#e2e8f0; transform:translateY(-1px); box-shadow:0 4px 10px rgba(15,23,42,.06); }
-            .kara-ai-scope-note{ margin:12px 12px 0; padding:11px 12px; border-radius:12px; background:#f8fafc; border:1px solid #f1f5f9; color:#475569; display:flex; gap:9px; align-items:flex-start; font-size:11.5px; line-height:1.55; }
-            .kara-ai-scope-note i{ color:var(--kara-red); font-size:15px; margin-top:1px; flex:0 0 auto; }
             .kara-ai-rail__content{ display:grid; gap:14px; padding:12px; }
-            .kara-ai-preset-label{ display:flex; align-items:center; gap:7px; color:#64748b; font-size:10.5px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; padding:2px 2px 0; }
-            .preset-dot{ width:7px; height:7px; border-radius:50%; background:var(--kara-red); box-shadow:0 0 0 4px rgba(237,28,36,.08); } .preset-page-hint{ font-weight:600; letter-spacing:.02em; text-transform:none; color:#94a3b8; font-size:10px; }
             .kara-ai-empty{ margin:12px; padding:28px 20px; border:1.5px dashed #e2e8f0; border-radius:16px; background:#fff; text-align:center; }
             .kara-ai-empty__icon{ width:48px; height:48px; margin:0 auto 12px; border-radius:14px; background:#fff1f2; color:var(--kara-red); display:grid; place-items:center; font-size:20px; border:1px solid #ffe4e6; }
             .kara-ai-empty h6{ font-size:14px; font-weight:800; color:var(--kara-ink); margin:0 0 6px; } .kara-ai-empty p{ color:var(--kara-muted); font-size:12.5px; line-height:1.6; margin:0 0 14px; }
             .kara-rail-cta{ display:inline-flex; align-items:center; gap:6px; background:var(--kara-ink); color:#fff; padding:9px 16px; border-radius:11px; font-size:12.5px; font-weight:700; text-decoration:none; transition:all .18s ease; box-shadow:0 4px 12px rgba(15,23,42,.12); } .kara-rail-cta:hover{ background:#1e293b; color:#fff; transform:translateY(-1px); box-shadow:0 8px 20px rgba(15,23,42,.16); }
-            .kara-ai-capabilities{ margin:0 12px; padding:12px 0; border-top:1px solid #f1f5f9; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
-            .kara-ai-capabilities span{ padding:10px 4px; border-radius:11px; background:#f8fafc; border:1px solid #f1f5f9; color:#475569; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; font-size:10.5px; font-weight:600; line-height:1.2; box-shadow:0 1px 2px rgba(15,23,42,.04); transition:background .2s ease, border-color .2s ease, transform .25s ease, box-shadow .25s ease; }
-            .kara-ai-capabilities span:hover{ background:#fff; border-color:#fecdd3; transform:translateY(-3px); box-shadow:0 7px 15px rgba(15,23,42,.1); }
-            .kara-ai-capabilities i{ color:var(--kara-red); font-size:18px; transition:transform .25s ease; }
-            .kara-ai-capabilities span:hover i{ transform:scale(1.15) rotate(-5deg); }
-            .kara-ai-rail__footer{ text-align:center; padding:10px 12px 14px; color:#94a3b8; font-size:10.5px; font-weight:600; letter-spacing:.02em; }
             @keyframes kara-ai-panel-in{ from{ opacity:0; transform:translate(16px, -50%) scale(.99); } to{ opacity:1; transform:translate(0, -50%) scale(1); } }
             @media (max-width:767.98px){ .kara-ai-rail__dock{ top:auto; bottom:88px; width:64px; height:64px; border-radius:16px 0 0 16px; } .kara-ai-rail__dock:hover,.kara-ai-rail__dock:focus-within,.kara-ai-rail.is-open .kara-ai-rail__dock{ width:64px; transform:none; } .kara-ai-rail__trigger-copy, .kara-ai-rail__chevron{ display:none; } .kara-ai-rail__panel{ right:8px; bottom:8px; top:auto; width:calc(100vw - 16px); max-height:calc(100vh - 16px); transform:none; border-radius:18px; animation-name:kara-ai-panel-mobile-in; } }
             @keyframes kara-ai-panel-mobile-in{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
-            @media (prefers-reduced-motion:reduce){ .kara-ai-rail__dock, .kara-ai-rail__panel, .kara-ai-orbit, .kara-ai-capabilities span, .kara-ai-capabilities i{ transition:none!important; animation:none!important; } }
+            @media (prefers-reduced-motion:reduce){ .kara-ai-rail__dock, .kara-ai-rail__panel, .kara-ai-orbit{ transition:none!important; animation:none!important; } }
         </style>
     @endonce
 </aside>
