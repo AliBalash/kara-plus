@@ -12,6 +12,27 @@ class AuditExportJobTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_disabled_export_keeps_queued_event_pending(): void
+    {
+        config()->set('audit.export.enabled', false);
+        config()->set('audit.elasticsearch.enabled', false);
+        Http::fake();
+
+        $event = AuditEvent::create([
+            'event_uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'occurred_at' => now(),
+            'action' => 'http_request',
+            'export_status' => 'pending',
+        ]);
+
+        (new ExportAuditEventJob($event->id))->handle(app(\App\Services\Audit\ElasticsearchAuditExporter::class));
+
+        $event->refresh();
+        $this->assertSame('pending', $event->export_status);
+        $this->assertSame(0, $event->export_attempts);
+        Http::assertNothingSent();
+    }
+
     public function test_export_job_is_idempotent_and_updates_status(): void
     {
         config()->set('audit.elasticsearch.enabled', true);

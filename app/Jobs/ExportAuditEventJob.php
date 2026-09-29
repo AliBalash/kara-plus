@@ -27,6 +27,13 @@ class ExportAuditEventJob implements ShouldQueue
 
     public function handle(ElasticsearchAuditExporter $exporter): void
     {
+        // Keep queued events pending when export is disabled in this environment.
+        // The exporter itself is a no-op in that case, so continuing would
+        // incorrectly mark the event as exported.
+        if (! config('audit.export.enabled') || ! config('audit.elasticsearch.enabled')) {
+            return;
+        }
+
         $event = AuditEvent::query()->find($this->auditEventId);
         if (! $event) {
             Log::warning('Audit event export skipped because event was not found.', [

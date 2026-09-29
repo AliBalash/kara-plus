@@ -42,9 +42,15 @@ class AjilGatewayClient
         if (! is_string($content)) {
             throw new RuntimeException('Ajil response has no message content.');
         }
+        $content = trim($content);
+        // Some Gemini responses wrap an otherwise valid JSON object in a
+        // Markdown code fence even when json_object was requested.
+        if (preg_match('/\A```(?:json)?\s*([\s\S]*?)\s*```\z/i', $content, $matches)) {
+            $content = trim($matches[1]);
+        }
         $decoded = json_decode($content, true);
         if (! is_array($decoded)) {
-            throw new RuntimeException('Ajil returned malformed JSON.');
+            throw new RuntimeException('Ajil returned malformed JSON: '.json_last_error_msg());
         }
 
         return [

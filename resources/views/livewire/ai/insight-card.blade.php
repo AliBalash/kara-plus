@@ -1,4 +1,4 @@
-<section class="card border-0 kara-ai-card" wire:init="load" aria-live="polite">
+<section class="card border-0 kara-ai-card" wire:init="loadFacts" aria-live="polite">
     @php
         $featureCopy = [
             'contract_brief' => ['title' => 'Contract 360', 'subtitle' => 'Everything about this request — customer, lifecycle, vehicle, docs & payments'],
@@ -55,8 +55,12 @@
             </div>
         @elseif($state === 'disabled')
             <div class="kara-ai-card__message"><i class="bx bx-power-off"></i><div><strong>Assistant is disabled</strong><small>Enable KARA_AI_ENABLED to use it.</small></div></div>
-        @elseif($state === 'unavailable')
-            <div class="kara-ai-card__message"><i class="bx bx-cloud-lightning"></i><div><strong>Insight is temporarily unavailable</strong><small>Panel workflows are unaffected.</small></div></div>
+        @elseif($state === 'preview' || $state === 'unavailable')
+            @if($state === 'preview')
+                <div class="kara-ai-card__message" x-init="$wire.load()"><i class="bx bx-loader-circle bx-spin" aria-hidden="true"></i><div><strong>Verified facts are ready</strong><small>AI is preparing the explanation. You can open the linked records now.</small></div></div>
+            @else
+                <div class="kara-ai-card__message"><i class="bx bx-cloud-lightning" aria-hidden="true"></i><div><strong>Insight is temporarily unavailable</strong><small>Panel workflows are unaffected.</small></div></div>
+            @endif
             @if($facts)
                 <div class="mt-3 small fw-semibold">Verified checks from the database</div>
                 <ul class="list-unstyled mt-2 mb-0">
@@ -78,7 +82,9 @@
                     @endforeach
                 </ul>
             @endif
-            <button class="btn btn-sm kara-btn-outline mt-3" wire:click="load" wire:loading.attr="disabled">Try again</button>
+            @if($state === 'unavailable')
+                <button class="btn btn-sm kara-btn-outline mt-3" wire:click="load" wire:loading.attr="disabled">Try again</button>
+            @endif
         @elseif($state === 'busy')
             <div class="kara-ai-card__message"><i class="bx bx-loader-circle bx-spin"></i><div><strong>Already preparing</strong><small>Check again shortly — duplicate call skipped.</small></div></div>
             <button class="btn btn-sm kara-btn-outline mt-3" wire:click="load" wire:loading.attr="disabled">Check again</button>
@@ -202,7 +208,7 @@
             </div>
         @endif
 
-        <div class="kara-ai-card__overlay" wire:loading.flex wire:target="load,regenerate">
+        <div class="kara-ai-card__overlay" wire:loading.flex wire:target="regenerate">
             <span class="kara-ai-card__loader" aria-hidden="true"></span>
             <strong>Updating insight…</strong>
         </div>
@@ -282,7 +288,7 @@
             .kara-ai-card__overlay{ position:absolute; inset:0; z-index:5; background:rgba(255,255,255,.82); backdrop-filter:blur(4px); display:none; flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:var(--radius); color:#1f2328; font-size:13px; font-weight:600; }
             @keyframes kara-spin{ to{ transform:rotate(360deg); } } @keyframes kara-pulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.15); opacity:.7; } }
             @media (max-width:640px){ .kara-ai-card .card-body{ padding:16px!important; } .kara-ai-card__header{ gap:8px; } .kara-ai-card__brand{ flex-basis:34px; width:34px; height:34px; } .kara-ai-card__feature-icon{ width:30px; height:30px; } .kara-ai-card__actions{ flex-direction:column; align-items:stretch; } .action-left,.action-right{ justify-content:space-between; } }
-            @media (prefers-reduced-motion:reduce){ .kara-ai-card__loader,.live-dot{ animation:none!important; } .kara-ai-card__brand,.kara-ai-card__feature-icon{ transition:none!important; } }
+            @media (prefers-reduced-motion:reduce){ .kara-ai-card__loader,.live-dot,.kara-ai-card__message .bx-spin{ animation:none!important; } .kara-ai-card__brand,.kara-ai-card__feature-icon{ transition:none!important; } }
         </style>
     @endonce
 </section>

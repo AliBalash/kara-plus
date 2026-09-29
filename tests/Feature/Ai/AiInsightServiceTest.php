@@ -56,12 +56,24 @@ class AiInsightServiceTest extends TestCase
         ]);
         Http::fake(['ajil.test/v1/chat/completions' => Http::response(['model' => 'llama-3.3-70b-versatile', 'usage' => ['prompt_tokens' => 101, 'completion_tokens' => 32], 'choices' => [['message' => ['content' => json_encode(['headline' => 'Review required', 'summary' => 'Verified risk.', 'critical_alerts' => [['fact_id' => 'OVERDUE_RETURN:contract:'.$contract->id, 'title' => 'Late return', 'reason' => 'Past planned return', 'check_now' => 'Open contract']], 'watchlist' => [], 'positive_signals' => [], 'data_quality_warnings' => [], 'insufficient_data' => []])]]]], 200)]);
 
+        $preview = Livewire::test(InsightCard::class, ['feature' => 'contract_brief', 'entityId' => $contract->id])
+            ->call('loadFacts')
+            ->assertSet('state', 'preview')
+            ->assertSee('Verified facts are ready');
+        $this->assertNotEmpty($preview->get('facts'));
+        Http::assertNothingSent();
+
         $first = app(AiInsightService::class)->generate('contract_brief', $contract->id);
         $second = app(AiInsightService::class)->generate('contract_brief', $contract->id);
+        config()->set('ai.circuit.failure_threshold', 1);
+        Cache::put('kara-ai:circuit:contract_brief', 1, now()->addMinute());
+        $duringOutage = app(AiInsightService::class)->generate('contract_brief', $contract->id);
 
         $this->assertSame('ready', $first['state']);
         $this->assertFalse($first['cached']);
         $this->assertTrue($second['cached']);
+        $this->assertSame('ready', $duringOutage['state']);
+        $this->assertTrue($duringOutage['cached']);
         $this->assertNotNull($first['generated_at']);
         $this->assertNotNull($first['expires_at']);
         $this->assertDatabaseCount('ai_insights', 1);

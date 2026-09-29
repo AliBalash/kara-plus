@@ -14,19 +14,26 @@ use Throwable;
 
 class AiInsightService
 {
+    public function preview(string $feature, ?int $entityId = null): array
+    {
+        abort_if(Auth::user()?->hasRole('driver') && in_array($feature, ['reservation_triage', 'reservation_queue', 'contract_finance', 'fleet_outlook'], true), 403);
+        if (! config('ai.enabled') || ! config('ai.features.'.$feature, false)) {
+            return ['state' => 'disabled'];
+        }
+
+        [$facts, $context] = $this->preparedPayload($feature, $entityId);
+
+        return ['state' => 'preview', 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+    }
+
     public function generate(string $feature, ?int $entityId = null, bool $force = false): array
     {
         abort_if(Auth::user()?->hasRole('driver') && in_array($feature, ['reservation_triage', 'reservation_queue', 'contract_finance', 'fleet_outlook'], true), 403);
         if (! config('ai.enabled') || ! config('ai.features.'.$feature, false)) {
             return ['state' => 'disabled'];
         }
-        [$facts, $context, $entityType] = $this->payload($feature, $entityId);
-        $context = app(AiContextSanitizer::class)->sanitize($context);
-        [$facts, $context] = app(AiTokenBudgeter::class)->compact($facts, $context, config('ai.max_facts'), config('ai.max_context_bytes'));
+        [$facts, $context, $entityType] = $this->preparedPayload($feature, $entityId);
         $verifiedFallback = ['state' => 'unavailable', 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
-        if ($this->isCircuitOpen($feature)) {
-            return $verifiedFallback;
-        }
         $promptVersion = app(PromptRegistry::class)->version($feature);
         $hash = hash('sha256', json_encode([$facts, $context, $promptVersion]));
         $cached = AiInsight::where('feature', $feature)->where('entity_id', $entityId)->where('input_hash', $hash)->where('expires_at', '>', now())->latest()->first();
@@ -34,6 +41,10 @@ class AiInsightService
             $this->run((string) Str::uuid(), $feature, $entityType, $entityId, $hash, $promptVersion, 'cached', true);
 
             return $this->readyPayload($cached, $facts, $context, $entityType, true);
+        }
+        // A valid brief remains useful while the provider circuit is open.
+        if ($this->isCircuitOpen($feature)) {
+            return $verifiedFallback;
         }
         $lock = Cache::lock('kara-ai:inflight:'.$hash, config('ai.ajil.timeout') + 5);
         if (! $lock->get()) {
@@ -81,6 +92,15 @@ class AiInsightService
             'facts' => $facts,
             'meta' => $context['pulse'] ?? [],
         ];
+    }
+
+    private function preparedPayload(string $feature, ?int $entityId): array
+    {
+        [$facts, $context, $entityType] = $this->payload($feature, $entityId);
+        $context = app(AiContextSanitizer::class)->sanitize($context);
+        [$facts, $context] = app(AiTokenBudgeter::class)->compact($facts, $context, config('ai.max_facts'), config('ai.max_context_bytes'));
+
+        return [$facts, $context, $entityType];
     }
 
     private function payload(string $feature, ?int $entityId): array

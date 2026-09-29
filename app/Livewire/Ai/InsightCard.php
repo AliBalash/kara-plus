@@ -53,6 +53,12 @@ class InsightCard extends Component
         $this->applyResult(app(AiInsightService::class)->generate($this->feature, $this->entityId));
     }
 
+    public function loadFacts(): void
+    {
+        abort_unless(auth()->check(), 403);
+        $this->applyResult(app(AiInsightService::class)->preview($this->feature, $this->entityId));
+    }
+
     public function regenerate(): void
     {
         abort_unless(auth()->check(), 403);
