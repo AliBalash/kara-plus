@@ -4,12 +4,16 @@ namespace App\Livewire\Ai;
 
 use App\AI\AiInsightService;
 use App\Models\AiFeedback;
+use App\Models\AiInsight;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class InsightCard extends Component
 {
+    #[Locked]
     public string $feature;
 
+    #[Locked]
     public ?int $entityId = null;
 
     public string $state = 'idle';
@@ -24,8 +28,10 @@ class InsightCard extends Component
 
     public ?bool $feedbackHelpful = null;
 
+    #[Locked]
     public ?int $insightId = null;
 
+    #[Locked]
     public ?string $insightEntityType = null;
 
     public ?string $generatedAt = null;
@@ -42,19 +48,26 @@ class InsightCard extends Component
 
     public function load(): void
     {
+        abort_unless(auth()->check(), 403);
         $this->applyResult(app(AiInsightService::class)->generate($this->feature, $this->entityId));
     }
 
     public function regenerate(): void
     {
+        abort_unless(auth()->check(), 403);
         $this->applyResult(app(AiInsightService::class)->generate($this->feature, $this->entityId, true));
     }
 
     public function feedback(bool $helpful): void
     {
+        abort_unless(auth()->check(), 403);
         if ($this->state !== 'ready' || $this->feedbackHelpful !== null) {
             return;
         }
+
+        abort_unless($this->insightId && AiInsight::whereKey($this->insightId)
+            ->where('feature', $this->feature)->where('entity_id', $this->entityId)
+            ->where('entity_type', $this->insightEntityType)->exists(), 403);
 
         AiFeedback::create([
             'ai_insight_id' => $this->insightId,

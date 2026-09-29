@@ -15,6 +15,7 @@ class AiHealthCommand extends Command
     {
         if (! config('ai.enabled')) {
             $this->warn('Kara AI is disabled. Set KARA_AI_ENABLED=true after Ajil is configured.');
+
             return self::FAILURE;
         }
 
@@ -24,11 +25,13 @@ class AiHealthCommand extends Command
                 ->get('/health');
         } catch (\Throwable $exception) {
             $this->error('Ajil is unreachable: '.class_basename($exception));
+
             return self::FAILURE;
         }
 
         if (! $health->successful()) {
             $this->error('Ajil health endpoint returned HTTP '.$health->status().'.');
+
             return self::FAILURE;
         }
 
@@ -43,14 +46,26 @@ class AiHealthCommand extends Command
                 ->acceptJson()
                 ->withHeaders(array_filter(['x-api-token' => config('ai.ajil.token')]))
                 ->timeout(config('ai.catalog_timeout'))
-                // The compact catalog endpoint gathers providers concurrently
-                // and caches the result in Ajil. /v1/models is sequential and
-                // can make a healthy gateway look unavailable on a cold cache.
-                ->get('/v1/models/catalog/summary');
+                // This endpoint gathers providers concurrently and caches the
+                // result in Ajil. /v1/models is sequential on a cold cache.
+                ->get('/v1/models/catalog?capability=chat.completions&include_raw=false');
             if ($models->successful()) {
-                $count = (int) $models->json('summary.total', 0);
+                $count = (int) $models->json('count', 0);
                 $cache = $models->json('from_cache') ? 'cached' : 'fresh';
                 $this->info("Ajil model catalog is reachable ({$count} entries; {$cache}).");
+                if ($models->json('fallback_applied')) {
+                    $this->warn('Ajil used its static catalog fallback; model availability is not verified live.');
+                } else {
+                    $available = collect($models->json('items', []))
+                        ->map(fn (array $item) => ($item['provider'] ?? '').'/'.($item['id'] ?? ''))
+                        ->all();
+                    foreach (config('ai.models.default', []) as $candidate) {
+                        $key = $candidate['provider'].'/'.$candidate['model'];
+                        if (! in_array($key, $available, true)) {
+                            $this->warn("Configured model is absent from the current Ajil catalog: {$key}.");
+                        }
+                    }
+                }
             } else {
                 $this->warn('Ajil is healthy, but model catalog returned HTTP '.$models->status().'.');
             }

@@ -3,11 +3,15 @@
 ## Available MVP
 
 * **Contract Brief and Pulse** — a deterministic readiness score, verified missing-document, overdue-return, vehicle-availability, amendment and pending-payment facts, then an optional AI explanation. Its compact Contract 360 context includes safe lifecycle timing, six recent status transitions, three previous contracts, a non-identifying customer activity profile, non-identifying vehicle state, document presence, payment aggregates and breakdowns, and amendment summaries; it excludes customer identity, contact fields and note text.
+* **Customer 360** — anonymized contract counts, three recent contract statuses, pending payment totals, overdue returns and passport-expiry follow-up on customer detail/history/debt pages.
+* **Vehicle 360** — operational availability, contract counts, overdue open contracts, insurance expiry and service due checks on car detail/edit pages.
 * **Operations Brief** — compact dashboard facts for overdue returns, pending-payment exposure and upcoming pickups.
 * **Payment Queue Brief** — grouped pending-payment age batches; it preserves the distinction between pending transactions and operational balance.
 * **Changes Since Last Login** — aggregated audit-event groups from the previous successful login, never raw audit entries.
 
 Every feature is gated independently. The cards are lazy-loaded, render a skeleton while loading, show evidence links for accepted fact IDs, mark cached results, and remain non-blocking when Ajil is unavailable. The page-aware right rail advertises only the insights supported by the current route; Contract 360 also appears at the bottom of the contract Edit workspace.
+
+When Ajil is unavailable, cards still show the deterministic verified checks and their evidence links. They do not label those checks as model analysis.
 
 ## Freshness and cache behavior
 

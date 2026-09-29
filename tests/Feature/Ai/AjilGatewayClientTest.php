@@ -19,8 +19,9 @@ class AjilGatewayClientTest extends TestCase
         Http::assertSent(function (Request $request): bool {
             return $request->header('x-api-token')[0] === 'test-token'
                 && $request['x_router']['strategy'] === 'fallback_chain'
-                && count($request['model']) === 3
-                && $request['model'][0]['model'] === 'openai/gpt-oss-20b';
+                && count($request['model']) === 4
+                && $request['model'][0]['model'] === 'gemini-3.8-flash'
+                && $request['model'][1]['model'] === 'gemini-3.5-flash-lite';
         });
     }
 

@@ -2,6 +2,8 @@
     @php
         $featureCopy = [
             'contract_brief' => ['title' => 'Contract 360', 'subtitle' => 'Everything about this request — customer, lifecycle, vehicle, docs & payments'],
+            'customer_brief' => ['title' => 'Customer 360', 'subtitle' => 'Contract history, pending items and verified follow-up'],
+            'vehicle_brief' => ['title' => 'Vehicle 360', 'subtitle' => 'Availability, maintenance, insurance and bookings'],
             'dashboard_operations' => ['title' => 'Today’s operations', 'subtitle' => 'Actionable priorities for you — overdue, pending, and today’s schedule'],
             'payment_queue' => ['title' => 'Payment priorities', 'subtitle' => 'What needs your approval next — oldest & largest first'],
             'changes_since_login' => ['title' => 'Team changes', 'subtitle' => 'Business activity since your last login — no technical noise'],
@@ -13,7 +15,7 @@
     <div class="card-body position-relative">
         <div class="kara-ai-card__header">
             <div class="kara-ai-card__head-text">
-                <div class="kara-ai-card__eyebrow"><i class="bx bx-sparkles"></i> Kara AI · verified</div>
+                <div class="kara-ai-card__eyebrow"><i class="bx bx-sparkles"></i> Kara AI · verified facts</div>
                 <h6 class="kara-ai-card__title">{{ $featureCopy['title'] }}</h6>
                 <p class="kara-ai-card__subtitle">{{ $featureCopy['subtitle'] }}</p>
             </div>
@@ -35,6 +37,20 @@
             <div class="kara-ai-card__message"><i class="bx bx-power-off"></i><div><strong>Assistant is disabled</strong><small>Enable KARA_AI_ENABLED to use it.</small></div></div>
         @elseif($state === 'unavailable')
             <div class="kara-ai-card__message"><i class="bx bx-cloud-lightning"></i><div><strong>Insight is temporarily unavailable</strong><small>Panel workflows are unaffected.</small></div></div>
+            @if($facts)
+                <div class="mt-3 small fw-semibold">Verified checks from the database</div>
+                <ul class="list-unstyled mt-2 mb-0">
+                    @foreach($facts as $fact)
+                        <li class="mb-2">
+                            @if($fact['evidence_url'] ?? false)
+                                <a href="{{ $fact['evidence_url'] }}">{{ $fact['title'] }}</a>
+                            @else
+                                {{ $fact['title'] }}
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
             <button class="btn btn-sm kara-btn-outline mt-3" wire:click="load" wire:loading.attr="disabled">Try again</button>
         @elseif($state === 'busy')
             <div class="kara-ai-card__message"><i class="bx bx-loader-circle bx-spin"></i><div><strong>Already preparing</strong><small>Check again shortly — duplicate call skipped.</small></div></div>
@@ -52,6 +68,7 @@
             <div class="kara-ai-card__answer">
                 <h6>{{ $insight['headline'] ?? 'Operational brief' }}</h6>
                 <p>{{ $insight['summary'] ?? 'No summary was returned.' }}</p>
+                <small>AI wording is advisory. Check the linked records before acting.</small>
             </div>
 
             @foreach([
@@ -89,7 +106,7 @@
             @endif
 
             @if(empty($insight['critical_alerts']) && empty($insight['watchlist']) && empty($insight['positive_signals']))
-                <div class="kara-ai-empty-brief"><i class="bx bx-check-shield"></i><span>All clear — no urgent items for this workspace.</span></div>
+                <div class="kara-ai-empty-brief"><i class="bx bx-check-shield"></i><span>No linked alerts in this brief. Check the source records for current status.</span></div>
             @endif
 
             <div class="kara-ai-freshness">

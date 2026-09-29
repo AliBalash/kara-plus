@@ -3,7 +3,10 @@
 namespace App\AI;
 
 use App\Models\AuditEvent;
+use App\Models\Car;
 use App\Models\Contract;
+use App\Models\Customer;
+use App\Models\Insurance;
 use App\Models\Payment;
 use Carbon\Carbon;
 
@@ -11,7 +14,7 @@ class AiFactEngine
 {
     public function contract(Contract $contract): array
     {
-        $contract->loadMissing(['payments', 'pickupDocument', 'returnDocument', 'customerDocument', 'amendments', 'car', 'latestStatus', 'statuses', 'customer']);
+        $contract->loadMissing(['payments', 'pickupDocument', 'returnDocument', 'customerDocument', 'car.latestInsurance', 'customer']);
         $facts = [];
         $add = function (string $type, int $severity, string $title, array $metrics = [], ?string $url = null) use (&$facts, $contract): void {
             $facts[] = ['fact_id' => strtoupper($type).':contract:'.$contract->id, 'type' => $type, 'severity' => $severity, 'entity_type' => 'contract', 'entity_id' => $contract->id, 'title' => $title, 'metrics' => $metrics, 'evidence_url' => $url];
@@ -32,12 +35,18 @@ class AiFactEngine
         if (! $contract->customerDocument) {
             $add('missing_customer_document', 40, 'Customer document has not been attached', [], route('rental-requests.edit', $contract->id));
         }
-        $pendingAmendments = $contract->amendments->where('status', 'pending_approval')->count();
+        $pendingAmendments = $contract->amendments()->where('status', 'pending_approval')->count();
         if ($pendingAmendments) {
             $add('pending_amendment', 40, 'Contract amendment is waiting for approval', ['count' => $pendingAmendments], route('rental-requests.edit', $contract->id));
         }
-        if ($contract->car && ! $contract->car->availability && in_array($contract->current_status, ['assigned', 'under_review'], true)) {
+        if ($contract->car && in_array($contract->car->operationalStatus(), [Car::STATUS_UNAVAILABLE, Car::STATUS_SOLD], true) && in_array($contract->current_status, ['assigned', 'under_review'], true)) {
             $add('vehicle_unavailable', 70, 'Assigned vehicle is not currently available', [], route('rental-requests.edit', $contract->id));
+        }
+        if ($contract->car?->latestInsurance?->expiry_date?->isBefore(now()->startOfDay())) {
+            $add('vehicle_insurance_expired', 85, 'Vehicle insurance has expired', [], route('car.detail', $contract->car_id));
+        }
+        if ($contract->car?->service_due_date?->isPast()) {
+            $add('vehicle_service_due', 55, 'Vehicle service date has passed', [], route('car.detail', $contract->car_id));
         }
 
         return $facts;
@@ -62,6 +71,52 @@ class AiFactEngine
         return ['score' => $score, 'label' => $label, 'issues_count' => count($facts)];
     }
 
+    public function customer(Customer $customer): array
+    {
+        $facts = [];
+        $url = route('customer.detail', $customer->id);
+        if ($customer->passport_expiry_date?->isPast()) {
+            $facts[] = $this->fact('passport_expired', 85, 'Customer passport has expired', [], $url, 'customer');
+        } elseif ($customer->passport_expiry_date?->between(now(), now()->addDays(30))) {
+            $facts[] = $this->fact('passport_expiring', 55, 'Customer passport expires within 30 days', [], $url, 'customer');
+        }
+        $pending = $customer->payments()->where('approval_status', 'pending')
+            ->selectRaw('COUNT(*) as count, COALESCE(SUM(amount_in_aed),0) as amount')->first();
+        if ($pending?->count) {
+            $facts[] = $this->fact('pending_payments', 70, 'Customer has pending payments', ['count' => (int) $pending->count, 'amount_aed' => (float) $pending->amount], route('rental-requests.confirm-payment-list'), 'customer');
+        }
+        $overdue = $customer->contracts()->whereIn('current_status', ['delivery', 'awaiting_return'])->where('return_date', '<', now())->count();
+        if ($overdue) {
+            $facts[] = $this->fact('overdue_returns', 100, 'Customer has overdue returns', ['count' => $overdue], route('customer.history', $customer->id), 'customer');
+        }
+
+        return $facts ?: [$this->fact('profile_clear', 10, 'No verified customer alerts', [], $url, 'customer')];
+    }
+
+    public function vehicle(Car $car): array
+    {
+        $car->loadMissing('latestInsurance');
+        $facts = [];
+        $url = route('car.detail', $car->id);
+        if (in_array($car->operationalStatus(), [Car::STATUS_UNAVAILABLE, Car::STATUS_SOLD], true)) {
+            $facts[] = $this->fact('vehicle_unavailable', 70, 'Vehicle cannot be dispatched now', ['operational_status' => $car->operationalStatus()], $url, 'vehicle');
+        }
+        if ($car->latestInsurance?->expiry_date?->isBefore(now()->startOfDay())) {
+            $facts[] = $this->fact('insurance_expired', 100, 'Vehicle insurance has expired', [], $url, 'vehicle');
+        } elseif ($car->latestInsurance?->expiry_date?->between(now()->startOfDay(), now()->addDays(30)->endOfDay())) {
+            $facts[] = $this->fact('insurance_expiring', 55, 'Vehicle insurance expires within 30 days', [], $url, 'vehicle');
+        }
+        if ($car->service_due_date?->isPast()) {
+            $facts[] = $this->fact('service_due', 70, 'Vehicle service date has passed', [], $url, 'vehicle');
+        }
+        $overdue = Contract::where('car_id', $car->id)->whereIn('current_status', ['delivery', 'awaiting_return'])->where('return_date', '<', now())->count();
+        if ($overdue) {
+            $facts[] = $this->fact('overdue_returns', 100, 'Vehicle has an overdue open contract', ['count' => $overdue], $url, 'vehicle');
+        }
+
+        return $facts ?: [$this->fact('vehicle_clear', 10, 'No verified vehicle alerts', [], $url, 'vehicle')];
+    }
+
     public function dashboard(): array
     {
         $facts = [];
@@ -76,6 +131,16 @@ class AiFactEngine
         $pending = Payment::where('approval_status', 'pending')->selectRaw('COUNT(*) as count, COALESCE(SUM(amount_in_aed),0) as amount')->first();
         if ($pending?->count) {
             $facts[] = $this->fact('pending_payments', 85, 'Pending payments require review', ['count' => (int) $pending->count, 'amount_aed' => (float) $pending->amount], route('rental-requests.confirm-payment-list'));
+        }
+
+        $latestInsuranceIds = Insurance::selectRaw('MAX(id)')->groupBy('car_id');
+        $expiredInsurance = Insurance::whereIn('id', $latestInsuranceIds)->whereDate('expiry_date', '<', now()->toDateString())->count();
+        if ($expiredInsurance) {
+            $facts[] = $this->fact('expired_insurance', 85, 'Vehicle insurance renewals require attention', ['count' => $expiredInsurance], route('insurance.list'));
+        }
+        $serviceDue = Car::whereDate('service_due_date', '<=', now()->toDateString())->count();
+        if ($serviceDue) {
+            $facts[] = $this->fact('service_due', 55, 'Vehicle service dates require review', ['count' => $serviceDue], route('car.list'));
         }
 
         // Today: pickups / returns — کار روزانه کارشناس
@@ -128,6 +193,8 @@ class AiFactEngine
         if (empty($facts)) {
             $facts[] = $this->fact('operations_clear', 10, 'Operations are stable — no urgent items', ['count' => 0], route('expert.dashboard'));
         }
+
+        usort($facts, fn (array $a, array $b) => $b['severity'] <=> $a['severity']);
 
         return array_slice($facts, 0, 8);
     }

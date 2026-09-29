@@ -13,7 +13,10 @@ class AiHealthCommandTest extends TestCase
         config()->set('ai.ajil.base_url', 'http://ajil.test');
         Http::fake([
             'ajil.test/health' => Http::response(['providers' => ['groq' => true, 'gemini' => true]], 200),
-            'ajil.test/v1/models/catalog/summary' => Http::response(['summary' => ['total' => 2], 'from_cache' => true], 200),
+            'ajil.test/v1/models/catalog*' => Http::response(['count' => 2, 'from_cache' => true, 'items' => [
+                ['provider' => 'gemini', 'id' => 'gemini-3.8-flash'],
+                ['provider' => 'gemini', 'id' => 'gemini-3.5-flash-lite'],
+            ]], 200),
         ]);
         $this->artisan('ai:health')->expectsOutputToContain('Ajil is healthy')->assertSuccessful();
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '/chat/completions'));

@@ -3,9 +3,9 @@
 namespace Tests\Unit;
 
 use App\AI\AiContextSanitizer;
+use App\AI\AiFactEngine;
 use App\AI\AiResponseValidator;
 use App\AI\AiTokenBudgeter;
-use App\AI\AiFactEngine;
 use Tests\TestCase;
 
 class AiCopilotTest extends TestCase
@@ -21,6 +21,21 @@ class AiCopilotTest extends TestCase
         $result = app(AiResponseValidator::class)->validate(['headline' => 'Review', 'summary' => 'One item', 'critical_alerts' => [['fact_id' => 'known', 'title' => 'Known', 'reason' => 'Reason', 'check_now' => 'Open'], ['fact_id' => 'invented', 'title' => 'Bad']], 'watchlist' => [], 'positive_signals' => [], 'data_quality_warnings' => [], 'insufficient_data' => []], [['fact_id' => 'known']]);
         $this->assertCount(1, $result['critical_alerts']);
         $this->assertSame('known', $result['critical_alerts'][0]['fact_id']);
+    }
+
+    public function test_response_validator_only_keeps_bounded_display_fields(): void
+    {
+        $result = app(AiResponseValidator::class)->validate([
+            'headline' => str_repeat('H', 300),
+            'summary' => 'Verified summary',
+            'raw_customer_data' => 'must not be cached',
+            'watchlist' => [['fact_id' => 'known', 'title' => str_repeat('T', 200), 'reason' => 'Review', 'check_now' => 'Open', 'extra' => 'discard']],
+        ], [['fact_id' => 'known']]);
+
+        $this->assertArrayNotHasKey('raw_customer_data', $result);
+        $this->assertSame(120, mb_strlen($result['headline']));
+        $this->assertSame(100, mb_strlen($result['watchlist'][0]['title']));
+        $this->assertArrayNotHasKey('extra', $result['watchlist'][0]);
     }
 
     public function test_budgeter_keeps_highest_severity_facts_inside_the_budget(): void

@@ -4,8 +4,10 @@ namespace Tests\Feature\Ai;
 
 use App\AI\AiInsightService;
 use App\Models\AiRun;
+use App\Models\Car;
 use App\Models\Contract;
 use App\Models\Customer;
+use App\Models\Insurance;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -106,6 +108,9 @@ class AiInsightServiceTest extends TestCase
         $second = app(AiInsightService::class)->generate('dashboard_operations');
         $this->assertSame('unavailable', $first['state']);
         $this->assertSame('unavailable', $second['state']);
+        $this->assertNotEmpty($first['facts']);
+        $this->assertNotEmpty($second['facts']);
+        $this->assertArrayNotHasKey('data', $second);
         $ajilCalls = Http::recorded(fn ($request) => str_starts_with($request->url(), 'http://ajil.test/'));
         $this->assertCount(1, $ajilCalls);
     }
@@ -170,5 +175,52 @@ class AiInsightServiceTest extends TestCase
         } finally {
             $lock->release();
         }
+    }
+
+    public function test_customer_and_vehicle_briefs_use_bounded_anonymized_context(): void
+    {
+        config()->set('ai.features.customer_brief', true);
+        config()->set('ai.features.vehicle_brief', true);
+        $customer = Customer::factory()->create(['gender' => 'female', 'passport_expiry_date' => now()->subDay()]);
+        $car = Car::factory()->available()->create(['service_due_date' => now()->subDay()]);
+        Insurance::create(['car_id' => $car->id, 'expiry_date' => now()->subDay(), 'status' => 'done']);
+        Contract::factory()->for($customer)->for($car)->status('complete')->count(4)->create();
+        Http::fake(['ajil.test/v1/chat/completions' => Http::response([
+            'model' => 'gemini-3.8-flash',
+            'choices' => [['message' => ['content' => json_encode(['headline' => 'Review', 'summary' => 'Open verified records.', 'critical_alerts' => [], 'watchlist' => [], 'positive_signals' => [], 'data_quality_warnings' => [], 'insufficient_data' => []])]]],
+        ], 200)]);
+
+        $customerResult = app(AiInsightService::class)->generate('customer_brief', $customer->id);
+        $vehicleResult = app(AiInsightService::class)->generate('vehicle_brief', $car->id);
+        $dashboardFacts = app(\App\AI\AiFactEngine::class)->dashboard();
+
+        $this->assertSame('ready', $customerResult['state']);
+        $this->assertSame('ready', $vehicleResult['state']);
+        $this->assertContains('CUSTOMER:passport_expired', array_column($customerResult['facts'], 'fact_id'));
+        $this->assertContains('VEHICLE:insurance_expired', array_column($vehicleResult['facts'], 'fact_id'));
+        $this->assertContains('DASHBOARD:expired_insurance', array_column($dashboardFacts, 'fact_id'));
+        $requests = Http::recorded(fn ($request) => str_starts_with($request->url(), 'http://ajil.test/'));
+        $this->assertCount(2, $requests);
+        foreach ($requests as [$request]) {
+            $this->assertStringNotContainsString($customer->first_name, $request->body());
+            $this->assertStringNotContainsString($customer->phone, $request->body());
+            $this->assertStringNotContainsString($car->plate_number, $request->body());
+            $payload = json_decode($request['messages'][1]['content'], true);
+            $this->assertLessThanOrEqual(3, count($payload['context']['recent_contracts'] ?? []));
+        }
+    }
+
+    public function test_renewed_insurance_does_not_raise_an_expiry_alert(): void
+    {
+        $car = Car::factory()->available()->create(['service_due_date' => now()->addMonths(2)]);
+        Insurance::create(['car_id' => $car->id, 'expiry_date' => now()->subMonth(), 'status' => 'done']);
+        Insurance::create(['car_id' => $car->id, 'expiry_date' => now()->addMonths(6), 'status' => 'done']);
+
+        $engine = app(\App\AI\AiFactEngine::class);
+        $vehicleFacts = $engine->vehicle($car->fresh());
+        $dashboardFacts = $engine->dashboard();
+
+        $this->assertNotContains('VEHICLE:insurance_expired', array_column($vehicleFacts, 'fact_id'));
+        $this->assertNotContains('DASHBOARD:expired_insurance', array_column($dashboardFacts, 'fact_id'));
     }
 }

@@ -1199,6 +1199,11 @@ class Car extends Model
         return $this->hasOne(Insurance::class);
     }
 
+    public function latestInsurance()
+    {
+        return $this->hasOne(Insurance::class)->latestOfMany();
+    }
+
     public function currentContract()
     {
         return $this->hasOne(Contract::class)

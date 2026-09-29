@@ -4,7 +4,9 @@ namespace App\AI;
 
 use App\Models\AiInsight;
 use App\Models\AiRun;
+use App\Models\Car;
 use App\Models\Contract;
+use App\Models\Customer;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -17,12 +19,13 @@ class AiInsightService
         if (! config('ai.enabled') || ! config('ai.features.'.$feature, false)) {
             return ['state' => 'disabled'];
         }
-        if ($this->isCircuitOpen($feature)) {
-            return ['state' => 'unavailable'];
-        }
         [$facts, $context, $entityType] = $this->payload($feature, $entityId);
         $context = app(AiContextSanitizer::class)->sanitize($context);
         [$facts, $context] = app(AiTokenBudgeter::class)->compact($facts, $context, config('ai.max_facts'), config('ai.max_context_bytes'));
+        $verifiedFallback = ['state' => 'unavailable', 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
+        if ($this->isCircuitOpen($feature)) {
+            return $verifiedFallback;
+        }
         $promptVersion = app(PromptRegistry::class)->version($feature);
         $hash = hash('sha256', json_encode([$facts, $context, $promptVersion]));
         $cached = AiInsight::where('feature', $feature)->where('entity_id', $entityId)->where('input_hash', $hash)->where('expires_at', '>', now())->latest()->first();
@@ -33,7 +36,7 @@ class AiInsightService
         }
         $lock = Cache::lock('kara-ai:inflight:'.$hash, config('ai.ajil.timeout') + 5);
         if (! $lock->get()) {
-            return ['state' => 'busy'];
+            return ['state' => 'busy', 'facts' => $facts, 'meta' => $context['pulse'] ?? []];
         }
         $started = microtime(true);
         $requestId = (string) Str::uuid();
@@ -58,7 +61,7 @@ class AiInsightService
             $this->recordFailure($feature);
             $this->run($requestId, $feature, $entityType, $entityId, $hash, $promptVersion, 'unavailable', false, [], (int) ((microtime(true) - $started) * 1000), class_basename($e));
 
-            return ['state' => 'unavailable'];
+            return $verifiedFallback;
         } finally {
             $lock->release();
         }
@@ -85,6 +88,8 @@ class AiInsightService
 
         return match ($feature) {
             'contract_brief' => $this->contractPayload($engine, $entityId),
+            'customer_brief' => $this->customerPayload($engine, $entityId),
+            'vehicle_brief' => $this->vehiclePayload($engine, $entityId),
             'dashboard_operations' => [$engine->dashboard(), [], 'dashboard'],
             'payment_queue' => [$engine->payments(), [], 'payment_queue'],
             'changes_since_login' => [$engine->changes(Auth::id()), ['period_hours' => 24], 'user'],
@@ -97,18 +102,16 @@ class AiInsightService
         $contract = Contract::findOrFail($id);
         $facts = $engine->contract($contract);
         $payments = $contract->payments;
-        $statusAt = $contract->latestStatus?->created_at ?? $contract->updated_at;
-        $customerContracts = Contract::query()
-            ->where('customer_id', $contract->customer_id)
-            ->select(['id', 'current_status', 'pickup_date', 'return_date', 'created_at'])
-            ->latest('id')
-            ->get();
-        $previousContracts = $customerContracts->where('id', '!=', $contract->id);
+        $statusAt = $contract->latestStatus()->value('created_at') ?? $contract->updated_at;
+        $customerContracts = $this->contractCounts(Contract::query()->where('customer_id', $contract->customer_id));
+        $previousContracts = Contract::query()->where('customer_id', $contract->customer_id)
+            ->where('id', '!=', $contract->id)->select(['id', 'current_status', 'pickup_date', 'return_date'])
+            ->latest('id')->limit(3)->get();
 
         return [$facts, [
             'contract_id' => $contract->id,
             'status' => $contract->current_status,
-            'status_age_hours' => $statusAt ? (int) $statusAt->diffInHours(now()) : null,
+            'status_age_hours' => $statusAt ? (int) \Illuminate\Support\Carbon::parse($statusAt)->diffInHours(now()) : null,
             'pickup_at' => $contract->pickup_date?->toIso8601String(),
             'return_at' => $contract->return_date?->toIso8601String(),
             'actual_pickup_at' => $contract->actual_pickup_at?->toIso8601String(),
@@ -117,12 +120,12 @@ class AiInsightService
             'total_price_aed' => (float) $contract->total_price,
             'customer_operational_profile' => [
                 'status' => $contract->customer?->status,
-                'total_contracts' => $customerContracts->count(),
-                'previous_contracts' => $previousContracts->count(),
-                'active_contracts' => $customerContracts->whereIn('current_status', ['assigned', 'under_review', 'delivery', 'inspection', 'agreement_inspection', 'awaiting_return'])->count(),
-                'completed_contracts' => $customerContracts->where('current_status', 'complete')->count(),
-                'cancelled_or_rejected_contracts' => $customerContracts->whereIn('current_status', ['cancelled', 'rejected'])->count(),
-                'recent_contracts' => $previousContracts->take(3)->map(fn (Contract $previous) => [
+                'total_contracts' => $customerContracts['total'],
+                'previous_contracts' => max(0, $customerContracts['total'] - 1),
+                'active_contracts' => $customerContracts['active'],
+                'completed_contracts' => $customerContracts['completed'],
+                'cancelled_or_rejected_contracts' => $customerContracts['cancelled'],
+                'recent_contracts' => $previousContracts->map(fn (Contract $previous) => [
                     'contract_id' => $previous->id,
                     'status' => $previous->current_status,
                     'pickup_at' => $previous->pickup_date?->toIso8601String(),
@@ -131,10 +134,10 @@ class AiInsightService
             ],
             'vehicle' => [
                 'id' => $contract->car_id,
-                'operational_status' => $contract->car?->status,
+                'operational_status' => $contract->car?->operationalStatus(),
                 'available' => $contract->car?->availability,
                 'service_due_at' => $contract->car?->service_due_date?->toDateString(),
-                'insurance_expires_at' => $contract->car?->insurance_expiry_date?->toDateString(),
+                'insurance_expires_at' => $contract->car?->latestInsurance?->expiry_date?->toDateString(),
                 'registration_expires_at' => $contract->car?->expiry_date?->toDateString(),
             ],
             'documents' => [
@@ -142,15 +145,13 @@ class AiInsightService
                 'pickup_document_present' => $contract->pickupDocument !== null,
                 'return_document_present' => $contract->returnDocument !== null,
             ],
-            'amendments' => $contract->amendments->take(3)->map(fn ($amendment) => [
+            'amendments' => $contract->amendments()->latest('id')->limit(3)->get()->map(fn ($amendment) => [
                 'type' => $amendment->type,
                 'status' => $amendment->status,
                 'effective_at' => $amendment->effective_at?->toIso8601String(),
                 'total_amount_aed' => (float) $amendment->total_amount,
             ])->values()->all(),
-            'status_timeline' => $contract->statuses
-                ->sortByDesc('created_at')
-                ->take(6)
+            'status_timeline' => $contract->statuses()->latest('created_at')->limit(6)->get()
                 ->map(fn ($status) => [
                     'status' => $status->status,
                     'occurred_at' => $status->created_at?->toIso8601String(),
@@ -170,6 +171,55 @@ class AiInsightService
                 ])->all(),
             ],
         ], 'contract'];
+    }
+
+    private function customerPayload(AiFactEngine $engine, ?int $id): array
+    {
+        $customer = Customer::findOrFail($id);
+        $counts = $this->contractCounts($customer->contracts());
+        $recent = $customer->contracts()->select(['id', 'current_status', 'pickup_date', 'return_date'])
+            ->latest('id')->limit(3)->get()->map(fn (Contract $contract) => [
+                'contract_id' => $contract->id,
+                'status' => $contract->current_status,
+                'pickup_at' => $contract->pickup_date?->toIso8601String(),
+                'return_at' => $contract->return_date?->toIso8601String(),
+            ])->all();
+
+        return [$engine->customer($customer), [
+            'customer_id' => $customer->id,
+            'status' => $customer->status,
+            'contract_counts' => $counts,
+            'recent_contracts' => $recent,
+            'passport_expired' => $customer->passport_expiry_date?->isPast(),
+        ], 'customer'];
+    }
+
+    private function vehiclePayload(AiFactEngine $engine, ?int $id): array
+    {
+        $car = Car::findOrFail($id);
+        $counts = $this->contractCounts(Contract::query()->where('car_id', $car->id));
+
+        return [$engine->vehicle($car), [
+            'vehicle_id' => $car->id,
+            'operational_status' => $car->operationalStatus(),
+            'available' => (bool) $car->availability,
+            'service_due_at' => $car->service_due_date?->toDateString(),
+            'insurance_expires_at' => $car->latestInsurance?->expiry_date?->toDateString(),
+            'registration_expires_at' => $car->expiry_date?->toDateString(),
+            'contract_counts' => $counts,
+        ], 'vehicle'];
+    }
+
+    private function contractCounts($query): array
+    {
+        $row = $query->selectRaw("COUNT(*) as total, SUM(CASE WHEN current_status IN ('assigned','under_review','delivery','inspection','agreement_inspection','awaiting_return') THEN 1 ELSE 0 END) as active, SUM(CASE WHEN current_status = 'complete' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN current_status IN ('cancelled','rejected') THEN 1 ELSE 0 END) as cancelled")->first();
+
+        return [
+            'total' => (int) ($row->total ?? 0),
+            'active' => (int) ($row->active ?? 0),
+            'completed' => (int) ($row->completed ?? 0),
+            'cancelled' => (int) ($row->cancelled ?? 0),
+        ];
     }
 
     private function run(string $requestId, string $feature, ?string $entityType, ?int $entityId, string $hash, string $promptVersion, string $status, bool $cached, array $gateway = [], ?int $latency = null, ?string $error = null): void

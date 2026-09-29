@@ -43,10 +43,35 @@ class GlobalRail extends Component
                 $this->presets = [[
                     'feature' => 'contract_brief',
                     'entity_id' => $cid,
-                    'label' => 'Contract 360 · #' . $cid,
+                    'label' => 'Contract 360 · #'.$cid,
                 ]];
+
                 return;
             }
+        }
+
+        if (is_numeric($customerId) && in_array($routeName, ['customer.detail', 'customer.history', 'customer.debt'], true)) {
+            $this->contextTitle = 'Customer workspace';
+            $this->contextDescription = 'Customer activity and follow-up priorities from verified, non-identifying CRM data.';
+            $this->presets = [[
+                'feature' => 'customer_brief',
+                'entity_id' => (int) $customerId,
+                'label' => 'Customer 360 · #'.(int) $customerId,
+            ]];
+
+            return;
+        }
+
+        if (is_numeric($carId) && in_array($routeName, ['car.detail', 'car.edit'], true)) {
+            $this->contextTitle = 'Vehicle workspace';
+            $this->contextDescription = 'Fleet readiness, service and booking context from verified records.';
+            $this->presets = [[
+                'feature' => 'vehicle_brief',
+                'entity_id' => (int) $carId,
+                'label' => 'Vehicle 360 · #'.(int) $carId,
+            ]];
+
+            return;
         }
 
         // 2) Payment workspace — صف پرداخت
@@ -58,6 +83,7 @@ class GlobalRail extends Component
                 'entity_id' => null,
                 'label' => 'Payment priorities',
             ]];
+
             return;
         }
 
@@ -69,6 +95,7 @@ class GlobalRail extends Component
                 ['feature' => 'dashboard_operations', 'entity_id' => null, 'label' => 'Today’s operations'],
                 ['feature' => 'changes_since_login', 'entity_id' => null, 'label' => 'What changed since you were away'],
             ];
+
             return;
         }
 
@@ -101,6 +128,7 @@ class GlobalRail extends Component
                     ['feature' => 'changes_since_login', 'entity_id' => null, 'label' => 'Team changes'],
                 ];
             }
+
             return;
         }
 

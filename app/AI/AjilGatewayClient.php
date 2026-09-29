@@ -2,7 +2,6 @@
 
 namespace App\AI;
 
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -24,17 +23,30 @@ class AjilGatewayClient
                     ['role' => 'user', 'content' => json_encode(['facts' => $facts, 'context' => $context], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
                 ],
                 'temperature' => 0.1,
+                'max_tokens' => 2048,
                 'response_format' => ['type' => 'json_object'],
-                'x_router' => ['strategy' => config('ai.routing_strategy'), 'mode' => config('ai.routing_mode')],
+                'x_router' => [
+                    'strategy' => config('ai.routing_strategy'),
+                    'mode' => config('ai.routing_mode'),
+                    'timeout_sec' => min((int) config('ai.router_timeout'), max(1, (int) config('ai.ajil.timeout') - 2)),
+                    'max_attempts' => count(config('ai.models.default')),
+                ],
             ]);
-        if (!$response->successful()) throw new RuntimeException('Ajil request failed: '.$response->status());
+        if (! $response->successful()) {
+            throw new RuntimeException('Ajil request failed: '.$response->status());
+        }
         if (data_get($response->json(), 'model') === 'local/fallback') {
             throw new RuntimeException('Ajil has no usable upstream provider.');
         }
         $content = data_get($response->json(), 'choices.0.message.content');
-        if (!is_string($content)) throw new RuntimeException('Ajil response has no message content.');
+        if (! is_string($content)) {
+            throw new RuntimeException('Ajil response has no message content.');
+        }
         $decoded = json_decode($content, true);
-        if (!is_array($decoded)) throw new RuntimeException('Ajil returned malformed JSON.');
+        if (! is_array($decoded)) {
+            throw new RuntimeException('Ajil returned malformed JSON.');
+        }
+
         return [
             'request_id' => $requestId,
             'response' => $decoded,
