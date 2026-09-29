@@ -5,7 +5,7 @@
             'customer_brief' => ['title' => 'Customer 360', 'subtitle' => 'Contract history, pending items and verified follow-up'],
             'vehicle_brief' => ['title' => 'Vehicle 360', 'subtitle' => 'Availability, maintenance, insurance and bookings'],
             'dashboard_operations' => ['title' => 'Today’s operations', 'subtitle' => 'Actionable priorities for you — overdue, pending, and today’s schedule'],
-            'payment_queue' => ['title' => 'Payment priorities', 'subtitle' => 'What needs your approval next — oldest & largest first'],
+            'payment_queue' => ['title' => 'Payment priorities', 'subtitle' => 'Recent reviews, historical backlog and date anomalies'],
             'changes_since_login' => ['title' => 'Team changes', 'subtitle' => 'Business activity since your last login — no technical noise'],
         ][$feature] ?? ['title' => \Illuminate\Support\Str::headline($feature), 'subtitle' => 'Verified operational insight'];
         $generated = $generatedAt ? \Illuminate\Support\Carbon::parse($generatedAt) : null;

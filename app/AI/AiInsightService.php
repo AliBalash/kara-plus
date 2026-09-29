@@ -160,9 +160,6 @@ class AiInsightService
             'payment_summary' => [
                 'transaction_count' => $payments->count(),
                 'pending_count' => $payments->where('approval_status', 'pending')->count(),
-                'pending_amount_aed' => (float) $payments->where('approval_status', 'pending')->sum('amount_in_aed'),
-                'approved_amount_aed' => (float) $payments->where('approval_status', 'approved')->sum('amount_in_aed'),
-                'paid_amount_aed' => (float) $payments->where('is_paid', true)->sum('amount_in_aed'),
                 'charge_amount_aed' => (float) $payments->whereIn('payment_type', \App\Models\Payment::CHARGE_PAYMENT_TYPES)->sum('amount_in_aed'),
                 'operational_balance_aed' => $contract->calculateRemainingBalance($payments),
                 'by_type' => $payments->groupBy('payment_type')->map(fn ($group) => [

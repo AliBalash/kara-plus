@@ -53,6 +53,14 @@ class AiHealthCommand extends Command
                 $count = (int) $models->json('count', 0);
                 $cache = $models->json('from_cache') ? 'cached' : 'fresh';
                 $this->info("Ajil model catalog is reachable ({$count} entries; {$cache}).");
+                $providerStatus = collect($models->json('providers_status', []))->keyBy('provider');
+                $configuredProviders = collect(config('ai.models.default', []))->pluck('provider')->unique();
+                foreach ($configuredProviders as $provider) {
+                    $status = $providerStatus->get($provider);
+                    if (is_array($status) && ! ($status['ok'] ?? false)) {
+                        $this->warn("{$provider} catalog is unavailable (HTTP ".($status['status_code'] ?? 'unknown').'); model availability is unverified.');
+                    }
+                }
                 if ($models->json('fallback_applied')) {
                     $this->warn('Ajil used its static catalog fallback; model availability is not verified live.');
                 } else {
@@ -61,16 +69,29 @@ class AiHealthCommand extends Command
                         ->all();
                     foreach (config('ai.models.default', []) as $candidate) {
                         $key = $candidate['provider'].'/'.$candidate['model'];
+                        $status = $providerStatus->get($candidate['provider']);
+                        if (is_array($status) && ! ($status['ok'] ?? false)) {
+                            continue;
+                        }
                         if (! in_array($key, $available, true)) {
                             $this->warn("Configured model is absent from the current Ajil catalog: {$key}.");
                         }
                     }
                 }
+                if ($models->json('fallback_applied') || $count === 0 || ($providerStatus->isNotEmpty() && $configuredProviders->every(fn ($provider) => ($providerStatus->get($provider)['ok'] ?? false) === false))) {
+                    $this->error('No configured provider has a verified live model catalog.');
+
+                    return self::FAILURE;
+                }
             } else {
                 $this->warn('Ajil is healthy, but model catalog returned HTTP '.$models->status().'.');
+
+                return self::FAILURE;
             }
         } catch (\Throwable $exception) {
             $this->warn('Ajil is healthy, but the model catalog was unavailable: '.class_basename($exception).'.');
+
+            return self::FAILURE;
         }
 
         return self::SUCCESS;

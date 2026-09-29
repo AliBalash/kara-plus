@@ -37,7 +37,7 @@ return [
             ['provider' => 'gemini', 'model' => env('KARA_AI_GEMINI_MODEL', 'gemini-3.8-flash'), 'priority' => 0],
             ['provider' => 'gemini', 'model' => env('KARA_AI_GEMINI_FALLBACK_MODEL', 'gemini-3.5-flash-lite'), 'priority' => 1],
             ['provider' => 'groq', 'model' => env('KARA_AI_GROQ_MODEL', 'openai/gpt-oss-20b'), 'priority' => 2],
-            ['provider' => 'groq', 'model' => env('KARA_AI_GROQ_FALLBACK_MODEL', 'qwen/qwen3.6-27b'), 'priority' => 3],
+            ['provider' => 'groq', 'model' => env('KARA_AI_GROQ_FALLBACK_MODEL', 'qwen/qwen3.8-27b'), 'priority' => 3],
         ],
     ],
 ];

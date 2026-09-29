@@ -19,9 +19,9 @@ class AiFactEngine
         $add = function (string $type, int $severity, string $title, array $metrics = [], ?string $url = null) use (&$facts, $contract): void {
             $facts[] = ['fact_id' => strtoupper($type).':contract:'.$contract->id, 'type' => $type, 'severity' => $severity, 'entity_type' => 'contract', 'entity_id' => $contract->id, 'title' => $title, 'metrics' => $metrics, 'evidence_url' => $url];
         };
-        $pending = (float) $contract->payments->where('approval_status', 'pending')->sum('amount_in_aed');
-        if ($pending > 0) {
-            $add('pending_payment', 70, 'Pending payment requires review', ['amount_aed' => $pending], route('rental-requests.payment', [$contract->id, $contract->customer_id]));
+        $pendingCount = $contract->payments->where('approval_status', 'pending')->count();
+        if ($pendingCount > 0) {
+            $add('pending_payment', 70, 'Pending ledger entries need review', ['count' => $pendingCount], route('rental-requests.payment', [$contract->id, $contract->customer_id]));
         }
         if (! $contract->pickupDocument && in_array($contract->current_status, ['delivery', 'awaiting_return', 'returned'], true)) {
             $add('missing_pickup_document', 70, 'Pickup document is missing', [], route('rental-requests.pickup-document', $contract->id));
@@ -43,10 +43,10 @@ class AiFactEngine
             $add('vehicle_unavailable', 70, 'Assigned vehicle is not currently available', [], route('rental-requests.edit', $contract->id));
         }
         if ($contract->car?->latestInsurance?->expiry_date?->isBefore(now()->startOfDay())) {
-            $add('vehicle_insurance_expired', 85, 'Vehicle insurance has expired', [], route('car.detail', $contract->car_id));
+            $add('vehicle_insurance_expired', 85, 'Recorded vehicle insurance expiry has passed', [], route('car.detail', $contract->car_id));
         }
         if ($contract->car?->service_due_date?->isPast()) {
-            $add('vehicle_service_due', 55, 'Vehicle service date has passed', [], route('car.detail', $contract->car_id));
+            $add('vehicle_service_due', 55, 'Recorded vehicle service date has passed', [], route('car.detail', $contract->car_id));
         }
 
         return $facts;
@@ -80,10 +80,9 @@ class AiFactEngine
         } elseif ($customer->passport_expiry_date?->between(now(), now()->addDays(30))) {
             $facts[] = $this->fact('passport_expiring', 55, 'Customer passport expires within 30 days', [], $url, 'customer');
         }
-        $pending = $customer->payments()->where('approval_status', 'pending')
-            ->selectRaw('COUNT(*) as count, COALESCE(SUM(amount_in_aed),0) as amount')->first();
-        if ($pending?->count) {
-            $facts[] = $this->fact('pending_payments', 70, 'Customer has pending payments', ['count' => (int) $pending->count, 'amount_aed' => (float) $pending->amount], route('rental-requests.confirm-payment-list'), 'customer');
+        $pendingCount = $customer->payments()->where('approval_status', 'pending')->count();
+        if ($pendingCount) {
+            $facts[] = $this->fact('pending_payments', 70, 'Customer has pending ledger entries', ['count' => $pendingCount], route('rental-requests.confirm-payment-list'), 'customer');
         }
         $overdue = $customer->contracts()->whereIn('current_status', ['delivery', 'awaiting_return'])->where('return_date', '<', now())->count();
         if ($overdue) {
@@ -102,12 +101,18 @@ class AiFactEngine
             $facts[] = $this->fact('vehicle_unavailable', 70, 'Vehicle cannot be dispatched now', ['operational_status' => $car->operationalStatus()], $url, 'vehicle');
         }
         if ($car->latestInsurance?->expiry_date?->isBefore(now()->startOfDay())) {
-            $facts[] = $this->fact('insurance_expired', 100, 'Vehicle insurance has expired', [], $url, 'vehicle');
+            $facts[] = $this->fact('insurance_expired', 85, 'Recorded insurance expiry date has passed', [], $url, 'vehicle');
         } elseif ($car->latestInsurance?->expiry_date?->between(now()->startOfDay(), now()->addDays(30)->endOfDay())) {
-            $facts[] = $this->fact('insurance_expiring', 55, 'Vehicle insurance expires within 30 days', [], $url, 'vehicle');
+            $facts[] = $this->fact('insurance_expiring', 55, 'Recorded insurance expiry is within 30 days', [], $url, 'vehicle');
         }
         if ($car->service_due_date?->isPast()) {
-            $facts[] = $this->fact('service_due', 70, 'Vehicle service date has passed', [], $url, 'vehicle');
+            $facts[] = $this->fact('service_due', 55, 'Recorded service date has passed', [], $url, 'vehicle');
+        }
+        if ($car->is_company_car && ! $car->latestInsurance) {
+            $facts[] = $this->fact('insurance_record_missing', 55, 'Company vehicle has no insurance record', [], $url, 'vehicle');
+        }
+        if ($car->is_company_car && ! $car->service_due_date) {
+            $facts[] = $this->fact('service_date_missing', 40, 'Company vehicle has no service date', [], $url, 'vehicle');
         }
         $overdue = Contract::where('car_id', $car->id)->whereIn('current_status', ['delivery', 'awaiting_return'])->where('return_date', '<', now())->count();
         if ($overdue) {
@@ -127,24 +132,29 @@ class AiFactEngine
             $facts[] = $this->fact('overdue_returns', 100, 'Overdue returns require attention', ['count' => $overdue], route('expert.dashboard'));
         }
 
-        // Critical: pending payments — پول معلق
-        $pending = Payment::where('approval_status', 'pending')->selectRaw('COUNT(*) as count, COALESCE(SUM(amount_in_aed),0) as amount')->first();
-        if ($pending?->count) {
-            $facts[] = $this->fact('pending_payments', 85, 'Pending payments require review', ['count' => (int) $pending->count, 'amount_aed' => (float) $pending->amount], route('rental-requests.confirm-payment-list'));
+        // The ledger mixes charges, refunds and discounts; a gross sum is not a receivable.
+        $pendingCount = Payment::where('approval_status', 'pending')->count();
+        if ($pendingCount) {
+            $facts[] = $this->fact('pending_payments', 70, 'Pending ledger entries need review', ['count' => $pendingCount], route('rental-requests.confirm-payment-list'));
         }
 
         $latestInsuranceIds = Insurance::selectRaw('MAX(id)')->groupBy('car_id');
         $expiredInsurance = Insurance::whereIn('id', $latestInsuranceIds)->whereDate('expiry_date', '<', now()->toDateString())->count();
         if ($expiredInsurance) {
-            $facts[] = $this->fact('expired_insurance', 85, 'Vehicle insurance renewals require attention', ['count' => $expiredInsurance], route('insurance.list'));
+            $facts[] = $this->fact('expired_insurance', 70, 'Recorded insurance expiry dates need verification', ['count' => $expiredInsurance], route('insurance.list'));
         }
         $serviceDue = Car::whereDate('service_due_date', '<=', now()->toDateString())->count();
         if ($serviceDue) {
-            $facts[] = $this->fact('service_due', 55, 'Vehicle service dates require review', ['count' => $serviceDue], route('car.list'));
+            $facts[] = $this->fact('service_due', 55, 'Recorded service dates need verification', ['count' => $serviceDue], route('car.list'));
+        }
+        $missingInsurance = Car::where('is_company_car', true)->whereDoesntHave('insurance')->count();
+        $missingService = Car::where('is_company_car', true)->whereNull('service_due_date')->count();
+        if ($missingInsurance || $missingService) {
+            $facts[] = $this->fact('fleet_records_incomplete', 45, 'Company fleet records need completion', ['missing_insurance_records' => $missingInsurance, 'missing_service_dates' => $missingService], route('car.list'));
         }
 
         // Today: pickups / returns — کار روزانه کارشناس
-        $pickupToday = Contract::whereBetween('pickup_date', [now()->startOfDay(), now()->endOfDay()])->count();
+        $pickupToday = Contract::whereIn('current_status', ['reserved', 'assigned', 'under_review'])->whereBetween('pickup_date', [now()->startOfDay(), now()->endOfDay()])->count();
         if ($pickupToday) {
             $facts[] = $this->fact('pickups_today', 55, 'Pickups scheduled for today', ['count' => $pickupToday], route('rental-requests.awaiting.pickup'));
         }
@@ -152,7 +162,7 @@ class AiFactEngine
         if ($returnToday) {
             $facts[] = $this->fact('returns_today', 55, 'Returns scheduled for today', ['count' => $returnToday], route('rental-requests.awaiting.return'));
         }
-        $pickupTomorrow = Contract::whereBetween('pickup_date', [now()->addDay()->startOfDay(), now()->addDay()->endOfDay()])->count();
+        $pickupTomorrow = Contract::whereIn('current_status', ['reserved', 'assigned', 'under_review'])->whereBetween('pickup_date', [now()->addDay()->startOfDay(), now()->addDay()->endOfDay()])->count();
         if ($pickupTomorrow && ! $pickupToday) {
             $facts[] = $this->fact('upcoming_pickups', 40, 'Pickups scheduled in the next 24 hours', ['count' => $pickupTomorrow], route('rental-requests.awaiting.pickup'));
         }
@@ -202,10 +212,21 @@ class AiFactEngine
     public function payments(): array
     {
         $facts = [];
-        $rows = Payment::where('approval_status', 'pending')->selectRaw('DATE(payment_date) as payment_day, COUNT(*) as count, COALESCE(SUM(amount_in_aed),0) as amount')->groupBy('payment_day')->orderBy('payment_day')->limit(10)->get();
-        foreach ($rows as $row) {
-            $age = $row->payment_day ? Carbon::parse($row->payment_day)->diffInHours(now()) : 0;
-            $facts[] = $this->fact('payment_aging:'.$row->payment_day, $age > 72 ? 100 : 70, 'Pending payment batch', ['count' => (int) $row->count, 'amount_aed' => (float) $row->amount, 'age_hours' => $age], route('rental-requests.confirm-payment-list'));
+        $today = now()->toDateString();
+        $tomorrow = now()->addDay()->toDateString();
+        $recentFrom = now()->subDays(6)->toDateString();
+        $backlogFrom = now()->subDays(30)->toDateString();
+        $base = Payment::where('approval_status', 'pending');
+        $buckets = [
+            ['recent', 55, 'Pending ledger entries from the last 7 days', (clone $base)->where('payment_date', '>=', $recentFrom)->where('payment_date', '<', $tomorrow)->count(), $recentFrom, $today],
+            ['older', 70, 'Pending ledger entries from 8 to 30 days ago', (clone $base)->where('payment_date', '>=', $backlogFrom)->where('payment_date', '<', $recentFrom)->count(), $backlogFrom, now()->subDays(7)->toDateString()],
+            ['historical', 50, 'Historical pending ledger backlog needs reconciliation', (clone $base)->where('payment_date', '<', $backlogFrom)->count(), null, now()->subDays(31)->toDateString()],
+            ['future', 40, 'Future-dated pending ledger entries need date verification', (clone $base)->where('payment_date', '>=', $tomorrow)->count(), $tomorrow, null],
+        ];
+        foreach ($buckets as [$type, $severity, $title, $count, $from, $to]) {
+            if ($count > 0) {
+                $facts[] = $this->fact('payment_aging:'.$type, $severity, $title, ['count' => $count], route('rental-requests.confirm-payment-list', array_filter(['statusFilter' => 'pending', 'dateFrom' => $from, 'dateTo' => $to])));
+            }
         }
 
         return $facts;

@@ -77,6 +77,7 @@ class AiInsightServiceTest extends TestCase
             return ($context['vehicle']['id'] ?? null) === $contract->car_id
                 && array_key_exists('pickup_document_present', $context['documents'] ?? [])
                 && ($context['payment_summary']['pending_count'] ?? null) === 1
+                && ! array_key_exists('pending_amount_aed', $context['payment_summary'] ?? [])
                 && ($context['customer_operational_profile']['total_contracts'] ?? null) === 1
                 && array_key_exists('status_timeline', $context)
                 && ! array_key_exists('notes', $context)
@@ -222,5 +223,44 @@ class AiInsightServiceTest extends TestCase
 
         $this->assertNotContains('VEHICLE:insurance_expired', array_column($vehicleFacts, 'fact_id'));
         $this->assertNotContains('DASHBOARD:expired_insurance', array_column($dashboardFacts, 'fact_id'));
+    }
+
+    public function test_payment_queue_separates_recent_backlog_and_future_dates_without_mixed_amounts(): void
+    {
+        $contract = Contract::factory()->create();
+        foreach ([
+            ['rental_fee', now()],
+            ['discount', now()->subDays(15)],
+            ['payment_back', now()->subDays(60)],
+            ['fine', now()->addDay()],
+        ] as [$type, $date]) {
+            Payment::factory()->create([
+                'contract_id' => $contract->id,
+                'customer_id' => $contract->customer_id,
+                'car_id' => $contract->car_id,
+                'payment_type' => $type,
+                'payment_date' => $date->toDateString(),
+                'approval_status' => 'pending',
+                'is_paid' => false,
+            ]);
+        }
+
+        $facts = app(\App\AI\AiFactEngine::class)->payments();
+        $this->assertCount(4, $facts, implode(', ', array_column($facts, 'fact_id')));
+        foreach ($facts as $fact) {
+            $this->assertSame(1, $fact['metrics']['count']);
+            $this->assertArrayNotHasKey('amount_aed', $fact['metrics']);
+            $this->assertStringContainsString('statusFilter=pending', $fact['evidence_url']);
+        }
+        $this->assertContains('DASHBOARD:payment_aging:historical', array_column($facts, 'fact_id'));
+    }
+
+    public function test_company_vehicle_missing_records_are_data_quality_facts(): void
+    {
+        $car = Car::factory()->available()->create(['is_company_car' => true, 'service_due_date' => null]);
+        $facts = app(\App\AI\AiFactEngine::class)->vehicle($car);
+
+        $this->assertContains('VEHICLE:insurance_record_missing', array_column($facts, 'fact_id'));
+        $this->assertContains('VEHICLE:service_date_missing', array_column($facts, 'fact_id'));
     }
 }
