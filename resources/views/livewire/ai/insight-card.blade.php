@@ -12,18 +12,34 @@
             'contract_finance' => ['title' => 'Contract ledger', 'subtitle' => 'Why the operational balance looks this way'],
             'fleet_outlook' => ['title' => 'Fleet next 7 days', 'subtitle' => 'Returns, pickups and records needing verification'],
         ][$feature] ?? ['title' => \Illuminate\Support\Str::headline($feature), 'subtitle' => 'Verified operational insight'];
+        $featureIcon = [
+            'contract_brief' => 'bx-file',
+            'customer_brief' => 'bx-user-circle',
+            'vehicle_brief' => 'bx-car',
+            'dashboard_operations' => 'bx-layout',
+            'payment_queue' => 'bx-credit-card',
+            'changes_since_login' => 'bx-group',
+            'reservation_triage' => 'bx-calendar-check',
+            'reservation_queue' => 'bx-calendar',
+            'contract_finance' => 'bx-wallet',
+            'fleet_outlook' => 'bx-line-chart',
+        ][$feature] ?? 'bx-sparkles';
         $generated = $generatedAt ? \Illuminate\Support\Carbon::parse($generatedAt) : null;
         $expires = $expiresAt ? \Illuminate\Support\Carbon::parse($expiresAt) : null;
     @endphp
 
     <div class="card-body position-relative">
         <div class="kara-ai-card__header">
+            <span class="kara-ai-card__brand" aria-hidden="true">
+                <img src="{{ asset('assets/panel/assets/img/ai/kara-ai-logo.jpg') }}" alt="">
+            </span>
             <div class="kara-ai-card__head-text">
-                <div class="kara-ai-card__eyebrow"><i class="bx bx-sparkles"></i> Kara AI · verified facts</div>
+                <div class="kara-ai-card__eyebrow">Kara AI · verified facts</div>
                 <h6 class="kara-ai-card__title">{{ $featureCopy['title'] }}</h6>
                 <p class="kara-ai-card__subtitle">{{ $featureCopy['subtitle'] }}</p>
             </div>
             <div class="kara-ai-card__head-meta">
+                <span class="kara-ai-card__feature-icon" aria-hidden="true"><i class="bx {{ $featureIcon }}"></i></span>
                 @if($cached)
                     <span class="kara-ai-cache-badge" title="Facts unchanged, reused valid cache"><i class="bx bx-check-circle"></i> Up to date</span>
                 @else
@@ -197,9 +213,16 @@
             .kara-ai-card{ --kara-red:#ed1c24; --kara-ink:#111214; --kara-muted:#6b7280; --kara-border:#eef0f4; --kara-soft:#f8f9fb; --kara-success:#16a34a; --kara-warning:#d97706; --radius:20px; border:1px solid var(--kara-border)!important; border-radius:var(--radius)!important; background:#fff!important; box-shadow:0 4px 24px rgba(17,20,24,.06)!important; overflow:hidden; transition:box-shadow .2s ease; }
             .kara-ai-card:hover{ box-shadow:0 8px 32px rgba(17,20,24,.08)!important; }
             .kara-ai-card .card-body{ padding:18px 18px 16px!important; }
-            .kara-ai-card__header{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; }
+            .kara-ai-card__header{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:16px; }
+            .kara-ai-card__brand{ flex:0 0 38px; width:38px; height:38px; padding:2px; display:grid; place-items:center; background:#fff; border:1px solid #ffe4e6; border-radius:12px; box-shadow:0 5px 12px rgba(15,23,42,.1), 0 2px 5px rgba(237,28,36,.12); transition:transform .25s ease, box-shadow .25s ease; }
+            .kara-ai-card__brand img{ display:block; width:100%; height:100%; object-fit:cover; border-radius:9px; }
+            .kara-ai-card:hover .kara-ai-card__brand{ transform:translateY(-2px) rotate(-3deg); box-shadow:0 8px 17px rgba(15,23,42,.14), 0 3px 8px rgba(237,28,36,.14); }
+            .kara-ai-card__head-text{ flex:1 1 auto; min-width:0; }
+            .kara-ai-card__head-meta{ display:flex; flex-direction:column; align-items:flex-end; gap:7px; flex:0 0 auto; }
+            .kara-ai-card__feature-icon{ width:34px; height:34px; display:grid; place-items:center; border:1px solid #ffe4e6; border-radius:11px; background:linear-gradient(145deg,#fff,#fff1f2); color:var(--kara-red); box-shadow:0 4px 9px rgba(237,28,36,.09), inset 0 1px 0 #fff; transform:translateY(0); transition:transform .25s ease, box-shadow .25s ease; }
+            .kara-ai-card__feature-icon i{ font-size:18px; }
+            .kara-ai-card:hover .kara-ai-card__feature-icon{ transform:translateY(-3px); box-shadow:0 8px 16px rgba(237,28,36,.14), inset 0 1px 0 #fff; }
             .kara-ai-card__eyebrow{ display:inline-flex; align-items:center; gap:6px; color:var(--kara-red); font-size:10.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; margin-bottom:6px; }
-            .kara-ai-card__eyebrow i{ font-size:12px; }
             .kara-ai-card__title{ font-size:15px!important; font-weight:750!important; color:var(--kara-ink)!important; margin:0 0 3px!important; letter-spacing:-.01em; }
             .kara-ai-card__subtitle{ color:var(--kara-muted)!important; font-size:12.5px!important; line-height:1.5!important; margin:0!important; max-width:32ch; }
             .kara-ai-cache-badge, .kara-ai-live-badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; border:1px solid; }
@@ -258,8 +281,8 @@
             .feedback-label{ font-size:12px; color:var(--kara-muted); font-weight:600; } .feedback-thanks{ display:inline-flex; align-items:center; gap:4px; color:var(--kara-success); font-size:12.5px; font-weight:700; }
             .kara-ai-card__overlay{ position:absolute; inset:0; z-index:5; background:rgba(255,255,255,.82); backdrop-filter:blur(4px); display:none; flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:var(--radius); color:#1f2328; font-size:13px; font-weight:600; }
             @keyframes kara-spin{ to{ transform:rotate(360deg); } } @keyframes kara-pulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.15); opacity:.7; } }
-            @media (max-width:640px){ .kara-ai-card .card-body{ padding:16px!important; } .kara-ai-card__actions{ flex-direction:column; align-items:stretch; } .action-left,.action-right{ justify-content:space-between; } }
-            @media (prefers-reduced-motion:reduce){ .kara-ai-card__loader,.live-dot{ animation:none!important; } }
+            @media (max-width:640px){ .kara-ai-card .card-body{ padding:16px!important; } .kara-ai-card__header{ gap:8px; } .kara-ai-card__brand{ flex-basis:34px; width:34px; height:34px; } .kara-ai-card__feature-icon{ width:30px; height:30px; } .kara-ai-card__actions{ flex-direction:column; align-items:stretch; } .action-left,.action-right{ justify-content:space-between; } }
+            @media (prefers-reduced-motion:reduce){ .kara-ai-card__loader,.live-dot{ animation:none!important; } .kara-ai-card__brand,.kara-ai-card__feature-icon{ transition:none!important; } }
         </style>
     @endonce
 </section>
