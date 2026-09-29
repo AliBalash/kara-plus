@@ -154,6 +154,16 @@
                         </select>
                     </div>
                 </div>
+                <div class="col-lg-3">
+                    <div class="filter-field">
+                        <label class="filter-label" for="paymentCollectionDiscountReason">Discount Reason</label>
+                        <select id="paymentCollectionDiscountReason" class="form-select" wire:model.live="discountReason">
+                            @foreach ($discountReasons as $option)
+                                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -191,6 +201,9 @@
                                     <span class="cell-title">#{{ $row['payment_id'] }}</span>
                                     <span class="cell-subtitle">{{ $row['payment_date'] }}</span>
                                     <span class="cell-subtitle">{{ $row['payment_type_label'] }}</span>
+                                    @if ($row['payment_type'] === 'discount')
+                                        <span class="cell-subtitle">{{ $row['discount_reason_label'] }}</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <span class="cell-title">{{ $row['customer_name'] }}</span>

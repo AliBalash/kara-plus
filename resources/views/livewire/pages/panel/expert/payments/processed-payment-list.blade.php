@@ -239,7 +239,9 @@
                                             <td>{{ $payment->currency }}</td>
                                             <td>
                                                 {{ \App\Models\Payment::paymentTypeLabels()[$payment->payment_type] ?? ucwords(str_replace('_', ' ', $payment->payment_type)) }}
-                                                @if ($payment->isSalikBreakdownEntry())
+                                                @if ($payment->payment_type === 'discount')
+                                                    <div class="small text-muted mt-1">{{ \App\Models\Payment::discountReasonLabel($payment->discount_reason) }}</div>
+                                                @elseif ($payment->isSalikBreakdownEntry())
                                                     <div class="small text-muted mt-1">
                                                         Trips: {{ $payment->salikTripCount() }},
                                                         Amount: {{ number_format($payment->salikBreakdownAmount(), 2) }} AED

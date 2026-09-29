@@ -31,6 +31,22 @@
                         @error('payment_type') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
 
+                    @if ($payment_type === 'discount')
+                        <div class="col-md-4" data-validation-field="discount_reason">
+                            <label class="form-label">Discount Reason @unless ($allowLegacyDiscountReasonBlank && blank($discount_reason))<span class="badge bg-danger-subtle text-danger ms-2">Required</span>@endunless</label>
+                            <select class="form-select" wire:model="discount_reason">
+                                <option value="">{{ $allowLegacyDiscountReasonBlank && blank($discount_reason) ? 'Reason not recorded (legacy)' : 'Select discount reason' }}</option>
+                                @foreach (\App\Models\Payment::discountReasonLabels() as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @if ($allowLegacyDiscountReasonBlank && blank($discount_reason))
+                                <small class="text-muted">This legacy discount has no recorded reason. Select one to classify it.</small>
+                            @endif
+                            @error('discount_reason') <span class="text-danger">{{ $message }}</span> @enderror
+                        </div>
+                    @endif
+
                     <div class="col-md-4" data-validation-field="amount">
                         <label class="form-label">
                             Amount

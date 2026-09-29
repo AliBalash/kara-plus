@@ -29,6 +29,79 @@ class OperationsReportServiceTest extends TestCase
         $this->service = app(OperationsReportService::class);
     }
 
+    public function test_payment_collections_filters_and_exports_discount_reasons(): void
+    {
+        $customer = Customer::factory()->create();
+        $car = Car::factory()->create();
+        $contract = Contract::factory()->for($customer)->for($car)->create();
+
+        Payment::factory()->for($contract)->for($customer)->for($car)->create([
+            'payment_type' => 'discount',
+            'discount_reason' => 'extension_discount',
+            'amount' => 100,
+            'amount_in_aed' => 100,
+            'payment_date' => '2025-06-01',
+        ]);
+        Payment::factory()->for($contract)->for($customer)->for($car)->create([
+            'payment_type' => 'discount',
+            'discount_reason' => 'management_discount',
+            'amount' => 200,
+            'amount_in_aed' => 200,
+            'payment_date' => '2025-06-02',
+        ]);
+        Payment::factory()->for($contract)->for($customer)->for($car)->create([
+            'payment_type' => 'discount',
+            'discount_reason' => null,
+            'amount' => 50,
+            'amount_in_aed' => 50,
+            'payment_date' => '2025-06-03',
+        ]);
+
+        $filtered = $this->service->paymentCollections([
+            'date_from' => '2025-06-01',
+            'date_to' => '2025-06-30',
+            'discount_reason' => 'extension_discount',
+        ]);
+
+        $this->assertCount(1, $filtered['rows']);
+        $this->assertSame('extension_discount', $filtered['rows'][0]['discount_reason']);
+        $this->assertSame('Extension Discount', $filtered['rows'][0]['discount_reason_label']);
+        $this->assertContains('Discount Reason', $filtered['export_headings']);
+        $this->assertContains('Extension Discount', $filtered['export_rows'][0]);
+
+        $allDiscounts = $this->service->paymentCollections([
+            'date_from' => '2025-06-01',
+            'date_to' => '2025-06-30',
+            'payment_type' => 'discount',
+        ]);
+
+        $this->assertCount(3, $allDiscounts['rows']);
+        $this->assertContains('Reason not recorded', array_column($allDiscounts['rows']->all(), 'discount_reason_label'));
+        $this->assertSame(1, $allDiscounts['discount_reason_breakdown']['Extension Discount']['count'] ?? null);
+    }
+
+    public function test_payment_collections_supports_item_owner_discounts(): void
+    {
+        $customer = Customer::factory()->create();
+        $car = Car::factory()->create();
+        $contract = Contract::factory()->for($customer)->for($car)->create();
+
+        Payment::factory()->for($contract)->for($customer)->for($car)->create([
+            'payment_type' => 'discount',
+            'discount_reason' => 'item_owner_discount',
+            'amount' => 100,
+            'amount_in_aed' => 100,
+            'payment_date' => '2025-06-01',
+        ]);
+
+        $report = $this->service->paymentCollections([
+            'discount_reason' => 'item_owner_discount',
+        ]);
+
+        $this->assertCount(1, $report['rows']);
+        $this->assertSame('Item Owner', $report['rows'][0]['discount_reason_label']);
+    }
+
     public function test_customer_requests_report_filters_by_customer_and_builds_financial_summary(): void
     {
         $customer = Customer::factory()->create([
@@ -159,6 +232,94 @@ class OperationsReportServiceTest extends TestCase
         $this->assertEqualsWithDelta((float) $approved->total_amount, $report['summary']['extension_revenue'], 0.01);
         $this->assertEqualsWithDelta(1000, $report['summary']['rental_revenue'], 0.01);
         $this->assertEqualsWithDelta(1000 + (float) $approved->total_amount, $report['summary']['gross_contract_value'], 0.01);
+    }
+
+    public function test_voided_extension_is_removed_from_extension_revenue_without_changing_base_rental_revenue(): void
+    {
+        $customer = Customer::factory()->create(['gender' => 'male']);
+        $car = Car::factory()->available()->create([
+            'price_per_day_short' => 200,
+            'price_per_day_mid' => 200,
+            'price_per_day_long' => 200,
+        ]);
+        $actor = User::factory()->create();
+        $contract = Contract::factory()->for($customer)->for($car)->create([
+            'current_status' => 'assigned',
+            'pickup_date' => Carbon::parse('2026-09-01 10:00:00'),
+            'return_date' => Carbon::parse('2026-09-05 10:00:00'),
+            'total_price' => 1000,
+            'used_daily_rate' => 200,
+        ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1000,
+            'source_type' => 'original',
+        ]);
+        $contract->update(['current_status' => 'awaiting_return']);
+
+        $amendments = app(ContractAmendmentService::class);
+        $approved = $amendments->approve(
+            $amendments->requestExtension($contract, $contract->return_date->copy()->addDays(2), $actor->id),
+            $actor->id,
+        );
+        $amendments->deleteExtension($approved, $actor->id, 'Customer reverted to the original return date.');
+
+        $report = $this->service->customerRequests();
+
+        $this->assertEqualsWithDelta(0, $report['summary']['extension_revenue'], 0.01);
+        $this->assertEqualsWithDelta(1000, $report['summary']['rental_revenue'], 0.01);
+        $this->assertEqualsWithDelta(1000, $report['summary']['gross_contract_value'], 0.01);
+        $this->assertSame('voided', $approved->fresh()->status);
+        $this->assertEqualsWithDelta(0, (float) $contract->charges()->where('source_type', 'amendment')->sum('amount'), 0.01);
+    }
+
+    public function test_revised_extension_reports_only_the_replacement_as_extension_revenue(): void
+    {
+        $customer = Customer::factory()->create(['gender' => 'male']);
+        $car = Car::factory()->available()->create([
+            'price_per_day_short' => 200,
+            'price_per_day_mid' => 150,
+            'price_per_day_long' => 100,
+        ]);
+        $actor = User::factory()->create();
+        $contract = Contract::factory()->for($customer)->for($car)->create([
+            'current_status' => 'assigned',
+            'pickup_date' => Carbon::parse('2026-09-01 10:00:00'),
+            'return_date' => Carbon::parse('2026-09-05 10:00:00'),
+            'total_price' => 1000,
+            'used_daily_rate' => 200,
+        ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1000,
+            'source_type' => 'original',
+        ]);
+        $contract->update(['current_status' => 'awaiting_return']);
+
+        $amendments = app(ContractAmendmentService::class);
+        $original = $amendments->approve(
+            $amendments->requestExtension($contract, $contract->return_date->copy()->addDays(2), $actor->id),
+            $actor->id,
+        );
+        $replacement = $amendments->reviseApprovedExtension(
+            $original,
+            Carbon::parse('2026-09-12 10:00:00'),
+            $actor->id,
+            'daily_ceiling',
+            'current_total_duration_tariff',
+            'Customer requested a longer extension.',
+        );
+
+        $report = $this->service->customerRequests();
+
+        $this->assertSame('superseded', $original->fresh()->status);
+        $this->assertSame('approved', $replacement->status);
+        $this->assertEqualsWithDelta((float) $replacement->total_amount, $report['summary']['extension_revenue'], 0.01);
+        $this->assertEqualsWithDelta(1000, $report['summary']['rental_revenue'], 0.01);
+        $this->assertEqualsWithDelta(1000 + (float) $replacement->total_amount, $report['summary']['gross_contract_value'], 0.01);
+        $this->assertEqualsWithDelta((float) $replacement->total_amount, (float) $contract->charges()->where('source_type', 'amendment')->sum('amount'), 0.01);
     }
 
     public function test_customer_balance_report_groups_contracts_and_marks_overdue_accounts(): void

@@ -231,6 +231,39 @@
     <x-detail-rental-request-tabs :contract-id="$contract->id" />
 
     <form wire:submit.prevent="submit" novalidate>
+        @php
+            $operationalEditLocked = $this->isOperationalContract();
+            $commercialEditUnlocked = $this->canEditOperationalCommercialTerms();
+            $lockCommercialInputs = $operationalEditLocked && !$commercialEditUnlocked;
+            $commercialPricingDays = $operationalEditLocked ? $pricing_rental_days : $rental_days;
+            $baseRentalDisplayDays = $operationalEditLocked ? $pricing_rental_days : $rental_days;
+        @endphp
+        @if ($operationalEditLocked)
+            <div class="alert alert-info border-0 shadow-sm mb-4" role="status">
+                <div class="fw-semibold"><i class="bx bx-info-circle me-1"></i> Operational contract — contract tariff edit mode</div>
+                <div class="small mt-1">
+                    Vehicle, schedule and commercial selections may be corrected by every signed-in panel user.
+                    All totals use this contract's saved tariffs. Financial changes are saved as an audited adjustment; original charges and payments remain intact.
+                    A return increase beyond the one-hour tolerance must use <strong>Extend Contract</strong>; it updates the planned return and contract balance together.
+                </div>
+            </div>
+        @endif
+        @if ($activeApprovedExtension)
+            <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bx bx-lock-alt fs-4 lh-1"></i>
+                    <div class="small">
+                        <div class="fw-semibold">Approved extension is active — return date is protected</div>
+                        <div class="mt-1">
+                            <strong>Original return:</strong> {{ $contract->original_return_date?->format('d M Y, H:i') ?? '—' }}
+                            <span class="mx-1">|</span>
+                            <strong>Current planned return:</strong> {{ $activeApprovedExtension['new_return_at'] }}
+                        </div>
+                        <div class="mt-1">You can still edit customer details, notes, locations, and eligible commercial corrections. Saving from Edit cannot shorten or remove this extension. Use the Extend Contract tab if the return date itself must change.</div>
+                    </div>
+                </div>
+            </div>
+        @endif
         @if ($errors->any())
             <div class="contract-validation-summary p-3 p-md-4 mb-4 animate__animated animate__fadeIn" role="alert">
                 <div class="d-flex align-items-start gap-3">
@@ -535,7 +568,7 @@
                             <span class="input-group-text"><i class="bx bx-check-circle"></i></span>
                             <div class="form-check form-check-inline mt-2 ms-2">
                                 <input type="checkbox" class="form-check-input" wire:model="kardo_required"
-                                    id="kardo_required">
+                                    id="kardo_required" @disabled($lockCommercialInputs)>
                                 <label class="form-check-label" for="kardo_required">KARDO Required</label>
                             </div>
                             @error('kardo_required')
@@ -547,7 +580,7 @@
                             <span class="input-group-text"><i class="bx bx-money"></i></span>
                             <div class="form-check form-check-inline mt-2 ms-2">
                                 <input type="checkbox" class="form-check-input" wire:model="payment_on_delivery"
-                                    id="payment_on_delivery">
+                                    id="payment_on_delivery" @disabled($lockCommercialInputs)>
                                 <label class="form-check-label" for="payment_on_delivery">Payment on Delivery</label>
                             </div>
                             @error('payment_on_delivery')
@@ -558,7 +591,7 @@
                         @if ($payment_on_delivery)
                             <div class="input-group mb-3">
                                 <span class="input-group-text"><i class="bx bx-chat"></i></span>
-                                <textarea class="form-control @error('driver_note') is-invalid @enderror" rows="2"
+                                    <textarea class="form-control @error('driver_note') is-invalid @enderror" rows="2"
                                     wire:model="driver_note" placeholder="Driver Note for Pickup" data-bs-toggle="tooltip"
                                     title="Note shown to the driver on pickup document"></textarea>
                                 @error('driver_note')
@@ -624,7 +657,7 @@
                                 <select id="editSelectedBrandInput"
                                     class="form-control @error('selectedBrand') is-invalid @enderror"
                                     wire:model.live="selectedBrand" aria-required="true" data-bs-toggle="tooltip"
-                                    title="Select car brand">
+                                    title="Select car brand" @disabled($lockCommercialInputs)>
                                     <option value="">Select Brand</option>
                                     @foreach ($brands as $brand)
                                         <option value="{{ $brand }}">{{ $brand }}</option>
@@ -647,7 +680,7 @@
                                     <select id="editSelectedModelInput"
                                         class="form-control @error('selectedModelId') is-invalid @enderror"
                                         wire:model.live="selectedModelId" aria-required="true" data-bs-toggle="tooltip"
-                                        title="Select car model">
+                                        title="Select car model" @disabled($lockCommercialInputs)>
                                         <option value="">Select Model</option>
                                         @foreach ($models as $model)
                                             <option value="{{ $model->id }}">{{ $model->model }}</option>
@@ -671,7 +704,7 @@
                                     <select id="editSelectedCarInput"
                                         class="form-control @error('selectedCarId') is-invalid @enderror"
                                         wire:model.live="selectedCarId" aria-required="true" data-bs-toggle="tooltip"
-                                        title="Select available car">
+                                        title="Select available car" @disabled($lockCommercialInputs)>
                                         <option value="">Select Car</option>
                                         @foreach ($carsForModel as $car)
                                         <option value="{{ $car['id'] }}"
@@ -751,14 +784,19 @@
                                 @endif
                                 <div class="row mt-2">
                                     <div class="col-md-12">
-                                        <strong>Price Tiers:</strong>
+                                        <strong>{{ $operationalEditLocked ? 'Contract Tariff:' : 'Price Tiers:' }}</strong>
                                         <div class="d-flex flex-wrap">
-                                            <span class="badge bg-secondary m-1">1-6 days:
-                                                {{ number_format((float) $selectedCar->price_per_day_short, 2) }} AED</span>
-                                            <span class="badge bg-secondary m-1">7-28 days:
-                                                {{ number_format((float) $selectedCar->price_per_day_mid, 2) }} AED</span>
-                                            <span class="badge bg-secondary m-1">28+ days:
-                                                {{ number_format((float) $selectedCar->price_per_day_long, 2) }} AED</span>
+                                            @if ($operationalEditLocked)
+                                                <span class="badge bg-primary m-1">Saved daily rate:
+                                                    {{ number_format((float) $dailyRate, 2) }} AED/day</span>
+                                            @else
+                                                <span class="badge bg-secondary m-1">1-6 days:
+                                                    {{ number_format((float) $selectedCar->price_per_day_short, 2) }} AED</span>
+                                                <span class="badge bg-secondary m-1">7-28 days:
+                                                    {{ number_format((float) $selectedCar->price_per_day_mid, 2) }} AED</span>
+                                                <span class="badge bg-secondary m-1">28+ days:
+                                                    {{ number_format((float) $selectedCar->price_per_day_long, 2) }} AED</span>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -766,25 +804,25 @@
                                 <div class="mt-3">
                                     <div class="d-flex flex-column gap-2">
                                         <div class="d-flex align-items-center justify-content-between">
-                                            <span class="text-muted small">Standard daily rate</span>
+                                            <span class="text-muted small">{{ $operationalEditLocked ? 'Contract daily rate' : 'Standard daily rate' }}</span>
                                             <span class="fw-semibold">
-                                                {{ number_format((float) $standard_daily_rate, 2) }} AED/day
+                                                {{ number_format((float) ($operationalEditLocked ? $dailyRate : $standard_daily_rate), 2) }} AED/day
                                             </span>
                                         </div>
                                         <div class="form-check form-switch">
                                             <input type="checkbox" class="form-check-input"
-                                                wire:model.live="apply_discount" id="apply_discount">
+                                                wire:model.live="apply_discount" id="apply_discount" @disabled($lockCommercialInputs)>
                                             <label class="form-check-label" for="apply_discount">
                                                 Change daily rate (Custom Daily Rate)
                                             </label>
                                         </div>
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="bx bx-discount"></i></span>
-                                            <input type="number" step="0.01"
+                                            <input type="number" step="0.01" min="0" inputmode="decimal"
                                                 class="form-control @error('custom_daily_rate') is-invalid @enderror"
-                                                wire:model.live="custom_daily_rate"
+                                                wire:model.blur="custom_daily_rate"
                                                 placeholder="Enter custom daily rate (e.g. 180 AED)"
-                                                @disabled(!$apply_discount)>
+                                                @disabled(!$apply_discount || $lockCommercialInputs)>
                                             <span class="input-group-text">AED/day</span>
                                             @error('custom_daily_rate')
                                                 <div class="invalid-feedback animate__animated animate__fadeIn">
@@ -792,7 +830,10 @@
                                             @enderror
                                         </div>
                                         <small class="text-muted">
-                                            When custom rate is off, pricing auto-resets to the car's standard rate.
+                                            Enter an exact AED/day rate with up to two decimal places (for example, 46.66). Pricing updates after you leave this field.<br>
+                                            {{ $operationalEditLocked
+                                                ? "Edits retain this contract's saved rate unless a new custom daily rate is entered explicitly."
+                                                : "When custom rate is off, pricing auto-resets to the car's standard rate." }}
                                         </small>
                                     </div>
                                 </div>
@@ -864,6 +905,13 @@
                     <div class="card-body">
                         <!-- Location & Dates -->
                         <h6 class="text-primary mb-3">Location & Dates</h6>
+                        @php
+                            $locationFeeTier = (float) $commercialPricingDays < 3 ? 'under_3' : 'over_3';
+                            $locationFeeTierLabel = (float) $commercialPricingDays < 3 ? 'under 3 days' : '3+ days';
+                            $displayLocationCosts = $operationalEditLocked
+                                ? ($contractPricingTariffs['locations'] ?? $locationCosts)
+                                : $locationCosts;
+                        @endphp
                         <div class="mb-3" data-validation-field="pickup_location">
                             <label class="form-label fw-semibold mb-1" for="editPickupLocationInput">
                                 Pickup Location <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
@@ -876,10 +924,11 @@
                                     title="Select pickup location">
                                     <option value="">Pickup Location</option>
                                     @foreach ($locationOptions as $location)
-                                        <option value="{{ $location }}">{{ $location }}</option>
+                                        <option value="{{ $location }}">{{ $location }} — {{ number_format((float) ($displayLocationCosts[$location][$locationFeeTier] ?? 0), 2) }} AED</option>
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="form-text">Pickup fee for the {{ $locationFeeTierLabel }} tier: <strong>{{ number_format((float) ($transfer_costs['pickup'] ?? 0), 2) }} AED</strong></div>
                             @error('pickup_location')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
                                 </div>
@@ -898,10 +947,11 @@
                                     title="Select return location">
                                     <option value="">Return Location</option>
                                     @foreach ($locationOptions as $location)
-                                        <option value="{{ $location }}">{{ $location }}</option>
+                                        <option value="{{ $location }}">{{ $location }} — {{ number_format((float) ($displayLocationCosts[$location][$locationFeeTier] ?? 0), 2) }} AED</option>
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="form-text">Return fee for the {{ $locationFeeTierLabel }} tier: <strong>{{ number_format((float) ($transfer_costs['return'] ?? 0), 2) }} AED</strong></div>
                             @error('return_location')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
                                 </div>
@@ -927,20 +977,54 @@
 
                         <div class="mb-3" data-validation-field="return_date">
                             <label class="form-label fw-semibold mb-1" for="editReturnDateInput">
-                                Return Date & Time <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
+                                Current Planned Return <span class="badge bg-danger-subtle text-danger ms-2">Required</span>
                             </label>
+                            @if ($contract->original_return_date)
+                                <div class="alert alert-info py-2 small mb-2">
+                                    <div><strong>Original return:</strong> {{ $contract->original_return_date->format('Y-m-d H:i') }}</div>
+                                    @if ($activeApprovedExtension)
+                                        <div><strong>Approved extension:</strong> {{ $activeApprovedExtension['old_return_at'] }} → {{ $activeApprovedExtension['new_return_at'] }}</div>
+                                        <div class="mt-1">Original return is historical. Current planned return is the live operational date and is controlled by this extension.</div>
+                                    @endif
+                                </div>
+                            @endif
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bx bx-calendar"></i></span>
                                 <input id="editReturnDateInput" type="datetime-local"
                                     class="form-control @error('return_date') is-invalid @enderror"
                                     wire:model.live="return_date" aria-required="true" data-bs-toggle="tooltip"
+                                    @disabled($activeApprovedExtension !== null)
                                     title="Select return date and time">
                             </div>
+                            @if ($activeApprovedExtension)
+                                <div class="form-text">This field is locked to prevent an Edit save from cancelling the approved extension. Use Extend Contract to change the date.</div>
+                            @elseif ($operationalEditLocked)
+                                <div class="form-text">You may correct the planned return within the one-hour tolerance. For a later return, use Extend Contract.</div>
+                            @endif
                             @error('return_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}
                                 </div>
                             @enderror
                         </div>
+
+                        @if ($operationalEditLocked && $contract->actual_return_at === null)
+                            <div class="mb-3" data-validation-field="actual_pickup_at">
+                                <label class="form-label fw-semibold mb-1" for="editActualPickupDateInput">
+                                    Actual Pickup Date & Time
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bx bx-time-five"></i></span>
+                                    <input id="editActualPickupDateInput" type="datetime-local"
+                                        class="form-control @error('actual_pickup_at') is-invalid @enderror"
+                                        wire:model="actual_pickup_at" data-bs-toggle="tooltip"
+                                        title="Correct the actual time the vehicle was handed over. This does not change the planned return or price.">
+                                </div>
+                                <div class="form-text">This records the real handover time only. It does not extend the contract or recalculate charges.</div>
+                                @error('actual_pickup_at')
+                                    <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        @endif
 
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bx bx-money"></i></span>
@@ -1002,12 +1086,12 @@
                                                         class="form-control @error('service_quantities.child_seat') is-invalid @enderror"
                                                         wire:model.live="service_quantities.child_seat" placeholder="0"
                                                         data-bs-toggle="tooltip"
-                                                        title="Enter the number of child seats to include">
+                                                        title="Enter the number of child seats to include" @disabled($lockCommercialInputs)>
                                                     <span class="input-group-text"></span>
                                                 </div>
                                                 <div class="small text-muted mt-1">
-                                                    Total for {{ max($rental_days, 1) }} day(s):
-                                                    <span class="fw-semibold">{{ number_format(($service_quantities['child_seat'] ?? 0) * $service['amount'] * max($rental_days, 1), 2) }} AED</span>
+                                                    Total for {{ max($commercialPricingDays, 1) }} base rental day(s):
+                                                    <span class="fw-semibold">{{ number_format(($service_quantities['child_seat'] ?? 0) * $service['amount'] * max($commercialPricingDays, 1), 2) }} AED</span>
                                                 </div>
                                                 @error('service_quantities.child_seat')
                                                     <div class="invalid-feedback d-block animate__animated animate__fadeIn">{{ $message }}</div>
@@ -1019,7 +1103,7 @@
                                                     wire:model.live="selected_services" value="{{ $key }}"
                                                     id="service-{{ $key }}"
                                                     @if (in_array($key, $selected_services)) checked @endif
-                                                    data-bs-toggle="tooltip" title="{{ $service['label_en'] }} details">
+                                                    data-bs-toggle="tooltip" title="{{ $service['label_en'] }} details" @disabled($lockCommercialInputs)>
                                                 <label class="form-check-label" for="service-{{ $key }}">
                                                     <i class="fa {{ $service['icon'] }} me-2"></i>
                                                     {{ $service['label_en'] }} -
@@ -1042,7 +1126,8 @@
                                 <div class="form-check mb-2">
                                     <input class="form-check-input" type="radio"
                                         wire:model.live="selected_insurance" value="basic_insurance"
-                                        id="insurance-basic" checked disabled data-bs-toggle="tooltip"
+                                        id="insurance-basic" @if ($selected_insurance === 'basic_insurance') checked @endif
+                                        data-bs-toggle="tooltip" @disabled($lockCommercialInputs)
                                         title="Basic Insurance (Included)">
                                     <label class="form-check-label" for="insurance-basic">
                                         <i class="fa fa-shield-alt me-2"></i>
@@ -1053,7 +1138,7 @@
                                     <input class="form-check-input" type="radio"
                                         wire:model.live="selected_insurance" value="" id="insurance-none"
                                         @if (is_null($selected_insurance)) checked @endif data-bs-toggle="tooltip"
-                                        title="No Additional Insurance">
+                                        title="No Additional Insurance" @disabled($lockCommercialInputs)>
                                     <label class="form-check-label" for="insurance-none">
                                         <i class="fa fa-ban me-2"></i>
                                         No Additional Insurance - Free
@@ -1063,7 +1148,7 @@
                                     <input class="form-check-input" type="radio"
                                         wire:model.live="selected_insurance" value="ldw_insurance" id="insurance-ldw"
                                         @if ($selected_insurance === 'ldw_insurance') checked @endif data-bs-toggle="tooltip"
-                                        title="Loss Damage Waiver Insurance">
+                                        title="Loss Damage Waiver Insurance" @disabled($lockCommercialInputs)>
                                     <label class="form-check-label" for="insurance-ldw">
                                         <i class="fa {{ $services['ldw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['ldw_insurance']['label_en'] }} -
@@ -1078,7 +1163,7 @@
                                     <input class="form-check-input" type="radio"
                                         wire:model.live="selected_insurance" value="scdw_insurance"
                                         id="insurance-scdw" @if ($selected_insurance === 'scdw_insurance') checked @endif
-                                        data-bs-toggle="tooltip" title="Super Collision Damage Waiver Insurance">
+                                        data-bs-toggle="tooltip" title="Super Collision Damage Waiver Insurance" @disabled($lockCommercialInputs)>
                                     <label class="form-check-label" for="insurance-scdw">
                                         <i class="fa {{ $services['scdw_insurance']['icon'] }} me-2"></i>
                                         {{ $services['scdw_insurance']['label_en'] }} -
@@ -1097,12 +1182,12 @@
                             <div class="list-group mb-3" data-validation-field="driving_license_option">
                                 <label class="list-group-item d-flex align-items-center">
                                     <input class="form-check-input me-2" type="radio" value=""
-                                        wire:model.live="driving_license_option">
+                                        wire:model.live="driving_license_option" @disabled($lockCommercialInputs)>
                                     <span class="fw-semibold">No Driving License Processing</span>
                                 </label>
                                 <label class="list-group-item d-flex align-items-center">
                                     <input class="form-check-input me-2" type="radio" value="one_year"
-                                        wire:model.live="driving_license_option">
+                                        wire:model.live="driving_license_option" @disabled($lockCommercialInputs)>
                                     <div>
                                         <div class="fw-semibold">Driving License (1 Year)</div>
                                         <div class="text-muted small">{{ number_format($driving_license_options['one_year']['amount'], 2) }} AED</div>
@@ -1110,7 +1195,7 @@
                                 </label>
                                 <label class="list-group-item d-flex align-items-center">
                                     <input class="form-check-input me-2" type="radio" value="three_year"
-                                        wire:model.live="driving_license_option">
+                                        wire:model.live="driving_license_option" @disabled($lockCommercialInputs)>
                                     <div>
                                         <div class="fw-semibold">Driving License (3 Years)</div>
                                         <div class="text-muted small">{{ number_format($driving_license_options['three_year']['amount'], 2) }} AED</div>
@@ -1130,7 +1215,7 @@
                                             class="form-control @error('driver_hours') is-invalid @enderror"
                                             placeholder="e.g. 6 or 10" wire:model.live="driver_hours"
                                             data-bs-toggle="tooltip"
-                                            title="Enter the total number of hours the driver is required">
+                                            title="Enter the total number of hours the driver is required" @disabled($lockCommercialInputs)>
                                     </div>
                                     @error('driver_hours')
                                         <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}</div>
@@ -1170,8 +1255,8 @@
                 <div class="col-lg-6">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-header border-0 bg-transparent pb-0">
-                            <h6 class="fw-semibold text-primary mb-0">Updated Amounts</h6>
-                            <span class="text-muted small">Calculated from the current selections.</span>
+                            <h6 class="fw-semibold text-primary mb-0">{{ $operationalEditLocked ? 'Contract Tariff Preview' : 'Updated Amounts' }}</h6>
+                            <span class="text-muted small">{{ $operationalEditLocked ? "Calculated from this contract's saved tariffs; saving records an audited ledger adjustment." : 'Calculated from the current selections.' }}</span>
                         </div>
                         <div class="card-body pb-0">
                             <div class="table-responsive">
@@ -1181,7 +1266,11 @@
                                         <td class="text-end">{{ number_format($dailyRate, 2) }} AED</td>
                                     </tr>
                                     <tr>
-                                        <th>Base Rental Cost <span class="text-muted fw-normal">({{ $rental_days }} days)</span></th>
+                                        <th>Rental Duration <span class="text-muted fw-normal">(pickup to return)</span></th>
+                                        <td class="text-end">{{ $rental_days }} days</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Base Rental Cost <span class="text-muted fw-normal">({{ $baseRentalDisplayDays }} billed days)</span></th>
                                         <td class="text-end">{{ number_format($base_price, 2) }} AED</td>
                                     </tr>
                                     <tr>
@@ -1192,6 +1281,12 @@
                                         <th>Return Transfer Cost</th>
                                         <td class="text-end">{{ number_format($transfer_costs['return'], 2) }} AED</td>
                                     </tr>
+                                    @if ($extension_charges_total > 0)
+                                        <tr>
+                                            <th>Approved Extension Charges <span class="text-muted fw-normal">(before VAT)</span></th>
+                                            <td class="text-end">{{ number_format($extension_charges_total, 2) }} AED</td>
+                                        </tr>
+                                    @endif
                                     <tr>
                                         <th>Additional Services</th>
                                         <td class="text-end">{{ number_format($services_total, 2) }} AED</td>

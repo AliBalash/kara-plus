@@ -1,4 +1,4 @@
-<div class="container">
+<div class="container payment-page">
     <div class="row g-3 align-items-center">
         <div class="col-lg-4">
             <h4 class="fw-bold py-3 mb-0">
@@ -45,6 +45,118 @@
     </div>
     <x-detail-rental-request-tabs :contract-id="$contractId" />
 
+    @php
+        $extensionAmendments = $contract->amendments
+            ->where('type', \App\Models\ContractAmendment::TYPE_EXTENSION)
+            ->values();
+        $extensionReversals = $contract->amendments
+            ->where('type', 'adjustment')
+            ->where('status', 'approved')
+            ->filter(fn ($amendment) => data_get($amendment->pricing_snapshot, 'reverses_amendment_id') !== null)
+            ->keyBy(fn ($amendment) => (int) data_get($amendment->pricing_snapshot, 'reverses_amendment_id'));
+        $approvedExtensions = $extensionAmendments->where('status', 'approved');
+        $approvedExtensionTotal = (float) $approvedExtensions->sum('total_amount');
+    @endphp
+
+    @if ($extensionAmendments->isNotEmpty())
+        <div class="card border-info shadow-sm mb-4 payment-extension-charges">
+            <div class="card-header bg-info-subtle d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar-plus"></i>
+                    <span class="fw-semibold">Extension charges</span>
+                    <span class="badge bg-info text-white">{{ $extensionAmendments->count() }} request{{ $extensionAmendments->count() === 1 ? '' : 's' }}</span>
+                </div>
+                @if ($approvedExtensions->isNotEmpty())
+                    <span class="badge bg-success fs-6">Included in contract total: {{ number_format($approvedExtensionTotal, 2) }} AED</span>
+                @endif
+            </div>
+            <div class="card-body">
+                @if ($approvedExtensions->isNotEmpty())
+                    <div class="alert alert-success py-2 mb-3">
+                        <i class="bi bi-check-circle me-1"></i>
+                        {{ number_format($approvedExtensionTotal, 2) }} AED has been added to this contract because of approved extension{{ $approvedExtensions->count() === 1 ? '' : 's' }}.
+                    </div>
+                @endif
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Extension</th>
+                                <th>Period</th>
+                                <th>Policy / rate calculation</th>
+                                <th>Status</th>
+                                <th class="text-end">Extension amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($extensionAmendments as $extension)
+                                @php
+                                    $isApproved = $extension->status === 'approved';
+                                    $isPending = $extension->status === 'pending_approval';
+                                    $extensionSnapshot = (array) $extension->pricing_snapshot;
+                                    $extensionRentalItem = collect((array) ($extensionSnapshot['items'] ?? []))->firstWhere('code', 'extension_rental');
+                                    $extensionLegacyDailyRate = (float) ($extensionRentalItem['unit_price'] ?? 0) * (($extensionRentalItem['unit'] ?? null) === 'hour' ? 24 : 1);
+                                    $extensionDailyRate = (float) ($extensionSnapshot['effective_daily_rate'] ?? $extensionLegacyDailyRate);
+                                    $extensionContractRate = $extensionSnapshot['contract_daily_rate'] ?? $contract->used_daily_rate;
+                                    $extensionRateSource = $extensionSnapshot['rate_source'] ?? null;
+                                    $extensionUsesContractRate = $extensionRateSource === \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT
+                                        || ($extensionRateSource === null && is_numeric($extensionContractRate) && abs($extensionDailyRate - (float) $extensionContractRate) < 0.005);
+                                    $extensionRateDiffers = is_numeric($extensionContractRate) && abs($extensionDailyRate - (float) $extensionContractRate) > 0.005;
+                                    $extensionRateSourceLabel = match ($extensionRateSource) {
+                                        \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT => 'Saved contract rate',
+                                        \App\Services\RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION => 'Current tariff · resulting total duration',
+                                        \App\Services\RentalPricingService::RATE_SOURCE_CURRENT => 'Current tariff · extension length',
+                                        default => $extensionUsesContractRate ? 'Saved contract rate · legacy' : 'Current tariff · legacy',
+                                    };
+                                    $extensionReversal = $extensionReversals->get((int) $extension->id);
+                                @endphp
+                                <tr>
+                                    <td class="fw-semibold">#{{ $extension->sequence_no }}</td>
+                                    <td>
+                                        {{ $extension->extension_start_at?->format('Y-m-d H:i') }}
+                                        <span class="text-muted mx-1">→</span>
+                                        {{ $extension->extension_end_at?->format('Y-m-d H:i') }}
+                                    </td>
+                                    <td>
+                                        <div>{{ \Illuminate\Support\Str::headline($extension->pricing_policy ?: 'daily_ceiling') }}</div>
+                                        @if ($extensionRentalItem)
+                                            <div class="fw-semibold mt-1">
+                                                {{ number_format((float) $extensionRentalItem['quantity'], 3) }} {{ \Illuminate\Support\Str::headline($extensionRentalItem['unit']) }}
+                                                × {{ number_format((float) $extensionRentalItem['unit_price'], 2) }} AED
+                                                = {{ number_format((float) $extensionRentalItem['amount'], 2) }} AED
+                                            </div>
+                                            <small class="text-muted">+ VAT {{ number_format((float) $extension->tax_amount, 2) }} AED</small>
+                                            <span class="badge d-block mt-1 {{ $extensionUsesContractRate ? 'bg-label-primary' : 'bg-label-warning' }}" style="width: fit-content">
+                                                {{ $extensionRateSourceLabel }}
+                                            </span>
+                                            @if ($extensionRateDiffers)
+                                                <small class="text-warning d-block">Contract rate: {{ number_format((float) $extensionContractRate, 2) }} AED/day</small>
+                                            @endif
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($isApproved)
+                                            <span class="badge bg-success">Approved · added to total</span>
+                                        @elseif ($isPending)
+                                            <span class="badge bg-warning text-dark">Pending · not added yet</span>
+                                        @else
+                                            <span class="badge bg-secondary">{{ \Illuminate\Support\Str::headline($extension->status) }} · not added</span>
+                                        @endif
+                                        @if ($extensionReversal)
+                                            <small class="text-muted d-block mt-1">Balanced by financial reversal #{{ $extensionReversal->sequence_no }} ({{ number_format((float) $extensionReversal->total_amount, 2) }} {{ $extensionReversal->currency }})</small>
+                                        @endif
+                                    </td>
+                                    <td class="text-end fw-semibold">{{ number_format((float) $extension->total_amount, 2) }} {{ $extension->currency }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @include('livewire.components.waiting-overlay', [
         'target' => 'submitPayment,submitDeposit',
         'title' => 'Processing payment updates',
@@ -82,6 +194,21 @@
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
+
+                    @if ($payment_type === 'discount')
+                        <div class="col-md-4 mb-3" data-validation-field="discount_reason">
+                            <label class="form-label fw-semibold" for="discountReasonInput">Discount Reason <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
+                            <select id="discountReasonInput" class="form-control" wire:model="discount_reason" aria-required="true">
+                                <option value="">Select discount reason</option>
+                                @foreach (\App\Models\Payment::discountReasonLabels() as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('discount_reason')
+                                <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    @endif
 
                     <div class="col-md-4 mb-3" data-validation-field="amount">
                         <label class="form-label fw-semibold" for="paymentAmountInput">
@@ -688,6 +815,10 @@
 
     @include('livewire.pages.panel.expert.rental-request.partials.existing-payments-table', [
         'existingPayments' => $existingPayments,
+        'paymentPeriods' => $this->paymentPeriods,
+        'paymentPeriodFilter' => $paymentPeriodFilter,
+        'remainingBalance' => $remainingBalance,
+        'overallLedgerBalance' => $this->overallLedgerBalance,
     ])
 </div>
 
@@ -701,6 +832,16 @@
             border-radius: 1rem;
             padding: 1rem 1.2rem;
             box-shadow: 0 6px 16px rgba(33, 56, 86, 0.06);
+        }
+
+        .payment-page {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .payment-extension-charges {
+            order: 10;
+            margin-top: 1.5rem;
         }
 
         .status-overview {
@@ -962,6 +1103,65 @@
             color: #0f172a;
         }
 
+        .payments-overview__card--balance {
+            background: linear-gradient(135deg, #0f172a, #1e3a5f);
+            border-color: transparent;
+        }
+
+        .payments-overview__card--balance .payments-overview__label {
+            color: rgba(255, 255, 255, 0.68);
+        }
+
+        .payments-overview__card--balance .payments-overview__value {
+            color: #fff;
+        }
+
+        .payment-lifecycle {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .payment-period-selector {
+            display: flex;
+            gap: 0.65rem;
+            overflow-x: auto;
+            padding: 0.2rem 0.1rem 0.65rem;
+            margin-bottom: 0.55rem;
+        }
+
+        .payment-period-selector__button {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.2rem;
+            min-width: 11rem;
+            padding: 0.7rem 0.85rem;
+            color: #475569;
+            background: #fff;
+            border: 1px solid #dbe3ee;
+            border-radius: 0.8rem;
+            text-align: left;
+            font-size: 0.78rem;
+        }
+
+        .payment-period-selector__button strong {
+            color: #0f172a;
+            font-size: 0.88rem;
+        }
+
+        .payment-period-selector__button.is-active {
+            background: #0f766e;
+            border-color: #0f766e;
+            box-shadow: 0 0.4rem 1rem rgba(15, 118, 110, 0.18);
+        }
+
+        .payment-period-selector__button.is-active,
+        .payment-period-selector__button.is-active strong {
+            color: #fff;
+        }
+
         .ledger-panel {
             height: 100%;
             border-radius: 1.45rem;
@@ -979,6 +1179,16 @@
         .ledger-panel--charge {
             background:
                 linear-gradient(180deg, rgba(255, 247, 237, 0.95), rgba(255, 255, 255, 1) 22%);
+        }
+
+        .ledger-panel--original {
+            background:
+                linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 1) 22%);
+        }
+
+        .ledger-panel--period {
+            background:
+                linear-gradient(180deg, rgba(240, 253, 250, 0.95), rgba(255, 255, 255, 1) 22%);
         }
 
         .ledger-panel__header {
@@ -1018,6 +1228,16 @@
             box-shadow: 0 0.8rem 1.5rem rgba(245, 158, 11, 0.22);
         }
 
+        .ledger-panel--original .ledger-panel__icon {
+            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            box-shadow: 0 0.8rem 1.5rem rgba(37, 99, 235, 0.22);
+        }
+
+        .ledger-panel--period .ledger-panel__icon {
+            background: linear-gradient(135deg, #059669, #14b8a6);
+            box-shadow: 0 0.8rem 1.5rem rgba(5, 150, 105, 0.22);
+        }
+
         .ledger-panel__title {
             font-size: 1.04rem;
             font-weight: 700;
@@ -1028,6 +1248,15 @@
             font-size: 0.84rem;
             color: #64748b;
             max-width: 28rem;
+        }
+
+        .ledger-period-badge {
+            padding: 0.28rem 0.58rem;
+            border-radius: 999px;
+            background: rgba(15, 118, 110, 0.09);
+            color: #0f766e;
+            font-size: 0.72rem;
+            font-weight: 700;
         }
 
         .ledger-panel__summary {
@@ -1047,6 +1276,52 @@
         .ledger-panel__total {
             font-size: 1.05rem;
             color: #0f172a;
+        }
+
+        .ledger-panel__contract-total {
+            font-size: 0.78rem;
+            color: #64748b;
+        }
+
+        .ledger-panel__balance {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(248, 250, 252, 0.72);
+        }
+
+        .ledger-panel__balance-label,
+        .ledger-panel__balance-help {
+            display: block;
+        }
+
+        .ledger-panel__balance-label {
+            color: #0f172a;
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+
+        .ledger-panel__balance-help {
+            margin-top: 0.2rem;
+            color: #64748b;
+            font-size: 0.76rem;
+        }
+
+        .ledger-panel__balance-value {
+            white-space: nowrap;
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .ledger-panel__balance-value.is-positive {
+            color: #059669;
+        }
+
+        .ledger-panel__balance-value.is-negative {
+            color: #dc2626;
         }
 
         .ledger-list {
@@ -1179,6 +1454,21 @@
             border: 1px solid rgba(59, 130, 246, 0.16);
         }
 
+        .ledger-chip--approved {
+            background: rgba(34, 197, 94, 0.12);
+            color: #15803d;
+        }
+
+        .ledger-chip--pending {
+            background: rgba(245, 158, 11, 0.14);
+            color: #a16207;
+        }
+
+        .ledger-chip--rejected {
+            background: rgba(239, 68, 68, 0.12);
+            color: #b91c1c;
+        }
+
         .ledger-chip--accent {
             background: rgba(16, 185, 129, 0.1);
             color: #047857;
@@ -1299,6 +1589,11 @@
                 text-align: left;
                 align-items: flex-start;
                 justify-content: flex-start;
+            }
+
+            .ledger-panel__balance {
+                align-items: flex-start;
+                flex-direction: column;
             }
         }
     </style>

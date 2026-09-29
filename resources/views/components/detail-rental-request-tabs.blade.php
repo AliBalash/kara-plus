@@ -2,6 +2,7 @@
     $isDriver = auth()->user()?->hasRole('driver');
     $contractId = $contract->id ?? null;
     $customerId = $contract->customer->id ?? null;
+    $amendmentCount = $contractId ? $contract->amendments()->count() : 0;
 
     $tabs = [
         [
@@ -78,6 +79,7 @@
             'route' => 'rental-requests.extend',
             'params' => $contractId ? [$contractId] : null,
             'status' => null,
+            'badge' => $amendmentCount ?: null,
             'staff' => true,
             'driver' => false,
         ],
@@ -124,6 +126,12 @@
                 @endif
             </span>
 
+            @if (! empty($tab['badge']))
+                <span class="step-amendment-badge" aria-label="{{ $tab['badge'] }} amendment{{ $tab['badge'] === 1 ? '' : 's' }}">
+                    {{ $tab['badge'] }}
+                </span>
+            @endif
+
             @if ($isActive)
                 <span class="step-marker" aria-hidden="true"></span>
             @endif
@@ -136,7 +144,7 @@
         <style>
             .rental-steps {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                grid-template-columns: repeat(4, minmax(0, 1fr));
                 gap: 0.75rem;
             }
 
@@ -244,9 +252,28 @@
                 background: linear-gradient(90deg, #ffb74d, #ff9f43);
             }
 
-            @media (max-width: 768px) {
+            .step-amendment-badge {
+                position: absolute;
+                top: -0.45rem;
+                right: -0.35rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 1.35rem;
+                height: 1.35rem;
+                padding: 0 0.35rem;
+                border: 2px solid #fff;
+                border-radius: 999px;
+                background: #0f766e;
+                color: #fff;
+                font-size: 0.7rem;
+                font-weight: 700;
+                line-height: 1;
+            }
+
+            @media (max-width: 991.98px) {
                 .rental-steps {
-                    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
                     gap: 0.6rem;
                 }
 
@@ -268,7 +295,7 @@
 
             @media (max-width: 480px) {
                 .rental-steps {
-                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                    grid-template-columns: 1fr;
                 }
 
                 .step-label {

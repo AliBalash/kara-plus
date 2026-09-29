@@ -8,11 +8,15 @@ use App\Models\CarModel;
 use App\Models\Contract;
 use App\Models\ContractCharges;
 use App\Models\Customer;
+use App\Models\LocationCost;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\ContractAmendmentService;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;
 
@@ -38,6 +42,42 @@ class RentalRequestEditTest extends TestCase
         DB::reconnect('sqlite');
 
         Artisan::call('migrate:fresh', ['--force' => true]);
+    }
+
+    public function test_saved_duration_policy_keeps_old_requests_legacy_and_gives_new_requests_one_hour_grace(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $carModel = CarModel::factory()->create();
+        $car = Car::factory()->for($carModel)->create();
+        $schedule = [
+            'pickup_date' => '2026-09-15 10:00:00',
+            'return_date' => '2026-09-16 10:01:00',
+            'current_status' => 'pending',
+        ];
+
+        $legacyContract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for($car)
+            ->create([...$schedule, 'meta' => []]);
+        $currentContract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory())
+            ->for($car)
+            ->create([
+                ...$schedule,
+                'meta' => ['pricing_tariffs' => RentalDuration::currentPolicySnapshot()],
+            ]);
+
+        $legacyEdit = app(RentalRequestEdit::class);
+        $legacyEdit->mount($legacyContract->id);
+        $currentEdit = app(RentalRequestEdit::class);
+        $currentEdit->mount($currentContract->id);
+
+        $this->assertSame(2, $legacyEdit->rental_days);
+        $this->assertSame(1, $currentEdit->rental_days);
+        $this->assertSame([], $legacyContract->fresh()->meta);
     }
 
     public function test_submit_updates_contract_customer_and_charges(): void
@@ -105,7 +145,7 @@ class RentalRequestEditTest extends TestCase
         $component->selected_services = ['additional_driver', 'child_seat'];
         $component->selected_insurance = 'ldw_insurance';
         $component->apply_discount = true;
-        $component->custom_daily_rate = 300.65;
+        $component->custom_daily_rate = 46.66;
         $component->kardo_required = false;
         $component->pickup_location = 'UAE/Dubai/JBR';
         $component->return_location = 'UAE/Dubai/JBR';
@@ -177,6 +217,7 @@ class RentalRequestEditTest extends TestCase
         $this->assertEquals('UAE/Dubai/JBR', $contract->pickup_location);
         $this->assertEquals('Updated notes', $contract->notes);
         $this->assertFalse((bool) $contract->kardo_required);
+        $this->assertEqualsWithDelta(46.66, (float) $contract->used_daily_rate, 0.001);
         $this->assertEquals('Collect balance in cash at pickup', $contract->meta['driver_note'] ?? null);
 
         $charges = $contract->charges()->pluck('amount', 'title');
@@ -188,7 +229,7 @@ class RentalRequestEditTest extends TestCase
 
         $expectedDays = $newPickup->diffInDays($newReturn, false);
         $transferFees = 50 * 2; // pickup and return location fees for JBR
-        $expectedSubtotal = ($expectedDays * 300.65) + ($expectedDays * 20) + 20 + ($expectedDays * 40.6) + $transferFees;
+        $expectedSubtotal = ($expectedDays * 46.66) + ($expectedDays * 20) + 20 + ($expectedDays * 40.6) + $transferFees;
         $expectedSubtotal = round($expectedSubtotal, 2);
         $expectedTax = round($expectedSubtotal * 0.05, 2);
         $this->assertEqualsWithDelta($expectedDays * 20, (float) ($chargesArray['child_seat'] ?? 0), 0.01);
@@ -420,6 +461,462 @@ class RentalRequestEditTest extends TestCase
         $this->assertEqualsWithDelta(210.25, (float) $component->custom_daily_rate, 0.01);
     }
 
+    public function test_operational_contract_allows_safe_customer_notes_and_actual_pickup_corrections_without_repricing(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Camry']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $customer = Customer::factory()->create([
+            'phone' => '+971500000501',
+            'messenger_phone' => '+971500000502',
+            'nationality' => 'IR',
+            'passport_expiry_date' => '2027-09-08',
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 950,
+                'used_daily_rate' => 300,
+            ]);
+        $charge = ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'tax',
+            'type' => 'tax',
+            'amount' => 50,
+        ]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->first_name = 'Updated';
+        $component->notes = 'Customer asked for a phone call before return.';
+        $component->driver_note = 'Call the customer before arriving.';
+        $component->deposit_category = 'cash_aed';
+        $component->deposit = '1500';
+        $component->actual_pickup_at = '2026-09-07T11:15';
+        $component->submit();
+
+        $contract->refresh();
+        $customer->refresh();
+
+        $this->assertSame('Updated', $customer->first_name);
+        $this->assertSame('Customer asked for a phone call before return.', $contract->notes);
+        $this->assertSame('Call the customer before arriving.', data_get($contract->meta, 'driver_note'));
+        $this->assertSame('cash_aed', $contract->deposit_category);
+        $this->assertSame('1500.00', $contract->deposit);
+        $this->assertTrue($contract->actual_pickup_at->equalTo(Carbon::parse('2026-09-07 11:15:00')));
+        $this->assertSame('2026-09-10 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(950.0, (float) $contract->total_price);
+        $this->assertSame(2, ContractCharges::where('contract_id', $contract->id)->count());
+        $this->assertSame(900.0, (float) $charge->fresh()->amount);
+    }
+
+    public function test_operational_contract_keeps_its_custom_daily_rate_when_the_tariff_snapshot_has_the_standard_rate(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $car = Car::factory()->create([
+            'price_per_day_short' => 80,
+            'price_per_day_mid' => 60,
+            'price_per_day_long' => 40,
+        ]);
+        $customer = Customer::factory()->create([
+            'phone' => '+971500000511',
+            'messenger_phone' => '+971500000512',
+            'nationality' => 'IR',
+            'passport_expiry_date' => '2027-09-08',
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-10-07 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 1364.90,
+                'used_daily_rate' => 43.33,
+                'custom_daily_rate_enabled' => true,
+                'discount_note' => 'Discount applied: 43.33 AED instead of standard rate',
+                'meta' => ['pricing_tariffs' => [
+                    'daily_rate' => 40,
+                    'tax_rate' => 0.05,
+                    'base_days' => 30,
+                ]],
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1299.90,
+            'quantity' => 30,
+            'unit' => 'day',
+            'unit_price' => 43.33,
+        ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'tax',
+            'type' => 'tax',
+            'amount' => 65,
+        ]);
+        $payment = Payment::factory()->for($contract)->for($customer)->for($car)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 1364.90,
+            'amount_in_aed' => 1364.90,
+        ]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+
+        $this->assertEqualsWithDelta(43.33, (float) $component->dailyRate, 0.001);
+        $this->assertEqualsWithDelta(43.33, (float) $component->custom_daily_rate, 0.001);
+
+        $component->notes = 'Customer asked for a phone call before return.';
+        $component->submit();
+
+        $contract->refresh();
+        $this->assertEqualsWithDelta(43.33, (float) $contract->used_daily_rate, 0.001);
+        $this->assertEqualsWithDelta(1364.90, (float) $contract->total_price, 0.001);
+        $this->assertSame(2, $contract->charges()->count());
+        $this->assertSame(0, $contract->amendments()->count());
+        $this->assertEqualsWithDelta(1364.90, (float) $payment->fresh()->amount_in_aed, 0.001);
+    }
+
+    public function test_operational_contract_rejects_a_planned_return_change_and_keeps_financial_history_intact(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 950,
+                'used_daily_rate' => 300,
+            ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'base_rental', 'amount' => 900]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-12T10:00';
+
+        try {
+            $component->submit();
+            $this->fail('An operational contract return date must not be edited directly.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'The proposed return is more than one hour later than the current planned return. No changes were saved. Use Extend Contract to create an auditable extension and update the contract balance.',
+                $exception->errors()['return_date'][0]
+            );
+        }
+
+        $contract->refresh();
+        $this->assertSame('2026-09-10 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(950.0, (float) $contract->total_price);
+        $this->assertSame(1, ContractCharges::where('contract_id', $contract->id)->count());
+    }
+
+    public function test_operational_return_time_correction_accepts_the_exact_grace_boundary_without_repricing(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                // The original rental ends exactly on a day boundary.
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 945,
+                'used_daily_rate' => 300,
+                'meta' => ['pricing_tariffs' => [
+                    ...RentalDuration::currentPolicySnapshot(),
+                    'base_days' => 3,
+                    'daily_rate' => 300,
+                    'tax_rate' => 0.05,
+                    'extension_duration_minutes' => 0,
+                ]],
+            ]);
+        $charge = ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 45]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-10T11:00';
+        $component->submit();
+
+        $contract->refresh();
+
+        $this->assertSame('2026-09-10 11:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(945.0, (float) $contract->total_price);
+        $this->assertSame(900.0, (float) $charge->fresh()->amount);
+        $this->assertEqualsWithDelta(945, (float) $contract->charges()->sum('amount'), 0.01);
+        $adjustment = $contract->amendments()->where('type', 'adjustment')->sole();
+        $this->assertSame(
+            \App\Services\ContractCommercialCorrectionService::SCOPE_AUTHORIZED,
+            $adjustment->pricing_policy
+        );
+        $this->assertEqualsWithDelta(0, (float) $adjustment->total_amount, 0.01);
+    }
+
+    public function test_operational_return_shortening_updates_the_planned_return_and_financial_ledger_together(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 945,
+                'used_daily_rate' => 300,
+                'meta' => ['pricing_tariffs' => [
+                    ...RentalDuration::currentPolicySnapshot(),
+                    'base_days' => 3,
+                    'daily_rate' => 300,
+                    'tax_rate' => 0.05,
+                    'extension_duration_minutes' => 0,
+                ]],
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 45]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-09T10:00';
+        $component->submit();
+
+        $contract->refresh();
+
+        $this->assertSame('2026-09-09 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(630.0, (float) $contract->total_price);
+        $this->assertEqualsWithDelta(630, (float) $contract->charges()->sum('amount'), 0.01);
+        $adjustment = $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->sole();
+        $this->assertEqualsWithDelta(-315, (float) $adjustment->total_amount, 0.01);
+        $this->assertEqualsWithDelta(-15, (float) $adjustment->tax_amount, 0.01);
+    }
+
+    public function test_operational_contract_rejects_a_return_correction_beyond_tolerance(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-03 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'total_price' => 1050,
+                'used_daily_rate' => 142.86,
+                'meta' => ['pricing_tariffs' => RentalDuration::currentPolicySnapshot()],
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1000.02,
+            'description' => '7 days × 142.86 AED',
+        ]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-10T11:01';
+
+        $this->expectException(ValidationException::class);
+        $component->submit();
+    }
+
+    public function test_operational_location_change_updates_price_with_an_append_only_adjustment(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        LocationCost::query()->updateOrCreate(['location' => 'UAE/Dubai/Clock Tower/Main Branch'], [
+            'under_3_fee' => 25,
+            'over_3_fee' => 25,
+            'is_active' => true,
+        ]);
+        LocationCost::query()->updateOrCreate(['location' => 'UAE/Dubai/JBR'], [
+            'under_3_fee' => 50,
+            'over_3_fee' => 50,
+            'is_active' => true,
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 09:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 997.50,
+                'used_daily_rate' => 300,
+            ]);
+        $baseCharge = ContractCharges::factory()->for($contract)->create(['title' => 'base_rental', 'type' => 'base', 'amount' => 900]);
+        $pickupCharge = ContractCharges::factory()->for($contract)->create(['title' => 'pickup_transfer', 'type' => 'location_fee', 'amount' => 25]);
+        $returnCharge = ContractCharges::factory()->for($contract)->create(['title' => 'return_transfer', 'type' => 'location_fee', 'amount' => 25]);
+        $taxCharge = ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 47.50]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->pickup_location = 'UAE/Dubai/JBR';
+        $component->return_location = 'UAE/Dubai/JBR';
+        $component->pickup_date = '2026-09-07T09:00';
+        $component->submit();
+
+        $contract->refresh();
+
+        $this->assertSame('UAE/Dubai/JBR', $contract->pickup_location);
+        $this->assertSame('UAE/Dubai/JBR', $contract->return_location);
+        $this->assertSame('2026-09-07 09:00:00', $contract->pickup_date->format('Y-m-d H:i:s'));
+        $this->assertSame(1050.0, (float) $contract->total_price);
+        $this->assertSame(900.0, (float) $baseCharge->fresh()->amount);
+        $this->assertSame(25.0, (float) $pickupCharge->fresh()->amount);
+        $this->assertSame(25.0, (float) $returnCharge->fresh()->amount);
+        $this->assertSame(47.5, (float) $taxCharge->fresh()->amount);
+        $adjustment = $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->sole();
+        $this->assertSame(\App\Services\ContractCommercialCorrectionService::SCOPE_AUTHORIZED, $adjustment->pricing_policy);
+        $correctionCharges = $adjustment->charges->keyBy(fn ($charge) => data_get($charge->metadata, 'category'));
+        $this->assertEqualsWithDelta(25, (float) $correctionCharges['pickup_transfer']->amount, 0.01);
+        $this->assertEqualsWithDelta(25, (float) $correctionCharges['return_transfer']->amount, 0.01);
+        $this->assertEqualsWithDelta(2.5, (float) $correctionCharges['vat']->amount, 0.01);
+        $this->assertEqualsWithDelta(1050, (float) $contract->charges()->sum('amount'), 0.01);
+    }
+
+    public function test_operational_edit_repairs_a_saved_location_whose_fee_is_missing_from_the_ledger(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        LocationCost::query()->updateOrCreate(['location' => 'UAE/Dubai/Clock Tower/Main Branch'], [
+            'under_3_fee' => 0,
+            'over_3_fee' => 0,
+            'is_active' => true,
+        ]);
+        LocationCost::query()->updateOrCreate(['location' => 'UAE/Dubai/Downtown'], [
+            'under_3_fee' => 50,
+            'over_3_fee' => 50,
+            'is_active' => true,
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'return_location' => 'UAE/Dubai/Downtown',
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 945,
+                'used_daily_rate' => 300,
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 45]);
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+
+        $this->assertSame(50.0, (float) $component->transfer_costs['return']);
+        $this->assertSame(997.5, (float) $component->final_total);
+
+        $component->notes = 'Confirm Downtown return.';
+        $component->submit();
+
+        $contract->refresh();
+        $this->assertSame('UAE/Dubai/Downtown', $contract->return_location);
+        $this->assertSame(997.5, (float) $contract->total_price);
+        $adjustment = $contract->amendments()->where('pricing_policy', \App\Services\ContractCommercialCorrectionService::SCOPE_AUTHORIZED)->sole();
+        $correctionCharges = $adjustment->charges->keyBy(fn ($charge) => data_get($charge->metadata, 'category'));
+        $this->assertEqualsWithDelta(50, (float) $correctionCharges['return_transfer']->amount, 0.01);
+        $this->assertEqualsWithDelta(2.5, (float) $correctionCharges['vat']->amount, 0.01);
+        $this->assertEqualsWithDelta(997.5, (float) $contract->charges()->sum('amount'), 0.01);
+    }
+
     public function test_change_status_to_reserve_requires_same_user_and_updates_car(): void
     {
         $user = User::factory()->create();
@@ -609,6 +1106,180 @@ class RentalRequestEditTest extends TestCase
         $this->assertStringNotContainsString('Customer payments recorded: 340.00 AED', $returnInformation);
         $this->assertStringNotContainsString('Customer payments recorded: 380.00 AED', $returnInformation);
         $this->assertStringNotContainsString('Customer payments recorded: 440.00 AED', $returnInformation);
+    }
+
+    public function test_operational_return_summary_uses_the_same_live_contract_tariff_breakdown(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Sonata']);
+        $car = Car::factory()->create([
+            'car_model_id' => $model->id,
+            'price_per_day_short' => 200,
+            'price_per_day_mid' => 180,
+            'price_per_day_long' => 150,
+        ]);
+        $customer = Customer::factory()->create([
+            'first_name' => 'Naveed',
+            'last_name' => 'Ahmed',
+            'phone' => '+971559465666',
+        ]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-03 10:18:00',
+                'return_date' => '2026-09-10 10:21:00',
+                'total_price' => 1155.02,
+                'used_daily_rate' => 142.86,
+                'custom_daily_rate_enabled' => true,
+            ]);
+        foreach ([
+            ['title' => 'base_rental', 'type' => 'base', 'amount' => 1000.02, 'description' => '7 days × 142.86 AED'],
+            ['title' => 'pickup_transfer', 'type' => 'location_fee', 'amount' => 50, 'description' => 'Business Bay'],
+            ['title' => 'return_transfer', 'type' => 'location_fee', 'amount' => 50, 'description' => 'Business Bay'],
+            ['title' => 'tax', 'type' => 'tax', 'amount' => 55, 'description' => '5% VAT'],
+        ] as $charge) {
+            ContractCharges::factory()->for($contract)->create($charge);
+        }
+        $contract->changeStatus('delivery', $user->id);
+        $contract->update(['current_status' => 'payment']);
+        Payment::factory()->for($contract)->for($customer)->for($car)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 1155,
+            'amount_in_aed' => 1155,
+        ]);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $returnInformation = $component->returnInformationText;
+
+        $this->assertEqualsWithDelta(8, (float) $component->rental_days, 0.001);
+        $this->assertEqualsWithDelta(8, (float) $component->billed_rental_days, 0.001);
+        $this->assertEqualsWithDelta(7, (float) $component->commercial_base_days, 0.001);
+        $this->assertEqualsWithDelta(1142.88, (float) $component->base_price, 0.01);
+        $this->assertEqualsWithDelta(62.14, (float) $component->tax_amount, 0.01);
+        $this->assertEqualsWithDelta(1305.02, (float) $component->final_total, 0.01);
+        $this->assertStringContainsString('Rental days: 8', $returnInformation);
+        $this->assertStringNotContainsString('Billed ledger days:', $returnInformation);
+        $this->assertStringContainsString('Rental amount: 1,142.88 AED', $returnInformation);
+        $this->assertStringContainsString('Services & logistics: 100.00 AED', $returnInformation);
+        $this->assertStringContainsString('VAT: 62.14 AED', $returnInformation);
+        $this->assertStringContainsString('Contract total: 1,305.02 AED', $returnInformation);
+        $this->assertStringContainsString('Outstanding balance: 150.02 AED', $returnInformation);
+    }
+
+    public function test_any_signed_in_user_can_correct_commercial_terms_with_an_audited_balanced_adjustment(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $currentModel = CarModel::factory()->create(['brand' => 'Kia', 'model' => 'Pegas']);
+        $newModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Sonata']);
+        $currentCar = Car::factory()->available()->create([
+            'car_model_id' => $currentModel->id,
+            'price_per_day_mid' => 142.86,
+        ]);
+        $newCar = Car::factory()->available()->create([
+            'car_model_id' => $newModel->id,
+            'price_per_day_short' => 220,
+            'price_per_day_mid' => 200,
+            'price_per_day_long' => 180,
+        ]);
+        $customer = Customer::factory()->create(['passport_expiry_date' => '2027-09-08']);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($customer)
+            ->for($currentCar)
+            ->status('reserved')
+            ->create([
+                'pickup_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'return_location' => 'UAE/Dubai/Clock Tower/Main Branch',
+                'pickup_date' => '2026-09-03 10:00:00',
+                'return_date' => '2026-09-10 10:03:00',
+                'total_price' => 1050.02,
+                'used_daily_rate' => 142.86,
+                'custom_daily_rate_enabled' => true,
+            ]);
+        $baseCharge = ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 1000.02,
+            'description' => '7 days × 142.86 AED',
+        ]);
+        $taxCharge = ContractCharges::factory()->for($contract)->create([
+            'title' => 'tax',
+            'type' => 'tax',
+            'amount' => 50,
+        ]);
+        $contract->changeStatus('delivery', $user->id);
+        $payment = Payment::factory()->for($contract)->for($customer)->for($currentCar)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 1050.02,
+            'amount_in_aed' => 1050.02,
+        ]);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $this->assertTrue($component->canEditOperationalCommercialTerms());
+        $component->selectedBrand = $newModel->brand;
+        $component->selectedModelId = $newModel->id;
+        $component->selectedCarId = $newCar->id;
+        $component->apply_discount = true;
+        $component->custom_daily_rate = 200;
+        $component->submit();
+
+        $contract->refresh();
+        $this->assertSame($newCar->id, $contract->car_id);
+        $this->assertEqualsWithDelta(1680, (float) $contract->total_price, 0.01);
+        $this->assertEqualsWithDelta(1000.02, (float) $baseCharge->fresh()->amount, 0.01);
+        $this->assertEqualsWithDelta(50, (float) $taxCharge->fresh()->amount, 0.01);
+        $this->assertSame(1, $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->count());
+        $this->assertEqualsWithDelta((float) $contract->total_price, (float) $contract->charges()->sum('amount'), 0.01);
+        $this->assertSame($newCar->id, $payment->fresh()->car_id);
+        $this->assertEqualsWithDelta(629.98, $contract->calculateRemainingBalance(), 0.01);
+        $this->assertSame(8.0, (float) $component->rental_days);
+        $this->assertSame(8.0, (float) $component->billed_rental_days);
+        $this->assertSame('reserved', $newCar->fresh()->status);
+        $this->assertSame('available', $currentCar->fresh()->status);
+
+        $extensionService = app(ContractAmendmentService::class);
+        $extension = $extensionService->requestExtension(
+            $contract,
+            $contract->return_date->copy()->addDay(),
+            $user->id,
+        );
+        $extensionService->approve($extension, $user->id);
+
+        $this->assertSame(2, $contract->amendments()->count());
+        $this->assertEqualsWithDelta(210, (float) $extension->fresh()->total_amount, 0.01);
+        $this->assertEqualsWithDelta(
+            (float) $contract->fresh()->total_price,
+            (float) $contract->charges()->sum('amount'),
+            0.01,
+        );
+
+        $afterExtension = app(RentalRequestEdit::class);
+        $afterExtension->mount($contract->id);
+        $this->assertSame(9.0, (float) $afterExtension->rental_days);
+        $this->assertSame(9.0, (float) $afterExtension->billed_rental_days);
+        $this->assertSame(8.0, (float) $afterExtension->commercial_base_days);
+        $afterExtension->custom_daily_rate = 210;
+        $afterExtension->submit();
+
+        $contract->refresh();
+        $this->assertSame(3, $contract->amendments()->count());
+        $this->assertEqualsWithDelta(1974.00, (float) $contract->total_price, 0.01);
+        $this->assertEqualsWithDelta(
+            (float) $contract->total_price,
+            (float) $contract->charges()->sum('amount'),
+            0.01,
+        );
     }
 
     protected function tearDown(): void

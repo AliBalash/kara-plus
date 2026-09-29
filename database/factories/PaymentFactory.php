@@ -63,6 +63,9 @@ class PaymentFactory extends Factory
             'payment_method' => $this->faker->randomElement(['cash', 'transfer', 'ticket']),
             'currency' => $currency,
             'payment_type' => $paymentType,
+            'discount_reason' => $paymentType === 'discount'
+                ? $this->faker->randomElement(Payment::discountReasons())
+                : null,
             'description' => $this->faker->sentence,
             'payment_date' => $this->faker->date(),
             'is_refundable' => $this->faker->boolean,

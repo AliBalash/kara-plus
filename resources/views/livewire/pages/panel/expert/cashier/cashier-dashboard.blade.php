@@ -140,7 +140,12 @@
                                             <td>{{ number_format($payment->amount, 2) }}</td>
                                             <td>{{ $payment->currency }}</td>
                                             <td>{{ number_format($payment->amount_in_aed, 2) }}</td>
-                                            <td>{{ ucwords(str_replace('_', ' ', $payment->payment_type)) }}</td>
+                                            <td>
+                                                {{ \App\Models\Payment::paymentTypeLabels()[$payment->payment_type] ?? ucwords(str_replace('_', ' ', $payment->payment_type)) }}
+                                                @if ($payment->payment_type === 'discount')
+                                                    <div class="small text-muted">{{ \App\Models\Payment::discountReasonLabel($payment->discount_reason) }}</div>
+                                                @endif
+                                            </td>
                                             <td>{{ $payment->payment_date ? \Illuminate\Support\Carbon::parse($payment->payment_date)->format('Y-m-d') : '—' }}</td>
                                             <td>
                                                 @if ($payment->receipt)

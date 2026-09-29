@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Panel\Expert\Reports;
 use App\Livewire\Concerns\PaginatesReportRows;
 use Carbon\Carbon;
 use App\Services\Reports\OperationsReportService;
+use App\Models\Payment;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -18,6 +19,7 @@ class PaymentCollectionReport extends Component
     public string $dateFrom = '';
     public string $dateTo = '';
     public string $paymentType = 'all';
+    public string $discountReason = 'all';
     public string $approvalStatus = 'all';
     public string $paymentState = 'all';
     public string $paymentMethod = 'all';
@@ -29,6 +31,7 @@ class PaymentCollectionReport extends Component
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
         'paymentType' => ['except' => 'all'],
+        'discountReason' => ['except' => 'all'],
         'approvalStatus' => ['except' => 'all'],
         'paymentState' => ['except' => 'all'],
         'paymentMethod' => ['except' => 'all'],
@@ -59,6 +62,7 @@ class PaymentCollectionReport extends Component
         $this->dateFrom = Carbon::now()->startOfMonth()->toDateString();
         $this->dateTo = Carbon::now()->toDateString();
         $this->paymentType = 'all';
+        $this->discountReason = 'all';
         $this->approvalStatus = 'all';
         $this->paymentState = 'all';
         $this->paymentMethod = 'all';
@@ -80,6 +84,7 @@ class PaymentCollectionReport extends Component
             'report' => $report,
             'rows' => $rows,
             'paymentTypes' => $this->paymentTypes(),
+            'discountReasons' => $this->discountReasons(),
             'approvalOptions' => $this->approvalOptions(),
             'paymentStates' => $this->paymentStates(),
             'paymentMethods' => $this->paymentMethods(),
@@ -95,6 +100,7 @@ class PaymentCollectionReport extends Component
             'date_from' => $this->dateFrom,
             'date_to' => $this->dateTo,
             'payment_type' => $this->paymentType,
+            'discount_reason' => $this->discountReason,
             'approval_status' => $this->approvalStatus,
             'payment_state' => $this->paymentState,
             'payment_method' => $this->paymentMethod,
@@ -133,6 +139,18 @@ class PaymentCollectionReport extends Component
             ['value' => 'fuel', 'label' => 'Fuel'],
             ['value' => 'no_deposit_fee', 'label' => 'No Deposit Fee'],
         ];
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    protected function discountReasons(): array
+    {
+        return collect(Payment::discountReasonLabels())
+            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+            ->prepend(['value' => 'all', 'label' => 'All reasons'])
+            ->values()
+            ->all();
     }
 
     /**

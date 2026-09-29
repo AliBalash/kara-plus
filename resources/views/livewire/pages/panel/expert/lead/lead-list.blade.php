@@ -145,16 +145,19 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="lead_requested_model">Car model</label>
-                            <select id="lead_requested_model" class="form-select" wire:model.defer="selectedModelId"
+                            <select id="lead_requested_model" class="form-select" wire:model.defer="selectedVehicleKey"
                                 @disabled(blank($selectedBrand))>
                                 <option value="">Select model</option>
+                                @if ($selectedVehicleKey !== '' && !str_contains($selectedVehicleKey, ':'))
+                                    <option value="{{ $selectedVehicleKey }}">{{ $editingId ? 'Current model (year not recorded)' : 'Current model' }}</option>
+                                @endif
                                 @foreach ($models as $model)
-                                    <option value="{{ $model->id }}">
+                                    <option value="{{ $model->id }}:{{ $model->manufacturing_year }}">
                                         {{ $model->model }}{{ $model->manufacturing_year ? ' (' . $model->manufacturing_year . ')' : '' }}
                                     </option>
                                 @endforeach
                             </select>
-                            <x-panel.form-error-highlighter field="selectedModelId" />
+                            <x-panel.form-error-highlighter field="selectedVehicleKey" />
                         </div>
 
                         <div class="col-md-6">

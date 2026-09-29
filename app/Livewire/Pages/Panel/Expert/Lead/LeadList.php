@@ -57,7 +57,7 @@ class LeadList extends Component
 
     public ?string $selectedBrand = '';
 
-    public $selectedModelId = '';
+    public string $selectedVehicleKey = '';
 
     public ?string $request_date = '';
 
@@ -177,7 +177,7 @@ class LeadList extends Component
             'source',
             'discovery_source',
             'selectedBrand',
-            'selectedModelId',
+            'selectedVehicleKey',
             'request_date',
             'next_follow_up_at',
             'last_contacted_at',
@@ -203,7 +203,9 @@ class LeadList extends Component
         $this->source = $lead->source;
         $this->discovery_source = $lead->discovery_source;
         $this->selectedBrand = $lead->requested_brand ?: $lead->requestedModel?->brand ?: '';
-        $this->selectedModelId = $lead->requested_model_id ?: '';
+        $this->selectedVehicleKey = $lead->requested_model_id
+            ? $lead->requested_model_id.($lead->requested_manufacturing_year ? ':'.$lead->requested_manufacturing_year : '')
+            : '';
         $this->request_date = $lead->request_date?->format('Y-m-d') ?? '';
         $this->priority = $lead->priority;
         $this->status = $lead->status;
@@ -215,8 +217,8 @@ class LeadList extends Component
 
     public function updatedSelectedBrand(): void
     {
-        $this->selectedModelId = '';
-        $this->resetValidation('selectedModelId');
+        $this->selectedVehicleKey = '';
+        $this->resetValidation('selectedVehicleKey');
     }
 
     public function prepareConversion(int $id): void
@@ -331,7 +333,7 @@ class LeadList extends Component
             'source' => ['nullable', 'string', Rule::in(Contract::COMMUNICATION_CHANNELS)],
             'discovery_source' => ['nullable', 'string', 'max:255'],
             'selectedBrand' => ['nullable', 'string', 'max:255'],
-            'selectedModelId' => ['nullable', 'integer', Rule::exists('car_models', 'id')],
+            'selectedVehicleKey' => ['nullable', 'string', 'regex:/^\d+(?::\d{4})?$/'],
             'request_date' => ['nullable', 'date'],
             'priority' => ['required', Rule::in(array_keys(Lead::priorities()))],
             'status' => ['required', Rule::in(array_keys(Lead::statuses()))],
@@ -434,7 +436,7 @@ class LeadList extends Component
             'source.in' => 'Selected contact channel is not valid.',
             'discovery_source.max' => 'How found us cannot be longer than 255 characters.',
             'selectedBrand.max' => 'Car brand cannot be longer than 255 characters.',
-            'selectedModelId.exists' => 'Selected car model is not valid.',
+            'selectedVehicleKey.regex' => 'Selected car model is not valid.',
             'request_date.date' => 'Request date is not valid.',
             'priority.required' => 'Priority is required.',
             'priority.in' => 'Selected priority is not valid.',
@@ -457,7 +459,7 @@ class LeadList extends Component
             'source' => 'contact channel',
             'discovery_source' => 'how found us',
             'selectedBrand' => 'car brand',
-            'selectedModelId' => 'car model',
+            'selectedVehicleKey' => 'car model',
             'request_date' => 'request date',
             'priority' => 'priority',
             'status' => 'status',
@@ -481,30 +483,46 @@ class LeadList extends Component
             }
         }
 
-        if (($data['selectedModelId'] ?? null) === '') {
-            $data['selectedModelId'] = null;
+        $vehicleKey = $data['selectedVehicleKey'] ?? null;
+        $selectedModelId = null;
+        $selectedYear = null;
+
+        if ($vehicleKey) {
+            [$selectedModelId, $selectedYear] = array_pad(explode(':', $vehicleKey, 2), 2, null);
+            $selectedModelId = (int) $selectedModelId;
+            $selectedYear = $selectedYear !== null ? (int) $selectedYear : null;
         }
 
-        if (($data['selectedBrand'] ?? null) && ($data['selectedModelId'] ?? null)) {
+        if ($selectedModelId && ! ($data['selectedBrand'] ?? null)) {
+            $this->addError('selectedBrand', 'Select a car brand before selecting a model.');
+            $this->dispatch('kara-scroll-to-error', field: 'selectedBrand');
+            throw \Illuminate\Validation\ValidationException::withMessages($this->getErrorBag()->toArray());
+        }
+
+        if (($data['selectedBrand'] ?? null) && $selectedModelId) {
             $model = CarModel::query()
-                ->whereKey($data['selectedModelId'])
+                ->whereKey($selectedModelId)
                 ->where('brand', $data['selectedBrand'])
-                ->whereHas('cars')
+                ->whereHas('cars', fn ($query) => $query->when(
+                    $selectedYear !== null,
+                    fn ($yearQuery) => $yearQuery->where('manufacturing_year', $selectedYear)
+                ))
                 ->first();
 
             if (! $model) {
-                $this->addError('selectedModelId', 'Selected car model is not available for the selected brand.');
-                $this->dispatch('kara-scroll-to-error', field: 'selectedModelId');
+                $this->addError('selectedVehicleKey', 'Selected car model is not available for the selected brand and year.');
+                $this->dispatch('kara-scroll-to-error', field: 'selectedVehicleKey');
                 throw \Illuminate\Validation\ValidationException::withMessages($this->getErrorBag()->toArray());
             }
         }
 
         $data['requested_brand'] = $data['selectedBrand'] ?? null;
-        $data['requested_model_id'] = $data['selectedModelId'] ?? null;
+        $data['requested_model_id'] = $selectedModelId;
+        $data['requested_manufacturing_year'] = $selectedYear;
         $data['request_date'] = $data['request_date'] ?? null;
         $data['requested_vehicle'] = null;
 
-        unset($data['selectedBrand'], $data['selectedModelId']);
+        unset($data['selectedBrand'], $data['selectedVehicleKey']);
 
         return $data;
     }
@@ -520,7 +538,7 @@ class LeadList extends Component
             'source',
             'discovery_source',
             'selectedBrand',
-            'selectedModelId',
+            'selectedVehicleKey',
             'request_date',
             'next_follow_up_at',
             'last_contacted_at',
@@ -627,9 +645,10 @@ class LeadList extends Component
                 ? Car::query()
                     ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
                     ->where('car_models.brand', $this->selectedBrand)
-                    ->selectRaw('MIN(car_models.id) as id, car_models.model, MAX(cars.manufacturing_year) as manufacturing_year')
-                    ->groupBy('car_models.model')
+                    ->selectRaw('MIN(car_models.id) as id, car_models.model, cars.manufacturing_year')
+                    ->groupBy('car_models.model', 'cars.manufacturing_year')
                     ->orderBy('car_models.model')
+                    ->orderBy('cars.manufacturing_year')
                     ->get()
                 : collect(),
             'communicationChannelOptions' => Contract::COMMUNICATION_CHANNELS,

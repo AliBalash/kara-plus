@@ -5,6 +5,7 @@ namespace Tests\Feature\Livewire\RentalRequest;
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPayment;
 use App\Models\Car;
 use App\Models\Contract;
+use App\Models\ContractAmendment;
 use App\Models\ContractBalanceTransfer;
 use App\Models\Customer;
 use App\Models\CustomerDocument;
@@ -25,6 +26,80 @@ class RentalRequestPaymentTest extends TestCase
     {
         parent::setUp();
         Storage::fake('myimage');
+    }
+
+    public function test_discount_payment_requires_a_valid_discount_reason_and_persists_it(): void
+    {
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()->for($user)->for($customer)->for(Car::factory())->status('payment')->create();
+
+        $baseFields = [
+            'amount' => 125,
+            'currency' => 'AED',
+            'payment_type' => 'discount',
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+            'is_refundable' => false,
+        ];
+
+        $this->actingAs($user);
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        foreach ($baseFields as $field => $value) {
+            $component->{$field} = $value;
+        }
+
+        try {
+            $component->submitPayment();
+            $this->fail('Discount reason should be required.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('discount_reason', $exception->errors());
+        }
+
+        $component->discount_reason = 'not-a-reason';
+        try {
+            $component->submitPayment();
+            $this->fail('Invalid discount reason should be rejected.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('discount_reason', $exception->errors());
+        }
+
+        $component->discount_reason = 'item_owner_discount';
+        $component->submitPayment();
+
+        $this->assertDatabaseHas('payments', [
+            'contract_id' => $contract->id,
+            'payment_type' => 'discount',
+            'discount_reason' => 'item_owner_discount',
+        ]);
+    }
+
+    public function test_non_discount_payment_clears_discount_reason(): void
+    {
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $contract = Contract::factory()->for($user)->for($customer)->for(Car::factory())->status('payment')->create();
+
+        $this->actingAs($user);
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $component->payment_type = 'discount';
+        $component->discount_reason = 'management_discount';
+        $component->updatedPaymentType('rental_fee');
+        $component->payment_type = 'rental_fee';
+        $component->amount = 100;
+        $component->currency = 'AED';
+        $component->payment_date = now()->toDateString();
+        $component->payment_method = 'cash';
+        $component->is_refundable = false;
+        $component->submitPayment();
+
+        $this->assertDatabaseHas('payments', [
+            'contract_id' => $contract->id,
+            'payment_type' => 'rental_fee',
+            'discount_reason' => null,
+        ]);
     }
 
     public function test_submit_payment_persists_payment_record(): void
@@ -73,8 +148,39 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertEqualsWithDelta(500.5, (float) $payment->amount, 0.01);
         $this->assertEquals('AED', $payment->currency);
         $this->assertEquals($user->id, $payment->user_id);
+        $this->assertEquals($contract->customer_id, $payment->customer_id);
+        $this->assertEquals($contract->car_id, $payment->car_id);
         $this->assertEquals('pending', $payment->approval_status);
         $this->assertEquals('Payment was successfully added!', session('message'));
+    }
+
+    public function test_payment_ignores_a_mismatched_route_customer_and_uses_the_contract_relations(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $contractCustomer = Customer::factory()->create();
+        $unrelatedCustomer = Customer::factory()->create();
+        $car = Car::factory()->create();
+        $contract = Contract::factory()
+            ->for($user)
+            ->for($contractCustomer)
+            ->for($car)
+            ->status('payment')
+            ->create(['total_price' => 100]);
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $unrelatedCustomer->id);
+        $this->assertSame($contractCustomer->id, $component->customerId);
+        $component->amount = 100;
+        $component->currency = 'AED';
+        $component->payment_type = 'rental_fee';
+        $component->payment_date = now()->toDateString();
+        $component->payment_method = 'cash';
+        $component->submitPayment();
+
+        $payment = Payment::query()->where('contract_id', $contract->id)->sole();
+        $this->assertSame($contractCustomer->id, $payment->customer_id);
+        $this->assertSame($car->id, $payment->car_id);
     }
 
     public function test_submit_deposit_stores_security_note_in_meta(): void
@@ -299,7 +405,7 @@ class RentalRequestPaymentTest extends TestCase
         Storage::disk('myimage')->assertMissing('payments/damage-3.webp');
     }
 
-    public function test_existing_payments_table_groups_customer_payments_and_charges(): void
+    public function test_existing_payments_table_uses_a_single_all_entries_ledger(): void
     {
         $user = User::factory()->create();
         $customerPayment = Payment::factory()
@@ -332,14 +438,114 @@ class RentalRequestPaymentTest extends TestCase
         ])->render();
         $normalizedHtml = preg_replace('/\s+/', ' ', $html);
 
-        $this->assertStringContainsString('Customer Payments', $normalizedHtml);
-        $this->assertStringContainsString('Charges &amp; Costs', $normalizedHtml);
+        $this->assertStringContainsString('Payment ledger', $normalizedHtml);
+        $this->assertStringContainsString('All Entries', $normalizedHtml);
         $this->assertStringContainsString('20,000,000.00', $normalizedHtml);
         $this->assertStringContainsString('Deducted from balance: 51.60 AED', $normalizedHtml);
         $this->assertStringContainsString('520.00', $normalizedHtml);
         $this->assertStringContainsString('Charge in balance: 520.00 AED', $normalizedHtml);
-        $this->assertStringContainsString('Registered: ' . now()->setTime(10, 15, 0)->format('Y-m-d H:i'), $normalizedHtml);
-        $this->assertStringContainsString('Registered: ' . now()->setTime(12, 45, 0)->format('Y-m-d H:i'), $normalizedHtml);
+        $this->assertStringContainsString('Registered: '.now()->setTime(10, 15, 0)->format('Y-m-d H:i'), $normalizedHtml);
+        $this->assertStringContainsString('Registered: '.now()->setTime(12, 45, 0)->format('Y-m-d H:i'), $normalizedHtml);
+    }
+
+    public function test_accounting_periods_are_rolling_30_day_blocks_regardless_of_extension_count(): void
+    {
+        foreach ([20 => [20], 30 => [30], 31 => [30, 1], 60 => [30, 30], 61 => [30, 30, 1], 100 => [30, 30, 30, 10]] as $days => $expectedDurations) {
+            [$component, $contract, $user] = $this->paymentPeriodComponent($days);
+
+            if ($days === 20) {
+                foreach ([1, 2, 3] as $sequence) {
+                    ContractAmendment::create([
+                        'contract_id' => $contract->id,
+                        'sequence_no' => $sequence,
+                        'type' => ContractAmendment::TYPE_EXTENSION,
+                        'status' => 'approved',
+                        'requested_by' => $user->id,
+                        'approved_by' => $user->id,
+                        'approved_at' => now(),
+                        'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
+                    ]);
+                }
+
+                $component->loadData();
+            }
+
+            $this->assertSame($expectedDurations, collect($component->paymentPeriods)->pluck('duration_days')->all());
+        }
+    }
+
+    public function test_payments_are_assigned_once_by_payment_date_with_safe_out_of_range_handling(): void
+    {
+        [$component, $contract, $user, $customer, $pickup] = $this->paymentPeriodComponent(100, true);
+        $payments = collect([
+            ['rental_fee', $pickup->copy()->subDay()],
+            ['fine', $pickup->copy()->addDays(9)],
+            ['no_deposit_fee', $pickup->copy()->addDays(29)], // final day of Period 1
+            ['parking', $pickup->copy()->addDays(30)], // exact Period 2 boundary
+            ['damage', $pickup->copy()->addDays(44)],
+            ['salik_4_aed', $pickup->copy()->addDays(74)],
+            ['discount', $pickup->copy()->addDays(100)], // after return; final period
+        ])->map(fn (array $entry) => Payment::factory()
+            ->for($contract)->for($customer)->for($user)->for($contract->car)
+            ->create(['payment_type' => $entry[0], 'payment_date' => $entry[1], 'amount' => 10, 'amount_in_aed' => 10]));
+
+        $component->loadData();
+        $periods = collect($component->paymentPeriods);
+        $periodPaymentIds = $periods->flatMap(fn (array $period) => $period['payments']->pluck('id'));
+
+        $this->assertSame([3, 2, 1, 1], $periods->pluck('entry_count')->all());
+        $this->assertSame($payments->pluck('id')->sort()->values()->all(), $periodPaymentIds->sort()->values()->all());
+        $this->assertSame($periodPaymentIds->count(), $periodPaymentIds->unique()->count());
+        $this->assertSame($payments->first()->id, $periods[0]['payments']->first()->id);
+        $this->assertSame($payments[3]->id, $periods[1]['payments']->first()->id);
+        $this->assertSame($payments->last()->id, $periods[3]['payments']->first()->id);
+        $this->assertSame([-10.0, -20.0, -10.0, 10.0], $periods->pluck('ledger_balance')->all());
+        $this->assertSame(-30.0, $component->overallLedgerBalance);
+    }
+
+    public function test_periods_use_contract_billable_days_and_date_boundaries(): void
+    {
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $pickup = now()->setDate(2026, 1, 1)->setTime(14, 10);
+        $contract = Contract::factory()->for($user)->for($customer)->for(Car::factory())->status('payment')->create([
+            'pickup_date' => $pickup,
+            'return_date' => $pickup->copy()->addDays(37)->addHours(2)->addMinutes(50),
+            'meta' => [],
+        ]);
+
+        $periodOnePayment = Payment::factory()->for($contract)->for($customer)->for($user)->for($contract->car)->create([
+            'payment_date' => '2026-01-30',
+        ]);
+        $periodTwoPayment = Payment::factory()->for($contract)->for($customer)->for($user)->for($contract->car)->create([
+            'payment_date' => '2026-01-31',
+        ]);
+
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+        $periods = collect($component->paymentPeriods);
+
+        $this->assertSame([30, 8], $periods->pluck('duration_days')->all());
+        $this->assertSame('2026-01-30', $periods[0]['display_ends_at']->toDateString());
+        $this->assertSame('2026-02-07', $periods[1]['display_ends_at']->toDateString());
+        $this->assertSame([$periodOnePayment->id], $periods[0]['payments']->pluck('id')->all());
+        $this->assertSame([$periodTwoPayment->id], $periods[1]['payments']->pluck('id')->all());
+    }
+
+    private function paymentPeriodComponent(int $days, bool $includeContext = false): array
+    {
+        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
+        $pickup = now()->startOfDay()->setDate(2026, 1, 1);
+        $contract = Contract::factory()->for($user)->for($customer)->for(Car::factory())->status('payment')->create([
+            'pickup_date' => $pickup,
+            'return_date' => $pickup->copy()->addDays($days),
+            'total_price' => 1000,
+        ]);
+        $component = app(RentalRequestPayment::class);
+        $component->mount($contract->id, $customer->id);
+
+        return $includeContext ? [$component, $contract, $user, $customer, $pickup] : [$component, $contract, $user];
     }
 
     public function test_zero_remaining_balance_is_not_serialized_as_negative_zero(): void

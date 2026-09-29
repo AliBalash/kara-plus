@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\LocationCost;
 use App\Models\VehicleCatalogItem;
 use App\Support\PhoneNumber;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Database\QueryException;
@@ -33,6 +34,8 @@ class PublicReservationService
         return [
             'currency' => 'AED',
             'tax_rate' => self::TAX_RATE,
+            'rental_duration_policy' => RentalDuration::CURRENT_POLICY,
+            'rental_duration_grace_minutes' => RentalDuration::GRACE_MINUTES,
             'min_pickup_at' => $this->minimumPickupAt()->format('Y-m-d H:i:s'),
             'services' => array_values(array_map(function (string $id, array $service): array {
                 return [
@@ -63,6 +66,7 @@ class PublicReservationService
     public function brands(): array
     {
         return CarModel::query()
+            ->whereHas('cars', static fn ($query) => $query->ourFleet()->where('status', '!=', Car::STATUS_SOLD))
             ->selectRaw('TRIM(brand) as brand')
             ->distinct()
             ->orderBy('brand')
@@ -75,6 +79,7 @@ class PublicReservationService
     public function models(?string $brand = null): array
     {
         $query = CarModel::query()
+            ->whereHas('cars', static fn ($query) => $query->ourFleet()->where('status', '!=', Car::STATUS_SOLD))
             ->select(['id', 'brand', 'model', 'is_featured'])
             ->orderBy('brand')
             ->orderBy('model');
@@ -108,6 +113,7 @@ class PublicReservationService
         $return = $returnDate ? Carbon::parse($returnDate) : null;
 
         $cars = Car::query()
+            ->ourFleet()
             ->where('status', '!=', 'sold')
             ->with([
                 'carModel.image',
@@ -166,7 +172,6 @@ class PublicReservationService
 
             return [
                 'id' => $car->id,
-                'plate_number' => $car->plate_number,
                 'status' => $car->status,
                 'availability' => (bool) $car->availability,
                 'operational_status' => $car->operationalStatus(),
@@ -308,6 +313,7 @@ class PublicReservationService
     private function hasExactCatalogFleetCar(VehicleCatalogItem $catalogItem): bool
     {
         return Car::query()
+            ->ourFleet()
             ->where('status', '!=', 'sold')
             ->where('manufacturing_year', $catalogItem->manufacturing_year)
             ->whereHas('carModel', static function ($query) use ($catalogItem) {
@@ -322,7 +328,7 @@ class PublicReservationService
     {
         $normalized = $this->normalizeQuotePayload($payload);
         $this->ensureRequestScheduleOrFail($normalized);
-        $car = Car::query()->with('carModel')->findOrFail($normalized['selected_car_id']);
+        $car = Car::query()->ourFleet()->with('carModel')->findOrFail($normalized['selected_car_id']);
         $car->syncOperationalState();
         $quote = $this->buildQuote($normalized, $car);
 
@@ -347,7 +353,7 @@ class PublicReservationService
                 $this->ensureRequestScheduleOrFail($normalized);
 
                 /** @var Car $car */
-                $car = Car::query()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
+                $car = Car::query()->ourFleet()->lockForUpdate()->findOrFail($normalized['selected_car_id']);
                 $car->syncOperationalState();
 
                 if ($car->status === Car::STATUS_SOLD) {
@@ -390,7 +396,7 @@ class PublicReservationService
                     'birth_date' => $payload['birth_date'] ?? null,
                     'passport_number' => $passportNumber !== '' ? $passportNumber : null,
                     'passport_expiry_date' => $payload['passport_expiry_date'] ?? null,
-                    'nationality' => trim((string) ($payload['nationality'] ?? '')),
+                    'nationality' => $this->nullableString($payload['nationality'] ?? null),
                     'license_number' => $licenseNumber !== '' ? $licenseNumber : null,
                 ]);
                 $customer->save();
@@ -408,6 +414,7 @@ class PublicReservationService
                     'selected_insurance' => $quote['selected_insurance'],
                     'service_quantities' => $quote['service_quantities'],
                     'quote_snapshot' => Arr::except($quote, ['availability']),
+                    'pricing_tariffs' => $this->pricingTariffSnapshot($quote),
                     'availability_at_submission' => $quote['availability'],
                 ];
 
@@ -510,7 +517,7 @@ class PublicReservationService
     {
         $pickup = $normalized['pickup'];
         $return = $normalized['return'];
-        $rentalDays = max(1, (int) ceil(($return->getTimestamp() - $pickup->getTimestamp()) / 86400));
+        $rentalDays = RentalDuration::billableDays($pickup, $return);
 
         $standardDailyRate = $this->roundCurrency($this->getCarDailyRate($car, $rentalDays));
         $dailyRate = ($normalized['apply_discount'] && $normalized['custom_daily_rate'])
@@ -616,6 +623,8 @@ class PublicReservationService
 
         return [
             'currency' => 'AED',
+            'rental_duration_policy' => RentalDuration::CURRENT_POLICY,
+            'rental_duration_grace_minutes' => RentalDuration::GRACE_MINUTES,
             'pickup_date' => $pickup->toIso8601String(),
             'return_date' => $return->toIso8601String(),
             'pickup_location' => $normalized['pickup_location'],
@@ -747,6 +756,58 @@ class PublicReservationService
                 'description' => '5% VAT',
             ]);
         }
+    }
+
+    /** Capture the quote catalogue so future edits never drift to newer rates. */
+    private function pricingTariffSnapshot(array $quote): array
+    {
+        $services = collect($this->serviceDefinitions())
+            ->except(['ldw_insurance', 'scdw_insurance'])
+            ->map(fn (array $service): array => [
+                'unit_rate' => $this->roundCurrency($service['amount'] ?? 0),
+                'per_day' => (bool) ($service['per_day'] ?? false),
+            ])->all();
+        $locations = collect($this->locationCostMap())->map(fn (array $rates): array => [
+            'under_3' => (float) ($rates['under_3'] ?? 0),
+            'over_3' => (float) ($rates['over_3'] ?? 0),
+        ])->all();
+        $days = (int) ($quote['rental_days'] ?? 1);
+
+        return [
+            'source' => 'contract_creation',
+            ...RentalDuration::currentPolicySnapshot(),
+            'daily_rate' => $this->roundCurrency($quote['daily_rate'] ?? 0),
+            'tax_rate' => (float) ($quote['tax_rate'] ?? self::TAX_RATE),
+            'base_days' => (float) $days,
+            'extension_days' => 0.0,
+            'extension_duration_minutes' => 0,
+            'services' => $services,
+            'insurance' => [
+                'ldw_insurance' => $this->roundCurrency($quote['ldw_daily_rate'] ?? 0),
+                'scdw_insurance' => $this->roundCurrency($quote['scdw_daily_rate'] ?? 0),
+            ],
+            'locations' => $locations,
+            'priced_locations' => [
+                'pickup' => [
+                    'location' => $quote['pickup_location'] ?? null,
+                    'tier' => $days < 3 ? 'under_3' : 'over_3',
+                    'amount' => $this->roundCurrency(data_get($quote, 'transfer_costs.pickup', 0)),
+                ],
+                'return' => [
+                    'location' => $quote['return_location'] ?? null,
+                    'tier' => $days < 3 ? 'under_3' : 'over_3',
+                    'amount' => $this->roundCurrency(data_get($quote, 'transfer_costs.return', 0)),
+                ],
+            ],
+            'driver_service' => [
+                'base_amount' => 250.0,
+                'included_hours' => 8.0,
+                'extra_hour_amount' => 40.0,
+            ],
+            'driving_license' => collect($this->drivingLicenseOptions())
+                ->mapWithKeys(fn (array $option, string $key): array => [$key => (float) ($option['amount'] ?? 0)])
+                ->all(),
+        ];
     }
 
     private function lineItemsFromQuote(

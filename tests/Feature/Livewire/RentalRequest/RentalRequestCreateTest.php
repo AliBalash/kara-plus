@@ -11,6 +11,7 @@ use App\Models\ContractStatus;
 use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\User;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,29 @@ use Tests\TestCase;
 class RentalRequestCreateTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_new_panel_request_uses_one_day_through_25_hours_and_two_days_after_that(): void
+    {
+        $car = Car::factory()->create([
+            'price_per_day_short' => 200,
+            'price_per_day_mid' => 180,
+            'price_per_day_long' => 150,
+        ]);
+        $component = app(RentalRequestCreate::class);
+        $component->mount();
+        $component->selectedCarId = $car->id;
+        $component->pickup_date = '2026-09-15T10:00';
+        $component->return_date = '2026-09-16T11:00';
+
+        $component->calculateCosts();
+        $this->assertSame(1, $component->rental_days);
+        $this->assertSame(200.0, $component->base_price);
+
+        $component->return_date = '2026-09-16T11:01';
+        $component->calculateCosts();
+        $this->assertSame(2, $component->rental_days);
+        $this->assertSame(400.0, $component->base_price);
+    }
 
     public function test_submit_creates_contract_and_initial_status(): void
     {
@@ -132,6 +156,14 @@ class RentalRequestCreateTest extends TestCase
         $this->assertEquals('pending', $contract->current_status);
         $this->assertEquals($car->id, $contract->car_id);
         $this->assertEquals('Collect payment from customer at pickup', $contract->meta['driver_note'] ?? null);
+        $this->assertSame(
+            RentalDuration::CURRENT_POLICY,
+            data_get($contract->meta, 'pricing_tariffs.rental_duration_policy')
+        );
+        $this->assertSame(
+            RentalDuration::GRACE_MINUTES,
+            data_get($contract->meta, 'pricing_tariffs.rental_duration_grace_minutes')
+        );
 
         $status = ContractStatus::where('contract_id', $contract->id)->latest('id')->first();
         $this->assertNotNull($status);

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\RentalDuration;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class Contract extends Model
@@ -13,6 +16,9 @@ class Contract extends Model
     use HasFactory;
 
     public const AMENDABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return'];
+
+    /** Small operational time corrections do not change the commercial ledger. */
+    public const RETURN_TIME_TOLERANCE_MINUTES = 60;
 
     public const FINANCIALLY_IMMUTABLE_STATUSES = ['delivery', 'inspection', 'agreement_inspection', 'awaiting_return', 'returned', 'payment', 'complete'];
 
@@ -308,7 +314,11 @@ class Contract extends Model
      */
     public function calculateTotalPrice(): float
     {
-        $days = $this->pickup_date->diffInDays($this->return_date ?? now());
+        $returnAt = $this->return_date ?? now();
+        $policy = RentalDuration::policyFromContractMeta($this->meta);
+        $days = $policy === RentalDuration::POLICY_LEGACY_DAILY_CEILING
+            ? $this->pickup_date->diffInDays($returnAt)
+            : RentalDuration::billableDays($this->pickup_date, $returnAt, $policy);
         $dailyRate = (float) ($this->car->price_per_day ?? 0);
 
         return round($days * $dailyRate, 2);
@@ -399,6 +409,71 @@ class Contract extends Model
             $this->update([
                 'return_date' => $newReturnAt,
                 'total_price' => round($newTotalPrice, 2),
+            ]);
+        } finally {
+            $this->commercialMutationAuthorized = false;
+        }
+    }
+
+    /** Apply an audited commercial correction without mutating charge history. */
+    public function applyApprovedCommercialCorrection(array $attributes): void
+    {
+        $allowed = Arr::only($attributes, [
+            'car_id',
+            'pickup_date',
+            'return_date',
+            'pickup_location',
+            'return_location',
+            'total_price',
+            'used_daily_rate',
+            'custom_daily_rate_enabled',
+            'discount_note',
+            'kardo_required',
+            'payment_on_delivery',
+            'meta',
+        ]);
+
+        $this->commercialMutationAuthorized = true;
+
+        try {
+            $this->update($allowed);
+        } finally {
+            $this->commercialMutationAuthorized = false;
+        }
+    }
+
+    /**
+     * Correct minor operational planning details without rewriting the
+     * financial ledger. Any material return-date change must first pass
+     * through the commercial correction workflow, which updates the planned
+     * return and its financial total atomically.
+     */
+    public function applyOperationalScheduleAndLocationCorrections(
+        $newPickupAt,
+        $newReturnAt,
+        ?string $pickupLocation,
+        ?string $returnLocation
+    ): void {
+        $newReturnAt = Carbon::parse($newReturnAt);
+        $newPickupAt = Carbon::parse($newPickupAt);
+        $currentReturnAt = Carbon::parse($this->return_date);
+        if ($newReturnAt->lessThanOrEqualTo($newPickupAt)) {
+            throw new \DomainException('The planned return must be after the pickup time.');
+        }
+
+        if ($newReturnAt->notEqualTo($currentReturnAt)
+            && abs($currentReturnAt->diffInMinutes($newReturnAt)) > self::RETURN_TIME_TOLERANCE_MINUTES) {
+            throw new \DomainException('A material planned return change must be saved through the commercial correction workflow so the date and financial ledger remain synchronized.');
+        }
+
+        $this->commercialMutationAuthorized = true;
+
+        try {
+            $this->update([
+                'pickup_date' => $newPickupAt,
+                'return_date' => $newReturnAt,
+                'pickup_location' => $pickupLocation,
+                'return_location' => $returnLocation,
             ]);
         } finally {
             $this->commercialMutationAuthorized = false;

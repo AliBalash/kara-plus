@@ -25,7 +25,10 @@ class LeadListTest extends TestCase
             'brand' => 'BMW',
             'model' => 'X5',
         ]);
-        Car::factory()->available()->create(['car_model_id' => $carModel->id]);
+        Car::factory()->available()->create([
+            'car_model_id' => $carModel->id,
+            'manufacturing_year' => 2024,
+        ]);
 
         $this->actingAs($user);
 
@@ -37,7 +40,7 @@ class LeadListTest extends TestCase
         $component->source = 'whatsapp';
         $component->discovery_source = 'Google Ads';
         $component->selectedBrand = 'BMW';
-        $component->selectedModelId = $carModel->id;
+        $component->selectedVehicleKey = $carModel->id.':2024';
         $component->request_date = '2026-06-26';
         $component->priority = Lead::PRIORITY_HIGH;
         $component->status = Lead::STATUS_FOLLOW_UP;
@@ -51,6 +54,7 @@ class LeadListTest extends TestCase
             'discovery_source' => 'Google Ads',
             'requested_brand' => 'BMW',
             'requested_model_id' => $carModel->id,
+            'requested_manufacturing_year' => 2024,
             'priority' => Lead::PRIORITY_HIGH,
             'status' => Lead::STATUS_FOLLOW_UP,
             'created_by' => $user->id,
@@ -83,39 +87,68 @@ class LeadListTest extends TestCase
 
     public function test_vehicle_options_include_all_fleet_models_regardless_of_operational_status(): void
     {
-        $selectableModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ACCENT']);
-        $duplicateModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ACCENT']);
-        $unavailableModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ELANTRA']);
-        $soldModel = CarModel::factory()->create(['brand' => 'BMW', 'model' => 'X5']);
+        $elantraModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ELANTRA']);
+        $newerElantraModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'ELANTRA']);
+        $sonataModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'SONATA']);
+        $newerSonataModel = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'SONATA']);
         CarModel::factory()->create(['brand' => 'Kia', 'model' => 'K5']);
 
         Car::factory()->available()->create([
-            'car_model_id' => $selectableModel->id,
-            'manufacturing_year' => 2024,
+            'car_model_id' => $elantraModel->id,
+            'manufacturing_year' => 2022,
         ]);
         Car::factory()->available()->create([
-            'car_model_id' => $duplicateModel->id,
+            'car_model_id' => $elantraModel->id,
             'manufacturing_year' => 2023,
         ]);
         Car::factory()->unavailable()->create([
-            'car_model_id' => $unavailableModel->id,
-            'manufacturing_year' => 2022,
+            'car_model_id' => $newerElantraModel->id,
+            'manufacturing_year' => 2024,
+        ]);
+        Car::factory()->unavailable()->create([
+            'car_model_id' => $sonataModel->id,
+            'manufacturing_year' => 2023,
         ]);
         Car::factory()->sold()->create([
-            'car_model_id' => $soldModel->id,
-            'manufacturing_year' => 2021,
+            'car_model_id' => $newerSonataModel->id,
+            'manufacturing_year' => 2025,
         ]);
 
         $component = $this->leadList();
         $component->selectedBrand = 'Hyundai';
         $viewData = $component->render()->getData();
 
-        $this->assertSame(['BMW', 'Hyundai'], $viewData['brands']->all());
-        $this->assertCount(2, $viewData['models']);
-        $this->assertSame(['ACCENT', 'ELANTRA'], $viewData['models']->pluck('model')->all());
-        $this->assertSame(2024, (int) $viewData['models']->firstWhere('model', 'ACCENT')->manufacturing_year);
-        $this->assertSame(2022, (int) $viewData['models']->firstWhere('model', 'ELANTRA')->manufacturing_year);
+        $this->assertSame(['Hyundai'], $viewData['brands']->all());
+        $this->assertCount(5, $viewData['models']);
+        $this->assertSame(['ELANTRA', 'ELANTRA', 'ELANTRA', 'SONATA', 'SONATA'], $viewData['models']->pluck('model')->all());
+        $this->assertSame([2022, 2023, 2024, 2023, 2025], $viewData['models']->pluck('manufacturing_year')->map(fn ($year) => (int) $year)->all());
         $this->assertNotContains('Kia', $viewData['brands']->all());
+    }
+
+    public function test_save_preserves_the_selected_vehicle_year_without_filtering_by_status(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $model = CarModel::factory()->create(['brand' => 'HYUNDAI', 'model' => 'ELANTRA']);
+        Car::factory()->unavailable()->create([
+            'car_model_id' => $model->id,
+            'manufacturing_year' => 2022,
+        ]);
+
+        $this->actingAs($user);
+
+        $component = app(LeadList::class);
+        $component->mount();
+        $component->phone = '+971501111112';
+        $component->selectedBrand = 'HYUNDAI';
+        $component->selectedVehicleKey = $model->id.':2022';
+        $component->save();
+
+        $this->assertDatabaseHas('leads', [
+            'requested_brand' => 'HYUNDAI',
+            'requested_model_id' => $model->id,
+            'requested_manufacturing_year' => 2022,
+        ]);
+        $this->assertSame('HYUNDAI ELANTRA (2022)', Lead::query()->firstOrFail()->requestedVehicleLabel());
     }
 
     public function test_convert_to_customer_creates_customer_and_marks_lead_converted(): void

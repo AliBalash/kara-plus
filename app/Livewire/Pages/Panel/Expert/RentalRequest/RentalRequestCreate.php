@@ -14,6 +14,7 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\LocationCost;
 use App\Support\PhoneNumber;
+use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -631,9 +632,7 @@ class RentalRequestCreate extends Component
 
                 return;
             }
-            $seconds = $return->getTimestamp() - $pickup->getTimestamp();
-            $days = (int) ceil($seconds / 86400);
-            $this->rental_days = max(1, $days);
+            $this->rental_days = RentalDuration::billableDays($pickup, $return);
         } else {
             $this->rental_days = 1;
         }
@@ -965,7 +964,9 @@ class RentalRequestCreate extends Component
             'kardo_required' => ['boolean'],
             'payment_on_delivery' => ['boolean'],
             'apply_discount' => ['boolean'],
-            'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
+            // The contracts table stores AED rates to two decimal places. Reject
+            // extra precision instead of silently rounding a rate the expert typed.
+            'custom_daily_rate' => ['nullable', 'numeric', 'decimal:0,2', 'min:0'],
             'driver_hours' => ['nullable', 'numeric', 'min:0'],
             'driver_note' => ['nullable', 'string', 'max:1000'],
             'deposit_category' => ['nullable', 'in:cash_aed,cheque,transfer_cash_irr', 'required_with:deposit'],
@@ -1319,7 +1320,13 @@ class RentalRequestCreate extends Component
 
     private function prepareContractMeta(): ?array
     {
-        $meta = [];
+        $meta = [
+            'selected_services' => array_values($this->selected_services),
+            'selected_insurance' => in_array($this->selected_insurance, ['ldw_insurance', 'scdw_insurance'], true)
+                ? $this->selected_insurance
+                : null,
+            'pricing_tariffs' => $this->pricingTariffSnapshot(),
+        ];
 
         if (($this->driver_hours ?? 0) > 0) {
             $meta['driver_hours'] = (float) $this->driver_hours;
@@ -1342,6 +1349,58 @@ class RentalRequestCreate extends Component
         }
 
         return ! empty($meta) ? $meta : null;
+    }
+
+    /** Capture every tariff needed by later edits before catalogue prices move. */
+    private function pricingTariffSnapshot(): array
+    {
+        $car = $this->selectedCarId ? Car::find($this->selectedCarId) : null;
+        $locations = collect($this->locationCosts)->map(fn (array $rates): array => [
+            'under_3' => (float) ($rates['under_3'] ?? 0),
+            'over_3' => (float) ($rates['over_3'] ?? 0),
+        ])->all();
+        $services = collect($this->services)
+            ->except(['ldw_insurance', 'scdw_insurance'])
+            ->map(fn (array $service): array => [
+                'unit_rate' => $this->roundCurrency($service['amount'] ?? 0),
+                'per_day' => (bool) ($service['per_day'] ?? false),
+            ])->all();
+
+        return [
+            'source' => 'contract_creation',
+            ...RentalDuration::currentPolicySnapshot(),
+            'daily_rate' => $this->roundCurrency($this->dailyRate),
+            'tax_rate' => (float) $this->tax_rate,
+            'base_days' => (float) $this->rental_days,
+            'extension_days' => 0.0,
+            'extension_duration_minutes' => 0,
+            'services' => $services,
+            'insurance' => [
+                'ldw_insurance' => $this->roundCurrency($car ? $this->getInsuranceDailyRate($car, 'ldw', (int) $this->rental_days) : 0),
+                'scdw_insurance' => $this->roundCurrency($car ? $this->getInsuranceDailyRate($car, 'scdw', (int) $this->rental_days) : 0),
+            ],
+            'locations' => $locations,
+            'priced_locations' => [
+                'pickup' => [
+                    'location' => $this->pickup_location,
+                    'tier' => $this->rental_days < 3 ? 'under_3' : 'over_3',
+                    'amount' => $this->roundCurrency($this->transfer_costs['pickup'] ?? 0),
+                ],
+                'return' => [
+                    'location' => $this->return_location,
+                    'tier' => $this->rental_days < 3 ? 'under_3' : 'over_3',
+                    'amount' => $this->roundCurrency($this->transfer_costs['return'] ?? 0),
+                ],
+            ],
+            'driver_service' => [
+                'base_amount' => 250.0,
+                'included_hours' => 8.0,
+                'extra_hour_amount' => 40.0,
+            ],
+            'driving_license' => collect($this->driving_license_options)
+                ->mapWithKeys(fn (array $option, string $key): array => [$key => (float) ($option['amount'] ?? 0)])
+                ->all(),
+        ];
     }
 
     private function normalizedDeposit(): ?string

@@ -25,7 +25,7 @@ class StorePublicReservationRequest extends ReservationQuoteRequest
             'national_code' => ['nullable', 'string'],
             'passport_number' => ['nullable', 'string', 'max:50'],
             'passport_expiry_date' => ['nullable', 'date', 'after_or_equal:today'],
-            'nationality' => ['required', 'string', 'max:100'],
+            'nationality' => ['nullable', 'string', 'max:100'],
             'license_number' => ['nullable', 'string', 'max:50'],
             'licensed_driver_name' => ['nullable', 'string', 'max:255'],
             'agent_id' => ['nullable', 'integer', 'exists:agents,id'],

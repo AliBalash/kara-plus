@@ -26,10 +26,13 @@ class VehicleAvailabilityService
         // Those derived states are not conflicts with itself; explicit holds
         // and sold states remain blocking.
         $blockReason = $car->reservationSelectionBlockReason();
-        $isOwnOverdueState = $exceptContractId !== null
+        $isOnlyOwnOverdueState = $exceptContractId !== null
             && $car->resolvedManualStatus() === Car::MANUAL_STATUS_AVAILABLE
-            && $car->unavailability_reason === Car::UNAVAILABILITY_REASON_NEED_ACTION;
-        if ($blockReason !== null && ! $isOwnOverdueState) {
+            && $car->unavailability_reason === Car::UNAVAILABILITY_REASON_NEED_ACTION
+            // Do not hide Need Action when another open overdue contract is
+            // the reason for it. Only the contract being extended is exempt.
+            && ! $car->hasNeedActionReservationWindow(Carbon::now(), $exceptContractId);
+        if ($blockReason !== null && ! $isOnlyOwnOverdueState) {
             $conflicts[] = ['type' => 'vehicle_status', 'id' => $car->id, 'message' => $blockReason];
         }
 

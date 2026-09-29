@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -947,6 +948,24 @@ class Car extends Model
     }
 
     /**
+     * Limit public reservation inventory to vehicles owned by Kara Plus.
+     *
+     * Older records may not have an ownership type populated, so retain the
+     * legacy company flag only for those records.  A non-company ownership
+     * type is never exposed through the public reservation API.
+     */
+    public function scopeOurFleet(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->where('ownership_type', 'company')
+                ->orWhere(function (Builder $query): void {
+                    $query->whereNull('ownership_type')
+                        ->where('is_company_car', true);
+                });
+        });
+    }
+
+    /**
      * رابطه با مدل CarModel.
      */
     public function carModel()
@@ -1074,12 +1093,13 @@ class Car extends Model
         return $period->dateWindowLabel();
     }
 
-    public function hasNeedActionReservationWindow(?Carbon $now = null): bool
+    public function hasNeedActionReservationWindow(?Carbon $now = null, ?int $exceptContractId = null): bool
     {
         $now ??= Carbon::now();
 
         return $this->contracts()
             ->whereIn('current_status', static::reservingStatuses())
+            ->when($exceptContractId, fn ($query) => $query->whereKeyNot($exceptContractId))
             ->whereNotNull('pickup_date')
             ->where('pickup_date', '<=', $now)
             ->whereNotNull('return_date')
