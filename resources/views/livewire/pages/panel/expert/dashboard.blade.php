@@ -1162,7 +1162,7 @@
                                 $durationLabel = null;
 
                                 if ($pickupAt && $returnAt) {
-                                    $diffHours = $pickupAt->diffInHours($returnAt);
+                                    $diffHours = (int) $pickupAt->diffInHours($returnAt);
                                     $days = intdiv($diffHours, 24);
                                     $hours = $diffHours % 24;
                                     $durationBits = [];
@@ -1296,7 +1296,7 @@
                                 $durationLabel = null;
 
                                 if ($pickupAt && $returnAt) {
-                                    $diffHours = $pickupAt->diffInHours($returnAt);
+                                    $diffHours = (int) $pickupAt->diffInHours($returnAt);
                                     $days = intdiv($diffHours, 24);
                                     $hours = $diffHours % 24;
                                     $durationBits = [];
