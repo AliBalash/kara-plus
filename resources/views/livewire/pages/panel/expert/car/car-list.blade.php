@@ -167,7 +167,7 @@
                         <td>{{ $car->id }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <span>{{ $car->fullname() }}</span>
+                                <a href="{{ route('car.detail', $car->id) }}" class="fw-semibold">{{ $car->fullname() }}</a>
                                 <x-car-ownership-badge :car="$car" />
                             </div>
                         </td>
@@ -178,6 +178,8 @@
                                 <button class="btn p-0 dropdown-toggle" data-bs-toggle="dropdown"><i
                                         class="bx bx-dots-vertical-rounded"></i></button>
                                 <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="{{ route('car.detail', $car->id) }}"><i
+                                            class="bx bx-show"></i> View details</a>
                                     <a class="dropdown-item" href="{{ route('car.edit', $car->id) }}"><i
                                             class="bx bx-edit-alt"></i> Edit</a>
                                     <a class="dropdown-item" href="javascript:void(0);"
