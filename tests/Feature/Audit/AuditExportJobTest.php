@@ -12,6 +12,12 @@ class AuditExportJobTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config()->set('audit.export.enabled', true);
+    }
+
     public function test_disabled_export_keeps_queued_event_pending(): void
     {
         config()->set('audit.export.enabled', false);

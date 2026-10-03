@@ -157,8 +157,11 @@ jobs:
     needs: test
     if: ${{ github.ref == 'refs/heads/master' && github.event_name == 'push' }}
     runs-on: self-hosted
-    timeout-minutes: 30
+    timeout-minutes: 60
     environment: production
     steps:
+      - name: Checkout deployment script
+        uses: actions/checkout@v4
+
       - name: Run deploy script
-        run: bash /opt/apps/kara-plus/deploy.sh
+        run: bash "$GITHUB_WORKSPACE/deploy.sh"

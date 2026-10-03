@@ -4,6 +4,8 @@ Copy the documented variables from `.env.example`. Keep `KARA_AI_ENABLED=false` 
 
 Create `ajil/.env` from `ajil/.env.example`; it is ignored by Git. Put only Ajil's `UAG_GEMINI_API_KEYS`, `UAG_GROQ_API_KEYS`, `UAG_AUTH_TOKEN`, and `UAG_ADMIN_TOKEN` there. Do not put provider keys in Laravel's `.env`.
 
+For the production deploy script, keep the private gateway settings in the ignored `/opt/apps/kara-plus/.env.ajil` (mode 0600). The script initializes the pinned Ajil submodule, copies this file to `ajil/.env`, builds and health-checks Ajil before updating Laravel, then runs the normal database migration and application smoke checks. Set matching `AJIL_API_TOKEN` and `UAG_AUTH_TOKEN` values in `.env.docker` and `.env.ajil` respectively, and set `KARA_AI_ENABLED=true` in `.env.docker` only when the private settings are ready. The sidecar has no public host port.
+
 Run the isolated sidecar with `docker compose -f docker-compose.local.yml -f docker-compose.ai.yml up -d --build`. The override injects only the Ajil client token and feature flags into Laravel; provider keys stay in Ajil. Ajil has no published host port and shares the application network only with Laravel and Redis.
 
 The parent image wrapper resolves Ajil's embedded provider modules during its build, because the upstream Ajil release references one historical nested-submodule revision that GitHub no longer serves. This keeps the top-level Ajil submodule pinned to its public upstream commit and makes a fresh Kara Plus clone buildable.

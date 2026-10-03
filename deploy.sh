@@ -34,6 +34,23 @@ else
 fi
 git reset --hard origin/master
 
+AI_SIDECAR=0
+AI_ENABLED_VALUE="$(awk -F= '/^KARA_AI_ENABLED=/{print tolower($2); exit}' .env.docker 2>/dev/null || true)"
+if [ -f .env.ajil ]; then
+  echo "[1.1/7] Prepare private Ajil sidecar"
+  git submodule sync -- ajil
+  git submodule update --init ajil
+  if [ ! -f ajil/unified_gateway/requirements.txt ]; then
+    echo "Ajil submodule is incomplete."
+    exit 1
+  fi
+  install -m 600 .env.ajil ajil/.env
+  AI_SIDECAR=1
+elif [[ "$AI_ENABLED_VALUE" == "true" || "$AI_ENABLED_VALUE" == "1" ]]; then
+  echo "KARA_AI_ENABLED is true, but private .env.ajil is missing."
+  exit 1
+fi
+
 echo "[1.2/7] Validate Laravel environment"
 if [ ! -f .env ]; then
   echo "Missing $ROOT/.env"
@@ -64,6 +81,11 @@ if ! $DOCKER_CMD info >/dev/null 2>&1; then
 fi
 
 COMPOSE_ARGS=(--env-file .env.docker -f docker-compose.yml)
+BUILD_SERVICES=(app web)
+if [ "$AI_SIDECAR" -eq 1 ]; then
+  COMPOSE_ARGS+=(-f docker-compose.ai.yml)
+  BUILD_SERVICES+=(ajil)
+fi
 APP_LOCAL_PORT="$(awk -F= '/^APP_LOCAL_PORT=/{print $2; exit}' .env.docker)"
 APP_LOCAL_PORT="${APP_LOCAL_PORT:-18001}"
 
@@ -85,10 +107,18 @@ echo "[1.6/7] Validate docker compose config"
 $DOCKER_CMD compose "${COMPOSE_ARGS[@]}" config >/dev/null
 
 echo "[2/7] Build images"
-$DOCKER_CMD compose "${COMPOSE_ARGS[@]}" build app web
+$DOCKER_CMD compose "${COMPOSE_ARGS[@]}" build "${BUILD_SERVICES[@]}"
+
+if [ "$AI_SIDECAR" -eq 1 ]; then
+  echo "[2.5/7] Start and verify Ajil before updating Laravel"
+  $DOCKER_CMD compose "${COMPOSE_ARGS[@]}" up -d --wait ajil
+fi
 
 echo "[3/7] Start services"
 $DOCKER_CMD compose "${COMPOSE_ARGS[@]}" up -d app web queue scheduler
+# Nginx resolves the PHP container when it starts. Refresh it if PHP was
+# recreated so it does not keep sending requests to the previous IP.
+$DOCKER_CMD compose "${COMPOSE_ARGS[@]}" up -d --no-deps --force-recreate web
 
 APP_CID="$($DOCKER_CMD compose "${COMPOSE_ARGS[@]}" ps -q app)"
 if [ -z "$APP_CID" ]; then
@@ -118,5 +148,10 @@ $DOCKER_CMD exec -u www-data:www-data -i "$APP_CID" bash -lc "php artisan queue:
 echo "[8/7] Smoke checks"
 smoke_check "auth login" "https://127.0.0.1:${APP_LOCAL_PORT}/auth/login"
 smoke_check "public reservation bootstrap" "https://127.0.0.1:${APP_LOCAL_PORT}/api/public/reservations/bootstrap"
+
+if [[ "$AI_ENABLED_VALUE" == "true" || "$AI_ENABLED_VALUE" == "1" ]]; then
+  echo "Smoke check: Ajil catalog and configured models"
+  $DOCKER_CMD exec -i "$APP_CID" php artisan ai:health
+fi
 
 echo "Deploy done and successfuly"
