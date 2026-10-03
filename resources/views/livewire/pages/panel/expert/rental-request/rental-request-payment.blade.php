@@ -1154,6 +1154,24 @@
             font-size: 0.88rem;
         }
 
+        .payment-period-selector__balance {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            width: 100%;
+            margin-top: 0.35rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .payment-period-selector__balance strong.is-positive {
+            color: #059669;
+        }
+
+        .payment-period-selector__balance strong.is-negative {
+            color: #dc2626;
+        }
+
         .payment-period-selector__button.is-active {
             background: #0f766e;
             border-color: #0f766e;
@@ -1161,7 +1179,8 @@
         }
 
         .payment-period-selector__button.is-active,
-        .payment-period-selector__button.is-active strong {
+        .payment-period-selector__button.is-active strong,
+        .payment-period-selector__button.is-active .payment-period-selector__balance strong {
             color: #fff;
         }
 

@@ -65,6 +65,10 @@
             <button type="button" wire:click="$set('paymentPeriodFilter', '{{ $period['key'] }}')" class="payment-period-selector__button {{ $paymentPeriodFilter === $period['key'] ? 'is-active' : '' }}" aria-pressed="{{ $paymentPeriodFilter === $period['key'] ? 'true' : 'false' }}">
                 <strong>{{ $period['is_final'] ? 'Final Period · ' : '' }}{{ $period['title'] }}</strong>
                 <span>{{ $period['starts_at']->format('M d') }} – {{ $period['display_ends_at']->format('M d') }} · {{ $period['duration_days'] }} days</span>
+                <span class="payment-period-selector__balance">
+                    <span>Section Balance</span>
+                    <strong class="{{ $period['ledger_balance'] >= 0 ? 'is-positive' : 'is-negative' }}">{{ number_format($period['ledger_balance'], 2) }} AED</strong>
+                </span>
             </button>
         @endforeach
     </div>
