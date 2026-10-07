@@ -1127,6 +1127,83 @@
             gap: 1.25rem;
         }
 
+        .payment-period-editor {
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid #dbe3ee;
+            border-radius: 1rem;
+            background: #f8fafc;
+        }
+
+        .payment-period-editor .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .payment-period-editor__footer,
+        .payment-period-actions,
+        .payment-period-history__entry {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .payment-period-editor__footer {
+            margin-top: 1rem;
+        }
+
+        .payment-period-editor__footer > div:first-child {
+            flex: 1 1 20rem;
+        }
+
+        .payment-period-shared {
+            font-size: 0.75rem;
+            color: #0f766e;
+        }
+
+        .payment-period-actions {
+            margin-bottom: 1rem;
+        }
+
+        .payment-period-default {
+            display: inline-block;
+            margin-left: 0.25rem;
+            padding: 0.1rem 0.35rem;
+            font-size: 0.65rem;
+            border-radius: 0.3rem;
+            background: rgba(15, 118, 110, 0.1);
+        }
+
+        .is-active .payment-period-default {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .payment-period-selector__creator {
+            font-size: 0.7rem;
+            opacity: 0.85;
+        }
+
+        .payment-period-history {
+            margin-bottom: 1rem;
+            padding: 0.85rem 1rem;
+            border: 1px solid #dbe3ee;
+            border-radius: 0.8rem;
+            background: #f8fafc;
+        }
+
+        .payment-period-history summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .payment-period-history__entry {
+            padding: 0.8rem 0;
+            border-top: 1px solid #e2e8f0;
+        }
+
         .payment-period-selector {
             display: flex;
             gap: 0.65rem;
@@ -1149,6 +1226,32 @@
             border-radius: 0.8rem;
             text-align: left;
             font-size: 0.78rem;
+        }
+
+        .payment-period-selector__card {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            min-width: 15rem;
+            max-width: 22rem;
+        }
+
+        .payment-period-selector__card > .payment-period-selector__button {
+            width: 100%;
+            flex: 1 0 auto;
+        }
+
+        .payment-period-selector__controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+        }
+
+        .payment-period-selector__hint {
+            margin-top: 0.3rem;
+            font-size: 0.7rem;
+            color: #64748b;
         }
 
         .payment-period-selector__button strong {
