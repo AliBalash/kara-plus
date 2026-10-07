@@ -44,9 +44,6 @@
         @endif
     </div>
     <x-detail-rental-request-tabs :contract-id="$contractId" />
-    @if(config('ai.enabled') && config('ai.features.contract_finance') && $contractId)
-        <div class="mb-4"><livewire:ai.insight-card feature="contract_finance" :entity-id="(int) $contractId" :key="'ai-contract-finance-'.$contractId" /></div>
-    @endif
 
     @php
         $extensionAmendments = $contract->amendments

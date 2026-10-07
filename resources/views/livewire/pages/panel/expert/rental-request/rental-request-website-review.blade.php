@@ -12,10 +12,6 @@
         </div>
     </section>
 
-    @if(config('ai.enabled') && config('ai.features.reservation_queue') && $summary['total'] > 0)
-        <div class="mb-4"><livewire:ai.insight-card feature="reservation_queue" :key="'ai-website-review-queue'" /></div>
-    @endif
-
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
             <div class="row g-3 align-items-end">

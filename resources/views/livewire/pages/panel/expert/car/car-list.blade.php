@@ -1,8 +1,5 @@
 <div class="card">
     <h5 class="card-header">Cars</h5>
-    @if(config('ai.enabled') && config('ai.features.fleet_outlook'))
-        <div class="px-3 pb-3"><livewire:ai.insight-card feature="fleet_outlook" :key="'ai-fleet-outlook'" /></div>
-    @endif
 
     <div class="p-3 border-bottom">
         <div class="row g-3 align-items-end">

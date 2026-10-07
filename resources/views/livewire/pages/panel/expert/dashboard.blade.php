@@ -141,10 +141,6 @@
         </div>
 @else
     <div class="container-xl py-4">
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-xl-7"><livewire:ai.insight-card feature="dashboard_operations" :key="'ai-dashboard'" /></div>
-        <div class="col-12 col-xl-5"><livewire:ai.insight-card feature="changes_since_login" :key="'ai-changes'" /></div>
-    </div>
     @cannot('car')
         @php
             $stats = [

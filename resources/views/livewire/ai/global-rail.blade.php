@@ -1,6 +1,7 @@
 <aside @class(['kara-ai-rail', 'is-open' => $open]) aria-label="Kara AI Copilot">
     <div class="kara-ai-rail__dock">
         <button type="button" class="kara-ai-rail__trigger" wire:click="toggle"
+            wire:loading.attr="disabled" wire:target="toggle"
             aria-expanded="{{ $open ? 'true' : 'false' }}" aria-controls="kara-ai-context-panel">
             <span class="kara-ai-rail__trigger-copy">
                 <strong>Kara AI</strong>
@@ -31,6 +32,9 @@
 
             @if(count($presets))
                 <div class="kara-ai-rail__content">
+                    @if($showSaveReminder)
+                        <p class="text-muted small mb-0"><i class="bx bx-info-circle me-1" aria-hidden="true"></i>Save changes before refreshing AI analysis.</p>
+                    @endif
                     @foreach($presets as $preset)
                         <livewire:ai.insight-card
                             :feature="$preset['feature']"

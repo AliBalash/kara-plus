@@ -11,6 +11,8 @@ class GlobalRail extends Component
 
     public string $contextTitle = 'Overview';
 
+    public bool $showSaveReminder = false;
+
     /** @var array<int, array{feature: string, entity_id: int|null, label: string}> */
     public array $presets = [];
 
@@ -20,6 +22,7 @@ class GlobalRail extends Component
 
         $route = request()->route();
         $routeName = $route?->getName() ?? '';
+        $this->showSaveReminder = $routeName === 'rental-requests.edit';
         $contractId = $route?->parameter('contractId');
         $paymentId = $route?->parameter('paymentId');
         $customerId = $route?->parameter('customerId');

@@ -1388,13 +1388,6 @@
         </div>
     </form>
 
-    <section class="mt-5 mb-5 pb-5" aria-label="Contract AI analysis">
-        <p class="text-muted small mb-3"><i class="bx bx-info-circle me-1" aria-hidden="true"></i>Save changes before refreshing AI analysis.</p>
-        <livewire:ai.insight-card feature="contract_brief" :entity-id="$contract->id" :key="'ai-contract-edit-'.$contract->id" />
-        @if($contract->isReviewPending() && $contract->isWebsiteIntake() && config('ai.features.reservation_triage') && !auth()->user()?->hasRole('driver'))
-            <div class="mt-3"><livewire:ai.insight-card feature="reservation_triage" :entity-id="$contract->id" :key="'ai-reservation-triage-'.$contract->id" /></div>
-        @endif
-    </section>
 </div>
 
 @once
