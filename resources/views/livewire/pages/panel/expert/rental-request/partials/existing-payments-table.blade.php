@@ -4,7 +4,9 @@
     $paymentPeriods = $paymentPeriods ?? [];
     $paymentPeriodFilter = $paymentPeriodFilter ?? 'all';
     $selectedPeriod = collect($paymentPeriods)->firstWhere('key', $paymentPeriodFilter);
-    $ledgerPayments = $selectedPeriod['payments'] ?? $existingPayments;
+    $unassignedPayments = $unassignedPayments ?? $existingPayments->whereNotIn('id', collect($paymentPeriods)->flatMap(fn ($period) => $period['payments']->pluck('id')))->values();
+    $isUnassigned = $paymentPeriodFilter === 'unassigned';
+    $ledgerPayments = $isUnassigned ? $unassignedPayments : ($selectedPeriod['payments'] ?? $existingPayments);
     $overallLedgerBalance = $overallLedgerBalance ?? $existingPayments->sum(function ($payment) {
         $amount = (float) ($payment->amount_in_aed ?? 0);
 
@@ -12,11 +14,15 @@
             ? -$amount
             : $amount;
     });
-    $sectionLedgerBalance = (float) ($selectedPeriod['ledger_balance'] ?? $overallLedgerBalance);
-    $ledgerTitle = $selectedPeriod['title'] ?? 'All Entries';
+    $sectionLedgerBalance = $isUnassigned
+        ? (float) $unassignedPayments->sum(fn ($payment) => \App\Models\Payment::isChargePaymentType($payment->payment_type) || $payment->payment_type === 'payment_back' ? -(float) $payment->amount_in_aed : (float) $payment->amount_in_aed)
+        : (float) ($selectedPeriod['ledger_balance'] ?? $overallLedgerBalance);
+    $ledgerTitle = $isUnassigned ? 'Outside saved ranges' : ($selectedPeriod['title'] ?? 'All Entries');
     $ledgerDateRange = $selectedPeriod
-        ? $selectedPeriod['starts_at']->format('M d').' – '.$selectedPeriod['display_ends_at']->format('M d')
-        : 'Complete contract payment history';
+        ? $selectedPeriod['starts_at']->format('M d, Y').' → before '.$selectedPeriod['ends_at']->format('M d, Y')
+        : ($isUnassigned ? 'Payments not covered by an active saved range' : 'Complete contract payment history');
+    $canManagePeriods = ($showActions ?? true) && isset($_instance);
+    $defaultPeriod = collect($paymentPeriods)->firstWhere('is_default', true);
 
     $amountLabel = static function ($paymentType): string {
         return \App\Models\Payment::isChargePaymentType($paymentType)
@@ -38,12 +44,12 @@
     };
 @endphp
 
-<div class="payments-workspace my-4">
+<div class="payments-workspace my-4" id="payment-date-ranges">
     <div class="payments-workspace__hero">
         <div>
             <div class="payments-kicker">Accounting View</div>
             <h5 class="payments-title mb-1">Payment ledger</h5>
-            <p class="payments-subtitle mb-0">Review all contract entries or one rolling 30-day accounting period at a time.</p>
+            <p class="payments-subtitle mb-0">Review all payments or save custom date ranges for this contract.</p>
         </div>
         <div class="payments-overview">
             <div class="payments-overview__card">
@@ -57,21 +63,65 @@
         </div>
     </div>
 
-    <div class="payment-period-selector" aria-label="Accounting period filter">
-        <button type="button" wire:click="$set('paymentPeriodFilter', 'all')" class="payment-period-selector__button {{ $paymentPeriodFilter === 'all' ? 'is-active' : '' }}" aria-pressed="{{ $paymentPeriodFilter === 'all' ? 'true' : 'false' }}">
-            <strong>All</strong><span>{{ $overallCount }} entries</span>
+    @if ($canManagePeriods)
+        @include('livewire.pages.panel.expert.rental-request.partials.payment-period-editor')
+    @endif
+
+    <div class="payment-period-selector" aria-label="Saved payment date ranges">
+        <button type="button" wire:click="selectPaymentPeriod('all')" class="payment-period-selector__button {{ $paymentPeriodFilter === 'all' ? 'is-active' : '' }}" aria-pressed="{{ $paymentPeriodFilter === 'all' ? 'true' : 'false' }}">
+            <strong>All entries @if (! $defaultPeriod)<span class="payment-period-default">Default</span>@endif</strong><span>{{ $overallCount }} entries</span>
+        </button>
+        <button type="button" wire:click="selectPaymentPeriod('unassigned')" class="payment-period-selector__button {{ $isUnassigned ? 'is-active' : '' }}" aria-pressed="{{ $isUnassigned ? 'true' : 'false' }}">
+            <strong>Outside saved ranges</strong><span>{{ $unassignedPayments->count() }} entries</span>
         </button>
         @foreach ($paymentPeriods as $period)
-            <button type="button" wire:click="$set('paymentPeriodFilter', '{{ $period['key'] }}')" class="payment-period-selector__button {{ $paymentPeriodFilter === $period['key'] ? 'is-active' : '' }}" aria-pressed="{{ $paymentPeriodFilter === $period['key'] ? 'true' : 'false' }}">
-                <strong>{{ $period['is_final'] ? 'Final Period · ' : '' }}{{ $period['title'] }}</strong>
-                <span>{{ $period['starts_at']->format('M d') }} – {{ $period['display_ends_at']->format('M d') }} · {{ $period['duration_days'] }} days</span>
-                <span class="payment-period-selector__balance">
-                    <span>Section Balance</span>
-                    <strong class="{{ $period['ledger_balance'] >= 0 ? 'is-positive' : 'is-negative' }}">{{ number_format($period['ledger_balance'], 2) }} AED</strong>
-                </span>
-            </button>
+            <div class="payment-period-selector__card" wire:key="payment-period-{{ $period['id'] }}">
+                <button type="button" wire:click="selectPaymentPeriod('{{ $period['key'] }}')" class="payment-period-selector__button {{ $paymentPeriodFilter === $period['key'] ? 'is-active' : '' }}" aria-pressed="{{ $paymentPeriodFilter === $period['key'] ? 'true' : 'false' }}">
+                    <strong>{{ $period['title'] }} @if ($period['is_default'])<span class="payment-period-default">Default</span>@endif</strong>
+                    <span>{{ $period['starts_at']->format('M d, Y') }} → before {{ $period['ends_at']->format('M d, Y') }}</span>
+                    <span>{{ $period['entry_count'] }} entries · {{ $period['duration_days'] }} days</span>
+                    <span class="payment-period-selector__creator">Saved by {{ $period['created_by'] }} · {{ $period['created_at']->format('M d, Y') }}</span>
+                    <span class="payment-period-selector__balance">
+                        <span>Section Balance</span>
+                        <strong class="{{ $period['ledger_balance'] >= 0 ? 'is-positive' : 'is-negative' }}">{{ number_format($period['ledger_balance'], 2) }} AED</strong>
+                    </span>
+                </button>
+                @if ($canManagePeriods)
+                    <div class="payment-period-selector__controls">
+                        @if ($period['can_edit'] ?? false)
+                            <button type="button" class="btn btn-sm btn-light border" wire:click="editPaymentPeriod({{ $period['id'] }})" wire:loading.attr="disabled" aria-label="Edit range: {{ $period['title'] }}">Edit range</button>
+                        @else
+                            <button type="button" class="btn btn-sm btn-light border" disabled title="Only the last active range by date can be edited.">Edit range</button>
+                        @endif
+                        <button type="button" class="btn btn-sm btn-outline-danger" wire:click="deletePaymentPeriod({{ $period['id'] }})" wire:confirm="Delete this range? Payments will remain unchanged. You can restore the range from history." wire:loading.attr="disabled" aria-label="Delete range: {{ $period['title'] }}">Delete range</button>
+                    </div>
+                    @unless ($period['can_edit'] ?? false)
+                        <span class="payment-period-selector__hint">Only the last range can be edited.</span>
+                    @endunless
+                @endif
+            </div>
         @endforeach
     </div>
+
+    @if ($canManagePeriods)
+        <div class="payment-period-actions">
+            @if ($selectedPeriod)
+                <span class="small text-muted">Saved by {{ $selectedPeriod['created_by'] }} · {{ $selectedPeriod['created_at']->format('Y-m-d H:i') }}</span>
+                <div class="d-flex flex-wrap gap-2">
+                    @unless ($selectedPeriod['is_default'])
+                        <button type="button" class="btn btn-sm btn-outline-success" wire:click="setDefaultPaymentPeriod({{ $selectedPeriod['id'] }})" wire:loading.attr="disabled">Make default</button>
+                    @endunless
+                </div>
+            @elseif ($paymentPeriodFilter === 'all' && $defaultPeriod)
+                <button type="button" class="btn btn-sm btn-light border" wire:click="setDefaultPaymentPeriod" wire:loading.attr="disabled">Use all entries as default</button>
+            @endif
+        </div>
+        @if (empty($paymentPeriods))
+            <p class="small text-muted mb-3">No saved ranges yet. Choose dates above to create the first one. All payments are available below.</p>
+        @endif
+        @error('periodAction')<div class="alert alert-danger py-2" role="alert">{{ $message }}</div>@enderror
+        @include('livewire.pages.panel.expert.rental-request.partials.payment-period-history')
+    @endif
 
     <div class="payment-lifecycle">
         @php
@@ -87,7 +137,7 @@
                             </div>
                             <div>
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                                    <h6 class="ledger-panel__title mb-0">{{ ($selectedPeriod['is_final'] ?? false) ? 'Final Period · ' : '' }}{{ $ledgerTitle }}</h6>
+                                    <h6 class="ledger-panel__title mb-0">{{ $ledgerTitle }}</h6>
                                     <span class="ledger-period-badge">
                                         {{ $ledgerDateRange }}
                                     </span>

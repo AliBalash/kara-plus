@@ -9,8 +9,8 @@ use App\Models\Contract;
 use App\Models\ContractBalanceTransfer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
+use App\Services\ContractPaymentPeriodService;
 use App\Services\Media\DeferredImageUploadService;
-use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -28,8 +29,10 @@ class RentalRequestPayment extends Component
     use RefreshesFileInputs;
     use WithFileUploads;
 
+    #[Locked]
     public $contractId;
 
+    #[Locked]
     public $customerId;
 
     public $amount;
@@ -48,6 +51,11 @@ class RentalRequestPayment extends Component
 
     /** The ledger filter is display-only; it never affects balance calculations. */
     public string $paymentPeriodFilter = 'all';
+
+    public array $periodForm = ['title' => '', 'starts_on' => '', 'ends_on' => '', 'is_default' => false];
+
+    #[Locked]
+    public ?int $editingPeriodId = null;
 
     public $totalPrice;
 
@@ -237,6 +245,9 @@ class RentalRequestPayment extends Component
             ->exists();
 
         $this->loadData();
+        $defaultPeriod = $this->contract->paymentPeriods->firstWhere('is_default', true);
+        $this->paymentPeriodFilter = $defaultPeriod ? 'period-'.$defaultPeriod->id : 'all';
+        $this->resetPeriodForm();
         $this->auditBusinessRead([
             'contract_id' => $this->contractId,
             'customer_id' => $this->customerId,
@@ -245,7 +256,16 @@ class RentalRequestPayment extends Component
 
     public function loadData()
     {
-        $this->contract = Contract::with(['payments.user', 'customer', 'car', 'pickupDocument', 'amendments'])->findOrFail($this->contractId);
+        $this->contract = Contract::with([
+            'payments.user', 'customer', 'car', 'pickupDocument', 'amendments',
+            'paymentPeriods' => fn ($query) => $query->with('createdBy')->orderBy('starts_on')->orderBy('id'),
+        ])->findOrFail($this->contractId);
+        unset($this->paymentPeriods, $this->unassignedPayments, $this->archivedPaymentPeriods, $this->overallLedgerBalance);
+        if (! in_array($this->paymentPeriodFilter, ['all', 'unassigned'], true)
+            && ! $this->contract->paymentPeriods->contains(fn ($period) => 'period-'.$period->id === $this->paymentPeriodFilter)) {
+            $defaultPeriod = $this->contract->paymentPeriods->firstWhere('is_default', true);
+            $this->paymentPeriodFilter = $defaultPeriod ? 'period-'.$defaultPeriod->id : 'all';
+        }
         $this->contractMeta = $this->contract->meta ?? [];
         $this->totalPrice = $this->roundCurrency($this->contract->total_price ?? 0);
 
@@ -327,53 +347,159 @@ class RentalRequestPayment extends Component
         $this->loadTransferLedger();
     }
 
-    /** Build display-only, rolling 30-day accounting periods from contract dates. */
+    /** Read saved, non-overlapping payment-date views. End dates are exclusive. */
     public function getPaymentPeriodsProperty(): array
     {
-        $pickupAt = $this->contract->pickup_date ? Carbon::parse($this->contract->pickup_date) : now();
-        $returnAt = $this->contract->return_date ? Carbon::parse($this->contract->return_date) : $pickupAt->copy();
-        $pickup = $pickupAt->copy()->startOfDay();
-        $durationDays = RentalDuration::billableDays(
-            $pickupAt,
-            $returnAt,
-            RentalDuration::policyFromContractMeta($this->contract->meta),
-        );
-        $periodCount = (int) ceil($durationDays / 30);
-        $periods = [];
+        $lastPeriodId = $this->contract->paymentPeriods->sortBy('ends_on')->last()?->id;
 
-        for ($index = 0; $index < $periodCount; $index++) {
-            $startsAt = $pickup->copy()->addDays($index * 30);
-            $periodDays = min(30, $durationDays - ($index * 30));
-            $endsAt = $startsAt->copy()->addDays($periodDays);
-            $periods[] = [
-                'key' => 'period-'.($index + 1),
-                'period_number' => $index + 1,
-                'title' => 'Period '.($index + 1),
-                'is_final' => $index + 1 === $periodCount && $periodCount > 1,
+        return $this->contract->paymentPeriods->map(function ($period, $index) use ($lastPeriodId): array {
+            $startsAt = $period->starts_on;
+            $endsAt = $period->ends_on;
+            $payments = $this->existingPayments->filter(function (Payment $payment) use ($startsAt, $endsAt) {
+                $date = $this->paymentAccountingDate($payment);
+
+                return $date && $date->gte($startsAt) && $date->lt($endsAt);
+            })->sortBy(fn (Payment $payment) => sprintf('%s-%010d', $payment->payment_date?->toDateString() ?? '', $payment->id))->values();
+
+            return [
+                'id' => $period->id,
+                'key' => 'period-'.$period->id,
+                'title' => $period->title ?? 'Range '.($index + 1),
+                'is_default' => $period->is_default,
+                'can_edit' => $period->id === $lastPeriodId,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'display_ends_at' => $endsAt->copy()->subDay(),
-                'duration_days' => $periodDays,
-                'payments' => collect(),
-                'entry_count' => 0,
-                'ledger_balance' => 0.0,
+                'duration_days' => (int) $startsAt->diffInDays($endsAt),
+                'payments' => $payments,
+                'entry_count' => $payments->count(),
+                'ledger_balance' => $this->paymentLedgerBalance($payments),
+                'created_by' => $period->createdBy?->shortName() ?? 'Unknown user',
+                'created_at' => $period->created_at,
             ];
-        }
+        })->all();
+    }
 
-        foreach ($this->existingPayments as $payment) {
-            $periodIndex = $this->paymentPeriodIndex($payment, $pickup, $periods);
-            $periods[$periodIndex]['payments']->push($payment);
-        }
+    public function getUnassignedPaymentsProperty()
+    {
+        $assignedIds = collect($this->paymentPeriods)->flatMap(fn ($period) => $period['payments']->pluck('id'));
 
-        foreach ($periods as $index => $period) {
-            $periods[$index]['payments'] = $period['payments']
-                ->sortBy(fn (Payment $payment) => sprintf('%s-%010d', optional($this->paymentAccountingDate($payment))->format('Y-m-d H:i:s.u') ?? '', $payment->id))
-                ->values();
-            $periods[$index]['entry_count'] = $periods[$index]['payments']->count();
-            $periods[$index]['ledger_balance'] = $this->paymentLedgerBalance($periods[$index]['payments']);
-        }
+        return $this->existingPayments->whereNotIn('id', $assignedIds)->values();
+    }
 
-        return $periods;
+    public function getArchivedPaymentPeriodsProperty()
+    {
+        return $this->contract->paymentPeriods()->onlyTrashed()->with(['createdBy', 'archivedBy'])
+            ->orderByDesc('deleted_at')->orderByDesc('id')->get();
+    }
+
+    public function selectPaymentPeriod(string $key): void
+    {
+        $this->loadData();
+        abort_unless(in_array($key, ['all', 'unassigned'], true)
+            || $this->contract->paymentPeriods->contains(fn ($period) => 'period-'.$period->id === $key), 404);
+        $this->paymentPeriodFilter = $key;
+    }
+
+    public function savePaymentPeriod(): void
+    {
+        $this->resetErrorBag('periodAction');
+        try {
+            $period = app(ContractPaymentPeriodService::class)->save(
+                $this->contractId, $this->periodActorId(), $this->periodForm, $this->editingPeriodId,
+            );
+        } catch (ValidationException $exception) {
+            $this->loadData();
+            throw ValidationException::withMessages(collect($exception->errors())
+                ->mapWithKeys(fn ($messages, $key) => ['periodForm.'.$key => $messages])->all());
+        }
+        $this->loadData();
+        $this->paymentPeriodFilter = 'period-'.$period->id;
+        $this->resetPeriodForm();
+        $this->toast('success', 'Payment range saved for this contract.');
+    }
+
+    public function editPaymentPeriod(int $periodId): void
+    {
+        $this->resetErrorBag();
+        $this->periodActorId();
+        $this->loadData();
+        try {
+            $period = app(ContractPaymentPeriodService::class)->editablePeriod($this->contractId, $periodId);
+        } catch (ValidationException $exception) {
+            $this->addError('periodAction', collect($exception->errors())->flatten()->first());
+
+            return;
+        }
+        $this->editingPeriodId = $period->id;
+        $this->paymentPeriodFilter = 'period-'.$period->id;
+        $this->periodForm = [
+            'title' => $period->title ?? '',
+            'starts_on' => $period->starts_on->toDateString(),
+            'ends_on' => $period->ends_on->toDateString(),
+            'is_default' => $period->is_default,
+        ];
+        $this->dispatch('payment-range-edit');
+    }
+
+    public function resetPeriodForm(): void
+    {
+        $this->editingPeriodId = null;
+        $this->resetErrorBag();
+        $lastPeriod = $this->contract->paymentPeriods->sortBy('ends_on')->last();
+        $startsOn = $lastPeriod?->ends_on ?? $this->contract->pickup_date;
+        $endsOn = $this->contract->return_date;
+        $this->periodForm = [
+            'title' => '',
+            'starts_on' => $startsOn?->toDateString() ?? '',
+            'ends_on' => $endsOn && $startsOn && $endsOn->toDateString() > $startsOn->toDateString() ? $endsOn->toDateString() : '',
+            'is_default' => false,
+        ];
+    }
+
+    public function setDefaultPaymentPeriod(?int $periodId = null): void
+    {
+        app(ContractPaymentPeriodService::class)->setDefault($this->contractId, $this->periodActorId(), $periodId);
+        $this->loadData();
+        if ($this->editingPeriodId !== null) {
+            $this->periodForm['is_default'] = $this->contract->paymentPeriods->firstWhere('id', $this->editingPeriodId)?->is_default ?? false;
+        }
+        $this->toast('success', $periodId ? 'Default range updated for this contract.' : 'All entries is now the default view.');
+    }
+
+    public function archivePaymentPeriod(int $periodId): void
+    {
+        $this->deletePaymentPeriod($periodId);
+    }
+
+    public function deletePaymentPeriod(int $periodId): void
+    {
+        app(ContractPaymentPeriodService::class)->archive($this->contractId, $this->periodActorId(), $periodId);
+        $this->loadData();
+        $this->resetPeriodForm();
+        $this->toast('success', 'Range deleted. Its payments are unchanged, and the range can be restored from history.');
+    }
+
+    public function restorePaymentPeriod(int $periodId): void
+    {
+        $this->resetErrorBag('periodAction');
+        try {
+            app(ContractPaymentPeriodService::class)->restore($this->contractId, $this->periodActorId(), $periodId);
+        } catch (ValidationException $exception) {
+            $this->addError('periodAction', collect($exception->errors())->flatten()->first());
+
+            return;
+        }
+        $this->loadData();
+        $this->resetPeriodForm();
+        $this->toast('success', 'Payment range restored.');
+    }
+
+    private function periodActorId(): int
+    {
+        abort_unless(Auth::check(), 403);
+
+        return (int) Auth::id();
     }
 
     /**
@@ -403,35 +529,14 @@ class RentalRequestPayment extends Component
         return $this->roundCurrency($balance);
     }
 
-    private function paymentPeriodIndex(Payment $payment, Carbon $pickup, array $periods): int
-    {
-        $accountingDate = $this->paymentAccountingDate($payment);
-
-        if (! $accountingDate || $accountingDate->lt($pickup)) {
-            return 0;
-        }
-
-        $index = (int) floor($pickup->diffInDays($accountingDate, false) / 30);
-
-        return min(max(0, $index), count($periods) - 1);
-    }
-
-    /** Prefer the accounting date, but tolerate incomplete legacy records. */
+    /** Undated legacy entries stay outside saved ranges; never guess from registration time. */
     private function paymentAccountingDate(Payment $payment): ?Carbon
     {
-        foreach ([$payment->payment_date, $payment->created_at] as $candidate) {
-            if (! $candidate) {
-                continue;
-            }
-
-            try {
-                return Carbon::parse($candidate)->startOfDay();
-            } catch (\Throwable) {
-                continue;
-            }
+        try {
+            return $payment->payment_date ? Carbon::parse($payment->payment_date)->startOfDay() : null;
+        } catch (\Throwable) {
+            return null;
         }
-
-        return null;
     }
 
     protected function loadTransferLedger(): void

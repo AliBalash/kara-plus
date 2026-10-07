@@ -819,6 +819,8 @@
     @include('livewire.pages.panel.expert.rental-request.partials.existing-payments-table', [
         'existingPayments' => $existingPayments,
         'paymentPeriods' => $this->paymentPeriods,
+        'unassignedPayments' => $this->unassignedPayments,
+        'archivedPaymentPeriods' => $this->archivedPaymentPeriods,
         'paymentPeriodFilter' => $paymentPeriodFilter,
         'remainingBalance' => $remainingBalance,
         'overallLedgerBalance' => $this->overallLedgerBalance,
