@@ -252,6 +252,11 @@ class Contract extends Model
         return $this->intake_source === self::INTAKE_SOURCE_WEBSITE;
     }
 
+    public function paymentPeriods()
+    {
+        return $this->hasMany(ContractPaymentPeriod::class);
+    }
+
     public function calculateRemainingBalance($payments = null)
     {
         if (is_null($payments)) {
