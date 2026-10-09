@@ -821,6 +821,7 @@
         'paymentPeriodFilter' => $paymentPeriodFilter,
         'remainingBalance' => $remainingBalance,
         'overallLedgerBalance' => $this->overallLedgerBalance,
+        'overallTransferBalance' => $transferSummary['outgoing'] - $transferSummary['incoming'],
     ])
 </div>
 

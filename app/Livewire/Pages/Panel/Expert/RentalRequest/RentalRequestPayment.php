@@ -10,6 +10,7 @@ use App\Models\ContractBalanceTransfer;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Services\ContractPaymentPeriodService;
+use App\Services\ContractPaymentRangeRentalService;
 use App\Services\Media\DeferredImageUploadService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -257,7 +258,8 @@ class RentalRequestPayment extends Component
     public function loadData()
     {
         $this->contract = Contract::with([
-            'payments.user', 'customer', 'car', 'pickupDocument', 'amendments',
+            'payments.user', 'customer', 'car', 'pickupDocument', 'amendments', 'charges',
+            'incomingBalanceTransfers', 'outgoingBalanceTransfers',
             'paymentPeriods' => fn ($query) => $query->with('createdBy')->orderBy('starts_on')->orderBy('id'),
         ])->findOrFail($this->contractId);
         unset($this->paymentPeriods, $this->unassignedPayments, $this->archivedPaymentPeriods, $this->overallLedgerBalance);
@@ -347,7 +349,7 @@ class RentalRequestPayment extends Component
         $this->loadTransferLedger();
     }
 
-    /** Read saved, non-overlapping payment-date views. End dates are exclusive. */
+    /** Read payment-date views, including return-day payments in the terminal range. */
     public function getPaymentPeriodsProperty(): array
     {
         $lastPeriodId = $this->contract->paymentPeriods->sortBy('ends_on')->last()?->id;
@@ -355,11 +357,25 @@ class RentalRequestPayment extends Component
         return $this->contract->paymentPeriods->map(function ($period, $index) use ($lastPeriodId): array {
             $startsAt = $period->starts_on;
             $endsAt = $period->ends_on;
-            $payments = $this->existingPayments->filter(function (Payment $payment) use ($startsAt, $endsAt) {
+            $includesReturnDate = $period->id === $lastPeriodId
+                && $this->contract->return_date?->toDateString() === $endsAt->toDateString();
+            $payments = $this->existingPayments->filter(function (Payment $payment) use ($startsAt, $endsAt, $includesReturnDate) {
                 $date = $this->paymentAccountingDate($payment);
 
-                return $date && $date->gte($startsAt) && $date->lt($endsAt);
+                return $date && $date->gte($startsAt)
+                    && ($date->lt($endsAt) || ($includesReturnDate && $date->equalTo($endsAt)));
             })->sortBy(fn (Payment $payment) => sprintf('%s-%010d', $payment->payment_date?->toDateString() ?? '', $payment->id))->values();
+            $rentalAmount = app(ContractPaymentRangeRentalService::class)->amount($this->contract, $startsAt, $endsAt);
+            $inRange = static function ($transfer) use ($startsAt, $endsAt, $includesReturnDate): bool {
+                $date = $transfer->transferred_at?->copy()->startOfDay();
+
+                return $date && $date->gte($startsAt)
+                    && ($date->lt($endsAt) || ($includesReturnDate && $date->equalTo($endsAt)));
+            };
+            $transferBalance = $this->roundCurrency(
+                $this->contract->outgoingBalanceTransfers->filter($inRange)->sum('amount')
+                - $this->contract->incomingBalanceTransfers->filter($inRange)->sum('amount')
+            );
 
             return [
                 'id' => $period->id,
@@ -370,10 +386,13 @@ class RentalRequestPayment extends Component
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'display_ends_at' => $endsAt->copy()->subDay(),
+                'includes_return_date' => $includesReturnDate,
                 'duration_days' => (int) $startsAt->diffInDays($endsAt),
                 'payments' => $payments,
                 'entry_count' => $payments->count(),
-                'ledger_balance' => $this->paymentLedgerBalance($payments),
+                'rental_amount' => $rentalAmount,
+                'transfer_balance' => $transferBalance,
+                'ledger_balance' => $this->roundCurrency($this->paymentLedgerBalance($payments) - $rentalAmount + $transferBalance),
                 'created_by' => $period->createdBy?->shortName() ?? 'Unknown user',
                 'created_at' => $period->created_at,
             ];
@@ -503,7 +522,7 @@ class RentalRequestPayment extends Component
     }
 
     /**
-     * Display-only cash/charge balance for a payment period.
+     * Display-only balance: customer credits minus commercial rental and charges.
      *
      * Customer credits increase this balance while costs (fine, Salik, etc.)
      * and money returned to the customer reduce it. It intentionally does not
@@ -511,7 +530,8 @@ class RentalRequestPayment extends Component
      */
     public function getOverallLedgerBalanceProperty(): float
     {
-        return $this->paymentLedgerBalance($this->existingPayments);
+        return $this->roundCurrency($this->paymentLedgerBalance($this->existingPayments) - $this->totalPrice
+            + $this->transferSummary['outgoing'] - $this->transferSummary['incoming']);
     }
 
     private function paymentLedgerBalance($payments): float

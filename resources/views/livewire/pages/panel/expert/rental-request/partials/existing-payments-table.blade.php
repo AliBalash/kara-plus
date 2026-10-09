@@ -7,19 +7,27 @@
     $unassignedPayments = $unassignedPayments ?? $existingPayments->whereNotIn('id', collect($paymentPeriods)->flatMap(fn ($period) => $period['payments']->pluck('id')))->values();
     $isUnassigned = $paymentPeriodFilter === 'unassigned';
     $ledgerPayments = $isUnassigned ? $unassignedPayments : ($selectedPeriod['payments'] ?? $existingPayments);
+    $overallRentalAmount = (float) ($totalPrice ?? 0);
+    $overallTransferBalance = (float) ($overallTransferBalance ?? 0);
     $overallLedgerBalance = $overallLedgerBalance ?? $existingPayments->sum(function ($payment) {
         $amount = (float) ($payment->amount_in_aed ?? 0);
 
         return \App\Models\Payment::isChargePaymentType($payment->payment_type) || $payment->payment_type === 'payment_back'
             ? -$amount
             : $amount;
-    });
+    }) - $overallRentalAmount + $overallTransferBalance;
+    $sectionRentalAmount = $isUnassigned
+        ? round($overallRentalAmount - collect($paymentPeriods)->sum('rental_amount'), 2)
+        : (float) ($selectedPeriod['rental_amount'] ?? $overallRentalAmount);
+    $sectionTransferBalance = $isUnassigned
+        ? round($overallTransferBalance - collect($paymentPeriods)->sum('transfer_balance'), 2)
+        : (float) ($selectedPeriod['transfer_balance'] ?? $overallTransferBalance);
     $sectionLedgerBalance = $isUnassigned
-        ? (float) $unassignedPayments->sum(fn ($payment) => \App\Models\Payment::isChargePaymentType($payment->payment_type) || $payment->payment_type === 'payment_back' ? -(float) $payment->amount_in_aed : (float) $payment->amount_in_aed)
+        ? (float) $unassignedPayments->sum(fn ($payment) => \App\Models\Payment::isChargePaymentType($payment->payment_type) || $payment->payment_type === 'payment_back' ? -(float) $payment->amount_in_aed : (float) $payment->amount_in_aed) - $sectionRentalAmount + $sectionTransferBalance
         : (float) ($selectedPeriod['ledger_balance'] ?? $overallLedgerBalance);
     $ledgerTitle = $isUnassigned ? 'Outside saved ranges' : ($selectedPeriod['title'] ?? 'All Entries');
     $ledgerDateRange = $selectedPeriod
-        ? $selectedPeriod['starts_at']->format('M d, Y').' → before '.$selectedPeriod['ends_at']->format('M d, Y')
+        ? $selectedPeriod['starts_at']->format('M d, Y').' → '.(($selectedPeriod['includes_return_date'] ?? false) ? 'through return date ' : 'before ').$selectedPeriod['ends_at']->format('M d, Y')
         : ($isUnassigned ? 'Payments not covered by an active saved range' : 'Complete contract payment history');
     $canManagePeriods = ($showActions ?? true) && isset($_instance);
     $defaultPeriod = collect($paymentPeriods)->firstWhere('is_default', true);
@@ -78,10 +86,11 @@
             <div class="payment-period-selector__card" wire:key="payment-period-{{ $period['id'] }}">
                 <button type="button" wire:click="selectPaymentPeriod('{{ $period['key'] }}')" class="payment-period-selector__button {{ $paymentPeriodFilter === $period['key'] ? 'is-active' : '' }}" aria-pressed="{{ $paymentPeriodFilter === $period['key'] ? 'true' : 'false' }}">
                     <strong>{{ $period['title'] }} @if ($period['is_default'])<span class="payment-period-default">Default</span>@endif</strong>
-                    <span>{{ $period['starts_at']->format('M d, Y') }} → before {{ $period['ends_at']->format('M d, Y') }}</span>
+                    <span>{{ $period['starts_at']->format('M d, Y') }} → {{ ($period['includes_return_date'] ?? false) ? 'through return date' : 'before' }} {{ $period['ends_at']->format('M d, Y') }}</span>
                     <span>{{ $period['entry_count'] }} entries · {{ $period['duration_days'] }} days</span>
                     <span class="payment-period-selector__creator">Saved by {{ $period['created_by'] }} · {{ $period['created_at']->format('M d, Y') }}</span>
                     <span class="payment-period-selector__balance">
+                        <span>Rental incl. tax: {{ number_format($period['rental_amount'] ?? 0, 2) }} AED</span>
                         <span>Section Balance</span>
                         <strong class="{{ $period['ledger_balance'] >= 0 ? 'is-positive' : 'is-negative' }}">{{ number_format($period['ledger_balance'], 2) }} AED</strong>
                     </span>
@@ -152,6 +161,25 @@
                     </header>
 
                     <div class="ledger-list">
+                        <article class="ledger-entry">
+                            <div class="ledger-entry__top">
+                                <div class="ledger-entry__identity">
+                                    <span class="ledger-entry__type">Contract rental incl. tax and services</span>
+                                    <div class="ledger-entry__meta">{{ $selectedPeriod ? 'Allocated to this date range from the contract and amendment charges' : ($isUnassigned ? 'Contract amount outside the saved date ranges' : 'Total commercial contract amount') }}</div>
+                                </div>
+                                <div class="ledger-entry__amounts">
+                                    <div class="ledger-entry__aed">Charge in balance: {{ number_format($sectionRentalAmount, 2) }} AED</div>
+                                </div>
+                            </div>
+                        </article>
+                        @if ($sectionTransferBalance != 0)
+                            <article class="ledger-entry">
+                                <div class="ledger-entry__top">
+                                    <span class="ledger-entry__type">Balance transfers (outgoing − incoming)</span>
+                                    <div class="ledger-entry__aed">{{ number_format($sectionTransferBalance, 2) }} AED</div>
+                                </div>
+                            </article>
+                        @endif
                         @forelse ($groupPayments as $payment)
                             @php
                                 $damageImages = $payment->damageImagePaths();
@@ -271,7 +299,7 @@
                     <footer class="ledger-panel__balance">
                         <div>
                             <span class="ledger-panel__balance-label">Section Balance</span>
-                            <span class="ledger-panel__balance-help">Customer credits − charges</span>
+                            <span class="ledger-panel__balance-help">Customer credits − rental − charges + net transfers · Positive: customer credit; negative: amount due</span>
                         </div>
                         <strong class="ledger-panel__balance-value {{ $sectionLedgerBalance >= 0 ? 'is-positive' : 'is-negative' }}">
                             {{ number_format($sectionLedgerBalance, 2) }} AED

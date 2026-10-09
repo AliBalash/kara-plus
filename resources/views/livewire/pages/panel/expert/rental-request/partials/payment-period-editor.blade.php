@@ -2,7 +2,7 @@
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
             <h6 class="mb-1">{{ $editingPeriodId ? 'Edit saved range' : 'Create a payment range' }}</h6>
-            <p class="small text-muted mb-0">Ranges use the payment date. The start is included; the end belongs to the next range.</p>
+            <p class="small text-muted mb-0">Ranges use the payment date. The start is included; the end belongs to the next range. The last range ending on the contract return date also includes payments on that day.</p>
             @if ($editingPeriodId)
                 <p class="small text-muted mb-0">Only the last active range by date can be edited. It must stay after earlier ranges without overlapping them.</p>
             @endif
@@ -34,7 +34,7 @@
                 <label class="form-check-label" for="payment-range-default">Open this range by default for this contract</label>
             </div>
             @error('periodForm.is_default')<div class="text-danger small" role="alert">{{ $message }}</div>@enderror
-            <p class="small text-muted mb-0" id="payment-range-boundary-help">For example, 14 → 30 includes the 14th through the 29th. Saved ranges stay available and include new payments within their dates.</p>
+            <p class="small text-muted mb-0" id="payment-range-boundary-help">For example, 14 → 30 includes the 14th through the 29th. The final return date is included for payments in the last range. Rental amounts are allocated from the contract charges; partial ranges share charges by calendar days.</p>
         </div>
         <div class="d-flex gap-2 flex-shrink-0">
             @if ($editingPeriodId)

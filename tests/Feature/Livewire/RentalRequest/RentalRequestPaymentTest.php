@@ -503,8 +503,9 @@ class RentalRequestPaymentTest extends TestCase
         $this->assertSame($payments[1]->id, $periods[0]['payments']->first()->id);
         $this->assertSame($payments[3]->id, $periods[1]['payments']->first()->id);
         $this->assertSame([$payments[0]->id, $payments[5]->id, $payments[6]->id], $component->unassignedPayments->pluck('id')->all());
-        $this->assertSame([-20.0, -20.0], $periods->pluck('ledger_balance')->all());
-        $this->assertSame(-30.0, $component->overallLedgerBalance);
+        $this->assertSame([300.0, 200.0], $periods->pluck('rental_amount')->all());
+        $this->assertSame([-320.0, -220.0], $periods->pluck('ledger_balance')->all());
+        $this->assertSame(-1030.0, $component->overallLedgerBalance);
     }
 
     public function test_saved_ranges_are_independent_of_billable_days_and_include_later_recorded_payments(): void
