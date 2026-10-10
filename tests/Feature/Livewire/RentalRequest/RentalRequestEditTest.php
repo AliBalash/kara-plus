@@ -755,6 +755,101 @@ class RentalRequestEditTest extends TestCase
         $this->assertEqualsWithDelta(-15, (float) $adjustment->tax_amount, 0.01);
     }
 
+    public function test_user_11_can_increase_operational_return_beyond_tolerance_with_a_balanced_audited_correction(): void
+    {
+        Carbon::setTestNow('2026-09-08 12:00:00');
+
+        $user = User::factory()->create(['id' => 11]);
+        $this->actingAs($user);
+        $model = CarModel::factory()->create(['brand' => 'Toyota', 'model' => 'Yaris']);
+        $car = Car::factory()->create(['car_model_id' => $model->id]);
+        $contract = Contract::factory()
+            ->for($user)
+            ->for(Customer::factory()->state(['passport_expiry_date' => '2027-09-08']))
+            ->for($car)
+            ->status('reserved')
+            ->create([
+                'pickup_date' => '2026-09-07 10:00:00',
+                'return_date' => '2026-09-10 10:00:00',
+                'actual_pickup_at' => '2026-09-07 10:00:00',
+                'total_price' => 945,
+                'used_daily_rate' => 300,
+                'meta' => ['pricing_tariffs' => [
+                    ...RentalDuration::currentPolicySnapshot(),
+                    'base_days' => 3,
+                    'daily_rate' => 300,
+                    'tax_rate' => 0.05,
+                    'extension_duration_minutes' => 0,
+                ]],
+            ]);
+        ContractCharges::factory()->for($contract)->create([
+            'title' => 'base_rental',
+            'type' => 'base',
+            'amount' => 900,
+            'quantity' => 3,
+            'unit' => 'day',
+            'unit_price' => 300,
+        ]);
+        ContractCharges::factory()->for($contract)->create(['title' => 'tax', 'type' => 'tax', 'amount' => 45]);
+        $payment = Payment::factory()->for($contract)->for($contract->customer)->for($car)->paid()->create([
+            'payment_type' => 'rental_fee',
+            'currency' => 'AED',
+            'amount' => 945,
+            'amount_in_aed' => 945,
+        ]);
+        $originalChargeIds = $contract->charges()->pluck('id')->all();
+        $contract->changeStatus('delivery', $user->id);
+
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->return_date = '2026-09-12T10:00';
+
+        $conflictingBooking = Contract::factory()->for($user)->for(Customer::factory())->for($car)->status('reserved')->create([
+            'pickup_date' => '2026-09-11 10:00:00',
+            'return_date' => '2026-09-13 10:00:00',
+        ]);
+        try {
+            $component->submit();
+            $this->fail('User 11 must still respect vehicle availability.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('return_date', $exception->errors());
+        }
+        $contract->refresh();
+        $this->assertSame('2026-09-10 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(945.0, (float) $contract->total_price);
+        $this->assertSame(0, $contract->amendments()->count());
+        $conflictingBooking->delete();
+
+        $component->submit();
+
+        $contract->refresh();
+
+        $this->assertSame('2026-09-12 10:00:00', $contract->return_date->format('Y-m-d H:i:s'));
+        $this->assertSame(1575.0, (float) $contract->total_price);
+        $this->assertEqualsWithDelta(1575, (float) $contract->charges()->sum('amount'), 0.01);
+        $adjustment = $contract->amendments()->where('type', 'adjustment')->where('status', 'approved')->sole();
+        $this->assertEqualsWithDelta(630, (float) $adjustment->total_amount, 0.01);
+        $this->assertEqualsWithDelta(30, (float) $adjustment->tax_amount, 0.01);
+        $this->assertSame(11, (int) $adjustment->requested_by);
+        $this->assertSame(11, (int) $adjustment->approved_by);
+        $this->assertSame('2026-09-10 10:00:00', $adjustment->old_return_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-09-12 10:00:00', $adjustment->new_return_at->format('Y-m-d H:i:s'));
+        $this->assertSame(945.0, (float) $payment->fresh()->amount_in_aed);
+        $this->assertEqualsWithDelta(945, (float) $contract->charges()->whereIn('id', $originalChargeIds)->sum('amount'), 0.01);
+        $this->assertEqualsWithDelta(630, (float) $contract->calculateRemainingBalance(), 0.01);
+
+        // Reopening and saving an unrelated edit must not duplicate charges.
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $component->notes = 'Contact customer before return.';
+        $component->submit();
+        $contract->refresh();
+        $this->assertSame('Contact customer before return.', $contract->notes);
+        $this->assertSame(1575.0, (float) $contract->total_price);
+        $this->assertEqualsWithDelta(1575, (float) $contract->charges()->sum('amount'), 0.01);
+        $this->assertSame(1, $contract->amendments()->count());
+    }
+
     public function test_operational_contract_rejects_a_return_correction_beyond_tolerance(): void
     {
         Carbon::setTestNow('2026-09-08 12:00:00');

@@ -244,7 +244,11 @@
                 <div class="small mt-1">
                     Vehicle, schedule and commercial selections may be corrected by every signed-in panel user.
                     All totals use this contract's saved tariffs. Financial changes are saved as an audited adjustment; original charges and payments remain intact.
-                    A return increase beyond the one-hour tolerance must use <strong>Extend Contract</strong>; it updates the planned return and contract balance together.
+                    @if ($this->canEditReturnBeyondTolerance())
+                        You may increase the planned return beyond one hour here; saving updates the planned return and contract balance as an audited adjustment.
+                    @else
+                        A return increase beyond the one-hour tolerance must use <strong>Extend Contract</strong>; it updates the planned return and contract balance together.
+                    @endif
                 </div>
             </div>
         @endif
@@ -999,7 +1003,11 @@
                             @if ($activeApprovedExtension)
                                 <div class="form-text">This field is locked to prevent an Edit save from cancelling the approved extension. Use Extend Contract to change the date.</div>
                             @elseif ($operationalEditLocked)
-                                <div class="form-text">You may correct the planned return within the one-hour tolerance. For a later return, use Extend Contract.</div>
+                                @if ($this->canEditReturnBeyondTolerance())
+                                    <div class="form-text">You may increase the planned return beyond one hour. The contract balance will update when you save.</div>
+                                @else
+                                    <div class="form-text">You may correct the planned return within the one-hour tolerance. For a later return, use Extend Contract.</div>
+                                @endif
                             @endif
                             @error('return_date')
                                 <div class="invalid-feedback animate__animated animate__fadeIn">{{ $message }}

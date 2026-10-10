@@ -1507,7 +1507,7 @@ class RentalRequestEdit extends Component
         }
 
         if (! $this->sameDateTime($this->return_date, $this->contract->return_date)) {
-            if ($this->returnIncreaseExceedsTolerance()) {
+            if ($this->returnIncreaseExceedsTolerance() && ! $this->canEditReturnBeyondTolerance()) {
                 $errors['return_date'] = ['The proposed return is more than one hour later than the current planned return. No changes were saved. Use Extend Contract to create an auditable extension and update the contract balance.'];
             }
         }
@@ -2185,6 +2185,13 @@ class RentalRequestEdit extends Component
     {
         return $this->isOperationalContract()
             && auth()->check();
+    }
+
+    public function canEditReturnBeyondTolerance(): bool
+    {
+        // This exception only bypasses the Edit grace limit. Schedule changes
+        // still pass through the audited commercial correction transaction.
+        return (int) auth()->id() === 11;
     }
 
     private function validateWithScroll(?array $rules = null): array
