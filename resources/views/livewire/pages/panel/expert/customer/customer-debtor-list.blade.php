@@ -5,17 +5,62 @@
             <h4 class="fw-bold mb-1">Debt customers</h4>
             <span class="text-muted">Monitor overdue balances and jump into their requests</span>
         </div>
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <div class="input-group input-group-merge">
-                <span class="input-group-text"><i class="bx bx-search"></i></span>
-                <input type="text" class="form-control" placeholder="Search by name, ID or phone"
-                    wire:model.defer="searchInput" wire:keydown.enter="applySearch">
-            </div>
-            <button class="btn btn-primary" wire:click="applySearch">
-                <i class="bx bx-filter me-1"></i> Filter
-            </button>
-        </div>
     </div>
+
+    <form wire:submit="applyFilters" novalidate class="card card-body mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-xl-4">
+                <label for="debt-search" class="form-label">Search customers</label>
+                <input id="debt-search" type="search" class="form-control" placeholder="Name, ID or phone"
+                    wire:model="searchInput">
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+                <label for="debt-status" class="form-label">Status</label>
+                <select id="debt-status" class="form-select" wire:model.live="status">
+                    <option value="all">All statuses</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="open">Open</option>
+                    <option value="credit">Credit</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+                <label for="debt-date-field" class="form-label">Contract date basis</label>
+                <select id="debt-date-field" class="form-select" wire:model="filterInputs.dateField">
+                    <option value="pickup_date">Pickup date</option>
+                    <option value="created_at">Created date</option>
+                </select>
+                @error('filterInputs.dateField') <div class="text-danger small" role="alert">{{ $message }}</div> @enderror
+            </div>
+            @foreach (['dateFrom' => 'From date', 'dateTo' => 'To date'] as $field => $label)
+                <div class="col-12 col-md-6 col-xl-2">
+                    <label for="debt-{{ $field }}" class="form-label">{{ $label }}</label>
+                    <input id="debt-{{ $field }}" type="date" class="form-control w-100" style="min-width: 0"
+                        wire:model="filterInputs.{{ $field }}">
+                    @error('filterInputs.'.$field) <div class="text-danger small" role="alert">{{ $message }}</div> @enderror
+                </div>
+            @endforeach
+            @foreach (['minOutstanding' => 'Minimum outstanding (AED)', 'maxOutstanding' => 'Maximum outstanding (AED)'] as $field => $label)
+                <div class="col-12 col-md-6 col-xl-4">
+                    <label for="debt-{{ $field }}" class="form-label">{{ $label }}</label>
+                    <input id="debt-{{ $field }}" type="number" step="0.01" min="0" class="form-control"
+                        wire:model="filterInputs.{{ $field }}" placeholder="No limit">
+                    @error('filterInputs.'.$field) <div class="text-danger small" role="alert">{{ $message }}</div> @enderror
+                </div>
+            @endforeach
+            <div class="col-12 col-xl-4 d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Apply Filters</button>
+                <button type="button" class="btn btn-outline-secondary" wire:click="resetFilters">Reset Filters</button>
+            </div>
+        </div>
+        <p class="text-muted small mt-3 mb-0">Current operational balances for contracts selected by date; this is not a historical balance snapshot.</p>
+        <div class="small mt-2" aria-live="polite">
+            Applied: {{ $search !== '' ? 'Search: '.$search.' · ' : '' }}Status: {{ $status === 'all' ? 'All' : ucfirst($status) }}
+            · {{ $dateField === 'created_at' ? 'Created date' : 'Pickup date' }}:
+            {{ $dateFrom ?: 'Any start' }} – {{ $dateTo ?: 'Any end' }}
+            · Outstanding: {{ $minOutstanding !== '' ? number_format((float) $minOutstanding, 2) : 'No minimum' }}
+            – {{ $maxOutstanding !== '' ? number_format((float) $maxOutstanding, 2).' AED' : 'No maximum' }}
+        </div>
+    </form>
 
     <div class="row g-3 mb-4">
         <div class="col-12 col-lg-3">
@@ -56,14 +101,6 @@
                     <span class="badge bg-label-warning text-dark rounded-pill">Open</span>
                     <span class="badge bg-label-info text-dark rounded-pill">Credit</span>
                 </div>
-            </div>
-            <div class="d-flex flex-wrap align-items-center gap-2">
-                <select class="form-select form-select-sm" wire:model.live="status">
-                    <option value="all">All statuses</option>
-                    <option value="overdue">Overdue</option>
-                    <option value="open">Open</option>
-                    <option value="credit">Credit</option>
-                </select>
             </div>
         </div>
         <div class="table-responsive">
@@ -136,7 +173,7 @@
                         <tr>
                             <td colspan="7" class="text-center text-muted py-4">
                                 <i class="bx bx-check-circle d-block mb-2 fs-1"></i>
-                                No debtors found for this filter.
+                                No customers match the applied filters. Try widening the ranges or resetting filters.
                             </td>
                         </tr>
                     @endforelse
@@ -144,7 +181,7 @@
             </table>
         </div>
         <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="text-muted small">Showing debtor profiles with outstanding balances</div>
+            <div class="text-muted small">{{ $debtors->total() }} matching customers · Showing {{ $debtors->firstItem() ?? 0 }}–{{ $debtors->lastItem() ?? 0 }}</div>
             {{ $debtors->links() }}
         </div>
     </div>

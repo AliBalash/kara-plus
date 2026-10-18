@@ -7,27 +7,67 @@ use App\Models\Customer;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class CustomerDebtorList extends Component
 {
-    use WithPagination;
     use SearchesCustomerPhone;
+    use WithPagination;
 
-    public string $search = '';
+    public $search = '';
 
     public string $searchInput = '';
 
-    public string $status = 'all';
+    public $status = 'all';
 
-    protected $queryString = ['search', 'status'];
+    #[Locked]
+    public $dateField = 'pickup_date';
+
+    #[Locked]
+    public $dateFrom = '';
+
+    #[Locked]
+    public $dateTo = '';
+
+    #[Locked]
+    public $minOutstanding = '';
+
+    #[Locked]
+    public $maxOutstanding = '';
+
+    public array $filterInputs = [];
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'status' => ['except' => 'all'],
+        'dateField' => ['except' => 'pickup_date'],
+        'dateFrom' => ['except' => ''],
+        'dateTo' => ['except' => ''],
+        'minOutstanding' => ['except' => ''],
+        'maxOutstanding' => ['except' => ''],
+    ];
 
     protected string $paginationTheme = 'bootstrap';
 
     public function mount(): void
     {
+        $this->search = is_string($this->search) ? $this->search : '';
+        $this->status = in_array($this->status, ['all', 'open', 'overdue', 'credit'], true) ? $this->status : 'all';
         $this->searchInput = $this->search;
+        $this->filterInputs = $this->dateAndAmountFilters();
+
+        $validator = Validator::make(['filterInputs' => $this->filterInputs], $this->filterRules());
+        if ($validator->fails()) {
+            $this->setErrorBag($validator->errors());
+            $this->reset('dateField', 'dateFrom', 'dateTo', 'minOutstanding', 'maxOutstanding');
+        } else {
+            foreach ($this->filterInputs as $field => $value) {
+                $this->{$field} = $value ?? '';
+            }
+        }
     }
 
     public function updatedStatus(): void
@@ -39,6 +79,60 @@ class CustomerDebtorList extends Component
     {
         $this->search = trim($this->searchInput);
         $this->resetPage();
+    }
+
+    public function applyFilters(): void
+    {
+        $validated = $this->validate($this->filterRules(), [
+            'filterInputs.*.regex' => 'Enter a non-negative amount with up to two decimal places.',
+        ], [
+            'filterInputs.dateField' => 'date basis',
+            'filterInputs.dateFrom' => 'from date',
+            'filterInputs.dateTo' => 'to date',
+            'filterInputs.minOutstanding' => 'minimum outstanding',
+            'filterInputs.maxOutstanding' => 'maximum outstanding',
+        ]);
+
+        foreach ($validated['filterInputs'] as $field => $value) {
+            $this->{$field} = $value ?? '';
+        }
+        $this->applySearch();
+    }
+
+    public function resetFilters(): void
+    {
+        $this->reset('search', 'searchInput', 'status', 'dateField', 'dateFrom', 'dateTo', 'minOutstanding', 'maxOutstanding');
+        $this->filterInputs = $this->dateAndAmountFilters();
+        $this->resetValidation();
+        $this->resetPage();
+    }
+
+    protected function dateAndAmountFilters(): array
+    {
+        return collect(['dateField', 'dateFrom', 'dateTo', 'minOutstanding', 'maxOutstanding'])
+            ->mapWithKeys(fn ($field) => [$field => $this->{$field}])->all();
+    }
+
+    protected function filterRules(): array
+    {
+        $amountRules = ['bail', 'nullable', 'numeric', 'min:0', 'regex:/^\d+(?:\.\d{1,2})?$/D'];
+        $rules = [
+            'filterInputs.dateField' => ['required', 'in:pickup_date,created_at'],
+            'filterInputs.dateFrom' => ['bail', 'nullable', 'string', 'date_format:Y-m-d'],
+            'filterInputs.dateTo' => ['bail', 'nullable', 'string', 'date_format:Y-m-d'],
+            'filterInputs.minOutstanding' => $amountRules,
+            'filterInputs.maxOutstanding' => $amountRules,
+        ];
+
+        // Reject malformed URL arrays before passing a boundary to a comparison rule.
+        if (is_string($this->filterInputs['dateFrom'] ?? null) && $this->filterInputs['dateFrom'] !== '') {
+            $rules['filterInputs.dateTo'][] = 'after_or_equal:filterInputs.dateFrom';
+        }
+        if (is_scalar($this->filterInputs['minOutstanding'] ?? null) && $this->filterInputs['minOutstanding'] !== '') {
+            $rules['filterInputs.maxOutstanding'][] = 'gte:filterInputs.minOutstanding';
+        }
+
+        return $rules;
     }
 
     public function render()
@@ -67,14 +161,19 @@ class CustomerDebtorList extends Component
     protected function buildDebtorSummary(): Collection
     {
         $search = trim($this->search);
-        $likeSearch = '%' . $search . '%';
+        $likeSearch = '%'.$search.'%';
         $isPhoneSearch = $this->isCustomerPhoneSearch($search);
 
+        $eligibleContracts = function ($query) {
+            $query->includedInCustomerBalance()
+                ->when($this->dateFrom !== '', fn ($query) => $query->where($this->dateField, '>=', $this->dateFrom.' 00:00:00'))
+                ->when($this->dateTo !== '', fn ($query) => $query->where($this->dateField, '<=', $this->dateTo.' 23:59:59.999999'))
+                ->with(['payments', 'car.carModel', 'incomingBalanceTransfers', 'outgoingBalanceTransfers']);
+        };
+
         $customers = Customer::query()
-            ->with(['contracts' => function ($query) {
-                $query->includedInCustomerBalance()
-                    ->with(['payments', 'car.carModel']);
-            }])
+            ->with(['contracts' => $eligibleContracts])
+            ->when($this->dateFrom !== '' || $this->dateTo !== '', fn ($query) => $query->whereHas('contracts', $eligibleContracts))
             ->when($search !== '', function ($query) use ($likeSearch, $isPhoneSearch) {
                 $query->where(function ($scoped) use ($likeSearch, $isPhoneSearch) {
                     $scoped->where('first_name', 'like', $likeSearch)
@@ -89,7 +188,7 @@ class CustomerDebtorList extends Component
             ->get();
 
         return $customers
-            ->map(fn(Customer $customer) => $this->mapCustomerDebt($customer))
+            ->map(fn (Customer $customer) => $this->mapCustomerDebt($customer))
             ->filter(function (array $row) {
                 if ($this->status === 'credit') {
                     return $row['credit'] > 0 || $row['total_outstanding'] > 0;
@@ -112,6 +211,8 @@ class CustomerDebtorList extends Component
 
                 return true;
             })
+            ->filter(fn (array $row) => ($this->minOutstanding === '' || $row['total_outstanding'] >= (float) $this->minOutstanding)
+                && ($this->maxOutstanding === '' || $row['total_outstanding'] <= (float) $this->maxOutstanding))
             ->sortByDesc('total_outstanding')
             ->values();
     }
@@ -156,7 +257,7 @@ class CustomerDebtorList extends Component
 
             return [
                 'id' => $contract->id,
-                'label' => 'Contract #' . $contract->id,
+                'label' => 'Contract #'.$contract->id,
                 'car' => optional($contract->car)->fullName() ?? '—',
                 'pickup_date' => optional($contract->pickup_date)?->format('Y-m-d'),
                 'status' => $status,
