@@ -2111,9 +2111,9 @@ class OperationsReportService
 
     private function normalizeDiscountReasonFilter(mixed $value): string
     {
-        $normalized = trim((string) $value) ?: 'all';
+        $normalized = is_string($value) ? (trim($value) ?: 'all') : 'all';
 
-        return $normalized === 'all' || in_array($normalized, Payment::discountReasons(), true)
+        return $normalized === 'all' || array_key_exists($normalized, Payment::discountReasonLabels(includeLegacy: true))
             ? $normalized
             : 'all';
     }

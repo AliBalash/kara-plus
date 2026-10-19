@@ -9,7 +9,7 @@
                 <div class="row g-3">
                     <div class="col-md-4" data-validation-field="payment_type">
                         <label class="form-label">Payment Type <span class="badge bg-danger-subtle text-danger ms-2">Required</span></label>
-                        <select class="form-select" wire:model="payment_type">
+                        <select class="form-select" wire:model.live="payment_type">
                             @foreach ($this->paymentTypeOptions as $value => $label)
                                 @php
                                     $autoOption = $value === 'salik_other_revenue';
@@ -33,15 +33,18 @@
 
                     @if ($payment_type === 'discount')
                         <div class="col-md-4" data-validation-field="discount_reason">
-                            <label class="form-label">Discount Reason @unless ($allowLegacyDiscountReasonBlank && blank($discount_reason))<span class="badge bg-danger-subtle text-danger ms-2">Required</span>@endunless</label>
-                            <select class="form-select" wire:model="discount_reason">
+                            <label class="form-label" for="editDiscountReason">Discount Reason @unless ($allowLegacyDiscountReasonBlank && blank($discount_reason))<span class="badge bg-danger-subtle text-danger ms-2">Required</span>@endunless</label>
+                            <select id="editDiscountReason" class="form-select" wire:model.live="discount_reason">
                                 <option value="">{{ $allowLegacyDiscountReasonBlank && blank($discount_reason) ? 'Reason not recorded (legacy)' : 'Select discount reason' }}</option>
+                                @if (filled($payment->discount_reason) && ! in_array($payment->discount_reason, \App\Models\Payment::discountReasons(), true))
+                                    <option value="{{ $payment->discount_reason }}">{{ \App\Models\Payment::discountReasonLabel($payment->discount_reason) }} (legacy)</option>
+                                @endif
                                 @foreach (\App\Models\Payment::discountReasonLabels() as $value => $label)
                                     <option value="{{ $value }}">{{ $label }}</option>
                                 @endforeach
                             </select>
                             @if ($allowLegacyDiscountReasonBlank && blank($discount_reason))
-                                <small class="text-muted">This legacy discount has no recorded reason. Select one to classify it.</small>
+                                <small class="text-muted">This legacy discount has no recorded reason. You may update its note without a reason; changing the amount, currency or exchange rate requires one.</small>
                             @endif
                             @error('discount_reason') <span class="text-danger">{{ $message }}</span> @enderror
                         </div>

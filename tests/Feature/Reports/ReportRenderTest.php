@@ -9,9 +9,12 @@ use App\Livewire\Pages\Panel\Expert\Reports\FirstTimeCustomerReport;
 use App\Livewire\Pages\Panel\Expert\Reports\FleetPerformanceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\LeadSourceReport;
 use App\Livewire\Pages\Panel\Expert\Reports\PaymentCollectionReport;
+use App\Models\Payment;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\URL;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ReportRenderTest extends TestCase
@@ -109,5 +112,34 @@ class ReportRenderTest extends TestCase
         $this->assertStringContainsString('Payment Collection Control', $html);
 
         Carbon::setTestNow();
+    }
+
+    public function test_payment_collection_reason_filter_is_restored_exported_and_reset(): void
+    {
+        URL::forceRootUrl('http://localhost');
+        $this->actingAs(User::factory()->create());
+        Payment::factory()->create([
+            'payment_type' => 'discount', 'discount_reason' => 'extension_discount', 'payment_date' => '2026-04-01',
+        ]);
+        Payment::factory()->create([
+            'payment_type' => 'discount', 'discount_reason' => null, 'payment_date' => '2026-04-01',
+        ]);
+
+        $test = Livewire::withQueryParams([
+            'discountReason' => 'extension_discount', 'dateFrom' => '2026-04-01', 'dateTo' => '2026-04-30',
+        ])->test(PaymentCollectionReport::class)
+            ->assertSet('discountReason', 'extension_discount')
+            ->assertSee('Discount Reason')
+            ->assertDontSee('Item Owner')
+            ->assertViewHas('report', fn ($report) => $report['rows']->count() === 1);
+        parse_str(parse_url($test->instance()->exportUrl(), PHP_URL_QUERY), $exportQuery);
+        $this->assertSame('extension_discount', $exportQuery['discount_reason']);
+        $test->call('setPage', 2)
+            ->set('discountReason', 'all')
+            ->assertSet('paginators.page', 1)
+            ->assertSee('Reason not recorded')
+            ->assertViewHas('report', fn ($report) => $report['rows']->count() === 2)
+            ->call('clearFilters')
+            ->assertSet('discountReason', 'all');
     }
 }

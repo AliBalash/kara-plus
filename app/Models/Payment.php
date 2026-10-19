@@ -66,6 +66,10 @@ class Payment extends Model
         'delivery_return_discount' => 'Delivery / Return Discount',
         'outstanding_balance_discount' => 'Outstanding Balance Discount',
         'management_discount' => 'Management Discount',
+    ];
+
+    // Retain labels for classifications already stored in production, without offering them on new entries.
+    public const LEGACY_DISCOUNT_REASON_LABELS = [
         'item_owner_discount' => 'Item Owner',
     ];
 
@@ -143,14 +147,14 @@ class Payment extends Model
         return array_keys(self::DISCOUNT_REASON_LABELS);
     }
 
-    public static function discountReasonLabels(): array
+    public static function discountReasonLabels(bool $includeLegacy = false): array
     {
-        return self::DISCOUNT_REASON_LABELS;
+        return self::DISCOUNT_REASON_LABELS + ($includeLegacy ? self::LEGACY_DISCOUNT_REASON_LABELS : []);
     }
 
     public static function discountReasonLabel(?string $reason, string $fallback = 'Reason not recorded'): string
     {
-        return self::DISCOUNT_REASON_LABELS[$reason] ?? $fallback;
+        return self::discountReasonLabels(includeLegacy: true)[$reason] ?? $fallback;
     }
 
     public static function salikTripPaymentTypes(): array

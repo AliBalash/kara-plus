@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Carbon\Carbon;
@@ -34,6 +35,8 @@ class PaymentEdit extends Component
     public $rate;
     public $payment_type;
     public $discount_reason;
+
+    #[Locked]
     public bool $allowLegacyDiscountReasonBlank = false;
     public $payment_method = 'cash';
     public $payment_date;
@@ -58,6 +61,13 @@ class PaymentEdit extends Component
     {
         $types = implode(',', Payment::paymentTypes());
         $manualAmountSalikTypes = array_merge(['salik'], Payment::salikTripPaymentTypeKeys());
+        $discountReasons = Payment::discountReasons();
+        // Existing retired classifications may be retained, but cannot be assigned to other records.
+        if ($this->payment->payment_type === 'discount'
+            && array_key_exists($this->payment->discount_reason ?? '', Payment::LEGACY_DISCOUNT_REASON_LABELS)
+        ) {
+            $discountReasons[] = $this->payment->discount_reason;
+        }
 
         return [
             'amount' => [
@@ -71,9 +81,10 @@ class PaymentEdit extends Component
             'currency' => 'required|in:IRR,USD,AED,EUR,SAR,OMR',
             'payment_type' => 'required|in:' . $types,
             'discount_reason' => [
+                Rule::excludeIf(fn () => $this->payment_type !== 'discount'),
                 Rule::requiredIf(fn () => $this->payment_type === 'discount' && ! $this->isUnchangedLegacyDiscount()),
                 'nullable',
-                Rule::in(Payment::discountReasons()),
+                Rule::in($discountReasons),
             ],
             'payment_method' => 'required|in:cash,transfer,ticket',
             'payment_date' => 'required|date',
@@ -232,7 +243,7 @@ class PaymentEdit extends Component
                     'rate' => $this->currency !== 'AED' ? $this->rate : null,
                     'amount_in_aed' => $aedAmount,
                     'payment_type' => $this->payment_type,
-                    'discount_reason' => $this->payment_type === 'discount' ? $this->discount_reason : null,
+                    'discount_reason' => $this->payment_type === 'discount' && filled($this->discount_reason) ? $this->discount_reason : null,
                     'payment_method' => $this->payment_method,
                     'payment_date' => Carbon::parse($this->payment_date)->format('Y-m-d'),
                     'is_refundable' => $this->is_refundable,
@@ -277,6 +288,7 @@ class PaymentEdit extends Component
         if ($value !== 'discount') {
             $this->discount_reason = null;
             $this->allowLegacyDiscountReasonBlank = false;
+            $this->resetValidation('discount_reason');
         }
         if (blank($value)) {
             $this->amount = null;
@@ -317,12 +329,23 @@ class PaymentEdit extends Component
         $this->refreshSalikDerivedFields();
     }
 
+    public function updatedDiscountReason($value): void
+    {
+        if (filled($value)) {
+            $this->allowLegacyDiscountReasonBlank = false;
+        }
+    }
+
     private function isUnchangedLegacyDiscount(): bool
     {
         return $this->payment->payment_type === 'discount'
             && $this->payment->discount_reason === null
             && $this->allowLegacyDiscountReasonBlank
-            && blank($this->discount_reason);
+            && blank($this->discount_reason)
+            && is_numeric($this->amount)
+            && (float) $this->amount === (float) $this->payment->amount
+            && $this->currency === $this->payment->currency
+            && (float) $this->rate === (float) $this->payment->rate;
     }
 
     public function updatedSalikTripCount($value): void

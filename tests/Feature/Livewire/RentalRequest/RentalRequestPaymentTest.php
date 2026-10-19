@@ -16,6 +16,8 @@ use App\Services\Media\DeferredImageUploadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -27,6 +29,7 @@ class RentalRequestPaymentTest extends TestCase
     {
         parent::setUp();
         Storage::fake('myimage');
+        URL::forceRootUrl('http://localhost');
     }
 
     public function test_discount_payment_requires_a_valid_discount_reason_and_persists_it(): void
@@ -66,14 +69,25 @@ class RentalRequestPaymentTest extends TestCase
             $this->assertArrayHasKey('discount_reason', $exception->errors());
         }
 
-        $component->discount_reason = 'item_owner_discount';
-        $component->submitPayment();
+        foreach (Payment::discountReasons() as $reason) {
+            foreach ($baseFields as $field => $value) {
+                $component->{$field} = $value;
+            }
+            $component->discount_reason = $reason;
+            $component->note = 'Optional explanation';
+            $component->submitPayment();
 
-        $this->assertDatabaseHas('payments', [
-            'contract_id' => $contract->id,
-            'payment_type' => 'discount',
-            'discount_reason' => 'item_owner_discount',
-        ]);
+            $this->assertDatabaseHas('payments', [
+                'contract_id' => $contract->id,
+                'payment_type' => 'discount',
+                'discount_reason' => $reason,
+                'amount_in_aed' => 125,
+                'note' => 'Optional explanation',
+                'approval_status' => 'pending',
+                'is_paid' => false,
+            ]);
+            $this->assertSame('', $component->discount_reason);
+        }
     }
 
     public function test_non_discount_payment_clears_discount_reason(): void
@@ -88,7 +102,9 @@ class RentalRequestPaymentTest extends TestCase
         $component->payment_type = 'discount';
         $component->discount_reason = 'management_discount';
         $component->updatedPaymentType('rental_fee');
+        $this->assertNull($component->discount_reason);
         $component->payment_type = 'rental_fee';
+        $component->discount_reason = 'invalid-stale-reason';
         $component->amount = 100;
         $component->currency = 'AED';
         $component->payment_date = now()->toDateString();
@@ -101,6 +117,34 @@ class RentalRequestPaymentTest extends TestCase
             'payment_type' => 'rental_fee',
             'discount_reason' => null,
         ]);
+    }
+
+    public function test_discount_form_switching_and_error_scroll_follow_livewire_updates(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $contract = Contract::factory()->for($user)->status('payment')->create();
+
+        Livewire::test(RentalRequestPayment::class, ['contractId' => $contract->id, 'customerId' => $contract->customer_id])
+            ->set('payment_type', 'discount')
+            ->assertSee('Select discount reason')
+            ->assertDontSee('Item Owner')
+            ->set('amount', '100')
+            ->set('payment_date', '2026-04-01')
+            ->call('submitPayment')
+            ->assertHasErrors(['discount_reason' => 'required'])
+            ->assertDispatched('kara-scroll-to-error', field: 'discount_reason')
+            ->set('discount_reason', 'item_owner_discount')
+            ->call('submitPayment')
+            ->assertHasErrors(['discount_reason' => 'in'])
+            ->set('payment_type', 'rental_fee')
+            ->assertSet('discount_reason', null)
+            ->assertHasNoErrors('discount_reason')
+            ->assertDontSee('Select discount reason')
+            ->set('payment_type', 'discount')
+            ->set('discount_reason', 'extension_discount')
+            ->call('resetForm')
+            ->assertSet('discount_reason', '');
     }
 
     public function test_submit_payment_persists_payment_record(): void

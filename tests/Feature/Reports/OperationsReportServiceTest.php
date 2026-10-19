@@ -102,6 +102,54 @@ class OperationsReportServiceTest extends TestCase
         $this->assertSame('Item Owner', $report['rows'][0]['discount_reason_label']);
     }
 
+    public function test_all_discount_reasons_have_separate_counts_totals_and_export_columns(): void
+    {
+        $contract = Contract::factory()->create(['total_price' => 1000]);
+        $amounts = [];
+        foreach (Payment::discountReasonLabels() as $reason => $label) {
+            $amounts[$reason] = count($amounts) * 10 + 10;
+            Payment::factory()->for($contract)->create([
+                'payment_type' => 'discount', 'discount_reason' => $reason,
+                'amount' => $amounts[$reason], 'amount_in_aed' => $amounts[$reason],
+                'payment_date' => '2026-04-01',
+            ]);
+        }
+        Payment::factory()->for($contract)->create([
+            'payment_type' => 'discount', 'discount_reason' => null,
+            'amount' => 25, 'amount_in_aed' => 25, 'payment_date' => '2026-04-01',
+        ]);
+        $rental = Payment::factory()->for($contract)->create([
+            'payment_type' => 'rental_fee', 'amount' => 100, 'amount_in_aed' => 100,
+            'payment_date' => '2026-04-01',
+        ]);
+        // Simulate a historical stale value without invoking the model's cleanup hook.
+        $rental->newQuery()->whereKey($rental->id)->update(['discount_reason' => 'extension_discount']);
+        $balance = $contract->calculateRemainingBalance();
+        $all = $this->service->paymentCollections();
+        $this->assertCount(7, $all['rows']);
+        $this->assertSame(275.0, $all['summary']['net_recorded_payments']);
+        $this->assertSame(['count' => 1, 'amount_in_aed' => 25.0], $all['discount_reason_breakdown']['Reason not recorded']);
+        $rentalRow = $all['rows']->firstWhere('payment_id', $rental->id);
+        $this->assertNull($rentalRow['discount_reason']);
+        $this->assertSame('—', $rentalRow['discount_reason_label']);
+
+        foreach (Payment::discountReasonLabels() as $reason => $label) {
+            $filtered = $this->service->paymentCollections(['discount_reason' => $reason]);
+            $this->assertCount(1, $filtered['rows']);
+            $this->assertSame($reason, $filtered['rows'][0]['discount_reason']);
+            $this->assertSame('discount', $filtered['rows'][0]['payment_type']);
+            $this->assertSame($label, $filtered['rows'][0]['discount_reason_label']);
+            $this->assertSame(['count' => 1, 'amount_in_aed' => (float) $amounts[$reason]], $all['discount_reason_breakdown'][$label]);
+            $column = array_search('Discount Reason', $filtered['export_headings'], true);
+            $this->assertIsInt($column);
+            $this->assertSame($label, $filtered['export_rows'][0][$column]);
+            $this->assertCount(count($filtered['export_headings']), $filtered['export_rows'][0]);
+        }
+        $this->assertSame($balance, $contract->fresh()->calculateRemainingBalance());
+        $this->assertSame(725.0, $balance);
+        $this->assertSame('all', $this->service->paymentCollections(['discount_reason' => ['invalid']])['filters']['discount_reason']);
+    }
+
     public function test_customer_requests_report_filters_by_customer_and_builds_financial_summary(): void
     {
         $customer = Customer::factory()->create([

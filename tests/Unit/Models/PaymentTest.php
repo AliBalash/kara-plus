@@ -15,8 +15,11 @@ class PaymentTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Customer $customer;
+
     protected Car $car;
+
     protected Contract $contract;
 
     protected function setUp(): void
@@ -41,6 +44,31 @@ class PaymentTest extends TestCase
             ->for($this->car)
             ->for($this->user)
             ->create($attributes);
+    }
+
+    public function test_discount_reason_options_and_labels_are_centralized_and_preserve_legacy_labels(): void
+    {
+        $this->assertSame([
+            'extension_discount', 'rental_rate_discount', 'delivery_return_discount',
+            'outstanding_balance_discount', 'management_discount',
+        ], Payment::discountReasons());
+        $this->assertSame('Reason not recorded', Payment::discountReasonLabel(null));
+        $this->assertSame('Item Owner', Payment::discountReasonLabel('item_owner_discount'));
+        foreach (Payment::discountReasonLabels() as $reason => $label) {
+            $this->assertSame($label, Payment::discountReasonLabel($reason));
+        }
+    }
+
+    public function test_factory_uses_the_effective_payment_type_and_model_clears_stale_reasons(): void
+    {
+        $discount = $this->createPayment(['payment_type' => 'discount']);
+        $this->assertContains($discount->discount_reason, Payment::discountReasons());
+        $legacy = $this->createPayment(['payment_type' => 'discount', 'discount_reason' => null]);
+        $this->assertNull($legacy->discount_reason);
+        $rental = $this->createPayment(['payment_type' => 'rental_fee', 'discount_reason' => 'extension_discount']);
+        $this->assertNull($rental->fresh()->discount_reason);
+        $discount->update(['payment_type' => 'rental_fee']);
+        $this->assertNull($discount->fresh()->discount_reason);
     }
 
     public function test_scoped_collections_return_expected_records(): void
@@ -68,4 +96,3 @@ class PaymentTest extends TestCase
         $this->assertEquals(750, Payment::getTotalPaymentsForCustomer($this->customer->id));
     }
 }
-

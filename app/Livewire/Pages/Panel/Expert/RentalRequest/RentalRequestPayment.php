@@ -220,6 +220,7 @@ class RentalRequestPayment extends Component
             'currency' => ['required', Rule::in(['IRR', 'USD', 'AED', 'EUR', 'SAR', 'OMR'])],
             'payment_type' => ['required', Rule::in(Payment::paymentTypes())],
             'discount_reason' => [
+                Rule::excludeIf(fn () => $this->payment_type !== 'discount'),
                 Rule::requiredIf(fn () => $this->payment_type === 'discount'),
                 'nullable',
                 Rule::in(Payment::discountReasons()),
@@ -840,6 +841,7 @@ class RentalRequestPayment extends Component
     {
         if ($value !== 'discount') {
             $this->discount_reason = null;
+            $this->resetValidation('discount_reason');
         }
         if (blank($value)) {
             $this->amount = null;
