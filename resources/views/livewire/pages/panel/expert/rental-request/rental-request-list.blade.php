@@ -143,7 +143,7 @@
                         </i>
                     </th>
                     <th wire:click="sortBy('return_date')" role="button" class="sortable">
-                        Return Date
+                        Return Date / Time
                         <i
                             class="bx {{ $sortField === 'return_date' ? ($sortDirection === 'asc' ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt') : 'bx-sort-alt-2' }}">
                         </i>
@@ -176,7 +176,12 @@
                             </div>
                         </td>
                         <td>{{ \Carbon\Carbon::parse($contract->pickup_date)->format('Y-m-d') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($contract->return_date)->format('Y-m-d') }}</td>
+                        <td>
+                            <div>{{ $contract->return_date?->format('Y-m-d') ?? '—' }}</div>
+                            @if ($contract->return_date)
+                                <div class="small text-muted text-nowrap">{{ $contract->return_date->format('H:i') }}</div>
+                            @endif
+                        </td>
                         <td>
                             <div class="dropdown">
                                 <button class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
