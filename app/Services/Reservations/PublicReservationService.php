@@ -12,6 +12,7 @@ use App\Models\LocationCost;
 use App\Models\VehicleCatalogItem;
 use App\Support\PhoneNumber;
 use App\Support\RentalDuration;
+use App\Services\Fleet\SeasonalPricingService;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Database\QueryException;
@@ -109,8 +110,8 @@ class PublicReservationService
         bool $matchCatalogYear = true,
     ): array
     {
-        $pickup = $pickupDate ? Carbon::parse($pickupDate) : null;
-        $return = $returnDate ? Carbon::parse($returnDate) : null;
+        $pickup = $pickupDate ? Carbon::parse($pickupDate, 'Asia/Dubai')->timezone('Asia/Dubai') : null;
+        $return = $returnDate ? Carbon::parse($returnDate, 'Asia/Dubai')->timezone('Asia/Dubai') : null;
 
         $cars = Car::query()
             ->ourFleet()
@@ -143,11 +144,14 @@ class PublicReservationService
             $conflictsByCarId = $this->availabilityConflictsForCars($cars->pluck('id')->all(), $pickup, $return);
         }
 
+        $seasonal = app(SeasonalPricingService::class);
+        $dateRules = $pickup && $return ? $seasonal->rules($cars->pluck('id')->all(), $pickup, $return) : collect();
+
         $activeCatalogItems = $catalogItem
             ? collect([$catalogItem])
             : VehicleCatalogItem::query()->active()->orderBy('id')->get();
 
-        $cards = $cars->map(function (Car $car) use ($conflictsByCarId, $activeCatalogItems, $catalogItem, $matchCatalogYear): ?array {
+        $cards = $cars->map(function (Car $car) use ($conflictsByCarId, $activeCatalogItems, $catalogItem, $matchCatalogYear, $pickup, $return, $seasonal, $dateRules): ?array {
             $matchingCatalogItems = $activeCatalogItems->filter(function (VehicleCatalogItem $item) use ($car, $catalogItem, $matchCatalogYear): bool {
                 if (! $item->matchesCarModel($car)) {
                     return false;
@@ -194,6 +198,7 @@ class PublicReservationService
                     'mid' => (float) ($car->price_per_day_mid ?? $car->price_per_day_short),
                     'long' => (float) ($car->price_per_day_long ?? $car->price_per_day_mid ?? $car->price_per_day_short),
                 ],
+                'date_pricing' => $pickup && $return ? $seasonal->rental($car, $pickup, $return, $dateRules, includeDailyRates: false) : null,
                 'insurance_pricing' => [
                     'ldw' => [
                         'short' => (float) ($car->ldw_price_short ?? 0),
@@ -259,7 +264,7 @@ class PublicReservationService
                 /** @var VehicleCatalogItem $catalogItem */
                 $catalogItem = $card['_catalog_items']->first();
                 $card['_reservation_family_key'] = $catalogItem->familyKey();
-                $card['_reservation_price_signature'] = $this->priceSignature($card['pricing']);
+                $card['_reservation_price_signature'] = $this->priceSignature($card['pricing']).'|'.($card['date_pricing']['base_total'] ?? 'regular');
                 $card['_reservation_group_key'] = 'reservation-'.sha1(
                     $card['_reservation_family_key'].'|'.$card['_reservation_price_signature']
                 );
@@ -375,6 +380,11 @@ class PublicReservationService
                 }
 
                 $quote = $this->buildQuote($normalized, $car);
+                $expected = $payload['quote_fingerprint'] ?? null;
+                if (($expected !== null && (! is_string($expected) || ! hash_equals($quote['quote_fingerprint'], $expected)))
+                    || ($expected === null && $quote['rental_pricing']['has_seasonal_prices'])) {
+                    throw new ReservationPriceChanged($quote);
+                }
 
                 $phone = PhoneNumber::normalize($payload['phone'] ?? null) ?? trim((string) ($payload['phone'] ?? ''));
                 $messengerPhone = PhoneNumber::normalize($payload['messenger_phone'] ?? null) ?? trim((string) ($payload['messenger_phone'] ?? ''));
@@ -520,10 +530,11 @@ class PublicReservationService
         $rentalDays = RentalDuration::billableDays($pickup, $return);
 
         $standardDailyRate = $this->roundCurrency($this->getCarDailyRate($car, $rentalDays));
-        $dailyRate = ($normalized['apply_discount'] && $normalized['custom_daily_rate'])
-            ? $this->roundCurrency((float) $normalized['custom_daily_rate'])
-            : $standardDailyRate;
-        $basePrice = $this->roundCurrency($dailyRate * $rentalDays);
+        // A multi-rate booking has no single daily charge. Keep the regular tariff
+        // as the legacy extension reference and persist the exact daily ledger separately.
+        $dailyRate = $standardDailyRate;
+        $rentalPricing = app(SeasonalPricingService::class)->rental($car, $pickup, $return);
+        $basePrice = (float) $rentalPricing['base_total'];
 
         $pickupTransfer = $this->roundCurrency($this->calculateLocationFee($normalized['pickup_location'], $rentalDays));
         $returnTransfer = $this->roundCurrency($this->calculateLocationFee($normalized['return_location'], $rentalDays));
@@ -621,7 +632,10 @@ class PublicReservationService
             $taxAmount
         );
 
-        return [
+        if ($rentalPricing['has_seasonal_prices']) {
+            $lineItems[0]['description'] = 'Daily rental rates by Dubai calendar date; see rental_pricing.daily_rates.';
+        }
+        $quote = [
             'currency' => 'AED',
             'rental_duration_policy' => RentalDuration::CURRENT_POLICY,
             'rental_duration_grace_minutes' => RentalDuration::GRACE_MINUTES,
@@ -633,6 +647,7 @@ class PublicReservationService
             'daily_rate' => $dailyRate,
             'standard_daily_rate' => $standardDailyRate,
             'base_price' => $basePrice,
+            'rental_pricing' => $rentalPricing,
             'transfer_costs' => $transferCosts,
             'services_total' => $servicesTotal,
             'service_rows' => $serviceRows,
@@ -659,6 +674,17 @@ class PublicReservationService
             ],
             'line_items' => $lineItems,
         ];
+        if ($finalTotal > 99999999.99) {
+            throw ValidationException::withMessages(['pricing' => 'The reservation total exceeds the supported booking limit.']);
+        }
+        $quote['quote_fingerprint'] = hash_hmac('sha256', json_encode([
+            'car_id' => $car->id,
+            'daily_prices' => array_map(fn ($day) => Arr::only($day, ['date', 'rate']), $rentalPricing['daily_rates']),
+            'extension_reference' => $rentalPricing['base_daily_rate'],
+            'quote' => Arr::only($quote, ['pickup_date', 'return_date', 'pickup_location', 'return_location', 'rental_days', 'base_price', 'selected_services', 'service_quantities', 'selected_insurance', 'insurance_total', 'driver_hours', 'driving_license_option', 'final_total', 'line_items']),
+        ], JSON_THROW_ON_ERROR), (string) config('app.key'));
+
+        return $quote;
     }
 
     private function storeContractCharges(Contract $contract, array $quote, Car $car): void
@@ -670,7 +696,8 @@ class PublicReservationService
             'title' => 'base_rental',
             'amount' => $quote['base_price'],
             'type' => 'base',
-            'description' => sprintf(
+            'metadata' => ['rental_pricing' => $quote['rental_pricing']],
+            'description' => $quote['rental_pricing']['has_seasonal_prices'] ? 'Date-based daily rental schedule (Asia/Dubai); see stored rate breakdown.' : sprintf(
                 '%d %s × %s AED',
                 (int) $quote['rental_days'],
                 (int) $quote['rental_days'] === 1 ? 'day' : 'days',
@@ -775,6 +802,8 @@ class PublicReservationService
 
         return [
             'source' => 'contract_creation',
+            'rental_pricing' => $quote['rental_pricing'],
+            'daily_rate_basis' => $quote['rental_pricing']['has_seasonal_prices'] ? 'regular_tariff_reference' : 'uniform_daily_rate',
             ...RentalDuration::currentPolicySnapshot(),
             'daily_rate' => $this->roundCurrency($quote['daily_rate'] ?? 0),
             'tax_rate' => (float) ($quote['tax_rate'] ?? self::TAX_RATE),
@@ -928,8 +957,11 @@ class PublicReservationService
 
     private function normalizeQuotePayload(array $payload): array
     {
-        $pickup = Carbon::parse((string) $payload['pickup_date']);
-        $return = Carbon::parse((string) $payload['return_date']);
+        if (! empty($payload['apply_discount']) || (isset($payload['custom_daily_rate']) && $payload['custom_daily_rate'] !== '')) {
+            throw ValidationException::withMessages(['pricing' => 'Public reservations cannot override vehicle tariffs.']);
+        }
+        $pickup = Carbon::parse((string) $payload['pickup_date'], 'Asia/Dubai')->timezone('Asia/Dubai');
+        $return = Carbon::parse((string) $payload['return_date'], 'Asia/Dubai')->timezone('Asia/Dubai');
 
         $selectedServices = is_array($payload['selected_services'] ?? null)
             ? array_values(array_map(static fn ($item): string => (string) $item, $payload['selected_services']))
@@ -1228,7 +1260,7 @@ class PublicReservationService
 
     private function minimumPickupAt(): Carbon
     {
-        $minimum = now()->copy()->addMinutes(30)->second(0);
+        $minimum = now('Asia/Dubai')->addMinutes(30)->second(0);
         $minutes = (int) $minimum->format('i');
         $roundedMinutes = (int) (ceil($minutes / 30) * 30);
 

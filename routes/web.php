@@ -127,6 +127,8 @@ Route::middleware(['auth.check', 'restrict.driver'])->group(function () {
 
     Route::get('/expert/leads', LeadList::class)->name('leads.index');
 
+    Route::get('/expert/car/prices', \App\Livewire\Pages\Panel\Expert\Car\FleetPriceManagement::class)->name('car.prices');
+
     Route::get('/expert/car/list/', CarList::class)->name('car.list');
     Route::get('/expert/car/detail/{carId}', CarDetail::class)->name('car.detail');
 

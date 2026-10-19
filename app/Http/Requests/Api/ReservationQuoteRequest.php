@@ -51,8 +51,16 @@ class ReservationQuoteRequest extends FormRequest
             'service_quantities.*' => ['nullable', 'integer', 'min:0'],
             'selected_insurance' => ['nullable', Rule::in(['basic_insurance', 'ldw_insurance', 'scdw_insurance'])],
             'driving_license_option' => ['nullable', Rule::in(['one_year', 'three_year'])],
-            'apply_discount' => ['nullable', 'boolean'],
-            'custom_daily_rate' => ['nullable', 'numeric', 'min:0'],
+            'apply_discount' => ['nullable', 'boolean', function ($attribute, $value, $fail) {
+                if ((bool) $value) {
+                    $fail('Public reservations cannot override vehicle tariffs.');
+                }
+            }],
+            'custom_daily_rate' => ['prohibited'],
+            'daily_rate' => ['prohibited'], 'base_price' => ['prohibited'], 'total_price' => ['prohibited'],
+            'final_total' => ['prohibited'], 'subtotal' => ['prohibited'], 'tax_rate' => ['prohibited'],
+            'pricing' => ['prohibited'], 'rental_pricing' => ['prohibited'],
+            'quote_fingerprint' => ['nullable', 'string', 'size:64'],
             'driver_hours' => ['nullable', 'numeric', 'min:0'],
         ];
     }

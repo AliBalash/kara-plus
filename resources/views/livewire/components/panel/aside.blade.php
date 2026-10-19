@@ -210,6 +210,12 @@
                         </a>
                     </li>
 
+                    @if (\App\Services\Fleet\FleetBulkPricingService::authorized(auth()->user()))
+                        <li class="menu-item {{ Request::routeIs('car.prices') ? 'active' : '' }}">
+                            <a href="{{ route('car.prices') }}" class="menu-link"><div>Price Management</div></a>
+                        </li>
+                    @endif
+
                     <li class="menu-item {{ Request::routeIs('car.unavailable-desk') ? 'active' : '' }}">
                         <a href="{{ route('car.unavailable-desk') }}" class="menu-link">
                             <div data-i18n="Without menu">Unavailable Desk</div>
