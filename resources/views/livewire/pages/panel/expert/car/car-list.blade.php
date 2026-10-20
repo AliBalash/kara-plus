@@ -81,11 +81,13 @@
             <div class="col-md-6 col-lg-2">
                 <label class="form-label small text-muted mb-1">Pickup From</label>
                 <input type="date" class="form-control" wire:model.defer="pickupFrom" placeholder="Pickup From">
+                @error('pickupFrom')<div class="small text-danger">{{ $message }}</div>@enderror
             </div>
 
             <div class="col-md-6 col-lg-2">
                 <label class="form-label small text-muted mb-1">Pickup To</label>
                 <input type="date" class="form-control" wire:model.defer="pickupTo" placeholder="Pickup To">
+                @error('pickupTo')<div class="small text-danger">{{ $message }}</div>@enderror
             </div>
 
             <div class="col-md-6 col-lg-2">
@@ -111,6 +113,7 @@
                 </div>
             </div>
         </div>
+        <p class="small text-muted mt-2 mb-0">Dates filter booking pickups, including both selected days. With Available status, dates check availability throughout the selected period.</p>
     </form>
 
     <!-- Table -->

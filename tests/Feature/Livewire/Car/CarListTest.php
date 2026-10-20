@@ -195,4 +195,86 @@ class CarListTest extends TestCase
 
         $this->assertSame(['MID-1002'], $cars);
     }
+
+    public function test_pickup_range_filters_pickups_not_overlapping_rentals_and_includes_both_days(): void
+    {
+        $expected = [];
+        foreach (['2026-09-30 10:00:00', '2026-10-19 23:59:59', '2026-10-20 00:00:00', '2026-10-24 23:59:59', '2026-10-25 00:00:00'] as $index => $pickup) {
+            $car = Car::factory()->create();
+            Contract::factory()->for($car)->status('reserved')->create([
+                'pickup_date' => $pickup, 'return_date' => '2026-10-30 12:00:00',
+            ]);
+            if (in_array($index, [2, 3], true)) {
+                $expected[] = $car->id;
+            }
+        }
+        Car::factory()->create(); // A vehicle without a booking must not match.
+
+        $component = app(CarList::class);
+        $component->pickupFrom = '2026-10-20';
+        $component->pickupTo = '2026-10-24';
+        $component->applyFilters();
+
+        $this->assertSame($expected, $component->render()->getData()['cars']->pluck('id')->all());
+    }
+
+    public function test_pickup_date_boundaries_can_be_used_independently(): void
+    {
+        $ids = [];
+        foreach (['2026-10-19 12:00:00', '2026-10-20 12:00:00', '2026-10-25 12:00:00'] as $pickup) {
+            $car = Car::factory()->create();
+            $ids[] = $car->id;
+            Contract::factory()->for($car)->status('reserved')->create([
+                'pickup_date' => $pickup, 'return_date' => '2026-10-30 12:00:00',
+            ]);
+        }
+
+        $component = app(CarList::class);
+        $component->pickupFrom = '2026-10-20';
+        $this->assertSame([$ids[1], $ids[2]], $component->render()->getData()['cars']->pluck('id')->all());
+        $component->pickupFrom = null;
+        $component->pickupTo = '2026-10-20';
+        $this->assertSame([$ids[0], $ids[1]], $component->render()->getData()['cars']->pluck('id')->all());
+    }
+
+    public function test_displayed_booking_matches_pickup_filter_even_when_car_has_an_older_active_booking(): void
+    {
+        $car = Car::factory()->create();
+        Contract::factory()->for($car)->status('reserved')->create([
+            'pickup_date' => '2026-09-30 10:00:00', 'return_date' => '2026-10-21 10:00:00',
+        ]);
+        $matching = Contract::factory()->for($car)->status('reserved')->create([
+            'pickup_date' => '2026-10-22 14:30:00', 'return_date' => '2026-10-24 14:30:00',
+        ]);
+        $component = app(CarList::class);
+        $component->pickupFrom = '2026-10-20';
+        $component->pickupTo = '2026-10-24';
+        $cars = $component->render()->getData()['cars'];
+
+        $this->assertCount(1, $cars);
+        $this->assertSame($matching->id, $cars->first()->currentContract->id);
+
+        $component->clearFilters();
+        $this->assertNull($component->pickupFrom);
+        $this->assertNull($component->pickupTo);
+        $this->assertSame('2026-09-30', $component->render()->getData()['cars']->first()->currentContract->pickup_date->toDateString());
+    }
+
+    public function test_invalid_date_filters_show_errors_without_query_exceptions(): void
+    {
+        Car::factory()->create();
+        foreach ([['not-a-date', null], ['2026-02-30', null], ['2026-10-24', '2026-10-20']] as [$from, $to]) {
+            $component = app(CarList::class);
+            $component->pickupFrom = $from;
+            $component->pickupTo = $to;
+            $this->assertCount(0, $component->render()->getData()['cars']);
+            $this->assertTrue($component->getErrorBag()->isNotEmpty());
+            try {
+                $component->applyFilters();
+                $this->fail('Invalid date filters must fail validation.');
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                $this->assertNotEmpty($exception->errors());
+            }
+        }
+    }
 }

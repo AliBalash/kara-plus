@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use App\Livewire\Concerns\InteractsWithToasts;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Database\Eloquent\Builder;
@@ -87,6 +88,7 @@ class CarList extends Component
         $this->dailyPriceMin = null;
         $this->dailyPriceMax = null;
         $this->onlyReserved = false;
+        $this->resetValidation();
         $this->resetPage();
     }
 
@@ -148,6 +150,8 @@ class CarList extends Component
 
     public function applyFilters(): void
     {
+        $this->validate($this->dateFilterRules());
+
         if ($this->unavailabilityReasonFilter !== '' && $this->statusFilter === '') {
             $this->statusFilter = Car::STATUS_UNAVAILABLE;
         }
@@ -161,9 +165,19 @@ class CarList extends Component
             return;
         }
 
-        [$windowStart, $windowEnd] = $this->selectedWindowBounds();
+        $validator = Validator::make([
+            'pickupFrom' => $this->pickupFrom,
+            'pickupTo' => $this->pickupTo,
+        ], $this->dateFilterRules());
+        if ($validator->fails()) {
+            $this->setErrorBag($validator->errors());
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
 
         if ($this->statusFilter === 'available') {
+            [$windowStart, $windowEnd] = $this->selectedWindowBounds();
             $query->whereDoesntHave('contracts', function (Builder $contractQuery) use ($windowStart, $windowEnd) {
                 $contractQuery
                     ->whereIn('current_status', Car::reservingStatuses())
@@ -184,14 +198,25 @@ class CarList extends Component
             return;
         }
 
-        $query->whereHas('currentContract', function (Builder $contractQuery) use ($windowStart, $windowEnd) {
-            $contractQuery
-                ->where('pickup_date', '<', $windowEnd)
-                ->where(function (Builder $overlapQuery) use ($windowStart) {
-                    $overlapQuery->whereNull('return_date')
-                        ->orWhere('return_date', '>', $windowStart);
-                });
-        });
+        // Filter the pickup itself, and display the same matching booking.
+        $pickupFilter = function ($contractQuery) {
+            if ($this->pickupFrom) {
+                $contractQuery->where('pickup_date', '>=', Carbon::parse($this->pickupFrom)->startOfDay());
+            }
+            if ($this->pickupTo) {
+                $contractQuery->where('pickup_date', '<', Carbon::parse($this->pickupTo)->addDay()->startOfDay());
+            }
+        };
+        $query->whereHas('currentContract', $pickupFilter)
+            ->with(['currentContract' => $pickupFilter]);
+    }
+
+    protected function dateFilterRules(): array
+    {
+        return [
+            'pickupFrom' => ['nullable', 'string', 'date_format:Y-m-d'],
+            'pickupTo' => ['nullable', 'string', 'date_format:Y-m-d', ...($this->pickupFrom ? ['after_or_equal:pickupFrom'] : [])],
+        ];
     }
 
     protected function applyDailyPriceFilters(Builder $query): void
