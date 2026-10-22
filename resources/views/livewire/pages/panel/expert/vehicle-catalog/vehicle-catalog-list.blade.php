@@ -72,7 +72,7 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>Vehicle family</th><th>Years</th><th>Variants</th><th>Public</th><th>CRM match</th><th></th>
+                            <th>Vehicle family</th><th>Years</th><th>Variants</th><th>Public</th><th>CRM match</th><th>Reservation link</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -83,10 +83,11 @@
                                 <td>{{ $family['variant_count'] }}</td>
                                 <td>{{ $family['public_mode'] === 'all_years' ? 'All years' : 'Latest year only ('.$family['latest_year'].')' }}</td>
                                 <td>{{ $family['match_brand'] }} {{ $family['match_model'] }}</td>
+                                <td><a href="{{ $reservationUrl }}/?vehicle={{ urlencode($family['reservation_code']) }}" target="_blank" rel="noopener noreferrer">Open link</a></td>
                                 <td><button type="button" class="btn btn-sm btn-outline-primary" wire:click="toggleFamily('{{ $family['key'] }}')">{{ $expandedFamilyKey === $family['key'] ? 'Hide variants' : 'Edit' }}</button></td>
                             </tr>
                             @if ($expandedFamilyKey === $family['key'])
-                                <tr wire:key="catalog-family-variants-{{ md5($family['key']) }}"><td colspan="6" class="bg-light p-0">
+                                <tr wire:key="catalog-family-variants-{{ md5($family['key']) }}"><td colspan="7" class="bg-light p-0">
                                     <div class="p-3 border-bottom d-flex flex-wrap align-items-center gap-2">
                                         <strong class="me-2">Public reservation:</strong>
                                         <button type="button" class="btn btn-sm {{ $family['public_mode'] === 'all_years' ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="setFamilyYearMode('{{ $family['key'] }}', true)">Show all years</button>
@@ -98,6 +99,7 @@
                                             <tr wire:key="catalog-item-{{ $item->id }}">
                                                 <td class="ps-4">{{ $item->manufacturing_year }}</td><td><code>{{ $item->code }}</code></td><td>{{ $item->website_slug }}</td>
                                                 <td colspan="2">Short/Mid/Long: {{ count($item->price_signatures) ? implode(' · ', $item->price_signatures) : 'No matching fleet price' }}</td>
+                                                <td><a href="{{ $reservationUrl }}/?vehicle={{ urlencode($item->code) }}" target="_blank" rel="noopener noreferrer">Open link · {{ $item->manufacturing_year }}</a></td>
                                                 <td><span class="badge bg-label-{{ $item->is_active ? 'success' : 'secondary' }}">{{ $item->is_active ? 'Included' : 'Not included' }}</span> <button type="button" class="btn btn-sm btn-outline-primary ms-2" wire:click="edit({{ $item->id }})">Edit variant</button></td>
                                             </tr>
                                         @endforeach
@@ -105,7 +107,7 @@
                                 </td></tr>
                             @endif
                         @empty
-                            <tr><td colspan="6" class="text-center py-4 text-muted">No catalogue vehicle families found.</td></tr>
+                            <tr><td colspan="7" class="text-center py-4 text-muted">No catalogue vehicle families found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

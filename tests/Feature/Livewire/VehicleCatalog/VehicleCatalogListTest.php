@@ -5,6 +5,7 @@ namespace Tests\Feature\Livewire\VehicleCatalog;
 use App\Livewire\Pages\Panel\Expert\VehicleCatalog\VehicleCatalogList;
 use App\Models\VehicleCatalogItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class VehicleCatalogListTest extends TestCase
@@ -26,6 +27,32 @@ class VehicleCatalogListTest extends TestCase
 
         $this->assertDatabaseHas('vehicle_catalog_items', ['id' => $older->id, 'is_active' => true]);
         $this->assertDatabaseHas('vehicle_catalog_items', ['id' => $newer->id, 'is_active' => true]);
+    }
+
+    public function test_reservation_links_are_visible_for_families_and_each_expanded_year(): void
+    {
+        config(['reservation.public_url' => 'https://reservation.example.test/']);
+        $older = $this->variant('ELANTRA-23', 2023, true);
+        $this->variant('ELANTRA-24', 2024, true);
+        Livewire::test(VehicleCatalogList::class)
+            ->set('search', 'ELANTRA')
+            ->assertSee('Reservation link')
+            ->assertSeeHtml('href="https://reservation.example.test/?vehicle=ELANTRA-24"')
+            ->call('toggleFamily', $older->familyKey())
+            ->assertSeeHtml('href="https://reservation.example.test/?vehicle=ELANTRA-23"')
+            ->assertSee('Open link · 2023')
+            ->assertSee('Open link · 2024');
+    }
+
+    public function test_family_link_uses_latest_included_year_instead_of_an_inactive_variant(): void
+    {
+        $older = $this->variant('ELANTRA-23', 2023, true);
+        $this->variant('ELANTRA-24', 2024, false);
+        $component = app(VehicleCatalogList::class);
+        $component->search = 'ELANTRA';
+        $families = $component->render()->getData()['items'];
+
+        $this->assertSame('ELANTRA-23', $families->getCollection()->firstWhere('key', $older->familyKey())['reservation_code']);
     }
 
     private function variant(string $code, int $year, bool $active): VehicleCatalogItem

@@ -77,6 +77,7 @@ class VehicleCatalogList extends Component
                     'active_count' => $variants->where('is_active', true)->count(),
                     'public_mode' => $variants->every('is_active') ? 'all_years' : 'latest_year_only',
                     'latest_year' => (int) $variants->last()->manufacturing_year,
+                    'reservation_code' => ($variants->where('is_active', true)->sortByDesc('manufacturing_year')->first() ?? $representative)->code,
                     'variants' => $variants,
                 ];
             })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
@@ -91,6 +92,7 @@ class VehicleCatalogList extends Component
 
         return view('livewire.pages.panel.expert.vehicle-catalog.vehicle-catalog-list', [
             'items' => $items,
+            'reservationUrl' => rtrim((string) config('reservation.public_url'), '/'),
         ]);
     }
 
