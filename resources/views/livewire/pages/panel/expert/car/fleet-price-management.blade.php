@@ -6,6 +6,9 @@
     @endif
     @if ($feedback)<div class="alert alert-success" role="status">{{ $feedback }}</div>@endif
     <form wire:submit="applyFilters" class="card card-body mb-3">
+        @if ($catalogItem)
+            <p class="mb-3">Catalogue model: <strong>{{ $catalogItem->brand }} {{ $catalogItem->model }}</strong>. Choose vehicles for the year below, or reset filters to browse the full fleet.</p>
+        @endif
         <div class="row g-2 align-items-end">
             <div class="col-12 col-md-4"><label class="form-label" for="fleet-search">Search</label><input id="fleet-search" class="form-control" wire:model="filters.search" placeholder="Brand, model, plate or vehicle ID"></div>
             <div class="col-6 col-md-2"><label class="form-label" for="fleet-brand">Brand</label><select id="fleet-brand" class="form-select" wire:model="filters.brand"><option value="">All brands</option>@foreach ($models->pluck('brand')->unique() as $brand)<option>{{ $brand }}</option>@endforeach</select></div>

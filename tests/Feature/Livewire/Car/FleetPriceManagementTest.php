@@ -7,6 +7,7 @@ use App\Models\AuditEvent;
 use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\User;
+use App\Models\VehicleCatalogItem;
 use App\Services\Fleet\FleetBulkPricingService;
 use App\Support\FleetPriceMath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -141,6 +142,48 @@ class FleetPriceManagementTest extends TestCase
         Car::factory()->create();
         $test->call('applyFilters')->assertSet('selectedIds', $cars->pluck('id')->all())
             ->call('toggleSelection', $cars[3]->id)->assertSet('selectedIds', $cars->reject(fn ($car) => $car->id === $cars[3]->id)->pluck('id')->values()->all());
+    }
+
+    public function test_catalogue_link_filters_the_exact_model_year_and_updates_only_selected_vehicles(): void
+    {
+        $model = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Elantra']);
+        $duplicate = CarModel::factory()->create(['brand' => ' HYUNDAI ', 'model' => 'ELANTRA']);
+        $catalogItem = VehicleCatalogItem::query()->where('code', 'HYU-ELA-23')->firstOrFail();
+        $older = Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2023, 'price_per_day_short' => 100]);
+        $variant = Car::factory()->available()->create(['car_model_id' => $duplicate->id, 'manufacturing_year' => 2023, 'price_per_day_short' => 120]);
+        $newer = Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2024, 'price_per_day_short' => 200]);
+        $other = Car::factory()->available()->create(['manufacturing_year' => 2023, 'price_per_day_short' => 300]);
+        $catalogBefore = $catalogItem->getAttributes();
+
+        $component = Livewire::withQueryParams(['catalogItem' => $catalogItem->id])->test(FleetPriceManagement::class)
+            ->assertSet('filters.year', '2023')
+            ->assertSet('selectedIds', [])
+            ->assertViewHas('cars', fn ($rows) => $rows->pluck('id')->all() === [$older->id, $variant->id])
+            ->call('toggleSelection', $variant->id)
+            ->set('operations.price_per_day_short.enabled', true)
+            ->set('operations.price_per_day_short.value', '150')
+            ->call('preview')->set('confirmed', true)->call('apply')->assertHasNoErrors();
+
+        $this->assertSame('100.00', $older->fresh()->price_per_day_short);
+        $this->assertSame('150.00', $variant->fresh()->price_per_day_short);
+        $this->assertSame('200.00', $newer->fresh()->price_per_day_short);
+        $this->assertSame('300.00', $other->fresh()->price_per_day_short);
+        $this->assertSame($catalogBefore, $catalogItem->fresh()->getAttributes());
+        $component->call('clearSelection')->call('selectAllFiltered')
+            ->assertSet('selectedIds', [$older->id, $variant->id]);
+    }
+
+    public function test_catalogue_scope_without_matching_year_has_no_fallback_and_reset_does_not_select_more_cars(): void
+    {
+        $model = CarModel::factory()->create(['brand' => 'Hyundai', 'model' => 'Elantra']);
+        $catalogItem = VehicleCatalogItem::query()->where('code', 'HYU-ELA-23')->firstOrFail();
+        $newer = Car::factory()->available()->create(['car_model_id' => $model->id, 'manufacturing_year' => 2024]);
+        Livewire::withQueryParams(['catalogItem' => $catalogItem->id])->test(FleetPriceManagement::class)
+            ->assertViewHas('cars', fn ($rows) => $rows->total() === 0)
+            ->call('selectAllFiltered')->assertSet('selectedIds', [])
+            ->call('resetFilters')->assertHasNoErrors()
+            ->assertViewHas('cars', fn ($rows) => $rows->pluck('id')->all() === [$newer->id])
+            ->assertSet('selectedIds', []);
     }
 
     public function test_filtered_out_selection_remains_explicit_and_filtered_unselected_vehicles_are_not_updated(): void

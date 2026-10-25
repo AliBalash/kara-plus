@@ -6,6 +6,7 @@ use App\Models\Car;
 use App\Models\CarModel;
 use App\Models\FleetPriceOperation;
 use App\Models\FleetPriceWindow;
+use App\Models\VehicleCatalogItem;
 use App\Services\Fleet\FleetBulkPricingService;
 use App\Services\Fleet\FleetDatePricingService;
 use App\Support\FleetPriceMath;
@@ -49,6 +50,12 @@ class FleetPriceManagement extends Component
     public function mount(): void
     {
         FleetBulkPricingService::authorize(auth()->user());
+        if (request()->has('catalogItem')) {
+            $input = validator(request()->query(), ['catalogItem' => 'required|integer|min:1|exists:vehicle_catalog_items,id'])->validate();
+            $item = VehicleCatalogItem::findOrFail($input['catalogItem']);
+            $this->filters['catalogItem'] = $item->id;
+            $this->filters['year'] = (string) $item->manufacturing_year;
+        }
         $this->appliedFilters = $this->filters;
         foreach (FleetPriceMath::FIELDS as $field => $label) {
             $this->operations[$field] = ['enabled' => false, 'method' => 'set', 'value' => ''];
@@ -61,6 +68,7 @@ class FleetPriceManagement extends Component
         $this->validate([
             'filters.search' => 'nullable|string|max:100', 'filters.brand' => 'nullable|string|max:100',
             'filters.model' => 'nullable|integer|min:1', 'filters.year' => 'nullable|integer|between:1900,2200',
+            'filters.catalogItem' => 'nullable|integer|min:1|exists:vehicle_catalog_items,id',
             'filters.ownership' => 'nullable|in:company,golden_key,liverpool,safe_drive,other',
             'filters.status' => 'nullable|in:available,pre_reserved,reserved,unavailable,sold',
             'filters.min' => 'nullable|numeric|min:0|max:99999999.99',
@@ -87,8 +95,12 @@ class FleetPriceManagement extends Component
     protected function carsQuery(): Builder
     {
         $f = $this->appliedFilters;
+        $catalogItem = filled($f['catalogItem'] ?? null) ? VehicleCatalogItem::findOrFail($f['catalogItem']) : null;
 
         return Car::query()->with('carModel')
+            ->when($catalogItem, fn ($q) => $q->whereHas('carModel', fn ($model) => $model
+                ->whereRaw('LOWER(TRIM(brand)) = ?', [VehicleCatalogItem::normalise($catalogItem->match_brand)])
+                ->whereRaw('LOWER(TRIM(model)) = ?', [VehicleCatalogItem::normalise($catalogItem->match_model)])))
             ->when(($f['search'] ?? '') !== '', fn ($q) => $q->where(function ($q) use ($f) {
                 $like = '%'.trim($f['search']).'%';
                 $q->where('plate_number', 'like', $like)
@@ -216,6 +228,7 @@ class FleetPriceManagement extends Component
 
         return view('livewire.pages.panel.expert.car.fleet-price-management', [
             'cars' => $this->carsQuery()->paginate(10),
+            'catalogItem' => filled($this->appliedFilters['catalogItem'] ?? null) ? VehicleCatalogItem::find($this->appliedFilters['catalogItem']) : null,
             'models' => CarModel::orderBy('brand')->orderBy('model')->get(['id', 'brand', 'model']),
             'fields' => FleetPriceMath::FIELDS,
             'methods' => $this->mode === 'date' ? array_intersect_key(FleetPriceMath::METHODS, array_flip(['set', 'increase_percent', 'decrease_percent'])) : FleetPriceMath::METHODS,
