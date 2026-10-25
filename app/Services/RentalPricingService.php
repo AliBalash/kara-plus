@@ -6,6 +6,7 @@ use App\Models\Car;
 use App\Models\Contract;
 use App\Support\RentalDuration;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 /** Stateless pricing boundary. Quotes are converted to snapshots before approval. */
@@ -27,6 +28,8 @@ class RentalPricingService
 
     public const RATE_SOURCE_CURRENT_TOTAL_DURATION = 'current_total_duration_tariff';
 
+    public const RATE_SOURCE_CUSTOM = 'custom_rate';
+
     public const DEFAULT_RATE_SOURCE = self::RATE_SOURCE_CONTRACT;
 
     private const TAX_RATE = 0.05;
@@ -36,7 +39,8 @@ class RentalPricingService
         Carbon|string $newReturnAt,
         string $policy = self::DEFAULT_POLICY,
         string $rateSource = self::DEFAULT_RATE_SOURCE,
-        Carbon|string|null $extensionStartAt = null
+        Carbon|string|null $extensionStartAt = null,
+        float|string|null $customDailyRate = null
     ): array {
         $start = Carbon::parse($extensionStartAt ?? $contract->return_date);
         $end = Carbon::parse($newReturnAt);
@@ -46,8 +50,16 @@ class RentalPricingService
         if (! in_array($policy, [self::POLICY_DAILY_CEILING, self::POLICY_HOURLY, self::POLICY_PRORATED_DAILY, self::POLICY_GRACE_THEN_DAILY], true)) {
             throw ValidationException::withMessages(['pricing_policy' => 'Unsupported billing policy.']);
         }
-        if (! in_array($rateSource, [self::RATE_SOURCE_CONTRACT, self::RATE_SOURCE_CURRENT, self::RATE_SOURCE_CURRENT_TOTAL_DURATION], true)) {
+        if (! in_array($rateSource, [self::RATE_SOURCE_CONTRACT, self::RATE_SOURCE_CURRENT, self::RATE_SOURCE_CURRENT_TOTAL_DURATION, self::RATE_SOURCE_CUSTOM], true)) {
             throw ValidationException::withMessages(['rate_source' => 'Unsupported extension rate source.']);
+        }
+        if ($rateSource === self::RATE_SOURCE_CUSTOM) {
+            Validator::make(['custom_daily_rate' => $customDailyRate], [
+                'custom_daily_rate' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
+            ])->validate();
+            $customDailyRate = round((float) $customDailyRate, 2);
+        } else {
+            $customDailyRate = null;
         }
 
         $minutes = $start->diffInMinutes($end);
@@ -67,6 +79,7 @@ class RentalPricingService
         }
         $dailyRate = match ($effectiveRateSource) {
             self::RATE_SOURCE_CONTRACT => $contractDailyRate,
+            self::RATE_SOURCE_CUSTOM => $customDailyRate,
             self::RATE_SOURCE_CURRENT_TOTAL_DURATION => $currentTotalDurationDailyRate,
             default => $currentExtensionDailyRate,
         };
@@ -75,7 +88,9 @@ class RentalPricingService
         }
         $rentalUnitPrice = $policy === self::POLICY_HOURLY ? round($dailyRate / 24, 2) : $dailyRate;
         $contractTariffs = (array) data_get($contract->meta, 'pricing_tariffs', []);
-        $taxRate = $effectiveRateSource === self::RATE_SOURCE_CONTRACT
+        // Custom pricing overrides rental only; preserve the agreed ancillary tariffs.
+        $useContractTariffs = in_array($effectiveRateSource, [self::RATE_SOURCE_CONTRACT, self::RATE_SOURCE_CUSTOM], true);
+        $taxRate = $useContractTariffs
             ? (float) ($contractTariffs['tax_rate'] ?? self::TAX_RATE)
             : self::TAX_RATE;
         $items = [[
@@ -90,14 +105,14 @@ class RentalPricingService
         $insuranceCode = $this->selectedInsuranceCode($contract);
         if ($insuranceCode !== null) {
             $contractInsuranceTariffs = (array) ($contractTariffs['insurance'] ?? []);
-            $hasContractInsuranceTariff = $effectiveRateSource === self::RATE_SOURCE_CONTRACT
+            $hasContractInsuranceTariff = $useContractTariffs
                 && array_key_exists($insuranceCode, $contractInsuranceTariffs);
             $currentInsuranceBasisDays = $effectiveRateSource === self::RATE_SOURCE_CURRENT_TOTAL_DURATION
                 ? $resultingRentalDays
                 : $extensionTariffDays;
             $price = $hasContractInsuranceTariff
                 ? (float) $contractInsuranceTariffs[$insuranceCode]
-                : ($effectiveRateSource === self::RATE_SOURCE_CONTRACT
+                : ($useContractTariffs
                     ? $this->storedInsuranceDailyRate($contract, $insuranceCode)
                     : $this->insuranceDailyRateForDays($car, $insuranceCode, $currentInsuranceBasisDays));
             if ($price === null) {
@@ -109,7 +124,7 @@ class RentalPricingService
             }
         }
 
-        foreach ($this->selectedPerDayAddOns($contract, $effectiveRateSource === self::RATE_SOURCE_CONTRACT) as $addOn) {
+        foreach ($this->selectedPerDayAddOns($contract, $useContractTariffs) as $addOn) {
             $unitPrice = $policy === self::POLICY_HOURLY
                 ? round($addOn['daily_price'] / 24, 2)
                 : $addOn['daily_price'];
@@ -128,6 +143,11 @@ class RentalPricingService
 
         $subtotal = round(collect($items)->sum('amount'), 2);
         $tax = round($subtotal * $taxRate, 2);
+        $comparisonDailyRate = match ($effectiveRateSource) {
+            self::RATE_SOURCE_CUSTOM => $dailyRate,
+            self::RATE_SOURCE_CURRENT_TOTAL_DURATION => $currentTotalDurationDailyRate,
+            default => $currentExtensionDailyRate,
+        };
         $quote = [
             'duration_minutes' => $minutes, 'billable_days' => $quantity, 'pricing_policy' => $policy,
             'currency' => 'AED', 'items' => $items, 'subtotal' => $subtotal, 'tax' => $tax,
@@ -141,16 +161,15 @@ class RentalPricingService
             'current_extension_daily_rate' => $currentExtensionDailyRate,
             'current_total_duration_daily_rate' => $currentTotalDurationDailyRate,
             'effective_daily_rate' => (float) $dailyRate,
-            'rate_changed' => $contractDailyRate !== null && abs(
-                $contractDailyRate - ($effectiveRateSource === self::RATE_SOURCE_CURRENT_TOTAL_DURATION
-                    ? $currentTotalDurationDailyRate
-                    : $currentExtensionDailyRate)
-            ) > 0.005,
+            'custom_daily_rate' => $customDailyRate,
+            'rate_changed' => $contractDailyRate !== null && abs($contractDailyRate - $comparisonDailyRate) > 0.005,
             'extension_tariff_days' => $extensionTariffDays,
             'resulting_rental_days' => $resultingRentalDays,
-            'rate_tier' => $effectiveRateSource === self::RATE_SOURCE_CONTRACT
-                ? 'contract'
-                : $this->rateTier($effectiveRateSource === self::RATE_SOURCE_CURRENT_TOTAL_DURATION ? $resultingRentalDays : $extensionTariffDays),
+            'rate_tier' => match ($effectiveRateSource) {
+                self::RATE_SOURCE_CONTRACT => 'contract',
+                self::RATE_SOURCE_CUSTOM => 'custom',
+                default => $this->rateTier($effectiveRateSource === self::RATE_SOURCE_CURRENT_TOTAL_DURATION ? $resultingRentalDays : $extensionTariffDays),
+            },
         ];
         $quote['snapshot'] = [
             'quoted_at' => now()->toIso8601String(),
@@ -169,6 +188,7 @@ class RentalPricingService
             'current_extension_daily_rate' => $currentExtensionDailyRate,
             'current_total_duration_daily_rate' => $currentTotalDurationDailyRate,
             'effective_daily_rate' => (float) $dailyRate,
+            'custom_daily_rate' => $customDailyRate,
             'rate_changed' => $quote['rate_changed'],
             'extension_tariff_days' => $extensionTariffDays,
             'resulting_rental_days' => $resultingRentalDays,

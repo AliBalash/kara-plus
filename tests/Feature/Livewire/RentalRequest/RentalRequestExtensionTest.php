@@ -3,6 +3,7 @@
 namespace Tests\Feature\Livewire\RentalRequest;
 
 use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestExtension;
+use App\Livewire\Pages\Panel\Expert\RentalRequest\RentalRequestPayment;
 use App\Models\Car;
 use App\Models\Contract;
 use App\Models\ContractAmendment;
@@ -30,7 +31,7 @@ class RentalRequestExtensionTest extends TestCase
         URL::forceRootUrl('http://localhost');
     }
 
-    public function test_page_previews_all_three_rate_sources_and_requires_review_before_save(): void
+    public function test_page_offers_all_four_rate_sources_and_requires_review_before_save(): void
     {
         [$contract, $actor] = $this->operationalContract();
         $this->actingAs($actor);
@@ -40,6 +41,7 @@ class RentalRequestExtensionTest extends TestCase
             ->assertSee('Saved contract rate')
             ->assertSee('Current tariff based on extension length')
             ->assertSee('Current automatic daily / weekly / monthly tier')
+            ->assertSee('Custom daily rate · this extension only')
             ->set('newReturnAt', '2026-09-12T10:00')
             ->set('rateSource', RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION)
             ->call('preview')
@@ -60,6 +62,114 @@ class RentalRequestExtensionTest extends TestCase
         $this->assertSame(RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION, $amendment->pricing_snapshot['rate_source']);
         $this->assertEqualsWithDelta(1000, (float) $contract->fresh()->total_price, 0.01);
         $this->assertSame('2026-09-10 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+    }
+
+    public function test_custom_rate_survives_pending_edit_approval_revision_and_removal_with_balanced_charges(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $contract->applyApprovedCommercialCorrection(['used_daily_rate' => 70]);
+        $vehicleRates = $contract->car->only(['price_per_day_short', 'price_per_day_mid', 'price_per_day_long']);
+        $this->actingAs($actor);
+        $component = Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
+            ->set('newReturnAt', '2026-10-10T10:00')
+            ->set('rateSource', RentalPricingService::RATE_SOURCE_CUSTOM)
+            ->assertSee('Custom daily rate (AED/day)')
+            ->set('customDailyRate', '100.00')
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSet('quote.effective_daily_rate', 100.0)
+            ->assertSet('quote.total', 3150.0)
+            ->assertSet('quote.rate_changed', true)
+            ->assertSet('quote.impact.contract_total_after', 4150.0)
+            ->set('reviewConfirmed', true)
+            ->call('request')
+            ->assertHasNoErrors()
+            ->assertSet('customDailyRate', null);
+        $pending = ContractAmendment::query()->sole();
+        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
+
+        $component->call('edit', $pending->id)
+            ->assertSet('rateSource', RentalPricingService::RATE_SOURCE_CUSTOM)
+            ->assertSet('customDailyRate', '100')
+            ->set('customDailyRate', '110.00')
+            ->call('preview')
+            ->assertSet('quote.total', 3465.0)
+            ->set('reviewConfirmed', true)
+            ->call('request')
+            ->assertHasNoErrors()
+            ->call('prepareApproval', $pending->id)
+            ->set('confirmationAccepted', true)
+            ->call('confirmPreparedAction')
+            ->assertHasNoErrors();
+        $this->assertSame(4465.0, (float) $contract->fresh()->total_price);
+        $this->assertEqualsWithDelta(4465, $contract->fresh()->calculateRemainingBalance(), 0.01);
+        $this->assertEqualsWithDelta(4465, (float) $contract->charges()->sum('amount'), 0.01);
+
+        Livewire::test(RentalRequestPayment::class, ['contractId' => $contract->id, 'customerId' => $contract->customer_id])
+            ->assertSee('Custom daily rate · this extension only')
+            ->assertSee('110.00');
+
+        $component->call('edit', $pending->id)
+            ->assertSet('editingApproved', true)
+            ->assertSet('customDailyRate', '110')
+            ->set('customDailyRate', '100.00')
+            ->call('preview')
+            ->assertSet('quote.impact.total_delta', -315.0)
+            ->set('reviewConfirmed', true)
+            ->call('request')
+            ->assertHasNoErrors();
+        $replacement = $contract->amendments()->where('type', 'extension')->where('status', 'approved')->sole();
+        $this->assertSame('superseded', $pending->fresh()->status);
+        $this->assertSame(110.0, (float) $pending->fresh()->pricing_snapshot['custom_daily_rate']);
+        $this->assertSame(100.0, (float) $replacement->pricing_snapshot['custom_daily_rate']);
+        $this->assertSame(4150.0, (float) $contract->fresh()->total_price);
+        $this->assertEqualsWithDelta(4150, (float) $contract->charges()->sum('amount'), 0.01);
+
+        $component->call('prepareDelete', $replacement->id)
+            ->set('confirmationAccepted', true)
+            ->call('confirmPreparedAction')
+            ->assertHasNoErrors();
+        $this->assertSame('voided', $replacement->fresh()->status);
+        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
+        $this->assertEqualsWithDelta(1000, $contract->fresh()->calculateRemainingBalance(), 0.01);
+        $this->assertEqualsWithDelta(1000, (float) $contract->charges()->sum('amount'), 0.01);
+        $this->assertSame(70.0, (float) $contract->fresh()->used_daily_rate);
+        $this->assertSame($vehicleRates, $contract->car()->first()->only(array_keys($vehicleRates)));
+        $this->assertSame('2026-09-10 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+    }
+
+    public function test_custom_rate_requires_valid_input_and_changing_it_invalidates_the_review(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $this->actingAs($actor);
+        $component = Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
+            ->set('newReturnAt', '2026-09-12T10:00')
+            ->set('rateSource', RentalPricingService::RATE_SOURCE_CUSTOM)
+            ->call('preview')
+            ->assertHasErrors(['customDailyRate' => 'required']);
+        foreach (['invalid', '0', '-1', '100.001'] as $rate) {
+            $component->set('customDailyRate', $rate)
+                ->call('preview')->assertHasErrors(['customDailyRate'])
+                ->set('reviewConfirmed', true)
+                ->call('request')->assertHasErrors(['customDailyRate']);
+        }
+        $component->set('customDailyRate', '100.25')
+            ->call('preview')->assertHasNoErrors()
+            ->assertSet('quote.effective_daily_rate', 100.25)
+            ->set('reviewConfirmed', true)
+            ->set('customDailyRate', '110.00')
+            ->assertSet('quote', [])
+            ->assertSet('reviewConfirmed', false)
+            ->call('request')->assertHasErrors(['reviewConfirmed'])
+            ->call('preview')->assertHasNoErrors()
+            ->set('reviewConfirmed', true)
+            ->set('rateSource', RentalPricingService::RATE_SOURCE_CONTRACT)
+            ->assertSet('quote', [])
+            ->assertSet('reviewConfirmed', false)
+            ->call('preview')->assertHasNoErrors()
+            ->assertSet('quote.effective_daily_rate', 230.0)
+            ->assertSet('quote.custom_daily_rate', null);
+        $this->assertSame(0, $contract->amendments()->count());
     }
 
     public function test_pending_edit_and_delete_are_confirmed_and_have_no_contract_financial_effect(): void

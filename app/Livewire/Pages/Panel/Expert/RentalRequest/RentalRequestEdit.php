@@ -2977,6 +2977,7 @@ TEXT);
                     || ($rateSource === null && is_numeric($contractRate) && abs($effectiveRate - (float) $contractRate) < 0.005);
                 $sourceLabel = match ($rateSource) {
                     \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT => 'saved contract rate',
+                    \App\Services\RentalPricingService::RATE_SOURCE_CUSTOM => 'custom daily rate for this extension',
                     \App\Services\RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION => 'current tariff based on resulting total duration',
                     \App\Services\RentalPricingService::RATE_SOURCE_CURRENT => 'current tariff based on extension length',
                     default => $usesContractRate ? 'saved contract rate, legacy' : 'current tariff, legacy',

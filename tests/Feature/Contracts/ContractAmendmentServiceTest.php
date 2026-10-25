@@ -311,6 +311,149 @@ class ContractAmendmentServiceTest extends TestCase
         $this->assertSame(210.0, $currentQuote['total']);
     }
 
+    public function test_custom_monthly_extension_preserves_vehicle_and_original_rate_and_syncs_the_ledger(): void
+    {
+        [$contract, $actor, $original] = $this->operationalContract();
+        $contract->applyApprovedCommercialCorrection(['used_daily_rate' => 70]);
+        $originalAttributes = $original->fresh()->getAttributes();
+        $carAttributes = $contract->car->getAttributes();
+        $service = app(ContractAmendmentService::class);
+        $end = $contract->return_date->copy()->addDays(30);
+        $pending = $service->requestExtension(
+            $contract, $end, $actor->id,
+            rateSource: RentalPricingService::RATE_SOURCE_CUSTOM,
+            customDailyRate: '100.00',
+        );
+
+        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
+        $this->assertSame(0, $pending->charges()->count());
+        $this->assertSame(100.0, (float) $pending->pricing_snapshot['custom_daily_rate']);
+        $approved = $service->approve($pending, $actor->id);
+        $service->approve($approved, $actor->id);
+        $contract->refresh();
+
+        $rental = $approved->charges()->where('type', 'extension_rental')->sole();
+        $this->assertSame(30.0, (float) $rental->quantity);
+        $this->assertSame(100.0, (float) $rental->unit_price);
+        $this->assertSame(3000.0, (float) $rental->amount);
+        $this->assertSame(100.0, (float) data_get($rental->metadata, 'pricing_snapshot.custom_daily_rate'));
+        $this->assertSame(3150.0, (float) $approved->total_amount);
+        $this->assertSame(4150.0, (float) $contract->total_price);
+        $this->assertEqualsWithDelta(4150, $contract->calculateRemainingBalance(), 0.01);
+        $this->assertEqualsWithDelta(4150, (float) $contract->charges()->sum('amount'), 0.01);
+        $this->assertSame(2, $approved->charges()->count());
+        $this->assertSame(70.0, (float) $contract->used_daily_rate);
+        $this->assertTrue($contract->return_date->equalTo($end));
+        $this->assertSame($originalAttributes, $original->fresh()->getAttributes());
+        $this->assertSame($carAttributes, $contract->car->getAttributes());
+
+        $next = $service->requestExtension($contract, $end->copy()->addDay(), $actor->id);
+        $this->assertSame(RentalPricingService::RATE_SOURCE_CONTRACT, $next->pricing_snapshot['rate_source']);
+        $this->assertSame(70.0, (float) $next->pricing_snapshot['effective_daily_rate']);
+        $this->assertNull($next->pricing_snapshot['custom_daily_rate']);
+    }
+
+    public function test_custom_rate_keeps_saved_insurance_and_services_even_if_catalogue_prices_change(): void
+    {
+        [$contract, $actor] = $this->operationalContract([], [
+            'selected_insurance' => 'ldw_insurance',
+            'selected_services' => ['child_seat'],
+            'service_quantities' => ['child_seat' => 2],
+            'pricing_tariffs' => [
+                'tax_rate' => 0.05,
+                'base_days' => 9,
+                'insurance' => ['ldw_insurance' => 7],
+                'services' => ['child_seat' => ['unit_rate' => 3, 'per_day' => true]],
+            ],
+        ]);
+        $service = app(ContractAmendmentService::class);
+        $pending = $service->requestExtension(
+            $contract, $contract->return_date->copy()->addDays(2), $actor->id,
+            rateSource: RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: 100,
+        );
+        $contract->car->update([
+            'price_per_day_short' => 999, 'price_per_day_mid' => 888, 'price_per_day_long' => 777,
+            'ldw_price_short' => 99, 'ldw_price_mid' => 88, 'ldw_price_long' => 77,
+        ]);
+        config(['carservices.child_seat.amount' => 100]);
+
+        $approved = $service->approve($pending, $actor->id);
+        $charges = $approved->charges()->get()->keyBy('type');
+        $this->assertSame(200.0, (float) $charges['extension_rental']->amount);
+        $this->assertSame(14.0, (float) $charges['ldw_insurance']->amount);
+        $this->assertSame(12.0, (float) $charges['child_seat']->amount);
+        $this->assertSame(11.3, (float) $charges['tax']->amount);
+        $this->assertSame(237.3, (float) $approved->total_amount);
+        $this->assertEqualsWithDelta(1237.3, (float) $contract->fresh()->total_price, 0.01);
+    }
+
+    public function test_custom_rate_cannot_reuse_an_idempotency_key_with_a_different_price(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        $service = app(ContractAmendmentService::class);
+        $end = $contract->return_date->copy()->addDays(2);
+        $key = '6e742fd6-236f-4dfd-a963-e4e4be23b7c1';
+        $pending = $service->requestExtension($contract, $end, $actor->id, $key,
+            rateSource: RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: 100);
+        $duplicate = $service->requestExtension($contract, $end, $actor->id, $key,
+            rateSource: RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: '100.00');
+        $this->assertSame($pending->id, $duplicate->id);
+
+        try {
+            $service->requestExtension($contract, $end, $actor->id, $key,
+                rateSource: RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: 110);
+            $this->fail('A different custom price must not reuse the same request.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('idempotency_key', $exception->errors());
+        }
+        $this->assertSame(1, $contract->amendments()->count());
+        $this->assertSame(100.0, (float) $pending->fresh()->pricing_snapshot['custom_daily_rate']);
+    }
+
+    public function test_custom_rate_validation_is_enforced_by_the_service_without_financial_writes(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        foreach ([null, '', 'invalid', '0', '-1', '100.001', 'INF', '1e2'] as $rate) {
+            try {
+                app(ContractAmendmentService::class)->requestExtension(
+                    $contract, $contract->return_date->copy()->addDays(2), $actor->id,
+                    rateSource: RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: $rate,
+                );
+                $this->fail('An invalid custom rate must not create an extension.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('custom_daily_rate', $exception->errors());
+            }
+        }
+        $this->assertSame(0, $contract->amendments()->count());
+        $this->assertSame(1000.0, (float) $contract->fresh()->total_price);
+        $this->assertSame(1, $contract->charges()->count());
+    }
+
+    public function test_custom_daily_rate_uses_the_selected_billing_policy_and_ignores_unselected_overrides(): void
+    {
+        [$contract] = $this->operationalContract();
+        $pricing = app(RentalPricingService::class);
+        foreach ([
+            [RentalPricingService::POLICY_DAILY_CEILING, 90, 120.0],
+            [RentalPricingService::POLICY_HOURLY, 90, 10.0],
+            [RentalPricingService::POLICY_PRORATED_DAILY, 720, 60.0],
+            [RentalPricingService::POLICY_GRACE_THEN_DAILY, 60, 0.0],
+        ] as [$policy, $minutes, $amount]) {
+            $quote = $pricing->quoteExtension($contract, $contract->return_date->copy()->addMinutes($minutes),
+                $policy, RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: '120.00');
+            $this->assertSame($amount, $quote['items'][0]['amount']);
+            $this->assertSame(120.0, $quote['effective_daily_rate']);
+            $this->assertSame('custom', $quote['rate_tier']);
+        }
+
+        $quote = $pricing->quoteExtension($contract, $contract->return_date->copy()->addDay(), customDailyRate: 'invalid');
+        $this->assertSame(230.0, $quote['effective_daily_rate']);
+        $this->assertNull($quote['snapshot']['custom_daily_rate']);
+        $sameRate = $pricing->quoteExtension($contract, $contract->return_date->copy()->addDay(),
+            rateSource: RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: 230);
+        $this->assertFalse($sameRate['rate_changed']);
+    }
+
     public function test_current_total_duration_tariff_uses_resulting_daily_weekly_or_monthly_tier(): void
     {
         [$contract] = $this->operationalContract([

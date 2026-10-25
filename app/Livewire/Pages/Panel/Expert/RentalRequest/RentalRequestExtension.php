@@ -23,6 +23,8 @@ class RentalRequestExtension extends Component
 
     public string $rateSource = RentalPricingService::DEFAULT_RATE_SOURCE;
 
+    public ?string $customDailyRate = null;
+
     public ?string $reason = null;
 
     public ?string $notes = null;
@@ -87,6 +89,7 @@ class RentalRequestExtension extends Component
                 $this->pricingPolicy,
                 $this->rateSource,
                 $this->extensionQuoteStartAt(),
+                $this->customDailyRate,
             );
             $this->quote['impact'] = $this->quoteImpact($this->quote);
         } catch (ValidationException $exception) {
@@ -111,6 +114,7 @@ class RentalRequestExtension extends Component
                 $this->pricingPolicy,
                 $this->rateSource,
                 $this->extensionQuoteStartAt(),
+                $this->customDailyRate,
             );
             $latestQuote['impact'] = $this->quoteImpact($latestQuote);
             // Preview is optional. Submission always uses a fresh quote so the
@@ -120,14 +124,14 @@ class RentalRequestExtension extends Component
             if ($this->editingAmendmentId !== null) {
                 $amendment = $this->contract->amendments()->findOrFail($this->editingAmendmentId);
                 if ($amendment->isApproved()) {
-                    $updatedAmendment = $service->reviseApprovedExtension($amendment, $this->newReturnAt, auth()->id(), $this->pricingPolicy, $this->rateSource, $this->reason, $this->notes);
+                    $updatedAmendment = $service->reviseApprovedExtension($amendment, $this->newReturnAt, auth()->id(), $this->pricingPolicy, $this->rateSource, $this->reason, $this->notes, $this->customDailyRate);
                     $message = 'Approved extension revised. The old charge was reversed and retained in history.';
                 } else {
-                    $updatedAmendment = $service->updatePendingExtension($amendment, $this->newReturnAt, auth()->id(), $this->pricingPolicy, $this->rateSource, $this->reason, $this->notes);
+                    $updatedAmendment = $service->updatePendingExtension($amendment, $this->newReturnAt, auth()->id(), $this->pricingPolicy, $this->rateSource, $this->reason, $this->notes, $this->customDailyRate);
                     $message = 'Pending extension updated after review.';
                 }
             } else {
-                $updatedAmendment = $service->requestExtension($this->contract, $this->newReturnAt, auth()->id(), $this->idempotencyKey, $this->pricingPolicy, $this->reason, $this->notes, $this->rateSource);
+                $updatedAmendment = $service->requestExtension($this->contract, $this->newReturnAt, auth()->id(), $this->idempotencyKey, $this->pricingPolicy, $this->reason, $this->notes, $this->rateSource, $this->customDailyRate);
                 $message = 'Extension request created and awaits approval.';
             }
 
@@ -158,6 +162,9 @@ class RentalRequestExtension extends Component
         $this->newReturnAt = $amendment->new_return_at?->format('Y-m-d\TH:i') ?? '';
         $this->pricingPolicy = $amendment->pricing_policy ?: RentalPricingService::DEFAULT_POLICY;
         $this->rateSource = (string) ($snapshot['requested_rate_source'] ?? $snapshot['rate_source'] ?? RentalPricingService::DEFAULT_RATE_SOURCE);
+        $this->customDailyRate = $this->rateSource === RentalPricingService::RATE_SOURCE_CUSTOM
+            ? (string) ($snapshot['custom_daily_rate'] ?? $snapshot['effective_daily_rate'] ?? '')
+            : null;
         $this->reason = $amendment->reason;
         $this->notes = $amendment->notes;
         $this->quote = [];
@@ -335,6 +342,11 @@ class RentalRequestExtension extends Component
         $this->invalidatePreview();
     }
 
+    public function updatedCustomDailyRate(): void
+    {
+        $this->invalidatePreview();
+    }
+
     private function closeAmendment(int $amendmentId, string $action, ContractAmendmentService $service): void
     {
         try {
@@ -358,11 +370,14 @@ class RentalRequestExtension extends Component
         $rules = [
             'newReturnAt' => ['required', 'date'],
             'pricingPolicy' => ['required', 'in:daily_ceiling,hourly,prorated_daily,grace_then_daily'],
-            'rateSource' => ['required', 'in:contract_rate,current_tariff,current_total_duration_tariff'],
+            'rateSource' => ['required', 'in:contract_rate,current_tariff,current_total_duration_tariff,custom_rate'],
             'reason' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'idempotencyKey' => ['required', 'uuid'],
         ];
+        if ($this->rateSource === RentalPricingService::RATE_SOURCE_CUSTOM) {
+            $rules['customDailyRate'] = ['required', 'numeric', 'decimal:0,2', 'gt:0'];
+        }
         if ($requireReviewConfirmation) {
             $rules['reviewConfirmed'] = ['accepted'];
         }
@@ -376,6 +391,7 @@ class RentalRequestExtension extends Component
                 'new_return_at' => 'newReturnAt',
                 'pricing_policy' => 'pricingPolicy',
                 'rate_source' => 'rateSource',
+                'custom_daily_rate' => 'customDailyRate',
                 'idempotency_key' => 'idempotencyKey',
                 default => $field,
             };
@@ -501,6 +517,7 @@ class RentalRequestExtension extends Component
         $this->newReturnAt = optional($this->contract->return_date)->format('Y-m-d\TH:i') ?? '';
         $this->pricingPolicy = RentalPricingService::DEFAULT_POLICY;
         $this->rateSource = RentalPricingService::DEFAULT_RATE_SOURCE;
+        $this->customDailyRate = null;
         $this->reason = null;
         $this->notes = null;
         $this->idempotencyKey = (string) Str::uuid();

@@ -20,9 +20,11 @@
             \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT => 'Saved contract rate',
             \App\Services\RentalPricingService::RATE_SOURCE_CURRENT => 'Current tariff · extension length',
             \App\Services\RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION => 'Current automatic tier · total rental length',
+            \App\Services\RentalPricingService::RATE_SOURCE_CUSTOM => 'Custom daily rate · this extension only',
         ];
         $tierLabels = [
             'contract' => 'Saved on contract',
+            'custom' => 'Custom daily rate',
             'daily_1_to_6' => 'Daily tier · 1–6 days',
             'weekly_7_to_27' => 'Weekly tier · 7–27 days',
             'monthly_28_plus' => 'Monthly tier · 28+ days',
@@ -192,15 +194,24 @@
                     </div>
                     <div class="col-lg-4">
                         <label class="form-label fw-semibold">Rental price basis</label>
-                        <select wire:model="rateSource" class="form-select">
+                        <select wire:model.live="rateSource" class="form-select">
                             <option value="contract_rate">Saved contract rate</option>
                             <option value="current_tariff">Current tariff based on extension length</option>
                             <option value="current_total_duration_tariff">Current automatic daily / weekly / monthly tier based on resulting total rental length</option>
+                            <option value="custom_rate">Custom daily rate · this extension only</option>
                         </select>
                         <small class="text-muted d-block mt-1">
                             Saved rate preserves the agreed rate. Current options read the vehicle catalogue at preview and verify it again before approval.
                         </small>
                         @error('rateSource')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                        @if ($rateSource === \App\Services\RentalPricingService::RATE_SOURCE_CUSTOM)
+                            <div class="mt-3">
+                                <label for="extensionCustomDailyRate" class="form-label fw-semibold">Custom daily rate (AED/day)</label>
+                                <input id="extensionCustomDailyRate" type="number" min="0.01" step="0.01" wire:model.blur="customDailyRate" class="form-control @error('customDailyRate') is-invalid @enderror" placeholder="e.g. 100.00">
+                                <small class="text-muted d-block mt-1">Applies to rental for this extension only. Vehicle prices and the original contract rate stay unchanged. Insurance and services keep their saved contract tariffs.</small>
+                                @error('customDailyRate')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            </div>
+                        @endif
                     </div>
                     <div class="col-md-5"><label class="form-label">Reason</label><input wire:model="reason" class="form-control">@error('reason')<small class="text-danger">{{ $message }}</small>@enderror</div>
                     <div class="col-md-7"><label class="form-label">Notes</label><textarea wire:model="notes" class="form-control" rows="2"></textarea>@error('notes')<small class="text-danger">{{ $message }}</small>@enderror</div>

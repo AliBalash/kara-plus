@@ -105,6 +105,7 @@
                                     $extensionRateDiffers = is_numeric($extensionContractRate) && abs($extensionDailyRate - (float) $extensionContractRate) > 0.005;
                                     $extensionRateSourceLabel = match ($extensionRateSource) {
                                         \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT => 'Saved contract rate',
+                                        \App\Services\RentalPricingService::RATE_SOURCE_CUSTOM => 'Custom daily rate · this extension only',
                                         \App\Services\RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION => 'Current tariff · resulting total duration',
                                         \App\Services\RentalPricingService::RATE_SOURCE_CURRENT => 'Current tariff · extension length',
                                         default => $extensionUsesContractRate ? 'Saved contract rate · legacy' : 'Current tariff · legacy',

@@ -24,7 +24,8 @@ class ContractAmendmentService
         string $pricingPolicy = RentalPricingService::DEFAULT_POLICY,
         ?string $reason = null,
         ?string $notes = null,
-        string $rateSource = RentalPricingService::DEFAULT_RATE_SOURCE
+        string $rateSource = RentalPricingService::DEFAULT_RATE_SOURCE,
+        float|string|null $customDailyRate = null
     ): ContractAmendment {
         $contractId = $contract instanceof Contract ? $contract->id : $contract;
         $idempotencyKey ??= (string) Str::uuid();
@@ -33,7 +34,7 @@ class ContractAmendmentService
             throw ValidationException::withMessages(['idempotency_key' => 'The idempotency key must be a valid UUID.']);
         }
 
-        return DB::transaction(function () use ($contractId, $newReturnAt, $requestedBy, $idempotencyKey, $pricingPolicy, $reason, $notes, $rateSource) {
+        return DB::transaction(function () use ($contractId, $newReturnAt, $requestedBy, $idempotencyKey, $pricingPolicy, $reason, $notes, $rateSource, $customDailyRate) {
             $contract = Contract::query()->lockForUpdate()->findOrFail($contractId);
 
             if ($existing = ContractAmendment::where('idempotency_key', $idempotencyKey)->first()) {
@@ -45,7 +46,10 @@ class ContractAmendmentService
                         $existing->pricing_snapshot,
                         'requested_rate_source',
                         data_get($existing->pricing_snapshot, 'rate_source', RentalPricingService::RATE_SOURCE_CURRENT)
-                    ) === $rateSource;
+                    ) === $rateSource
+                    && ($rateSource !== RentalPricingService::RATE_SOURCE_CUSTOM
+                        || (is_numeric($customDailyRate)
+                            && (float) data_get($existing->pricing_snapshot, 'custom_daily_rate') === (float) $customDailyRate));
 
                 if (! $sameRequest) {
                     throw ValidationException::withMessages(['idempotency_key' => 'This idempotency key belongs to a different amendment request.']);
@@ -64,7 +68,7 @@ class ContractAmendmentService
                 throw ValidationException::withMessages(['amendment' => 'Resolve the existing pending extension before requesting another one.']);
             }
 
-            $quote = $this->pricing->quoteExtension($contract, $newReturnAt, $pricingPolicy, $rateSource);
+            $quote = $this->pricing->quoteExtension($contract, $newReturnAt, $pricingPolicy, $rateSource, customDailyRate: $customDailyRate);
             $amendment = ContractAmendment::create([
                 'contract_id' => $contract->id, 'sequence_no' => $this->nextSequenceNo($contract->id),
                 'type' => ContractAmendment::TYPE_EXTENSION, 'status' => 'pending_approval', 'requested_by' => $requestedBy,
@@ -114,7 +118,8 @@ class ContractAmendmentService
                     $contract,
                     $amendment->new_return_at,
                     $amendment->pricing_policy ?: RentalPricingService::DEFAULT_POLICY,
-                    $rateSource
+                    $rateSource,
+                    customDailyRate: data_get($amendment->pricing_snapshot, 'custom_daily_rate'),
                 );
                 if (! $this->pricingStillMatches($amendment, $quote)) {
                     throw ValidationException::withMessages([
@@ -156,10 +161,11 @@ class ContractAmendmentService
         string $rateSource,
         ?string $reason = null,
         ?string $notes = null,
+        float|string|null $customDailyRate = null,
     ): ContractAmendment {
         $id = $amendment instanceof ContractAmendment ? $amendment->id : $amendment;
 
-        return DB::transaction(function () use ($id, $newReturnAt, $actorId, $pricingPolicy, $rateSource, $reason, $notes): ContractAmendment {
+        return DB::transaction(function () use ($id, $newReturnAt, $actorId, $pricingPolicy, $rateSource, $reason, $notes, $customDailyRate): ContractAmendment {
             $amendment = ContractAmendment::query()->lockForUpdate()->findOrFail($id);
             if (! $amendment->isPending() || $amendment->type !== ContractAmendment::TYPE_EXTENSION) {
                 throw ValidationException::withMessages(['amendment' => 'Only a pending extension request can be edited in place.']);
@@ -175,7 +181,7 @@ class ContractAmendmentService
                 'new_return_at', 'pricing_policy', 'subtotal', 'tax_amount', 'total_amount',
                 'pricing_snapshot', 'reason', 'notes',
             ]);
-            $quote = $this->pricing->quoteExtension($contract, $newReturnAt, $pricingPolicy, $rateSource);
+            $quote = $this->pricing->quoteExtension($contract, $newReturnAt, $pricingPolicy, $rateSource, customDailyRate: $customDailyRate);
             $amendment->fill([
                 'new_return_at' => Carbon::parse($newReturnAt),
                 'extension_end_at' => Carbon::parse($newReturnAt),
@@ -209,10 +215,11 @@ class ContractAmendmentService
         string $rateSource,
         ?string $reason = null,
         ?string $notes = null,
+        float|string|null $customDailyRate = null,
     ): ContractAmendment {
         $id = $amendment instanceof ContractAmendment ? $amendment->id : $amendment;
 
-        return DB::transaction(function () use ($id, $newReturnAt, $actorId, $pricingPolicy, $rateSource, $reason, $notes): ContractAmendment {
+        return DB::transaction(function () use ($id, $newReturnAt, $actorId, $pricingPolicy, $rateSource, $reason, $notes, $customDailyRate): ContractAmendment {
             $amendment = ContractAmendment::query()->lockForUpdate()->findOrFail($id);
             $contract = Contract::query()->lockForUpdate()->findOrFail($amendment->contract_id);
             $this->assertLatestEffectiveExtension($contract, $amendment);
@@ -237,6 +244,7 @@ class ContractAmendmentService
                 $pricingPolicy,
                 $rateSource,
                 $amendment->old_return_at,
+                $customDailyRate,
             );
             $before = $this->contractSnapshot($contract);
             $reversal = $this->createReversalAmendment($contract, $amendment, $actorId, 'extension_revision_reversal');
