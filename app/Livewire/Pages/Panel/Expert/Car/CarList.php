@@ -2,36 +2,52 @@
 
 namespace App\Livewire\Pages\Panel\Expert\Car;
 
+use App\Livewire\Concerns\InteractsWithToasts;
 use App\Models\Car;
 use Carbon\Carbon;
-use App\Livewire\Concerns\InteractsWithToasts;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Illuminate\Database\Eloquent\Builder;
 
 class CarList extends Component
 {
-    use WithPagination;
     use InteractsWithToasts;
+    use WithPagination;
 
     public $search = '';
+
     public $searchInput = '';
+
     public $selectedBrand = '';
+
     public $statusFilter = '';
+
     public $unavailabilityReasonFilter = '';
+
     public $pickupFrom;
+
     public $pickupTo;
+
+    public $returnFrom;
+
+    public $returnTo;
+
     public $dailyPriceMin;
+
     public $dailyPriceMax;
+
     public $sortField = 'id';
+
     public $sortDirection = 'asc';
+
     public $onlyReserved = false;
 
     protected $listeners = ['deletecar'];
-    protected $queryString = ['search', 'selectedBrand', 'statusFilter', 'unavailabilityReasonFilter', 'pickupFrom', 'pickupTo', 'dailyPriceMin', 'dailyPriceMax', 'sortField', 'sortDirection', 'onlyReserved'];
+
+    protected $queryString = ['search', 'selectedBrand', 'statusFilter', 'unavailabilityReasonFilter', 'pickupFrom', 'pickupTo', 'returnFrom', 'returnTo', 'dailyPriceMin', 'dailyPriceMax', 'sortField', 'sortDirection', 'onlyReserved'];
 
     public function mount(): void
     {
@@ -52,7 +68,6 @@ class CarList extends Component
             }
         }
     }
-
 
     public function deletecar($id)
     {
@@ -85,6 +100,8 @@ class CarList extends Component
         $this->unavailabilityReasonFilter = '';
         $this->pickupFrom = null;
         $this->pickupTo = null;
+        $this->returnFrom = null;
+        $this->returnTo = null;
         $this->dailyPriceMin = null;
         $this->dailyPriceMax = null;
         $this->onlyReserved = false;
@@ -92,12 +109,10 @@ class CarList extends Component
         $this->resetPage();
     }
 
-
-
     public function render()
     {
         $search = trim($this->search);
-        $likeSearch = '%' . $search . '%';
+        $likeSearch = '%'.$search.'%';
 
         $brands = Car::query()
             ->join('car_models', 'cars.car_model_id', '=', 'car_models.id')
@@ -106,18 +121,18 @@ class CarList extends Component
             ->pluck('brand');
 
         $carsQuery = Car::with(['carModel', 'currentContract'])
-            ->when($search !== '', fn($q) => $q->where(function ($q) use ($likeSearch) {
+            ->when($search !== '', fn ($q) => $q->where(function ($q) use ($likeSearch) {
                 $q->where('plate_number', 'like', $likeSearch)
-                    ->orWhereHas('carModel', fn($q2) => $q2->where(function ($modelQuery) use ($likeSearch) {
+                    ->orWhereHas('carModel', fn ($q2) => $q2->where(function ($modelQuery) use ($likeSearch) {
                         $modelQuery->where('brand', 'like', $likeSearch)
                             ->orWhere('model', 'like', $likeSearch);
                     }));
             }))
 
-            ->when($this->selectedBrand, fn($q) => $q->whereHas('carModel', fn($q2) => $q2->where('brand', $this->selectedBrand)))
-            ->when($this->statusFilter, fn($q) => $q->byOperationalStatus($this->statusFilter))
-            ->when($this->unavailabilityReasonFilter, fn($q) => $q->byUnavailabilityReason($this->unavailabilityReasonFilter))
-            ->when($this->onlyReserved, fn($q) => $q->whereIn('status', ['reserved', 'pre_reserved']));
+            ->when($this->selectedBrand, fn ($q) => $q->whereHas('carModel', fn ($q2) => $q2->where('brand', $this->selectedBrand)))
+            ->when($this->statusFilter, fn ($q) => $q->byOperationalStatus($this->statusFilter))
+            ->when($this->unavailabilityReasonFilter, fn ($q) => $q->byUnavailabilityReason($this->unavailabilityReasonFilter))
+            ->when($this->onlyReserved, fn ($q) => $q->whereIn('status', ['reserved', 'pre_reserved']));
 
         if (Car::supportsScheduledUnavailabilityPeriods()) {
             $carsQuery->with('unavailabilityPeriods');
@@ -131,7 +146,7 @@ class CarList extends Component
             $carsQuery->leftJoin('contracts', function ($join) {
                 $join->on('contracts.car_id', '=', 'cars.id')
                     ->whereRaw('contracts.id = (select id from contracts c2 where c2.car_id = cars.id order by pickup_date desc limit 1)');
-            })->orderBy('contracts.' . $this->sortField, $this->sortDirection)
+            })->orderBy('contracts.'.$this->sortField, $this->sortDirection)
                 ->select('cars.*'); // فقط ستون های cars
         } else {
             $carsQuery->orderBy($this->sortField, $this->sortDirection);
@@ -161,13 +176,15 @@ class CarList extends Component
 
     protected function applyDateFilters(Builder $query): void
     {
-        if (! $this->pickupFrom && ! $this->pickupTo) {
+        if (! $this->pickupFrom && ! $this->pickupTo && ! $this->returnFrom && ! $this->returnTo) {
             return;
         }
 
         $validator = Validator::make([
             'pickupFrom' => $this->pickupFrom,
             'pickupTo' => $this->pickupTo,
+            'returnFrom' => $this->returnFrom,
+            'returnTo' => $this->returnTo,
         ], $this->dateFilterRules());
         if ($validator->fails()) {
             $this->setErrorBag($validator->errors());
@@ -176,7 +193,7 @@ class CarList extends Component
             return;
         }
 
-        if ($this->statusFilter === 'available') {
+        if ($this->statusFilter === 'available' && ($this->pickupFrom || $this->pickupTo)) {
             [$windowStart, $windowEnd] = $this->selectedWindowBounds();
             $query->whereDoesntHave('contracts', function (Builder $contractQuery) use ($windowStart, $windowEnd) {
                 $contractQuery
@@ -195,20 +212,30 @@ class CarList extends Component
                 });
             }
 
-            return;
+            if (! $this->returnFrom && ! $this->returnTo) {
+                return;
+            }
         }
 
-        // Filter the pickup itself, and display the same matching booking.
-        $pickupFilter = function ($contractQuery) {
-            if ($this->pickupFrom) {
-                $contractQuery->where('pickup_date', '>=', Carbon::parse($this->pickupFrom)->startOfDay());
+        // All date bounds must match one booking, which is also displayed.
+        $bookingFilter = function ($contractQuery) {
+            $bounds = [
+                ['return_date', $this->returnFrom, $this->returnTo],
+            ];
+            if ($this->statusFilter !== 'available') {
+                $bounds[] = ['pickup_date', $this->pickupFrom, $this->pickupTo];
             }
-            if ($this->pickupTo) {
-                $contractQuery->where('pickup_date', '<', Carbon::parse($this->pickupTo)->addDay()->startOfDay());
+            foreach ($bounds as [$column, $from, $to]) {
+                if ($from) {
+                    $contractQuery->where($column, '>=', Carbon::parse($from)->startOfDay());
+                }
+                if ($to) {
+                    $contractQuery->where($column, '<', Carbon::parse($to)->addDay()->startOfDay());
+                }
             }
         };
-        $query->whereHas('currentContract', $pickupFilter)
-            ->with(['currentContract' => $pickupFilter]);
+        $query->whereHas('currentContract', $bookingFilter)
+            ->with(['currentContract' => $bookingFilter]);
     }
 
     protected function dateFilterRules(): array
@@ -216,6 +243,8 @@ class CarList extends Component
         return [
             'pickupFrom' => ['nullable', 'string', 'date_format:Y-m-d'],
             'pickupTo' => ['nullable', 'string', 'date_format:Y-m-d', ...($this->pickupFrom ? ['after_or_equal:pickupFrom'] : [])],
+            'returnFrom' => ['nullable', 'string', 'date_format:Y-m-d'],
+            'returnTo' => ['nullable', 'string', 'date_format:Y-m-d', ...($this->returnFrom ? ['after_or_equal:returnFrom'] : [])],
         ];
     }
 

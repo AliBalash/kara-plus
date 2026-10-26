@@ -91,6 +91,18 @@
             </div>
 
             <div class="col-md-6 col-lg-2">
+                <label for="car-return-from" class="form-label small text-muted mb-1">Return From</label>
+                <input id="car-return-from" type="date" class="form-control" wire:model.defer="returnFrom">
+                @error('returnFrom')<div class="small text-danger">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="col-md-6 col-lg-2">
+                <label for="car-return-to" class="form-label small text-muted mb-1">Return To</label>
+                <input id="car-return-to" type="date" class="form-control" wire:model.defer="returnTo">
+                @error('returnTo')<div class="small text-danger">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="col-md-6 col-lg-2">
                 <label class="form-label small text-muted mb-1">Daily Price From</label>
                 <input type="number" min="0" step="0.01" class="form-control" wire:model.defer="dailyPriceMin"
                     placeholder="Min price">
@@ -113,7 +125,7 @@
                 </div>
             </div>
         </div>
-        <p class="small text-muted mt-2 mb-0">Dates filter booking pickups, including both selected days. With Available status, dates check availability throughout the selected period.</p>
+        <p class="small text-muted mt-2 mb-0">Pickup dates filter rental starts. Return dates filter planned returns, including the entire selected day. To find cars returning by a date, set Return To and press Apply Filters. With Available status, pickup dates check availability throughout the selected period.</p>
     </form>
 
     <!-- Table -->

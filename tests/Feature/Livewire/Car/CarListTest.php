@@ -6,9 +6,12 @@ use App\Livewire\Pages\Panel\Expert\Car\CarList;
 use App\Models\Car;
 use App\Models\CarOption;
 use App\Models\Contract;
+use App\Models\User;
+use App\Services\ContractAmendmentService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class CarListTest extends TestCase
@@ -276,5 +279,112 @@ class CarListTest extends TestCase
                 $this->assertNotEmpty($exception->errors());
             }
         }
+    }
+
+    public function test_return_to_includes_the_entire_day_and_excludes_later_returns_and_closed_bookings(): void
+    {
+        $ids = [];
+        foreach (['2026-10-26 12:00:00', '2026-10-27 00:00:00', '2026-10-27 23:59:59', '2026-10-28 00:00:00', '2026-10-31 12:00:00'] as $return) {
+            $car = Car::factory()->create();
+            $ids[] = $car->id;
+            Contract::factory()->for($car)->status('reserved')->create([
+                'pickup_date' => '2026-09-27 10:00:00', 'return_date' => $return,
+            ]);
+        }
+        $closed = Car::factory()->create();
+        Contract::factory()->for($closed)->status('cancelled')->create([
+            'pickup_date' => '2026-09-27 10:00:00', 'return_date' => '2026-10-27 12:00:00',
+        ]);
+        Car::factory()->create();
+
+        $component = app(CarList::class);
+        $component->returnTo = '2026-10-27';
+        $component->applyFilters();
+        $cars = $component->render()->getData()['cars'];
+        $this->assertSame(array_slice($ids, 0, 3), $cars->pluck('id')->all());
+        $this->assertSame('2026-10-27 23:59:59', $cars->last()->currentContract->return_date->format('Y-m-d H:i:s'));
+        $component->returnFrom = '2026-10-27';
+        $this->assertSame([$ids[1], $ids[2]], $component->render()->getData()['cars']->pluck('id')->all());
+        $component->returnTo = null;
+        $this->assertSame(array_slice($ids, 1), $component->render()->getData()['cars']->pluck('id')->all());
+        $component->clearFilters();
+        $this->assertNull($component->returnFrom);
+        $this->assertNull($component->returnTo);
+    }
+
+    public function test_pickup_and_return_bounds_match_the_same_booking_and_show_that_booking(): void
+    {
+        $splitMatch = Car::factory()->create();
+        Contract::factory()->for($splitMatch)->status('reserved')->create([
+            'pickup_date' => '2026-09-01 10:00:00', 'return_date' => '2026-10-27 10:00:00',
+        ]);
+        Contract::factory()->for($splitMatch)->status('reserved')->create([
+            'pickup_date' => '2026-10-20 10:00:00', 'return_date' => '2026-10-30 10:00:00',
+        ]);
+        $matchingCar = Car::factory()->create();
+        Contract::factory()->for($matchingCar)->status('reserved')->create([
+            'pickup_date' => '2026-09-01 10:00:00', 'return_date' => '2026-10-19 10:00:00',
+        ]);
+        $matching = Contract::factory()->for($matchingCar)->status('reserved')->create([
+            'pickup_date' => '2026-10-20 10:00:00', 'return_date' => '2026-10-27 10:00:00',
+        ]);
+        $component = app(CarList::class);
+        $component->pickupFrom = '2026-10-20';
+        $component->returnTo = '2026-10-27';
+        $cars = $component->render()->getData()['cars'];
+        $this->assertSame([$matchingCar->id], $cars->pluck('id')->all());
+        $this->assertSame($matching->id, $cars->first()->currentContract->id);
+    }
+
+    public function test_invalid_return_bounds_fail_validation_and_never_produce_an_unfiltered_report(): void
+    {
+        Car::factory()->create();
+        foreach ([['invalid', null], [null, '2026-02-30'], ['2026-10-28', '2026-10-27']] as [$from, $to]) {
+            $component = app(CarList::class);
+            $component->returnFrom = $from;
+            $component->returnTo = $to;
+            $this->assertCount(0, $component->render()->getData()['cars']);
+            $this->assertTrue($component->getErrorBag()->isNotEmpty());
+            try {
+                $component->applyFilters();
+                $this->fail('Invalid return bounds must fail validation.');
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                $this->assertNotEmpty($exception->errors());
+            }
+        }
+    }
+
+    public function test_return_report_uses_the_new_planned_return_after_an_approved_extension(): void
+    {
+        $car = Car::factory()->available()->create();
+        $contract = Contract::factory()->for($car)->status('reserved')->create([
+            'pickup_date' => '2026-10-01 10:00:00', 'return_date' => '2026-10-27 10:00:00',
+        ]);
+        $component = app(CarList::class);
+        $component->returnTo = '2026-10-27';
+        $this->assertSame([$car->id], $component->render()->getData()['cars']->pluck('id')->all());
+        $service = app(ContractAmendmentService::class);
+        $service->approve($service->requestExtension($contract, '2026-10-28 10:00:00', $contract->user_id), $contract->user_id);
+
+        $this->assertCount(0, $component->render()->getData()['cars']);
+        $component->returnTo = '2026-10-28';
+        $result = $component->render()->getData()['cars']->sole();
+        $this->assertSame($car->id, $result->id);
+        $this->assertSame('2026-10-28', $result->currentContract->return_date->toDateString());
+    }
+
+    public function test_return_filter_is_available_in_the_form_and_can_be_loaded_from_a_report_link(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $car = Car::factory()->create();
+        Contract::factory()->for($car)->status('reserved')->create([
+            'pickup_date' => '2026-09-27 10:00:00', 'return_date' => '2026-10-27 23:59:59',
+        ]);
+        Livewire::withQueryParams(['returnTo' => '2026-10-27'])->test(CarList::class)
+            ->assertSee('Return From')->assertSee('Return To')
+            ->assertSet('returnTo', '2026-10-27')
+            ->call('applyFilters')->assertHasNoErrors()
+            ->assertViewHas('cars', fn ($cars) => $cars->pluck('id')->all() === [$car->id])
+            ->call('clearFilters')->assertSet('returnFrom', null)->assertSet('returnTo', null);
     }
 }
