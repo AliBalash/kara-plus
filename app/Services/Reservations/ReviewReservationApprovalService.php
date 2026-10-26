@@ -5,9 +5,11 @@ namespace App\Services\Reservations;
 use App\Models\Car;
 use App\Models\CarUnavailabilityPeriod;
 use App\Models\Contract;
+use App\Models\User;
 use App\Services\VehicleAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -93,6 +95,40 @@ class ReviewReservationApprovalService
             $car->syncOperationalState();
 
             return $contract->fresh(['car.carModel', 'customer', 'user']);
+        });
+    }
+
+    /** Close a website review through the normal, auditable cancellation lifecycle. */
+    public function cancel(int $contractId, int $expertId, ?string $reason = null): Contract
+    {
+        $expert = User::findOrFail($expertId);
+        abort_if($expert->hasRole('driver'), 403);
+        Validator::make(['reason' => $reason], ['reason' => ['nullable', 'string', 'max:500']])->validate();
+
+        return DB::transaction(function () use ($contractId, $expertId, $reason): Contract {
+            $contract = Contract::query()->lockForUpdate()->findOrFail($contractId);
+            if (! $contract->isWebsiteIntake()) {
+                throw ValidationException::withMessages(['contract' => 'Only website requests can be cancelled from the review queue.']);
+            }
+            if ($contract->user_id !== null && (int) $contract->user_id !== $expertId) {
+                throw ValidationException::withMessages(['contract' => 'This request is already being reviewed by another expert.']);
+            }
+            if ($contract->current_status === 'cancelled') {
+                return $contract;
+            }
+            if (! $contract->isReviewPending()) {
+                throw ValidationException::withMessages(['contract' => 'This request has already been reviewed. Please reload the page.']);
+            }
+            if ($contract->user_id === null) {
+                $contract->update(['user_id' => $expertId]);
+            }
+            $notes = 'Website request cancelled from review queue.';
+            if (filled($reason)) {
+                $notes .= ' '.trim($reason);
+            }
+            $contract->changeStatus('cancelled', $expertId, $notes);
+
+            return $contract->fresh(['customer', 'car', 'user']);
         });
     }
 

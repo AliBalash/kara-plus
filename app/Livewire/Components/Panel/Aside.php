@@ -6,6 +6,8 @@ use Livewire\Component;
 
 class Aside extends Component
 {
+    protected $listeners = ['refreshContracts' => '$refresh'];
+
     public function render()
     {
         return view('livewire.components.panel.aside');

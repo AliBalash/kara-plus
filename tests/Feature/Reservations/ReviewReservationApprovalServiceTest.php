@@ -4,6 +4,7 @@ namespace Tests\Feature\Reservations;
 
 use App\Models\Car;
 use App\Models\Contract;
+use App\Models\ContractCharges;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\Reservations\ReviewReservationApprovalService;
@@ -132,6 +133,68 @@ class ReviewReservationApprovalServiceTest extends TestCase
             $this->assertSame(Contract::STATUS_REVIEW_PENDING, $request->fresh()->current_status);
         } finally {
             Carbon::setTestNow();
+        }
+    }
+
+    public function test_cancelling_a_website_review_preserves_quotes_charges_and_customer_with_one_status_history_entry(): void
+    {
+        $car = Car::factory()->available()->create();
+        $expert = User::factory()->create();
+        $request = $this->reviewRequest($car, now()->addDays(2), now()->addDays(5));
+        $charge = ContractCharges::factory()->for($request)->create(['amount' => $request->total_price, 'source_type' => 'original']);
+        $before = $request->only(['car_id', 'requested_car_id', 'customer_id', 'pickup_date', 'return_date', 'total_price', 'meta']);
+        $chargeBefore = $charge->fresh()->getAttributes();
+        $service = app(ReviewReservationApprovalService::class);
+
+        $cancelled = $service->cancel($request->id, $expert->id, 'Customer did not proceed');
+        $service->cancel($request->id, $expert->id, 'Repeated click');
+
+        $this->assertSame('cancelled', $cancelled->current_status);
+        $this->assertSame($expert->id, $cancelled->user_id);
+        $this->assertEquals($before, $cancelled->only(array_keys($before)));
+        $this->assertSame($chargeBefore, $charge->fresh()->getAttributes());
+        $this->assertDatabaseHas('customers', ['id' => $request->customer_id]);
+        $this->assertSame(1, $request->statuses()->where('status', 'cancelled')->count());
+        $history = $request->statuses()->sole();
+        $this->assertSame($expert->id, $history->user_id);
+        $this->assertStringContainsString('Customer did not proceed', $history->notes);
+        $this->assertSame(Car::STATUS_AVAILABLE, $car->fresh()->status);
+        $this->assertTrue($car->fresh()->availability);
+    }
+
+    public function test_cancelling_a_review_does_not_release_a_vehicle_reserved_by_another_contract(): void
+    {
+        $car = Car::factory()->available()->create();
+        $booking = Contract::factory()->for($car)->status('reserved')->create([
+            'pickup_date' => now()->subDay(), 'return_date' => now()->addDays(3),
+        ]);
+        $request = $this->reviewRequest($car, now()->addDay(), now()->addDays(4));
+        $expert = User::factory()->create();
+        app(ReviewReservationApprovalService::class)->cancel($request->id, $expert->id);
+
+        $this->assertSame('reserved', $booking->fresh()->current_status);
+        $this->assertSame(Car::STATUS_RESERVED, $car->fresh()->status);
+        $this->assertSame('cancelled', $request->fresh()->current_status);
+    }
+
+    public function test_review_cancellation_rejects_another_experts_request_and_requests_already_approved_or_from_panel(): void
+    {
+        $expert = User::factory()->create();
+        $otherExpert = User::factory()->create();
+        foreach ([
+            ['intake_source' => Contract::INTAKE_SOURCE_WEBSITE, 'current_status' => Contract::STATUS_REVIEW_PENDING, 'user_id' => $otherExpert->id],
+            ['intake_source' => Contract::INTAKE_SOURCE_WEBSITE, 'current_status' => 'assigned', 'user_id' => $expert->id],
+            ['intake_source' => Contract::INTAKE_SOURCE_PANEL, 'current_status' => Contract::STATUS_REVIEW_PENDING, 'user_id' => $expert->id],
+        ] as $attributes) {
+            $request = Contract::factory()->create($attributes);
+            try {
+                app(ReviewReservationApprovalService::class)->cancel($request->id, $expert->id);
+                $this->fail('Only an unassigned or own pending website request may be cancelled.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('contract', $exception->errors());
+            }
+            $this->assertSame($attributes['current_status'], $request->fresh()->current_status);
+            $this->assertSame(0, $request->statuses()->count());
         }
     }
 

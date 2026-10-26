@@ -3,7 +3,7 @@
         <div>
             <div class="website-review-eyebrow"><i class="bx bx-globe"></i> Website intake</div>
             <h3 class="mb-2">Review requests before they reserve a car</h3>
-            <p class="mb-0">Check live vehicle and date conflicts, take ownership, then approve only the requests that are ready.</p>
+            <p class="mb-0">Check live vehicle and date conflicts, take ownership, then approve or cancel the request.</p>
         </div>
         <div class="website-review-counts" aria-label="Review queue summary">
             <div><strong>{{ $summary['total'] }}</strong><span>In queue</span></div>
@@ -46,6 +46,8 @@
         <i class="bx bx-info-circle"></i>
         <span>“Ready to approve” is checked live. Approval checks it once more inside a protected transaction, so another booking cannot slip through at the same time.</span>
     </div>
+
+    @error('cancellation')<div class="alert alert-danger" role="alert">{{ $message }}</div>@enderror
 
     <div class="row g-4">
         @forelse ($requests as $request)
@@ -137,6 +139,12 @@
                                 <i class="bx bx-edit-alt me-1"></i> {{ $diagnostic['ready'] ? 'Review details' : 'Review & fix' }}
                             </a>
 
+                            @if (! $isOwnedByOther)
+                                <button type="button" class="btn btn-outline-danger" wire:click="prepareCancellation({{ $request->id }})" wire:loading.attr="disabled">
+                                    <i class="bx bx-x-circle me-1"></i> Cancel request
+                                </button>
+                            @endif
+
                             @if ($diagnostic['ready'] && ! $isOwnedByOther)
                                 <button type="button" class="btn btn-success ms-sm-auto" wire:click="approveAndOpen({{ $request->id }})" wire:loading.attr="disabled" wire:target="approveAndOpen({{ $request->id }})"
                                     onclick="return window.confirm('Approve this request, assign it to you and open the reservation?')">
@@ -146,6 +154,18 @@
                                 <span class="website-review-card__locked ms-sm-auto"><i class="bx bx-lock-alt"></i> Owned by another expert</span>
                             @endif
                         </footer>
+                        @if ($cancellingRequestId === $request->id)
+                            <form wire:submit.prevent="cancelRequest" class="p-3 border-top bg-light" wire:key="cancel-website-request-{{ $request->id }}">
+                                <p class="fw-semibold mb-2">Cancel request {{ $request->reference_number ?? '#'.$request->id }}? It will leave this queue and remain in Cancelled requests.</p>
+                                <label for="website-cancel-reason-{{ $request->id }}" class="form-label">Reason (optional)</label>
+                                <textarea id="website-cancel-reason-{{ $request->id }}" class="form-control" wire:model="cancellationReason" maxlength="500" rows="2" placeholder="e.g. Customer no longer needs the vehicle"></textarea>
+                                @error('cancellationReason')<div class="small text-danger">{{ $message }}</div>@enderror
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <button type="submit" class="btn btn-danger" wire:loading.attr="disabled">Confirm cancellation</button>
+                                    <button type="button" class="btn btn-outline-secondary" wire:click="dismissCancellation" wire:loading.attr="disabled">Keep request</button>
+                                </div>
+                            </form>
+                        @endif
                     </div>
                 </article>
             </div>
