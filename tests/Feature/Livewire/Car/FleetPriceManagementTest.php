@@ -213,7 +213,7 @@ class FleetPriceManagementTest extends TestCase
         $service->apply($user, $preview->id);
     }
 
-    public function test_confirmation_and_fresh_permission_are_required(): void
+    public function test_confirmation_and_fresh_staff_access_are_required(): void
     {
         $car = Car::factory()->create();
         Livewire::test(FleetPriceManagement::class)->call('toggleSelection', $car->id)
@@ -221,7 +221,8 @@ class FleetPriceManagementTest extends TestCase
             ->call('preview')->call('apply')->assertHasErrors('confirmed');
         $service = app(FleetBulkPricingService::class);
         $preview = $service->preview($this->actor, [$car->id], $this->operations('price_per_day_short'));
-        $this->actor->removeRole('super-admin');
+        Role::findOrCreate('driver');
+        $this->actor->assignRole('driver');
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         $service->apply($this->actor, $preview->id);
     }
@@ -242,9 +243,34 @@ class FleetPriceManagementTest extends TestCase
         }
     }
 
-    public function test_unauthorized_page_is_blocked(): void
+    public function test_staff_without_roles_can_open_pricing_and_apply_selected_prices(): void
     {
         $this->actingAs(User::factory()->create());
+        $car = Car::factory()->create(['price_per_day_short' => 100]);
+        $this->get(route('car.prices'))->assertOk()->assertSee('Price Management');
+        Livewire::test(FleetPriceManagement::class)
+            ->call('toggleSelection', $car->id)
+            ->set('operations.price_per_day_short.enabled', true)
+            ->set('operations.price_per_day_short.value', '125')
+            ->call('preview')->assertHasNoErrors()
+            ->set('confirmed', true)->call('apply')->assertHasNoErrors();
+        $this->assertSame('125.00', $car->fresh()->price_per_day_short);
+    }
+
+    public function test_driver_is_blocked_even_with_pricing_permission(): void
+    {
+        Role::findOrCreate('driver');
+        $user = User::factory()->create();
+        $user->assignRole('driver');
+        $user->givePermissionTo('manage fleet prices');
+        $this->actingAs($user);
+        $this->get(route('car.prices'))->assertRedirect(route('expert.dashboard'));
+        $this->get(route('expert.dashboard'))->assertOk()->assertDontSee('Price Management');
         Livewire::test(FleetPriceManagement::class)->assertForbidden();
+    }
+
+    public function test_guest_cannot_manage_prices(): void
+    {
+        $this->assertFalse(FleetBulkPricingService::authorized(null));
     }
 }

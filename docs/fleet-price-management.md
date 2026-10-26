@@ -1,10 +1,11 @@
 # Fleet Price Management
 
 The authenticated page is **Cars → Price Management**, `/expert/car/prices`.
-Access requires the Spatie `manage fleet prices` permission or the existing
-`super-admin` role. The migration creates the permission without granting it to
-other roles. Assign it with the existing role/permission administration tools.
-Every preview, selection action and apply action checks authorization again.
+Access is available to authenticated panel staff except users with the `driver`
+role, including staff accounts without an assigned role. The same rule controls
+the menu link and every preview, selection and apply action. Authorization reads
+the current user again so assigning the driver role immediately revokes access.
+The legacy `manage fleet prices` permission does not override the driver restriction.
 
 ## Stage A: regular tariffs
 
@@ -107,7 +108,7 @@ for historical bookings.
    Use the normal application deployment process; no production migration is run
    by this implementation. The permission is retained on migration rollback.
 2. Deploy backend, then build/deploy the reservation React client.
-3. Grant pricing permission to intended staff. Keep date events inactive until
+3. Verify staff access and the driver restriction. Keep date events inactive until
    the new client is live; then preview and activate a small exact-vehicle event.
 4. Smoke-test ordinary and deep-linked reservations, stale-quote acknowledgement,
    and a mixed regular/event booking on the target database.

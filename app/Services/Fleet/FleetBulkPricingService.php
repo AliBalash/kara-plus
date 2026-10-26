@@ -18,7 +18,7 @@ class FleetBulkPricingService
     {
         $actor = $actor?->fresh();
 
-        return $actor && ($actor->hasRole('super-admin') || $actor->can('manage fleet prices'));
+        return $actor && ! $actor->hasRole('driver');
     }
 
     public static function authorize(?User $actor): void
