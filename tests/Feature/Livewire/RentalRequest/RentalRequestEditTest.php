@@ -12,6 +12,7 @@ use App\Models\LocationCost;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\ContractAmendmentService;
+use App\Services\RentalPricingService;
 use App\Support\RentalDuration;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -1265,6 +1266,115 @@ class RentalRequestEditTest extends TestCase
         $this->assertStringContainsString('VAT: 62.14 AED', $returnInformation);
         $this->assertStringContainsString('Contract total: 1,305.02 AED', $returnInformation);
         $this->assertStringContainsString('Outstanding balance: 150.02 AED', $returnInformation);
+    }
+
+    public function test_return_note_combines_extension_rent_and_keeps_the_correct_total_and_customer_balance(): void
+    {
+        [$contract, $user] = $this->returnNoteContract();
+        $service = app(ContractAmendmentService::class);
+        $service->approve($service->requestExtension($contract, '2026-10-23 10:00:00', $user->id), $user->id);
+        foreach (['rental_fee' => 630, 'salik_4_aed' => 12, 'salik_4_20_aed' => 46.2, 'salik_6_30_aed' => 44.1, 'salik_other_revenue' => 21] as $type => $amount) {
+            Payment::factory()->for($contract)->for($contract->customer)->for($contract->car)->for($user)->paid()->create([
+                'payment_type' => $type, 'currency' => 'AED', 'amount' => $amount, 'amount_in_aed' => $amount,
+            ]);
+        }
+        $before = $contract->fresh()->getAttributes();
+        $chargesBefore = $contract->charges()->get()->toArray();
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $note = $component->returnInformationText;
+
+        foreach (['Rental days: 3', 'Daily rate: 300.00 AED', 'Rental amount: 900.00 AED', 'Services & logistics: 50.00 AED', 'VAT: 47.50 AED', 'Contract total: 997.50 AED', 'Salik total: 123.30 AED', 'Outstanding balance: 490.80 AED'] as $line) {
+            $this->assertStringContainsString($line, $note);
+        }
+        $this->assertStringNotContainsString('Extension #', $note);
+        $this->assertStringNotContainsString('Approved extension charges', $note);
+        $this->assertStringNotContainsString('Rental amount: 600.00 AED', $note);
+        $this->assertSame($before, $contract->fresh()->getAttributes());
+        $this->assertSame($chargesBefore, $contract->charges()->get()->toArray());
+    }
+
+    public function test_return_note_keeps_extension_insurance_and_services_out_of_rent_and_handles_custom_rates(): void
+    {
+        [$contract, $user] = $this->returnNoteContract(true);
+        $service = app(ContractAmendmentService::class);
+        $service->approve($service->requestExtension($contract, '2026-10-23 10:00:00', $user->id,
+            rateSource: RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: 100), $user->id);
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $note = $component->returnInformationText;
+
+        foreach (['Rental days: 3', 'Base daily rate: 300.00 AED', 'Rental amount: 700.00 AED', 'Additional services total: 18.00 AED', 'Supplementary insurance total: 21.00 AED', 'Services & logistics: 89.00 AED', 'VAT: 39.45 AED', 'Contract total: 828.45 AED'] as $line) {
+            $this->assertStringContainsString($line, $note);
+        }
+        $this->assertStringNotContainsString('Extension #', $note);
+        $this->assertStringNotContainsString('Approved extension charges', $note);
+        $this->assertEqualsWithDelta(828.45, (float) $contract->fresh()->total_price, 0.01);
+    }
+
+    public function test_return_note_counts_only_effective_extension_rent_after_revision_and_removal(): void
+    {
+        [$contract, $user] = $this->returnNoteContract();
+        $service = app(ContractAmendmentService::class);
+        $first = $service->approve($service->requestExtension($contract, '2026-10-23 10:00:00', $user->id), $user->id);
+        $replacement = $service->reviseApprovedExtension($first, '2026-10-24 10:00:00', $user->id,
+            RentalPricingService::DEFAULT_POLICY, RentalPricingService::RATE_SOURCE_CUSTOM, customDailyRate: 100);
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $note = $component->returnInformationText;
+        $this->assertStringContainsString('Rental amount: 800.00 AED', $note);
+        $this->assertStringContainsString('Contract total: 892.50 AED', $note);
+        $this->assertStringNotContainsString('Extension #', $note);
+
+        $service->deleteExtension($replacement, $user->id);
+        $pending = $service->requestExtension($contract->fresh(), '2026-10-23 10:00:00', $user->id);
+        $component = app(RentalRequestEdit::class);
+        $component->mount($contract->id);
+        $note = $component->returnInformationText;
+        $this->assertStringContainsString('Rental amount: 600.00 AED', $note);
+        $this->assertStringContainsString('Daily rate: 300.00 AED', $note);
+        $this->assertStringContainsString('Contract total: 682.50 AED', $note);
+        $this->assertStringNotContainsString('Base daily rate:', $note);
+        $this->assertSame('pending_approval', $pending->status);
+    }
+
+    private function returnNoteContract(bool $withAncillaries = false): array
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $car = Car::factory()->available()->create([
+            'price_per_day_short' => 300, 'price_per_day_mid' => 300, 'price_per_day_long' => 300,
+        ]);
+        $contract = Contract::factory()->for($user)->for($car)->create([
+            'pickup_date' => '2026-10-20 10:00:00', 'return_date' => '2026-10-22 10:00:00',
+            'pickup_location' => 'Main branch', 'return_location' => 'Main branch',
+            'current_status' => 'assigned', 'total_price' => $withAncillaries ? 709.8 : 682.5, 'used_daily_rate' => 300,
+            'meta' => [
+                'selected_insurance' => $withAncillaries ? 'ldw_insurance' : null,
+                'selected_services' => $withAncillaries ? ['child_seat'] : [],
+                'service_quantities' => ['child_seat' => 2],
+                'pricing_tariffs' => [
+                    'base_days' => 2, 'tax_rate' => 0.05,
+                    'insurance' => ['ldw_insurance' => 7],
+                    'services' => ['child_seat' => ['unit_rate' => 3, 'per_day' => true]],
+                ],
+            ],
+        ]);
+        $charges = [
+            ['title' => 'base_rental', 'type' => 'base', 'amount' => 600, 'unit' => 'day', 'quantity' => 2, 'unit_price' => 300],
+            ['title' => 'return_transfer', 'type' => 'location_fee', 'amount' => 50, 'description' => 'Main branch'],
+            ['title' => 'tax', 'type' => 'tax', 'amount' => $withAncillaries ? 33.8 : 32.5],
+        ];
+        if ($withAncillaries) {
+            $charges[] = ['title' => 'ldw_insurance', 'type' => 'insurance', 'amount' => 14];
+            $charges[] = ['title' => 'child_seat', 'type' => 'addon', 'amount' => 12];
+        }
+        foreach ($charges as $charge) {
+            ContractCharges::factory()->for($contract)->create(['source_type' => 'original', ...$charge]);
+        }
+        $contract->changeStatus('awaiting_return', $user->id);
+
+        return [$contract->fresh(), $user];
     }
 
     public function test_any_signed_in_user_can_correct_commercial_terms_with_an_audited_balanced_adjustment(): void

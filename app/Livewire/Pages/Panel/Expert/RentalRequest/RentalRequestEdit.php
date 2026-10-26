@@ -2956,47 +2956,26 @@ TEXT);
         $securityHoldInstructionAmount = $this->cashSecurityHoldAmount();
         $balanceForNote = $balance;
         $financial = $this->currentFinancialSummary();
-        $approvedExtensionLines = $this->contract->amendments()
-            ->where('type', 'extension')
-            ->where('status', 'approved')
-            ->orderBy('sequence_no')
-            ->get()
-            ->map(function ($extension): ?string {
-                $snapshot = (array) $extension->pricing_snapshot;
-                $rentalItem = collect((array) ($snapshot['items'] ?? []))->firstWhere('code', 'extension_rental');
-                if (! is_array($rentalItem)) {
-                    return null;
-                }
-
-                $legacyDailyRate = (float) ($rentalItem['unit_price'] ?? 0)
-                    * (($rentalItem['unit'] ?? null) === 'hour' ? 24 : 1);
-                $effectiveRate = (float) ($snapshot['effective_daily_rate'] ?? $legacyDailyRate);
-                $contractRate = $snapshot['contract_daily_rate'] ?? $this->contract->used_daily_rate;
-                $rateSource = $snapshot['rate_source'] ?? null;
-                $usesContractRate = $rateSource === \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT
-                    || ($rateSource === null && is_numeric($contractRate) && abs($effectiveRate - (float) $contractRate) < 0.005);
-                $sourceLabel = match ($rateSource) {
-                    \App\Services\RentalPricingService::RATE_SOURCE_CONTRACT => 'saved contract rate',
-                    \App\Services\RentalPricingService::RATE_SOURCE_CUSTOM => 'custom daily rate for this extension',
-                    \App\Services\RentalPricingService::RATE_SOURCE_CURRENT_TOTAL_DURATION => 'current tariff based on resulting total duration',
-                    \App\Services\RentalPricingService::RATE_SOURCE_CURRENT => 'current tariff based on extension length',
-                    default => $usesContractRate ? 'saved contract rate, legacy' : 'current tariff, legacy',
-                };
-                $comparison = is_numeric($contractRate) && abs($effectiveRate - (float) $contractRate) > 0.005
-                    ? '; contract rate '.$this->formatCurrency($contractRate).' AED/day'
-                    : '';
-
-                return 'Extension #'.$extension->sequence_no.': '
-                    .$this->formatRentalDays((float) $rentalItem['quantity']).' '.str_replace('_', ' ', (string) $rentalItem['unit'])
-                    .' × '.$this->formatCurrency($rentalItem['unit_price']).' AED'
-                    .' = '.$this->formatCurrency($rentalItem['amount']).' AED'
-                    .' + VAT '.$this->formatCurrency($extension->tax_amount).' AED'
-                    .' = '.$this->formatCurrency($extension->total_amount).' AED total'
-                    .' ('.$sourceLabel.$comparison.')';
-            })
-            ->filter()
-            ->values()
-            ->all();
+        // The customer note combines original and net extension charges. Signed
+        // reversal rows keep revised/voided extensions from being counted twice.
+        $extensionCharges = $this->contract->charges->where('source_type', 'amendment');
+        $extensionRentalCharges = $extensionCharges->where('type', 'extension_rental');
+        $extensionRental = (float) $extensionRentalCharges->sum('amount');
+        $extensionInsurance = (float) $extensionCharges->whereIn('type', ['ldw_insurance', 'scdw_insurance'])->sum('amount');
+        $extensionServices = (float) $financial['extension_subtotal'] - $extensionRental - $extensionInsurance;
+        $financial['rental_amount'] = $this->roundCurrency($financial['rental_amount'] + $extensionRental);
+        $financial['insurance'] = $this->roundCurrency($financial['insurance'] + $extensionInsurance);
+        $financial['services'] = $this->roundCurrency($financial['services'] + $extensionServices);
+        $financial['services_and_logistics'] = $this->roundCurrency(
+            $financial['services_and_logistics'] + $extensionInsurance + $extensionServices
+        );
+        $hasDifferentExtensionRate = $extensionRentalCharges
+            ->groupBy(fn ($charge): string => number_format(
+                (float) $charge->unit_price * ($charge->unit === 'hour' ? 24 : 1), 2, '.', ''
+            ))
+            ->filter(fn ($charges): bool => abs((float) $charges->sum('amount')) >= 0.01)
+            ->keys()
+            ->contains(fn ($rate): bool => abs((float) $rate - (float) $financial['daily_rate']) > 0.005);
 
         $agreementNumber = $this->contract->pickupDocument?->agreement_number ?? '---';
         $depositLabel = $this->formattedDepositLabel();
@@ -3073,7 +3052,7 @@ TEXT);
                 abs((float) $financial['billed_rental_days'] - (float) $financial['rental_days']) > 0.001
                     ? 'Billed ledger days: '.$this->formatRentalDays($financial['billed_rental_days'])
                     : null,
-                'Daily rate: '.$this->formatCurrency($financial['daily_rate']).' AED',
+                ($hasDifferentExtensionRate ? 'Base daily rate: ' : 'Daily rate: ').$this->formatCurrency($financial['daily_rate']).' AED',
             ]),
             $formatList('Tolls & trips', array_filter([
                 ...collect($salikTripTypes)->map(fn (float $unit, string $type): ?string => $tripLine(
@@ -3091,8 +3070,6 @@ TEXT);
                 $moneyLine('Driving license', $financial['driving_license']),
                 $moneyLine('Pickup travel charge', $financial['pickup_transfer']),
                 $moneyLine('Return travel charge', $financial['return_transfer']),
-                ...$approvedExtensionLines,
-                $moneyLine('Approved extension charges (before VAT)', $financial['extension_subtotal']),
             ])),
             $formatList('Fees & penalties', array_filter([
                 $moneyLine('Fine', $sumAmount('fine')),
