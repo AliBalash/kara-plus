@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Contract;
+use App\Models\ContractAmendment;
+use App\Models\ContractCharges;
 use Carbon\Carbon;
 
 /** Read-only allocation of the posted commercial ledger to calendar-date ranges. */
@@ -27,11 +29,15 @@ class ContractPaymentRangeRentalService
         foreach ($contract->charges as $charge) {
             $from = $pickup;
             $until = $originalEnd;
-            if ($charge->amendment_id) {
-                $amendment = $contract->amendments->firstWhere('id', $charge->amendment_id);
+            $amendment = $contract->amendments->firstWhere('id', $charge->amendment_id);
+            // Commercial edits adjust the original rental (including tax and
+            // services), not the interval between old/new return timestamps.
+            // Use the same current bounds as the original rows so later edits
+            // reflow both together without changing any posted financial data.
+            if ($charge->amendment_id && ! $this->correctsOriginalRental($contract, $charge, $amendment)) {
                 $from = $charge->effective_from ?? $amendment?->extension_start_at;
                 $until = $charge->effective_to ?? $amendment?->extension_end_at;
-                // Legacy commercial corrections may have only old/new return dates.
+                // Legacy extension adjustments may have only old/new return dates.
                 if ((! $from || ! $until) && $amendment?->old_return_at && $amendment?->new_return_at
                     && ! $amendment->old_return_at->equalTo($amendment->new_return_at)) {
                     $from = min($amendment->old_return_at, $amendment->new_return_at);
@@ -49,6 +55,40 @@ class ContractPaymentRangeRentalService
         $amount += $this->slice($remainder, $pickup, $return, $start, $end);
 
         return round($amount, 2);
+    }
+
+    private function correctsOriginalRental(Contract $contract, ContractCharges $charge, ?ContractAmendment $amendment): bool
+    {
+        $policies = [
+            ContractCommercialCorrectionService::SCOPE_AUTHORIZED,
+            ContractCommercialCorrectionService::SCOPE_OPERATIONAL_LOCATION,
+        ];
+
+        if (! in_array(data_get($charge->metadata, 'policy'), $policies, true)
+            && ! in_array($amendment?->pricing_policy, $policies, true)) {
+            return false;
+        }
+
+        // Before extension edits were protected, a commercial correction could
+        // undo an already-posted extension. Preserve that historical reversal;
+        // an extension created AFTER the correction must not redefine its scope.
+        if ($amendment?->old_return_at && $amendment?->new_return_at
+            && $amendment->new_return_at->lt($amendment->old_return_at)) {
+            $reversesExtension = $contract->amendments->contains(function (ContractAmendment $extension) use ($amendment): bool {
+                $from = $extension->extension_start_at ?? $extension->old_return_at;
+                $until = $extension->extension_end_at ?? $extension->new_return_at;
+
+                return $extension->type === 'extension' && $extension->id < $amendment->id
+                    && in_array($extension->status, ['approved', 'superseded', 'voided'], true)
+                    && $from?->equalTo($amendment->new_return_at)
+                    && $until?->equalTo($amendment->old_return_at);
+            });
+            if ($reversesExtension) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function slice(float $amount, Carbon $from, Carbon $until, Carbon $start, Carbon $end): float
