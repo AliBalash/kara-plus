@@ -19,7 +19,7 @@ class ConfirmPayementList extends Component
 
     public $search = '';
     public $searchInput = '';
-    public $statusFilter = '';
+    public $statusFilter = 'pending';
     public $currencyFilter = '';
     public $paymentTypeFilter = '';
     public $dateFrom;
@@ -39,6 +39,21 @@ class ConfirmPayementList extends Component
     public function mount(): void
     {
         $this->searchInput = $this->search;
+        $this->normalizeStatusFilter();
+    }
+
+    public function updatedStatusFilter(): void
+    {
+        $this->normalizeStatusFilter();
+        $this->resetPage();
+    }
+
+    private function normalizeStatusFilter(): void
+    {
+        // Empty values in older links must not turn Pending into an all-status view.
+        if (! in_array($this->statusFilter, ['pending', 'approved', 'rejected'], true)) {
+            $this->statusFilter = 'pending';
+        }
     }
 
     public function clearFilters()
@@ -127,7 +142,7 @@ class ConfirmPayementList extends Component
                         });
                 });
             })
-            ->when($this->statusFilter !== '', fn($q) => $q->where('approval_status', $this->statusFilter))
+            ->where('approval_status', $this->statusFilter)
             ->when($this->currencyFilter, fn($q) => $q->where('currency', $this->currencyFilter))
             ->when($this->paymentTypeFilter, fn($q) => $q->where('payment_type', $this->paymentTypeFilter))
             ->when($this->dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $this->dateFrom))
