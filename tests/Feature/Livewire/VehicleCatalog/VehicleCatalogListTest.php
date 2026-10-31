@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\VehicleCatalogItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class VehicleCatalogListTest extends TestCase
@@ -132,17 +133,28 @@ class VehicleCatalogListTest extends TestCase
             ->assertViewHas('items', fn ($items) => $items->currentPage() === 1 && $items->count() === 1 && $items->first()['year'] === 2024);
     }
 
-    public function test_price_management_links_use_the_exact_year_group_and_require_pricing_permission(): void
+    public function test_price_management_links_use_the_exact_year_group_for_non_driver_staff(): void
     {
         $older = $this->variant('ELANTRA-23', 2023, true);
         $newer = $this->variant('ELANTRA-24', 2024, true);
+        Livewire::test(VehicleCatalogList::class)->assertDontSee('Manage prices ·');
+
         $actor = User::factory()->create();
         $this->actingAs($actor);
-        Livewire::test(VehicleCatalogList::class)->assertDontSee('Manage prices ·');
-        $actor->givePermissionTo('manage fleet prices');
         Livewire::test(VehicleCatalogList::class)->set('search', 'ELANTRA')
             ->assertSeeHtml('href="'.e(route('car.prices', ['catalogItem' => $older->id])).'"')
             ->assertSeeHtml('href="'.e(route('car.prices', ['catalogItem' => $newer->id])).'"');
+    }
+
+    public function test_price_management_links_are_hidden_for_drivers_even_with_pricing_permission(): void
+    {
+        Role::findOrCreate('driver');
+        $actor = User::factory()->create();
+        $actor->assignRole('driver');
+        $actor->givePermissionTo('manage fleet prices');
+        $this->actingAs($actor);
+
+        Livewire::test(VehicleCatalogList::class)->assertDontSee('Manage prices ·');
     }
 
     private function variant(string $code, int $year, bool $active): VehicleCatalogItem
