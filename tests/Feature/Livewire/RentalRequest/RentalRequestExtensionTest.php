@@ -172,6 +172,57 @@ class RentalRequestExtensionTest extends TestCase
         $this->assertSame(0, $contract->amendments()->count());
     }
 
+    public function test_settled_fractional_payments_do_not_corrupt_extension_preview_or_confirmation(): void
+    {
+        [$contract, $actor] = $this->operationalContract();
+        foreach (['rental_fee' => 1000.10, 'fine' => 0.10] as $type => $amount) {
+            Payment::factory()->for($contract)->for($contract->customer)->for($contract->car)->for($actor)->paid()->create([
+                'payment_type' => $type,
+                'currency' => 'AED',
+                'amount' => $amount,
+                'amount_in_aed' => $amount,
+                'approval_status' => 'approved',
+            ]);
+        }
+        // Decimal payments can leave a tiny negative float, rounded to signed zero.
+        $this->assertSame('-0', json_encode($contract->fresh()->calculateRemainingBalance()));
+        $this->actingAs($actor);
+
+        $component = Livewire::test(RentalRequestExtension::class, ['contractId' => $contract->id])
+            ->set('newReturnAt', '2026-09-12T10:00')
+            ->set('rateSource', RentalPricingService::RATE_SOURCE_CUSTOM)
+            ->set('customDailyRate', '100.00')
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->set('reviewConfirmed', true)
+            ->call('request')
+            ->assertHasNoErrors();
+
+        $pending = $contract->amendments()->sole();
+        $this->assertSame('pending_approval', $pending->status);
+        $this->assertSame('1000.00', $contract->fresh()->total_price);
+        $this->assertSame(210.0, (float) $pending->total_amount);
+
+        $component->call('prepareApproval', $pending->id)
+            ->assertHasNoErrors()
+            ->set('confirmationAccepted', true)
+            ->call('confirmPreparedAction')
+            ->assertHasNoErrors();
+        $this->assertSame('approved', $pending->fresh()->status);
+        $this->assertSame('1210.00', $contract->fresh()->total_price);
+        $this->assertEqualsWithDelta(210, $contract->fresh()->calculateRemainingBalance(), 0.001);
+
+        $component->call('prepareDelete', $pending->id)
+            ->set('confirmationAccepted', true)
+            ->call('confirmPreparedAction')
+            ->assertHasNoErrors();
+        $this->assertSame('voided', $pending->fresh()->status);
+        $this->assertSame('1000.00', $contract->fresh()->total_price);
+        $this->assertSame('2026-09-10 10:00:00', $contract->fresh()->return_date->format('Y-m-d H:i:s'));
+        $this->assertEqualsWithDelta(0, $contract->fresh()->calculateRemainingBalance(), 0.001);
+        $this->assertSame(230.0, (float) $contract->fresh()->used_daily_rate);
+    }
+
     public function test_pending_edit_and_delete_are_confirmed_and_have_no_contract_financial_effect(): void
     {
         [$contract, $actor] = $this->operationalContract();

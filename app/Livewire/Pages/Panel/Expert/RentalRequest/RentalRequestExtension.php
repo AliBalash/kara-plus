@@ -457,14 +457,23 @@ class RentalRequestExtension extends Component
             'return_after' => Carbon::parse($returnAfter)->format('Y-m-d H:i'),
             'rental_days_before' => RentalDuration::billableDays($currentContract->pickup_date, $returnBefore, $durationPolicy),
             'rental_days_after' => RentalDuration::billableDays($currentContract->pickup_date, $returnAfter, $durationPolicy),
-            'old_extension_total' => round($oldExtensionTotal, 2),
-            'new_extension_total' => round($newExtensionTotal, 2),
-            'total_delta' => round($totalDelta, 2),
-            'contract_total_before' => round($currentTotal, 2),
-            'contract_total_after' => round($currentTotal + $totalDelta, 2),
-            'balance_before' => round($currentBalance, 2),
-            'balance_after' => round($currentBalance + $totalDelta, 2),
+            'old_extension_total' => $this->roundImpactAmount($oldExtensionTotal),
+            'new_extension_total' => $this->roundImpactAmount($newExtensionTotal),
+            'total_delta' => $this->roundImpactAmount($totalDelta),
+            'contract_total_before' => $this->roundImpactAmount($currentTotal),
+            'contract_total_after' => $this->roundImpactAmount($currentTotal + $totalDelta),
+            'balance_before' => $this->roundImpactAmount($currentBalance),
+            'balance_after' => $this->roundImpactAmount($currentBalance + $totalDelta),
         ];
+    }
+
+    private function roundImpactAmount(float $amount): float
+    {
+        $rounded = round($amount, 2);
+
+        // JSON decodes -0 as 0, invalidating Livewire's signed snapshot on
+        // the next request. Normalize display zeros without changing pricing.
+        return $rounded === 0.0 ? 0.0 : $rounded;
     }
 
     private function impactFingerprint(string $action, ContractAmendment $amendment, array $impact): string
